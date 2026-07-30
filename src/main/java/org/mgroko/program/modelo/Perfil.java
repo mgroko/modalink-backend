@@ -1,23 +1,15 @@
 package org.mgroko.program.modelo;
 
+import org.mgroko.program.modelo.enums.EstadoPerfil;
+import jakarta.persistence.*;
+import lombok.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-
 @Entity
 @Table(name = "perfil")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Perfil {
 
     @Id
@@ -31,120 +23,45 @@ public class Perfil {
     @Column(name = "biografia", nullable = false, length = 500)
     private String biografia;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 20)
-    private String estado;
+    @Builder.Default
+    private EstadoPerfil estado = EstadoPerfil.Activo;
 
     @Column(name = "fecha_solicitud_baja")
     private LocalDateTime fechaSolicitudBaja;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // UC-11: la profesión no se puede modificar una vez creado el perfil.
+    // Esa regla se refuerza con un trigger en la bd (BEFORE UPDATE)
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_profesion", nullable = false)
     private Profesion profesion;
 
+    // Foto de perfil, opcional
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_imagen")
     private Imagen imagen;
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "caracteristica_perfil",
-            joinColumns = @JoinColumn(name = "id_perfil"),
-            inverseJoinColumns = @JoinColumn(name = "id_caracteristica")
+        name = "caracteristica_perfil",
+        joinColumns = @JoinColumn(name = "id_perfil"),
+        inverseJoinColumns = @JoinColumn(name = "id_caracteristica")
     )
-    private Set<CaracteristicaTecnica> caracteristicasTecnicas = new HashSet<>();
+    private Set<CaracteristicaTecnica> caracteristicas = new HashSet<>();
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "habilidad_perfil",
-            joinColumns = @JoinColumn(name = "id_perfil"),
-            inverseJoinColumns = @JoinColumn(name = "id_habilidad")
+        name = "habilidad_perfil",
+        joinColumns = @JoinColumn(name = "id_perfil"),
+        inverseJoinColumns = @JoinColumn(name = "id_habilidad")
     )
     private Set<Habilidad> habilidades = new HashSet<>();
-
-    public Perfil() {
-    }
-
-    public Long getIdPerfil() {
-        return idPerfil;
-    }
-
-    public void setIdPerfil(Long idPerfil) {
-        this.idPerfil = idPerfil;
-    }
-
-    public String getNombreArtistico() {
-        return nombreArtistico;
-    }
-
-    public void setNombreArtistico(String nombreArtistico) {
-        this.nombreArtistico = nombreArtistico;
-    }
-
-    public String getBiografia() {
-        return biografia;
-    }
-
-    public void setBiografia(String biografia) {
-        this.biografia = biografia;
-    }
-
-    public String getEstado() {
-        return estado;
-    }
-
-    public void setEstado(String estado) {
-        this.estado = estado;
-    }
-
-    public LocalDateTime getFechaSolicitudBaja() {
-        return fechaSolicitudBaja;
-    }
-
-    public void setFechaSolicitudBaja(LocalDateTime fechaSolicitudBaja) {
-        this.fechaSolicitudBaja = fechaSolicitudBaja;
-    }
-
-    public Usuario getUsuario() {
-        return usuario;
-    }
-
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
-    }
-
-    public Profesion getProfesion() {
-        return profesion;
-    }
-
-    public void setProfesion(Profesion profesion) {
-        this.profesion = profesion;
-    }
-
-    public Imagen getImagen() {
-        return imagen;
-    }
-
-    public void setImagen(Imagen imagen) {
-        this.imagen = imagen;
-    }
-
-    public Set<CaracteristicaTecnica> getCaracteristicasTecnicas() {
-        return caracteristicasTecnicas;
-    }
-
-    public void setCaracteristicasTecnicas(Set<CaracteristicaTecnica> caracteristicasTecnicas) {
-        this.caracteristicasTecnicas = caracteristicasTecnicas;
-    }
-
-    public Set<Habilidad> getHabilidades() {
-        return habilidades;
-    }
-
-    public void setHabilidades(Set<Habilidad> habilidades) {
-        this.habilidades = habilidades;
-    }
 }

@@ -1,19 +1,12 @@
 package org.mgroko.program.modelo;
 
+import jakarta.persistence.*;
+import lombok.*;
 import java.time.LocalTime;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "agenda")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Agenda {
 
     @Id
@@ -30,50 +23,8 @@ public class Agenda {
     @Column(name = "hora_fin_jornada", nullable = false)
     private LocalTime horaFinJornada;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    // Una agenda por usuario (UNIQUE en la base)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false, unique = true)
     private Usuario usuario;
-
-    public Agenda() {
-    }
-
-    public Long getIdAgenda() {
-        return idAgenda;
-    }
-
-    public void setIdAgenda(Long idAgenda) {
-        this.idAgenda = idAgenda;
-    }
-
-    public String getDiasLaborales() {
-        return diasLaborales;
-    }
-
-    public void setDiasLaborales(String diasLaborales) {
-        this.diasLaborales = diasLaborales;
-    }
-
-    public LocalTime getHoraInicioJornada() {
-        return horaInicioJornada;
-    }
-
-    public void setHoraInicioJornada(LocalTime horaInicioJornada) {
-        this.horaInicioJornada = horaInicioJornada;
-    }
-
-    public LocalTime getHoraFinJornada() {
-        return horaFinJornada;
-    }
-
-    public void setHoraFinJornada(LocalTime horaFinJornada) {
-        this.horaFinJornada = horaFinJornada;
-    }
-
-    public Usuario getUsuario() {
-        return usuario;
-    }
-
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
-    }
 }
