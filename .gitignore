@@ -1,0 +1,52 @@
+# .gitignore para proyecto Java/Maven
+# Ignorar directorios y archivos generados
+/target/
+/generated-sources/
+/generated-test-sources/
+/maven-status/
+
+# Maven wrapper (si lo desean, normalmente se versiona el wrapper; no lo ignoramos)
+#/.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+.idea/
+*.iml
+/out/
+
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+
+# Others
+*.lock
+
+# Keep SQL and resources in source control; ignore generated copies in target
+# (ej. target/classes/db/...)
+/target/classes/
