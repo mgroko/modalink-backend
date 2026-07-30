@@ -23,7 +23,7 @@ public class Moodboard {
     @Column(name = "descripcion", length = 300)
     private String descripcion;
 
-    // 1 a 1 con proyecto (UNIQUE en la base)
+    // 1 a 1 con proyecto (UNIQUE en la bd)
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_proyecto", nullable = false, unique = true)
     private Proyecto proyecto;

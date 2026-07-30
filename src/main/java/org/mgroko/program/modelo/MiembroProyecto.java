@@ -31,7 +31,4 @@ public class MiembroProyecto {
     @JoinColumn(name = "id_rol_proyecto", nullable = false)
     private RolProyecto rolProyecto;
 
-    // Recordatorio: UC-38 pide baja lógica, no DELETE físico.
-    // Eso se refuerza con un trigger en la base (ver migración V2),
-    // no alcanza con no exponer un método de borrado acá.
 }

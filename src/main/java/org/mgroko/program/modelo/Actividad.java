@@ -22,20 +22,12 @@ public class Actividad {
     @Column(name = "descripcion", length = 200)
     private String descripcion;
 
-    // Dato real de entrada (no derivado) — define cuánto dura la tarea.
     @Column(name = "duracion_minutos", nullable = false)
     private Integer duracionMinutos;
 
-    // Calculado por el procedure de asignación en base a disponibilidad
-    // del staff, pero se guarda como columna real (no es una expresión
-    // trivial de la misma fila).
     @Column(name = "fecha_hora_inicio", nullable = false)
     private LocalDateTime fechaHoraInicio;
 
-    // Columna GENERATED ALWAYS AS en la base (fecha_hora_inicio + duracion).
-    // insertable/updatable = false: Hibernate no debe intentar escribirla,
-    // Postgres la calcula sola. Después de persistir, si necesitás verla
-    // ya resuelta en la misma transacción, hacé un refresh/reload de la entidad.
     @Column(name = "fecha_hora_fin", insertable = false, updatable = false)
     private LocalDateTime fechaHoraFin;
 
@@ -47,10 +39,6 @@ public class Actividad {
     @JoinColumn(name = "id_ubicacion")
     private Ubicacion ubicacion;
 
-    // Relación auto-referenciada M:N a través de dependencia_actividades.
-    // "predecesoras" es el lado propietario; "sucesoras" es su espejo de
-    // solo lectura (insertable/updatable = false) para no duplicar la
-    // gestión de la misma tabla intermedia desde los dos lados.
     @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

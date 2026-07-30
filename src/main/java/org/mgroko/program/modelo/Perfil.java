@@ -36,8 +36,8 @@ public class Perfil {
     private Usuario usuario;
 
     // UC-11: la profesión no se puede modificar una vez creado el perfil.
-    // Esa regla se refuerza con un trigger en la base (BEFORE UPDATE),
-    // no solo dejándola sin setter — el trigger es la garantía real.
+    // Esa regla se refuerza con un trigger en la bd (BEFORE UPDATE)
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_profesion", nullable = false)
     private Profesion profesion;

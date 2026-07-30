@@ -20,7 +20,7 @@ public class BloqueoAgenda {
     @Column(name = "fecha_hora_fin", nullable = false)
     private LocalDateTime fechaHoraFin;
 
-    // Opcional según UC-18
+    // Opcional según UC-18 (vacaciones, enfermedad, etc)
     @Column(name = "motivo", length = 200)
     private String motivo;
 

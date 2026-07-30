@@ -18,8 +18,6 @@ public class RolGlobal {
     @Column(name = "nombre", nullable = false, length = 20, unique = true)
     private String nombre;
 
-    // Catálogo puro: rol_global_permiso no tiene atributos propios,
-    // se modela como M:N directa en vez de una clase intermedia.
     @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
