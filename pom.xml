@@ -63,6 +63,22 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+	        <groupId>org.flywaydb</groupId>
+	        <artifactId>flyway-core</artifactId>
+	        <version>9.8.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -78,6 +94,18 @@
                 <configuration>
                     <source>17</source>
                     <target>17</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>9.8.1</version>
+                <configuration>
+                        <user>postgres</user>
+                        <password>postgres</password>
+                        <schemas>
+                            <schema>proyectoMVP</schema>
+                        </schemas>
                 </configuration>
             </plugin>
         </plugins>
