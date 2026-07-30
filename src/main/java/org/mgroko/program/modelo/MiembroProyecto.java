@@ -1,17 +1,12 @@
 package org.mgroko.program.modelo;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import org.mgroko.program.modelo.enums.EstadoParticipacion;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "miembros_proyecto")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class MiembroProyecto {
 
     @Id
@@ -19,61 +14,24 @@ public class MiembroProyecto {
     @Column(name = "id_miembro")
     private Long idMiembro;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "estado_participacion", nullable = false, length = 30)
-    private String estadoParticipacion;
+    @Builder.Default
+    private EstadoParticipacion estadoParticipacion = EstadoParticipacion.Activo;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_proyecto", nullable = false)
     private Proyecto proyecto;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_perfil", nullable = false)
     private Perfil perfil;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_rol_proyecto", nullable = false)
     private RolProyecto rolProyecto;
 
-    public MiembroProyecto() {
-    }
-
-    public Long getIdMiembro() {
-        return idMiembro;
-    }
-
-    public void setIdMiembro(Long idMiembro) {
-        this.idMiembro = idMiembro;
-    }
-
-    public String getEstadoParticipacion() {
-        return estadoParticipacion;
-    }
-
-    public void setEstadoParticipacion(String estadoParticipacion) {
-        this.estadoParticipacion = estadoParticipacion;
-    }
-
-    public Proyecto getProyecto() {
-        return proyecto;
-    }
-
-    public void setProyecto(Proyecto proyecto) {
-        this.proyecto = proyecto;
-    }
-
-    public Perfil getPerfil() {
-        return perfil;
-    }
-
-    public void setPerfil(Perfil perfil) {
-        this.perfil = perfil;
-    }
-
-    public RolProyecto getRolProyecto() {
-        return rolProyecto;
-    }
-
-    public void setRolProyecto(RolProyecto rolProyecto) {
-        this.rolProyecto = rolProyecto;
-    }
+    // Recordatorio: UC-38 pide baja lógica, no DELETE físico.
+    // Eso se refuerza con un trigger en la base (ver migración V2),
+    // no alcanza con no exponer un método de borrado acá.
 }
