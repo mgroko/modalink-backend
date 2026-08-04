@@ -1,15 +1,15 @@
 package org.mgroko.backend.controlador;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+import java.util.Map;
+
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 public class HomeController {
+@GetMapping("/health")
+public Map<String, String> health() {
+    return Map.of("status", "ok");
+}
 
-    @GetMapping("/")
-    public String home(Model model) {
-        model.addAttribute("mensaje", "Proyecto levantado correctamente");
-        return "home";
-    }
 }
