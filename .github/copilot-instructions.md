@@ -1,87 +1,101 @@
-# ModaLink — Contexto para Copilot
+# ModaLink Backend — Contexto para GitHub Copilot
 
 ## Qué es este proyecto
 ModaLink es una plataforma de networking profesional para la industria creativa/moda —
 conceptualmente "un LinkedIn para producciones de moda". Proyecto académico final de la
-materia de Ingeniería de Software, desarrollado con metodología UP (Proceso Unificado).
+materia de Ingeniería de Software (metodología UP).
 
-Funcionalidades core: gestión de perfiles múltiples, creación de proyectos, reclutamiento
-de equipos, y agenda/scheduling entre actividades.
+Este repositorio es el **backend**: API REST en Java + Spring Boot + Spring Security +
+PostgreSQL. No sirve HTML — todas las respuestas son JSON. El frontend es un repo
+separado (Vue 3 SPA) que consume esta API vía Axios.
 
-## Stack tecnológico
-- **Backend:** Java + Spring Boot + Spring Security
-- **Base de datos:** PostgreSQL
-- **Frontend:** proyecto separado (SPA), consume el backend vía API REST
-- Arquitectura: backend expone API REST, frontend es un cliente HTTP independiente
-  (no server-side rendering, no Thymeleaf, no vistas del lado del backend)
+## Estado actual — Fase 0: Login y registro
+El modelo de datos (entidades JPA) y la migración de Flyway ya están hechos y no hay
+que tocarlos salvo que se indique lo contrario. **Lo que falta construir es toda la capa
+de aplicación para registro y login.** Checklist de lo pendiente en esta fase:
 
-## Estado actual
-Fase de implementación. Ya existen: documento de requerimientos, diagrama de casos de uso,
-diagramas de secuencia (DSS) para varios casos de uso, y modelo de datos relacional inicial
-(prioriza tablas necesarias para el MVP — puede faltar algún atributo secundario).
+- [ ] `UsuarioRepository` (Spring Data JPA) — `findByCorreo`, `existsByCorreo`, `existsByDni`
+- [ ] `RolGlobalRepository`
+- [ ] DTOs: `RegistroRequest`, `LoginRequest`, `AuthResponse`, `UsuarioResponse`
+      (nunca devolver la entidad `Usuario` directamente — expone `passwordHash`)
+- [ ] `AuthService` con `registrar()` y `login()`:
+  - hashear contraseña con `BCryptPasswordEncoder`
+  - asignar `RolGlobal` = "Usuario" por defecto al registrar
+  - validar unicidad de `correo` y `dni` antes de persistir
+  - `proveedorAuth = LOCAL` para estos registros (Google OAuth es una fase futura,
+    no la implementes salvo que te lo pida explícitamente)
+- [ ] Agregar dependencia JWT al `pom.xml` (a definir cuál — preguntame antes de elegir)
+- [ ] Clase para generar/validar JWT (ej. `JwtService`) + filtro
+      (`JwtAuthenticationFilter`) que lo intercepte en cada request
+- [ ] Reescribir `SecurityConfig` (ver "Problemas conocidos" abajo) para:
+  - sesión stateless (`SessionCreationPolicy.STATELESS`)
+  - `permitAll()` en `/auth/registro` y `/auth/login`
+  - resto de endpoints requiere JWT válido
+  - configurar CORS para el origen del frontend (Vite, otro puerto)
+- [ ] `AuthController`: `POST /auth/registro`, `POST /auth/login`
+- [ ] `@ControllerAdvice` con manejo centralizado de errores — devolver JSON prolijo
+      (no la página de error default de Spring) en validaciones fallidas, correo/dni
+      duplicado, credenciales inválidas, etc.
 
-## Reglas de dominio (fuente de verdad — no las reinterpretes ni las "mejores" sin preguntar)
+No avances a fases siguientes (perfiles, proyectos, actividades) hasta que esta lista
+esté completa y yo lo confirme.
 
-- **Roles:** separados en `rol_global` (Administrador, Usuario) y `rol_proyecto`
-  (Director, Miembro), cada uno con su propia tabla de permisos. No usar una tabla `rol`
-  única con atributo de scope.
-- Un Administrador global **no puede** tener perfil creativo ni crear proyectos.
-- Un usuario puede ser Director de un proyecto y Miembro de otro simultáneamente.
-- Un proyecto permite **un solo Director** (sin co-dirección) en esta etapa.
-- `bloqueo_agenda` es **calculado/derivado**, no se persiste — un atraso en una actividad
-  predecesora obliga a recalcular el bloque según días disponibles, nunca guardar un valor
-  desactualizado.
-- `requerimiento` = tipo y cantidad de profesionales que necesita una actividad
-  (profesión + características técnicas + habilidades + cantidad).
-- Un perfil puede tener 0..N postulaciones; varias postulaciones pueden apuntar al mismo
-  requerimiento. `postulacion` tiene `fecha` y `estado`.
-- Existe el rol de "colaborador general": miembro de proyecto sin actividad asignada
-  (ej. asesor de imagen/estilo). Es igual en jerarquía a los demás miembros, pero queda
-  fuera del grafo de dependencias entre actividades (ese grafo solo involucra a quienes
-  tienen actividad asignada).
-- Modelos conceptuales UML: sin flechas de navegabilidad, solo triángulo de dirección
-  de lectura.
+## Problemas conocidos en el código actual (arreglar como parte de esta fase, no ignorar)
 
-Si una tarea nueva contradice alguna de estas reglas, **avisame antes de implementar** —
-no asumas que es un error mío para "corregir" silenciosamente.
+- Credenciales de PostgreSQL hardcodeadas (`postgres/postgres`) en
+  `application.properties` y en el plugin de Flyway del `pom.xml`. Migrar a variables
+  de entorno antes de seguir sumando configuración.
+
+## Modelo de datos relevante para esta fase (no modificar sin confirmar conmigo)
+
+- `Usuario`: `idUsuario`, `nombre`, `apellido`, `dni` (único), `fechaNacimiento`,
+  `correo` (único), `passwordHash` (nullable — null si se registró solo vía Google),
+  `proveedorAuth` (enum `LOCAL`/`GOOGLE`), `idExterno` (sub de Google, null si LOCAL),
+  `estado` (enum `Activo`/`Deshabilitado`/`Inactivo`/`Baja`), `rolGlobal` (FK,
+  obligatoria).
+- `RolGlobal`: `idRolGlobal`, `nombre` (único). Ya sembrados vía Flyway:
+  `"Administrador"`, `"Usuario"`.
+- Un Administrador global no puede tener perfil creativo ni crear proyectos (regla de
+  negocio a tener en cuenta más adelante, no aplica al registro básico).
 
 ## Cómo quiero trabajar con vos
 
-- **Alcance acotado:** implementá exactamente lo que se pide en el prompt. Si para
-  completar la tarea creés que hace falta tocar otro archivo/módulo no mencionado,
-  explicámelo primero y esperá confirmación — no lo hagas de una.
+- **Alcance acotado:** implementá lo que pido en el prompt puntual, siguiendo el
+  checklist de arriba. Si para completar una tarea creés necesario tocar algo no
+  mencionado (otra clase, otra dependencia), explicámelo primero y esperá confirmación.
 - **No refactorices** código fuera del alcance de la tarea actual, aunque veas algo
-  mejorable. Si querés sugerirlo, hacelo como comentario aparte, no como cambio aplicado.
-- **No agregues dependencias/librerías nuevas** sin preguntar antes.
-- **No generes archivos de configuración, tests, o documentación adicional** que no pedí
-  explícitamente, salvo que la tarea lo requiera para funcionar.
-- Para tareas grandes o poco claras, explicame tu plan antes de escribir código
-  (usá plan mode si está disponible).
+  mejorable — sugerilo aparte, no lo apliques.
+- **No agregues dependencias nuevas sin preguntar** (esto incluye la librería JWT —
+  proponeme opciones, no elijas por tu cuenta).
+- **No generes tests ni documentación adicional** que no pedí explícitamente.
+- En tareas grandes o ambiguas, explicame tu plan en texto antes de generar o editar
+  código, y esperá mi confirmación antes de aplicar cambios.
 - Preferí explicaciones breves de *qué* hiciste y *por qué*, no un resumen extenso.
-- Estoy aprendiendo el patrón API REST + SPA por primera vez (vengo de MVC con vistas
-  HTML puras) — si el enfoque que estás usando es distinto a lo que yo conocía, marcámelo
-  explícitamente en vez de asumir que ya lo entiendo.
+- Estoy aprendiendo a construir una API REST con JWT por primera vez (vengo de MVC con
+  sesiones/vistas HTML) — si algo que proponés es un concepto nuevo para mí (ej. cómo
+  funciona un filtro de seguridad, qué es un claim de JWT), marcámelo explícitamente
+  en la respuesta en vez de asumir que ya lo sé.
 
 ## Convenciones del proyecto
 
-- Nombres de tablas y columnas en español, snake_case (ej. `bloqueo_agenda`,
-  `miembros_proyecto`).
-- Entidades JPA en inglés/PascalCase estándar de Java cuando corresponda al código,
-  pero respetando el nombre de tabla en español vía `@Table(name = "...")`.
-- Separar claramente capa de controlador (REST endpoints), servicio (lógica de negocio)
-  y repositorio (acceso a datos) — no lógica de negocio en el controlador.
+- Nombres de tablas y columnas en español, snake_case (ya reflejado en las entidades
+  vía `@Column(name = "...")` — no cambiar esas anotaciones).
+- Entidades JPA en inglés/PascalCase estándar de Java.
+- Separación estricta de capas: `controlador` (endpoints REST) → `servicio` (lógica de
+  negocio) → `repositorio` (acceso a datos). Nunca lógica de negocio en el controlador,
+  nunca acceso directo a repositorio desde el controlador.
+- DTOs de request/response en un paquete `dto`, separados de las entidades.
 
 ## Comandos del proyecto
-<!-- Completar cuando estén definidos -->
-- Build backend: `mvn clean install`
-- Correr backend: `mvn spring-boot:run`
-- Tests backend: `mvn test`
-- Build frontend: (a definir)
-- Correr frontend en dev: (a definir)
+- Build: `mvn clean install`
+- Correr: `mvn spring-boot:run`
+- Tests: `mvn test`
 
 ## Qué NO hacer nunca
-- No hardcodear credenciales ni strings de conexión — usar `application.properties` /
-  variables de entorno.
-- No hacer `git push` ni cambios de configuración de CI sin que yo lo pida explícitamente.
-- No borrar ni modificar diagramas/documentación de la cátedra ya entregada, salvo pedido
-  explícito.
+- No hardcodear credenciales ni secrets (incluido el secret de JWT) — usar variables
+  de entorno.
+- No devolver la entidad `Usuario` completa en ninguna respuesta HTTP.
+- No implementar Google OAuth en esta fase salvo pedido explícito.
+- No hacer `git push` ni cambios de configuración de CI sin que yo lo pida.
+- No borrar ni modificar diagramas/documentación de la cátedra ya entregada, salvo
+  pedido explícito.
