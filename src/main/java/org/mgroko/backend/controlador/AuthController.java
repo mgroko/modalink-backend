@@ -9,6 +9,8 @@ import org.mgroko.backend.dto.LoginRequest;
 import org.mgroko.backend.dto.RegistroRequest;
 import org.mgroko.backend.dto.UsuarioResponse;
 import org.mgroko.backend.security.JwtService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,9 +46,8 @@ public class AuthController {
         claims.put("rolGlobal", usuarioResponse.rolGlobal());
 
         String token = jwtService.generarToken(usuarioResponse.idUsuario().toString(), claims);
-
         AuthResponse authResponse = new AuthResponse(token, usuarioResponse);
-        return ResponseEntity.ok(authResponse);
+        return ResponseEntity.ok(authResponse); 
     }
 
     /**
@@ -66,7 +67,21 @@ public class AuthController {
 
         String token = jwtService.generarToken(usuario.idUsuario().toString(), claims);
 
-        AuthResponse authResponse = new AuthResponse(token, usuario);
-        return ResponseEntity.ok(authResponse);
+        /* AuthResponse authResponse = new AuthResponse(token, usuario);
+        return ResponseEntity.ok(authResponse); */
+
+        // nuevo agregado para probar http cookies
+        ResponseCookie cookie = ResponseCookie.from("jwt", token)
+            .httpOnly(true)
+            .secure(false) // false para desarrollo local sin HTTPS. En producción debe ser true.
+            .path("/")
+            .maxAge(24 * 60 * 60) // 1 día en segundos
+            .sameSite("Lax") // Lax es necesario para desarrollo local en puertos distintos
+            .build();
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body(authResponseSinToken);
+
     }
 }
