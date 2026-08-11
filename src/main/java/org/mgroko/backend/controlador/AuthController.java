@@ -46,7 +46,7 @@ public class AuthController {
         claims.put("rolGlobal", usuarioResponse.rolGlobal());
 
         String token = jwtService.generarToken(usuarioResponse.idUsuario().toString(), claims);
-       AuthResponse authResponseSinToken = new AuthResponse(null, usuarioResponse); 
+       AuthResponse authResponseSinToken = new AuthResponse(usuarioResponse); 
         
        // nuevo agregado para probar http cookies
         ResponseCookie cookie = ResponseCookie.from("jwt", token)

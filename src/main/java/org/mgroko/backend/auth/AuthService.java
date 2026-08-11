@@ -77,6 +77,6 @@ public class AuthService {
             throw new CredencialesInvalidasException("Correo o contraseña inválidos.");
         }
 
-        return new AuthResponse(null, UsuarioMapper.toResponse(usuario));
+        return new AuthResponse(UsuarioMapper.toResponse(usuario));
     }
 }
