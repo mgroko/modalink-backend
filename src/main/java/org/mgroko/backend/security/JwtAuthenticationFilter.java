@@ -39,37 +39,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-
-        String authHeader = request.getHeader("Authorization");
-
-        // Si no hay header o no comienza con "Bearer ", dejar pasar sin autenticar
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // Extraer el token
-        String token = authHeader.substring(7);
+        if (jwt == null) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
         try {
-            // Validar el token y obtener sus claims
-            Claims claims = jwtService.validarYObtenerClaims(token);
-            String subject = claims.getSubject();
+                Claims claims = jwtService.validarYObtenerClaims(jwt); 
+                String subject = claims.getSubject();
 
-            // Crear una autenticación y ponerla en el contexto de seguridad
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    subject,
-                    null,
-                    new ArrayList<>() // Sin roles por ahora; se pueden agregar desde los claims si es necesario
-            );
-            SecurityContextHolder.getContext().setAuthentication(auth);
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                        subject,
+                        null,
+                        new ArrayList<>() 
+                );
+                SecurityContextHolder.getContext().setAuthentication(auth);
 
-        } catch (JwtException e) {
-            // Token inválido o expirado: la excepción es manejada por Spring Security
-            // El SecurityContextHolder permanece sin autenticación, y el framework responderá 401
-            SecurityContextHolder.clearContext();
+            } catch (JwtException e) {
+                SecurityContextHolder.clearContext();
+            }
+
+            filterChain.doFilter(request, response);
         }
 
-        filterChain.doFilter(request, response);
-    }
 }

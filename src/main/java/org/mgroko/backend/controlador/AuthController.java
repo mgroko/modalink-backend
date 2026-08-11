@@ -33,7 +33,7 @@ public class AuthController {
 
     /**
      * Endpoint de registro: crea un nuevo usuario.
-     * Devuelve token JWT y datos básicos del usuario.
+     * Devuelve token JWT en cookies y datos básicos del usuario.
      */
     @PostMapping("/registro")
     public ResponseEntity<AuthResponse> registro(@Valid @RequestBody RegistroRequest request) {
@@ -46,13 +46,25 @@ public class AuthController {
         claims.put("rolGlobal", usuarioResponse.rolGlobal());
 
         String token = jwtService.generarToken(usuarioResponse.idUsuario().toString(), claims);
-        AuthResponse authResponse = new AuthResponse(token, usuarioResponse);
-        return ResponseEntity.ok(authResponse); 
+       AuthResponse authResponseSinToken = new AuthResponse(null, usuarioResponse); 
+        
+       // nuevo agregado para probar http cookies
+        ResponseCookie cookie = ResponseCookie.from("jwt", token)
+            .httpOnly(true)
+            .secure(false) // false para desarrollo, en produc debe ser true
+            .path("/")
+            .maxAge(24 * 60 * 60)
+            .sameSite("Lax")
+            .build();
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body(authResponseSinToken); 
     }
 
     /**
      * Endpoint de login: autentica un usuario con correo y contraseña.
-     * Devuelve token JWT y datos básicos del usuario.
+     * Devuelve token JWT en cookies y datos básicos del usuario.
      */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -67,16 +79,13 @@ public class AuthController {
 
         String token = jwtService.generarToken(usuario.idUsuario().toString(), claims);
 
-        /* AuthResponse authResponse = new AuthResponse(token, usuario);
-        return ResponseEntity.ok(authResponse); */
-
         // nuevo agregado para probar http cookies
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
             .httpOnly(true)
-            .secure(false) // false para desarrollo local sin HTTPS. En producción debe ser true.
+            .secure(false)
             .path("/")
-            .maxAge(24 * 60 * 60) // 1 día en segundos
-            .sameSite("Lax") // Lax es necesario para desarrollo local en puertos distintos
+            .maxAge(24 * 60 * 60) 
+            .sameSite("Lax") 
             .build();
 
         return ResponseEntity.ok()
