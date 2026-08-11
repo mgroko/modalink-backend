@@ -1,4 +1,4 @@
-package org.mgroko.backend.auth;
+package org.mgroko.backend.exception;
 
 public class RolGlobalNoEncontradoException extends RuntimeException {
 

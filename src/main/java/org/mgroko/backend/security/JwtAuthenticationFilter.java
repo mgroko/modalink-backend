@@ -34,7 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Extraer el token (quitar "Bearer " del principio)
+        // Extraer el token
         String token = authHeader.substring(7);
 
         try {
@@ -51,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (JwtException e) {
-            // Token inválido o expirado: no lanzar excepción acá, dejar que Spring Security lo resuelva
+            // Token inválido o expirado: la excepción es manejada por Spring Security
             // El SecurityContextHolder permanece sin autenticación, y el framework responderá 401
             SecurityContextHolder.clearContext();
         }
