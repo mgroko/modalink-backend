@@ -10,6 +10,7 @@ import org.mgroko.backend.dto.UsuarioResponse;
 import org.mgroko.backend.exception.CorreoDuplicadoException;
 import org.mgroko.backend.exception.CredencialesInvalidasException;
 import org.mgroko.backend.exception.DniDuplicadoException;
+import org.mgroko.backend.exception.EdadInvalidaException;
 import org.mgroko.backend.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;

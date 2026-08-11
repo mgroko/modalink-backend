@@ -1,8 +1,8 @@
 package org.mgroko.backend.exception;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,13 +48,19 @@ public class GlobalExceptionHandler {
     /**
      * Maneja validaciones fallidas de DTOs (anotaciones @Valid).
      */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        String mensaje = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .collect(Collectors.joining(", "));
+        Map<String, String> erroresPorCampo = new LinkedHashMap<>();
+        for (var fieldError : ex.getBindingResult().getFieldErrors()) {
+            erroresPorCampo.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
 
-        return buildErrorResponse("Validación fallida: " + mensaje, HttpStatus.BAD_REQUEST);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Validación fallida");
+        response.put("errores", erroresPorCampo);
+        response.put("httpStatus", HttpStatus.BAD_REQUEST.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     /**
