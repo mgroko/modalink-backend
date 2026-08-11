@@ -67,4 +67,12 @@ public class GlobalExceptionHandler {
         response.put("timestamp", System.currentTimeMillis());
         return new ResponseEntity<>(response, status);
     }
+
+    /**
+     * Excepción de edad inválida.
+     */
+    @ExceptionHandler(EdadInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleEdadInvalida(EdadInvalidaException ex) {
+    return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+}
 }

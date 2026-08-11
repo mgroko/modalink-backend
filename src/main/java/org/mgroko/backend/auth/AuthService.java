@@ -1,5 +1,8 @@
 package org.mgroko.backend.auth;
 
+import java.time.LocalDate;
+import java.time.Period;
+
 import org.mgroko.backend.dto.AuthResponse;
 import org.mgroko.backend.dto.LoginRequest;
 import org.mgroko.backend.dto.RegistroRequest;
@@ -42,6 +45,9 @@ public class AuthService {
 
         if (usuarioRepository.existsByDni(request.dni())) {
             throw new DniDuplicadoException("Ya existe un usuario registrado con ese DNI.");
+        }
+        if (Period.between(request.fechaNacimiento(), LocalDate.now()).getYears() < 18) {
+            throw new EdadInvalidaException("Debés ser mayor de 18 años para registrarte.");
         }
 
         RolGlobal rolUsuario = rolGlobalRepository.findByNombre("Usuario")
