@@ -10,8 +10,11 @@ import org.mgroko.backend.dto.RegistroRequest;
 import org.mgroko.backend.dto.UsuarioResponse;
 import org.mgroko.backend.security.JwtService;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -92,5 +95,19 @@ public class AuthController {
             .header(HttpHeaders.SET_COOKIE, cookie.toString())
             .body(authResponseSinToken);
 
+    }
+
+    // agrego este endpoint para generar una cookie CSRF (y preparar al navegaodr con la cookie de seguridad)
+    @GetMapping("/me")
+    public ResponseEntity<?> obtenerUsuarioActual(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String subject = (String) authentication.getPrincipal();
+        // TODO: reemplazar por lookup real, p. ej.:
+        // Usuario usuario = usuarioRepository.findByCorreo(subject)...
+        // return ResponseEntity.ok(usuario);
+        return ResponseEntity.ok(Map.of("subject", subject));
     }
 }
