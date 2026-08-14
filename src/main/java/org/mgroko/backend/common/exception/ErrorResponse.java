@@ -1,4 +1,4 @@
-package org.mgroko.backend.auth.exception;
+package org.mgroko.backend.common.exception;
 
 import java.time.Instant;
 

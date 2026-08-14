@@ -1,9 +1,14 @@
-package org.mgroko.backend.auth.exception;
+package org.mgroko.backend.common.exception;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
+import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.auth.exception.DniDuplicadoException;
+import org.mgroko.backend.auth.exception.EdadInvalidaException;
+import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;

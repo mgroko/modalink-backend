@@ -1,9 +1,9 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Optional;
+
 import org.mgroko.backend.modelo.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Optional;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
