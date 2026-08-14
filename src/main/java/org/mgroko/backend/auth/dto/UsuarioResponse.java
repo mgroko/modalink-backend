@@ -1,4 +1,4 @@
-package org.mgroko.backend.dto;
+package org.mgroko.backend.auth.dto;
 
 public record UsuarioResponse(
         Long idUsuario,

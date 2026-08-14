@@ -1,9 +1,14 @@
-package org.mgroko.backend.exception;
+package org.mgroko.backend.common.exception;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
+import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
+import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.auth.exception.DniDuplicadoException;
+import org.mgroko.backend.auth.exception.EdadInvalidaException;
+import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -48,13 +53,19 @@ public class GlobalExceptionHandler {
     /**
      * Maneja validaciones fallidas de DTOs (anotaciones @Valid).
      */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        String mensaje = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .collect(Collectors.joining(", "));
+        Map<String, String> erroresPorCampo = new LinkedHashMap<>();
+        for (var fieldError : ex.getBindingResult().getFieldErrors()) {
+            erroresPorCampo.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
 
-        return buildErrorResponse("Validación fallida: " + mensaje, HttpStatus.BAD_REQUEST);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Validación fallida");
+        response.put("errores", erroresPorCampo);
+        response.put("httpStatus", HttpStatus.BAD_REQUEST.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     /**
@@ -67,4 +78,12 @@ public class GlobalExceptionHandler {
         response.put("timestamp", System.currentTimeMillis());
         return new ResponseEntity<>(response, status);
     }
+
+    /**
+     * Excepción de edad inválida.
+     */
+    @ExceptionHandler(EdadInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleEdadInvalida(EdadInvalidaException ex) {
+    return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+}
 }

@@ -1,7 +1,6 @@
-package org.mgroko.backend.dto;
+package org.mgroko.backend.auth.dto;
 
 public record AuthResponse(
-        String token,
         UsuarioResponse usuario
 ) {
 }

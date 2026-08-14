@@ -11,6 +11,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -26,36 +27,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         
-        String authHeader = request.getHeader("Authorization");
+        // agregado para probar las cookies 
+        String jwt = null;
 
-        // Si no hay header o no comienza con "Bearer ", dejar pasar sin autenticar
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("jwt".equals(cookie.getName())) {
+                    jwt = cookie.getValue();
+                    break;
+                }
+            }
         }
 
-        // Extraer el token
-        String token = authHeader.substring(7);
+        if (jwt == null) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
         try {
-            // Validar el token y obtener sus claims
-            Claims claims = jwtService.validarYObtenerClaims(token);
-            String subject = claims.getSubject();
+                Claims claims = jwtService.validarYObtenerClaims(jwt); 
+                String subject = claims.getSubject();
 
-            // Crear una autenticación y ponerla en el contexto de seguridad
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    subject,
-                    null,
-                    new ArrayList<>() // Sin roles por ahora; se pueden agregar desde los claims si es necesario
-            );
-            SecurityContextHolder.getContext().setAuthentication(auth);
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                        subject,
+                        null,
+                        new ArrayList<>() 
+                );
+                SecurityContextHolder.getContext().setAuthentication(auth);
 
-        } catch (JwtException e) {
-            // Token inválido o expirado: la excepción es manejada por Spring Security
-            // El SecurityContextHolder permanece sin autenticación, y el framework responderá 401
-            SecurityContextHolder.clearContext();
+            } catch (JwtException e) {
+                SecurityContextHolder.clearContext();
+            }
+
+            filterChain.doFilter(request, response);
         }
 
-        filterChain.doFilter(request, response);
-    }
 }
