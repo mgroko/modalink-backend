@@ -1,6 +1,6 @@
 package org.mgroko.backend.auth;
 
-import org.mgroko.backend.dto.UsuarioResponse;
+import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.modelo.Usuario;
 
 final class UsuarioMapper {

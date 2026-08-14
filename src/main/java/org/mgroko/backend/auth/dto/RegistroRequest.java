@@ -1,4 +1,4 @@
-package org.mgroko.backend.dto;
+package org.mgroko.backend.auth.dto;
 
 import java.time.LocalDate;
 

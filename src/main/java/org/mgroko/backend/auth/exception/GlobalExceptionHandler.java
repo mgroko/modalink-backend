@@ -1,4 +1,4 @@
-package org.mgroko.backend.exception;
+package org.mgroko.backend.auth.exception;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;

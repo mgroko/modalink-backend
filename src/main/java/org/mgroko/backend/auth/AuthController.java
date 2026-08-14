@@ -1,13 +1,12 @@
-package org.mgroko.backend.controlador;
+package org.mgroko.backend.auth;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import org.mgroko.backend.auth.AuthService;
-import org.mgroko.backend.dto.AuthResponse;
-import org.mgroko.backend.dto.LoginRequest;
-import org.mgroko.backend.dto.RegistroRequest;
-import org.mgroko.backend.dto.UsuarioResponse;
+import org.mgroko.backend.auth.dto.AuthResponse;
+import org.mgroko.backend.auth.dto.LoginRequest;
+import org.mgroko.backend.auth.dto.RegistroRequest;
+import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.security.JwtService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
