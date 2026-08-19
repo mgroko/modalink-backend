@@ -12,8 +12,11 @@ import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
+import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
+import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
@@ -80,4 +83,18 @@ public class AuthService {
 
         return new AuthResponse(UsuarioMapper.toResponse(usuario));
     }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponse obtenerUsuarioActual(Long idUsuario) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+
+        if (usuario.getEstado() != EstadoUsuario.Activo) {
+            throw new UsuarioDeshabilitadoException("Tu usuario no está activo. Contactá al administrador.");
+        }
+
+    return UsuarioMapper.toResponse(usuario);
+}
+    
+
 }

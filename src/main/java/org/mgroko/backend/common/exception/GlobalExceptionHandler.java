@@ -9,6 +9,8 @@ import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
+import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
+import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -83,7 +85,23 @@ public class GlobalExceptionHandler {
      * Excepción de edad inválida.
      */
     @ExceptionHandler(EdadInvalidaException.class)
-    public ResponseEntity<Map<String, Object>> handleEdadInvalida(EdadInvalidaException ex) {
-    return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
-}
+        public ResponseEntity<Map<String, Object>> handleEdadInvalida(EdadInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de usuario no encontrado.
+     */
+    @ExceptionHandler(UsuarioNoEncontradoException.class)
+        public ResponseEntity<Map<String, Object>> handleUsuarioNoEncontrado(UsuarioNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    /**
+     * Excepción de usuario deshabilitado.
+     */
+    @ExceptionHandler(UsuarioDeshabilitadoException.class)
+    public ResponseEntity<Map<String, Object>> handleUsuarioDeshabilitado(UsuarioDeshabilitadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
 }

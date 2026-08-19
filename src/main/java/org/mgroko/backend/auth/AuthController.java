@@ -98,15 +98,14 @@ public class AuthController {
 
     // agrego este endpoint para generar una cookie CSRF (y preparar al navegaodr con la cookie de seguridad)
     @GetMapping("/me")
-    public ResponseEntity<?> obtenerUsuarioActual(Authentication authentication) {
+    public ResponseEntity<UsuarioResponse> obtenerUsuarioActual(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String subject = (String) authentication.getPrincipal();
-        // TODO: reemplazar por lookup real, p. ej.:
-        // Usuario usuario = usuarioRepository.findByCorreo(subject)...
-        // return ResponseEntity.ok(usuario);
-        return ResponseEntity.ok(Map.of("subject", subject));
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        UsuarioResponse usuarioActual = authService.obtenerUsuarioActual(idUsuario);
+
+        return ResponseEntity.ok(usuarioActual);
     }
 }
