@@ -64,28 +64,28 @@ class AuthControllerTest {
                 1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario");
         when(authService.registrar(any(RegistroRequest.class))).thenReturn(usuarioResponse);
         when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
-
+ 
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
                 LocalDate.of(1995, Month.MAY, 20), "juan@test.com", "password123");
-
+ 
         mockMvc.perform(post("/auth/registro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(result -> {
                     String cookie = result.getResponse().getHeader("Set-Cookie");
-                    verify(jwtService, never()).generarToken(anyString(), anyMap());
                     org.junit.jupiter.api.Assertions.assertNotNull(cookie);
                     org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("jwt=token-simulado"));
                 })
                 .andExpect(jsonPath("$.usuario.correo").value("juan@test.com"));
+
+        verify(jwtService).generarToken(anyString(), anyMap());
     }
 
     @Test
     void registro_correoInvalido_devuelve400() throws Exception {
-        // @Valid + @Email en RegistroRequest debe rechazar esto antes de
-        // que el controller llame a authService.
+
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
                 LocalDate.of(1995, Month.MAY, 20), "no-es-un-correo", "password123");
@@ -153,9 +153,8 @@ class AuthControllerTest {
         when(authService.obtenerUsuarioActual(123L)).thenReturn(usuarioResponse);
  
         var authentication = new UsernamePasswordAuthenticationToken("123", null, List.of());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
- 
-        mockMvc.perform(get("/auth/me"))
+
+        mockMvc.perform(get("/auth/me").principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.correo").value("juan@test.com"))
                 .andExpect(jsonPath("$.idUsuario").value(123));
@@ -169,9 +168,8 @@ class AuthControllerTest {
                         "Usuario no encontrado."));
  
         var authentication = new UsernamePasswordAuthenticationToken("999", null, List.of());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
  
-        mockMvc.perform(get("/auth/me"))
+        mockMvc.perform(get("/auth/me").principal(authentication))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -183,9 +181,8 @@ class AuthControllerTest {
                         "Usuario deshabilitado."));
  
         var authentication = new UsernamePasswordAuthenticationToken("888", null, List.of());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
  
-        mockMvc.perform(get("/auth/me"))
+        mockMvc.perform(get("/auth/me").principal(authentication))
                 .andExpect(status().isForbidden());
     }
     
