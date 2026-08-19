@@ -15,5 +15,4 @@ public record RegistroRequest(
         @NotNull @Past LocalDate fechaNacimiento,
         @NotBlank @Email String correo,
         @NotBlank String password
-) {
-}
+) {}
