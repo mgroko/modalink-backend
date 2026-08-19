@@ -18,8 +18,11 @@ import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
+import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
+import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import static org.mockito.ArgumentMatchers.any;
@@ -210,5 +213,29 @@ class AuthServiceTest {
 
         assertEquals("maria.flores@test.com", response.usuario().correo());
         assertEquals("Usuario", response.usuario().rolGlobal());
+    }
+
+    @Test
+    void obtenerUsuarioActual_usuarioNoExiste_lanzaExcepcion() {
+        Long idInexistente = 999L;
+        when(usuarioRepository.findById(idInexistente)).thenReturn(Optional.empty());
+
+        assertThrows(UsuarioNoEncontradoException.class, () -> authService.obtenerUsuarioActual(idInexistente));
+    }
+
+    @Test
+    void obtenerUsuarioActual_usuarioDeshabilitado_lanzaExcepcion() {
+        Long idUsuario = 1L;
+
+        Usuario usuarioDeshabilitado = Usuario.builder()
+                .idUsuario(idUsuario)
+                .nombre("Juan")
+                .correo("juan@test.com")
+                .estado(EstadoUsuario.Deshabilitado)
+                .build();
+
+        when(usuarioRepository.findById(idUsuario)).thenReturn(Optional.of(usuarioDeshabilitado));
+
+        assertThrows(UsuarioDeshabilitadoException.class, () -> authService.obtenerUsuarioActual(idUsuario));
     }
 }

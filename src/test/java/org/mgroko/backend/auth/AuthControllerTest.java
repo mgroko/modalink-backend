@@ -1,37 +1,37 @@
 package org.mgroko.backend.auth;
 
+import java.time.LocalDate;
+import java.time.Month;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.mgroko.backend.auth.dto.AuthResponse;
+import org.mgroko.backend.auth.dto.LoginRequest;
+import org.mgroko.backend.auth.dto.RegistroRequest;
+import org.mgroko.backend.auth.dto.UsuarioResponse;
+import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.security.JwtService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.time.LocalDate;
-import java.time.Month;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.web.servlet.MockMvc;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.mgroko.backend.auth.dto.AuthResponse;
-import org.mgroko.backend.auth.dto.LoginRequest;
-import org.mgroko.backend.auth.dto.RegistroRequest;
-import org.mgroko.backend.auth.dto.UsuarioResponse;
-import org.mgroko.backend.security.JwtService;
-
-import java.util.List;
 
 @WebMvcTest(controllers = AuthController.class)
 @AutoConfigureMockMvc(addFilters = false) // probamos el controller, no la cadena de seguridad
@@ -75,6 +75,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(result -> {
                     String cookie = result.getResponse().getHeader("Set-Cookie");
+                    verify(jwtService, never()).generarToken(anyString(), anyMap());
                     org.junit.jupiter.api.Assertions.assertNotNull(cookie);
                     org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("jwt=token-simulado"));
                 })
@@ -120,7 +121,7 @@ class AuthControllerTest {
     void login_credencialesInvalidas_devuelve401() throws Exception {
         // GlobalExceptionHandler mapea CredencialesInvalidasException -> 401
         when(authService.login(any(LoginRequest.class)))
-                .thenThrow(new org.mgroko.backend.auth.exception.CredencialesInvalidasException(
+                .thenThrow(new CredencialesInvalidasException(
                         "Correo o contraseña inválidos."));
 
         LoginRequest request = new LoginRequest("juan@test.com", "passwordMala");
@@ -131,7 +132,7 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized());
 
         // El endpoint no debería intentar generar token si las credenciales fallaron
-        org.mockito.Mockito.verify(jwtService, org.mockito.Mockito.never())
+        verify(jwtService, never())
                 .generarToken(anyString(), anyMap());
     }
 
@@ -139,23 +140,53 @@ class AuthControllerTest {
     // /auth/me
     // ---------------------------------------------------------------
 
-    @Test
+     @Test
     void me_sinAutenticacion_devuelve401() throws Exception {
+        mockMvc.perform(get("/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+ 
+    @Test
+    void me_autenticado_devuelveDatosDelUsuario() throws Exception {
+        UsuarioResponse usuarioResponse = new UsuarioResponse(
+                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario");
+        when(authService.obtenerUsuarioActual(123L)).thenReturn(usuarioResponse);
+ 
+        var authentication = new UsernamePasswordAuthenticationToken("123", null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+ 
+        mockMvc.perform(get("/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.correo").value("juan@test.com"))
+                .andExpect(jsonPath("$.idUsuario").value(123));
+    }
+ 
+    @Test
+    void me_usuarioYaNoExiste_devuelve401() throws Exception {
+        // Token válido pero el usuario fue dado de baja después de emitirlo
+        when(authService.obtenerUsuarioActual(999L))
+                .thenThrow(new org.mgroko.backend.auth.exception.UsuarioNoEncontradoException(
+                        "Usuario no encontrado."));
+ 
+        var authentication = new UsernamePasswordAuthenticationToken("999", null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+ 
         mockMvc.perform(get("/auth/me"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void me_autenticado_devuelveSubject() throws Exception {
-        // Spring resuelve el parámetro Authentication del controller
-        // leyendo el SecurityContextHolder del hilo actual; como MockMvc
-        // corre síncrono en el mismo hilo del test, alcanza con setearlo
-        // acá antes de la request.
-        var authentication = new UsernamePasswordAuthenticationToken("123", null, List.of());
+    void me_usuarioDeshabilitado_devuelve403() throws Exception {
+        // Token válido pero el usuario fue deshabilitado después de emitirlo
+        when(authService.obtenerUsuarioActual(888L))
+                .thenThrow(new org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException(
+                        "Usuario deshabilitado."));
+ 
+        var authentication = new UsernamePasswordAuthenticationToken("888", null, List.of());
         SecurityContextHolder.getContext().setAuthentication(authentication);
-
+ 
         mockMvc.perform(get("/auth/me"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.subject").value("123"));
+                .andExpect(status().isForbidden());
     }
+    
 }
