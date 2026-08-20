@@ -42,4 +42,3 @@ INSERT INTO genero (codigo) VALUES
 -- Relación 1 a 1 Usuario-Género 
 -- ---------------------------------------------------------------------
 ALTER TABLE usuario ADD COLUMN id_genero BIGINT NOT NULL REFERENCES genero(id_genero);
-ALTER TABLE usuario ADD CONSTRAINT uq_usuario_genero UNIQUE (id_genero);
