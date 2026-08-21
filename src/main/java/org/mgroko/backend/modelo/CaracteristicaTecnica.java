@@ -13,11 +13,11 @@ public class CaracteristicaTecnica {
     @Column(name = "id_caracteristica")
     private Long idCaracteristica;
 
-    @Column(name = "nombre", nullable = false, length = 100)
-    private String nombre;
+    @Column(name = "codigo", nullable = false, length = 50)
+    private String codigo;
 
-    @Column(name = "descripcion", length = 200)
-    private String descripcion;
+    @Column(name = "unidad", length = 50)
+    private String unidad;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_profesion")
