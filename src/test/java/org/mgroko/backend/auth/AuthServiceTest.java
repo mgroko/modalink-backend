@@ -17,12 +17,15 @@ import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
+import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,6 +58,9 @@ class AuthServiceTest {
     private RolGlobalRepository rolGlobalRepository;
 
     @Mock
+    private GeneroRepository generoRepository;
+
+    @Mock
     private BCryptPasswordEncoder passwordEncoder;
 
     @InjectMocks
@@ -71,6 +77,7 @@ class AuthServiceTest {
                 "12345678",
                 LocalDate.of(1981, Month.JUNE, 24), 
                 "maria.flores@test.com",
+                "mujer",
                 "password123"
         );
     }
@@ -105,7 +112,7 @@ class AuthServiceTest {
         RegistroRequest menorDeEdad = new RegistroRequest(
                 "Ana", "Gomez", "87654321",
                 LocalDate.now().minusYears(10), // 10 años: inválido
-                "ana@test.com", "password123"
+                "ana@test.com", "mujer", "password123"
         );
         when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
         when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
@@ -125,6 +132,17 @@ class AuthServiceTest {
     }
 
     @Test
+    void registrar_generoInexistente_lanzaExcepcion() {
+        when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
+        when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
+        when(rolGlobalRepository.findByNombre("Usuario")).thenReturn(Optional.of(mock(RolGlobal.class)));
+        when(generoRepository.findByCodigo(registroValido.genero())).thenReturn(Optional.empty());
+
+        assertThrows(GeneroNoEncontradoException.class, () -> authService.registrar(registroValido));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
     void registrar_datosValidos_creaUsuarioCorrectamente() {
         // Arrange: todos los checks pasan
         when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
@@ -133,6 +151,10 @@ class AuthServiceTest {
         RolGlobal rolUsuario = mock(RolGlobal.class);
         when(rolUsuario.getNombre()).thenReturn("Usuario");
         when(rolGlobalRepository.findByNombre("Usuario")).thenReturn(Optional.of(rolUsuario));
+
+        Genero generoMujer = mock(Genero.class);
+        when(generoMujer.getCodigo()).thenReturn("mujer");
+        when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
 
         when(passwordEncoder.encode(registroValido.password())).thenReturn("hash-simulado");
 
@@ -148,6 +170,7 @@ class AuthServiceTest {
         assertEquals("Flores", response.apellido());
         assertEquals("maria.flores@test.com", response.correo());
         assertEquals("Usuario", response.rolGlobal());
+        assertEquals("mujer", response.genero());
 
         // Verificamos que la password NUNCA se guarda en texto plano
         verify(passwordEncoder).encode("password123");

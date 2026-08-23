@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import static org.mockito.Mockito.mock;
@@ -22,12 +23,16 @@ class UsuarioMapperTest {
         RolGlobal rol = mock(RolGlobal.class);
         when(rol.getNombre()).thenReturn("Usuario");
 
+        Genero genero = mock(Genero.class);
+        when(genero.getCodigo()).thenReturn("mujer");
+
         Usuario usuario = Usuario.builder()
                 .nombre("Maria")
                 .apellido("Flores")
                 .dni("12345678")
                 .correo("maria.flores@test.com")
                 .rolGlobal(rol)
+                .genero(genero)
                 .build();
 
         UsuarioResponse response = UsuarioMapper.toResponse(usuario);
@@ -37,6 +42,7 @@ class UsuarioMapperTest {
         assertEquals("12345678", response.dni());
         assertEquals("maria.flores@test.com", response.correo());
         assertEquals("Usuario", response.rolGlobal());
+        assertEquals("mujer", response.genero());
     }
 
     @Test
@@ -48,11 +54,13 @@ class UsuarioMapperTest {
                 .dni("87654321")
                 .correo("ana@test.com")
                 .rolGlobal(null)
+                .genero(null)
                 .build();
 
         UsuarioResponse response = UsuarioMapper.toResponse(usuario);
 
         assertNull(response.rolGlobal());
+        assertNull(response.genero());
         assertEquals("Ana", response.nombre());
     }
 }

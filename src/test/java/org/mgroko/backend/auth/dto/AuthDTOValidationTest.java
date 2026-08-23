@@ -34,7 +34,7 @@ class AuthDTOValidationTest {
         return new RegistroRequest(
                 "Juan", "Perez", "12345678",
                 LocalDate.of(1995, Month.MAY, 20),
-                "juan.perez@test.com", "password123"
+                "juan.perez@test.com", "mujer", "password123"
         );
     }
 
@@ -48,7 +48,7 @@ class AuthDTOValidationTest {
     void registro_nombreVacio_generaViolacion() {
         RegistroRequest request = new RegistroRequest(
                 "", "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "password123"
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "mujer", "password123"
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertTrue(violaciones.stream().anyMatch(v -> v.getPropertyPath().toString().equals("nombre")));
@@ -59,7 +59,7 @@ class AuthDTOValidationTest {
         // @Size(min = 2) -> "J" tiene 1 caracter
         RegistroRequest request = new RegistroRequest(
                 "J", "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "password123"
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "mujer", "password123"
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertEquals(1, violaciones.size());
@@ -71,7 +71,7 @@ class AuthDTOValidationTest {
         String nombreLargo = "J".repeat(51);
         RegistroRequest request = new RegistroRequest(
                 nombreLargo, "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "password123"
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "mujer", "password123"
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertEquals(1, violaciones.size());
@@ -81,7 +81,7 @@ class AuthDTOValidationTest {
     void registro_correoSinArroba_generaViolacion() {
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "correo-invalido", "password123"
+                LocalDate.of(1995, Month.MAY, 20), "correo-invalido", "mujer", "password123"
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertTrue(violaciones.stream().anyMatch(v -> v.getPropertyPath().toString().equals("correo")));
@@ -91,7 +91,7 @@ class AuthDTOValidationTest {
     void registro_correoVacio_generaUnaViolacion() {
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "", "password123"
+                LocalDate.of(1995, Month.MAY, 20), "", "mujer", "password123"
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertEquals(1, violaciones.size());
@@ -99,11 +99,21 @@ class AuthDTOValidationTest {
     }
 
     @Test
+    void registro_generoVacio_generaViolacion() {
+        RegistroRequest request = new RegistroRequest(
+                "Juan", "Perez", "12345678",
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "", "password123"
+        );
+        Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
+        assertTrue(violaciones.stream().anyMatch(v -> v.getPropertyPath().toString().equals("genero")));
+    }
+
+    @Test
     void registro_fechaNacimientoFutura_generaViolacion() {
         // @Past no admite fechas futuras
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
-                LocalDate.now().plusDays(1), "juan.perez@test.com", "password123"
+                LocalDate.now().plusDays(1), "juan.perez@test.com", "mujer", "password123"
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertTrue(violaciones.stream().anyMatch(v -> v.getPropertyPath().toString().equals("fechaNacimiento")));
@@ -113,7 +123,7 @@ class AuthDTOValidationTest {
     void registro_dniVacio_generaViolacion() {
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "",
-                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "password123"
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "mujer", "password123"
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertTrue(violaciones.stream().anyMatch(v -> v.getPropertyPath().toString().equals("dni")));
@@ -123,7 +133,7 @@ class AuthDTOValidationTest {
     void registro_passwordVacia_generaViolacion() {
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", ""
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", "mujer", ""
         );
         Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
         assertTrue(violaciones.stream().anyMatch(v -> v.getPropertyPath().toString().equals("password")));
