@@ -49,6 +49,12 @@ public class AuthService {
 
     @Transactional
     public UsuarioResponse registrar(RegistroRequest request) {
+
+        String correo = request.correo().trim().toLowerCase();
+        String nombre = request.nombre().trim();
+        String apellido = request.apellido().trim();
+        String dni = request.dni().trim();
+
         if (usuarioRepository.existsByCorreo(request.correo())) {
             throw new CorreoDuplicadoException("Ya existe un usuario registrado con ese correo.");
         }
@@ -85,6 +91,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
+        String correo = request.correo().trim().toLowerCase();
         Usuario usuario = usuarioRepository.findByCorreo(request.correo())
                 .orElseThrow(() -> new CredencialesInvalidasException("Correo o contraseña inválidos."));
 
