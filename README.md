@@ -5,7 +5,7 @@ Backend de **ModaLink**, una plataforma de networking profesional para la indust
 Proyecto final de la carrera Analista en Sistemas de Computación, desarrollado siguiendo la metodología **Proceso Unificado (UP)**, con foco en testing y calidad.
 
 > **Estado actual:**
-> Etapa: **Fase 1 — Gestión de usuarios** (Panel de administrador, habilitacion/deshabilitación de usuarios, modificacion de datos personales, etc). El registro con Google OAuth está planificado para una fase posterior.
+> Etapa: **Fase 1 — Gestión de usuarios** (Panel de administrador, habilitacion/deshabilitación de usuarios, modificacion de datos personales, etc). 
 
 ## Stack tecnológico
 
