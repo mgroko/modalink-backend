@@ -8,6 +8,7 @@ import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
+import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
@@ -50,6 +51,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RolGlobalNoEncontradoException.class)
     public ResponseEntity<Map<String, Object>> handleRolGlobalNoEncontrado(RolGlobalNoEncontradoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Maneja excepciones cuando el código de género enviado no existe.
+     */
+    @ExceptionHandler(GeneroNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleGeneroNoEncontrado(GeneroNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     /**

@@ -6,6 +6,7 @@ public record UsuarioResponse(
         String apellido,
         String dni,
         String correo,
-        String rolGlobal
+        String rolGlobal,
+        String genero
 ) {
 }

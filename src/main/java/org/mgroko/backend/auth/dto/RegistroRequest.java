@@ -14,5 +14,6 @@ public record RegistroRequest(
         @NotBlank String dni,
         @NotNull @Past LocalDate fechaNacimiento,
         @NotBlank @Email String correo,
+        @NotBlank @Size(max = 50) String genero,
         @NotBlank String password
 ) {}

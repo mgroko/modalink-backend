@@ -11,13 +11,16 @@ import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
+import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
+import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -29,20 +32,29 @@ public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final RolGlobalRepository rolGlobalRepository;
+    private final GeneroRepository generoRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     public AuthService(
             UsuarioRepository usuarioRepository,
             RolGlobalRepository rolGlobalRepository,
+            GeneroRepository generoRepository,
             BCryptPasswordEncoder passwordEncoder
     ) {
         this.usuarioRepository = usuarioRepository;
         this.rolGlobalRepository = rolGlobalRepository;
+        this.generoRepository = generoRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
     public UsuarioResponse registrar(RegistroRequest request) {
+
+        String correo = request.correo().trim().toLowerCase();
+        String nombre = request.nombre().trim();
+        String apellido = request.apellido().trim();
+        String dni = request.dni().trim();
+
         if (usuarioRepository.existsByCorreo(request.correo())) {
             throw new CorreoDuplicadoException("Ya existe un usuario registrado con ese correo.");
         }
@@ -57,6 +69,10 @@ public class AuthService {
         RolGlobal rolUsuario = rolGlobalRepository.findByNombre("Usuario")
                 .orElseThrow(() -> new RolGlobalNoEncontradoException("No se encontró el rol global 'Usuario'."));
 
+        Genero genero = generoRepository.findByCodigo(request.genero())
+                .orElseThrow(() -> new GeneroNoEncontradoException(
+                        "El género indicado no existe."));
+
         Usuario usuario = Usuario.builder()
                 .nombre(request.nombre())
                 .apellido(request.apellido())
@@ -66,6 +82,7 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .proveedorAuth(ProveedorAuth.LOCAL)
                 .rolGlobal(rolUsuario)
+                .genero(genero)
                 .build();
 
         Usuario guardado = usuarioRepository.save(usuario);
@@ -74,6 +91,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
+        String correo = request.correo().trim().toLowerCase();
         Usuario usuario = usuarioRepository.findByCorreo(request.correo())
                 .orElseThrow(() -> new CredencialesInvalidasException("Correo o contraseña inválidos."));
 

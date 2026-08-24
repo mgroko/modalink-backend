@@ -61,13 +61,13 @@ class AuthControllerTest {
     @Test
     void registro_datosValidos_devuelve200ConCookieJwt() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario");
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
         when(authService.registrar(any(RegistroRequest.class))).thenReturn(usuarioResponse);
         when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
  
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "juan@test.com", "password123");
+                LocalDate.of(1995, Month.MAY, 20), "juan@test.com", "hombre", "password123");
  
         mockMvc.perform(post("/auth/registro")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -78,7 +78,8 @@ class AuthControllerTest {
                     org.junit.jupiter.api.Assertions.assertNotNull(cookie);
                     org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("jwt=token-simulado"));
                 })
-                .andExpect(jsonPath("$.usuario.correo").value("juan@test.com"));
+                .andExpect(jsonPath("$.usuario.correo").value("juan@test.com"))
+                .andExpect(jsonPath("$.usuario.genero").value("hombre"));
 
         verify(jwtService).generarToken(anyString(), anyMap());
     }
@@ -88,12 +89,27 @@ class AuthControllerTest {
 
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
-                LocalDate.of(1995, Month.MAY, 20), "no-es-un-correo", "password123");
+                LocalDate.of(1995, Month.MAY, 20), "no-es-un-correo", "hombre", "password123");
 
         mockMvc.perform(post("/auth/registro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void registro_generoVacio_devuelve400() throws Exception {
+        // Bean Validation rechaza el request antes de llegar al servicio
+        RegistroRequest request = new RegistroRequest(
+                "Juan", "Perez", "12345678",
+                LocalDate.of(1995, Month.MAY, 20), "juan@test.com", "", "password123");
+
+        mockMvc.perform(post("/auth/registro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(authService, never()).registrar(any());
     }
 
     // ---------------------------------------------------------------
@@ -103,7 +119,7 @@ class AuthControllerTest {
     @Test
     void login_credencialesValidas_devuelve200ConCookieJwt() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario");
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
         when(authService.login(any(LoginRequest.class)))
                 .thenReturn(new AuthResponse(usuarioResponse));
         when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
@@ -149,7 +165,7 @@ class AuthControllerTest {
     @Test
     void me_autenticado_devuelveDatosDelUsuario() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario");
+                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
         when(authService.obtenerUsuarioActual(123L)).thenReturn(usuarioResponse);
  
         var authentication = new UsernamePasswordAuthenticationToken("123", null, List.of());
