@@ -109,6 +109,29 @@ class AuthDTOValidationTest {
     }
 
     @Test
+    void registro_generoNulo_generaViolacion() {
+        // @NotBlank también rechaza null (además de "" y "   ")
+        RegistroRequest request = new RegistroRequest(
+                "Juan", "Perez", "12345678",
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", null, "password123"
+        );
+        Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
+        assertTrue(violaciones.stream().anyMatch(v -> v.getPropertyPath().toString().equals("genero")));
+    }
+
+    @Test
+    void registro_generoDemasiadoLargo_generaViolacion() {
+        // @Size(max = 50) -> 51 caracteres
+        String generoLargo = "x".repeat(51);
+        RegistroRequest request = new RegistroRequest(
+                "Juan", "Perez", "12345678",
+                LocalDate.of(1995, Month.MAY, 20), "juan.perez@test.com", generoLargo, "password123"
+        );
+        Set<ConstraintViolation<RegistroRequest>> violaciones = validator.validate(request);
+        assertEquals(1, violaciones.size());
+    }
+
+    @Test
     void registro_fechaNacimientoFutura_generaViolacion() {
         // @Past no admite fechas futuras
         RegistroRequest request = new RegistroRequest(

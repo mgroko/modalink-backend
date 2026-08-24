@@ -11,6 +11,7 @@ import org.mgroko.backend.auth.dto.LoginRequest;
 import org.mgroko.backend.auth.dto.RegistroRequest;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.security.JwtService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -110,6 +111,27 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(authService, never()).registrar(any());
+    }
+
+    @Test
+    void registro_generoInexistente_devuelve400() throws Exception {
+        // GlobalExceptionHandler mapea GeneroNoEncontradoException -> 400.
+        // A diferencia del genero vacío (Bean Validation), este error ocurre
+        // DESPUÉS de llegar al servicio: el código no existe en la tabla genero.
+        when(authService.registrar(any(RegistroRequest.class)))
+                .thenThrow(new GeneroNoEncontradoException("El género indicado no existe."));
+
+        RegistroRequest request = new RegistroRequest(
+                "Juan", "Perez", "12345678",
+                LocalDate.of(1995, Month.MAY, 20), "juan@test.com", "genero_inventado", "password123");
+
+        mockMvc.perform(post("/auth/registro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("El género indicado no existe."));
+
+        verify(authService).registrar(any());
     }
 
     // ---------------------------------------------------------------

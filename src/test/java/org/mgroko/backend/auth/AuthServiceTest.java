@@ -30,6 +30,7 @@ import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
@@ -176,6 +177,59 @@ class AuthServiceTest {
         verify(passwordEncoder).encode("password123");
     }
 
+    @Test
+    void registrar_normalizaCampos_antesDeGuardar() {
+        // Los campos de texto se guardan trimmeados y el correo en minúsculas,
+        // tal como indica la política de normalización del registro.
+        RegistroRequest conRuido = new RegistroRequest(
+                "  Maria  ", " Flores ", " 12345678 ",
+                LocalDate.of(1981, Month.JUNE, 24),
+                "  Maria.Flores@Test.COM ", "mujer", "password123"
+        );
+        when(usuarioRepository.existsByCorreo("maria.flores@test.com")).thenReturn(false);
+        when(usuarioRepository.existsByDni("12345678")).thenReturn(false);
+        when(rolGlobalRepository.findByNombre("Usuario"))
+                .thenReturn(Optional.of(mock(RolGlobal.class)));
+        Genero generoMujer = mock(Genero.class);
+        when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
+        when(passwordEncoder.encode(anyString())).thenReturn("hash-simulado");
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        authService.registrar(conRuido);
+
+        // Los checks de duplicados también usan los valores normalizados
+        verify(usuarioRepository).existsByCorreo("maria.flores@test.com");
+        verify(usuarioRepository).existsByDni("12345678");
+
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(captor.capture());
+        Usuario guardado = captor.getValue();
+        assertEquals("Maria", guardado.getNombre());
+        assertEquals("Flores", guardado.getApellido());
+        assertEquals("12345678", guardado.getDni());
+        assertEquals("maria.flores@test.com", guardado.getCorreo());
+    }
+
+    @Test
+    void registrar_generoNoCoincideExacto_lanzaExcepcion() {
+        // Decisión de diseño: el código de género es case-sensitive y sin espacios
+        // (match exacto contra la tabla genero). "MUJER" no es "mujer".
+        RegistroRequest mayusculas = new RegistroRequest(
+                "Maria", "Flores", "12345678",
+                LocalDate.of(1981, Month.JUNE, 24),
+                "maria.flores@test.com", "MUJER", "password123"
+        );
+        when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
+        when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
+        when(rolGlobalRepository.findByNombre("Usuario"))
+                .thenReturn(Optional.of(mock(RolGlobal.class)));
+        when(generoRepository.findByCodigo("MUJER")).thenReturn(Optional.empty());
+
+        assertThrows(GeneroNoEncontradoException.class, () -> authService.registrar(mayusculas));
+        verify(usuarioRepository, never()).save(any());
+    }
+
     // ---------------------------------------------------------------
     // login()
     // ---------------------------------------------------------------
@@ -186,6 +240,21 @@ class AuthServiceTest {
         when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.empty());
 
         assertThrows(CredencialesInvalidasException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void login_normalizaCorreo_antesDeBuscar() {
+        // El correo se busca trimmeado y en minúsculas, tal como quedó guardado
+        // al registrarse. Si el servicio buscara con el valor crudo del request,
+        // este test falla (el stub no coincidiría).
+        LoginRequest request = new LoginRequest("  Maria.Flores@Test.COM ", "password123");
+        when(usuarioRepository.findByCorreo("maria.flores@test.com")).thenReturn(Optional.empty());
+
+        assertThrows(CredencialesInvalidasException.class, () -> authService.login(request));
+
+        ArgumentCaptor<String> correoBuscado = ArgumentCaptor.forClass(String.class);
+        verify(usuarioRepository).findByCorreo(correoBuscado.capture());
+        assertEquals("maria.flores@test.com", correoBuscado.getValue());
     }
 
     @Test
