@@ -55,11 +55,11 @@ public class AuthService {
         String apellido = request.apellido().trim();
         String dni = request.dni().trim();
 
-        if (usuarioRepository.existsByCorreo(request.correo())) {
+        if (usuarioRepository.existsByCorreo(correo)) {
             throw new CorreoDuplicadoException("Ya existe un usuario registrado con ese correo.");
         }
 
-        if (usuarioRepository.existsByDni(request.dni())) {
+        if (usuarioRepository.existsByDni(dni)) {
             throw new DniDuplicadoException("Ya existe un usuario registrado con ese DNI.");
         }
         if (Period.between(request.fechaNacimiento(), LocalDate.now()).getYears() < 18) {
@@ -74,11 +74,11 @@ public class AuthService {
                         "El género indicado no existe."));
 
         Usuario usuario = Usuario.builder()
-                .nombre(request.nombre())
-                .apellido(request.apellido())
-                .dni(request.dni())
+                .nombre(nombre)
+                .apellido(apellido)
+                .dni(dni)
                 .fechaNacimiento(request.fechaNacimiento())
-                .correo(request.correo())
+                .correo(correo)
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .proveedorAuth(ProveedorAuth.LOCAL)
                 .rolGlobal(rolUsuario)
@@ -92,7 +92,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         String correo = request.correo().trim().toLowerCase();
-        Usuario usuario = usuarioRepository.findByCorreo(request.correo())
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new CredencialesInvalidasException("Correo o contraseña inválidos."));
 
         if (usuario.getPasswordHash() == null || !passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
