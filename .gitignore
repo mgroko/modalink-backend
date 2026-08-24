@@ -50,3 +50,4 @@ Thumbs.db
 # Keep SQL and resources in source control; ignore generated copies in target
 # (ej. target/classes/db/...)
 /target/classes/
+src/main/resources/application.properties
