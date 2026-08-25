@@ -22,7 +22,7 @@ el historial de git sirva de bitácora adicional.
 | UC | Nombre | Estado | Endpoint / clase | Tests | Notas |
 |------|--------------------------------------------|--------------------------|------------------------|-------|-------|
 | UC-01 | Iniciar sesión | Implementado y testeado | `POST /auth/login` | Sí | |
-| UC-02 | Cerrar sesión | Iniciado | | | |
+| UC-02 | Cerrar sesión | Implementado y testeado | `POST /auth/logout` | Sí | |
 | UC-03 | Registrarse | Implementado y testeado | `POST /auth/registro` | Sí | |
 | UC-04 | Deshabilitar usuario | Implementado y NO testeado | `/admin/usuarios/{id}/deshabilitar` | No | |
 | UC-05 | Habilitar usuario | Implementado y NO testeado | `/admin/usuarios/{id}/habilitar` | No | |
@@ -128,4 +128,4 @@ el historial de git sirva de bitácora adicional.
 | Gestión de proyectos | 22 | 0 | 0 | 0 | 22 |
 | Gestión de contratos | 5 | 0 | 0 | 0 | 5 |
 | Gestión de conexiones y mensajería | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **69** | **2** | **0** | **0** | **67** |
+| **Total** | **69** | **3** | **0** | **0** | **67** |
