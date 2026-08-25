@@ -308,6 +308,27 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_usuarioDeshabilitado_lanzaExcepcion() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
+
+        RolGlobal rolUsuario = mock(RolGlobal.class);
+        when(rolUsuario.getNombre()).thenReturn("Usuario");
+
+        Usuario usuarioDeshabilitado = Usuario.builder()
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .rolGlobal(rolUsuario)
+                .estado(EstadoUsuario.Deshabilitado)
+                .build();
+
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuarioDeshabilitado));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+
+        assertThrows(UsuarioDeshabilitadoException.class, () -> authService.login(request));
+    }
+
+    @Test
     void obtenerUsuarioActual_usuarioNoExiste_lanzaExcepcion() {
         Long idInexistente = 999L;
         when(usuarioRepository.findById(idInexistente)).thenReturn(Optional.empty());
