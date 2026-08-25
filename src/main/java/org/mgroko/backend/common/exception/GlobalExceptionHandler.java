@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
+import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
@@ -135,6 +136,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UsuarioAdminNoEncontradoException.class)
     public ResponseEntity<Map<String, Object>> handleUsuarioAdminNoEncontrado(UsuarioAdminNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Excepción de perfil no encontrado.
+     */
+    @ExceptionHandler(PerfilNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilNoEncontrado(PerfilNoEncontradoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
