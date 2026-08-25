@@ -22,11 +22,11 @@ el historial de git sirva de bitácora adicional.
 | UC | Nombre | Estado | Endpoint / clase | Tests | Notas |
 |------|--------------------------------------------|--------------------------|------------------------|-------|-------|
 | UC-01 | Iniciar sesión | Implementado y testeado | `POST /auth/login` | Sí | |
-| UC-02 | Cerrar sesión | No iniciado | | | |
+| UC-02 | Cerrar sesión | Iniciado | | | |
 | UC-03 | Registrarse | Implementado y testeado | `POST /auth/registro` | Sí | |
-| UC-04 | Deshabilitar usuario | No iniciado | | | |
-| UC-05 | Habilitar usuario | No iniciado | | | |
-| UC-06 | Buscar usuario | No iniciado | | | |
+| UC-04 | Deshabilitar usuario | Implementado y NO testeado | `/admin/usuarios/{id}/deshabilitar` | No | |
+| UC-05 | Habilitar usuario | Implementado y NO testeado | `/admin/usuarios/{id}/habilitar` | No | |
+| UC-06 | Buscar usuario | Implementado y NO testeado | `GET /admin/usuarios` | No | |
 | UC-07 | Solicitar baja en el sistema | No iniciado | | | |
 | UC-08 | Modificar datos personales | No iniciado | | | |
 | UC-09 | Autenticar mediante Google OAuth | No iniciado | | | En roadmap cercano |
@@ -44,9 +44,9 @@ el historial de git sirva de bitácora adicional.
 | UC-11 | Editar perfil | No iniciado | | | |
 | UC-12 | Eliminar perfil | No iniciado | | | |
 | UC-13 | Cambiar perfil activo | No iniciado | | | |
-| UC-14 | Ver perfil | No iniciado | | | |
+| UC-14 | Ver perfil | Iniciado | | | Iniciado para el panel de admin, fase muy temprana (posibilidad de ver los perfiles asociados al Usuario desde el panel) |
 | UC-15 | Reportar perfil | No iniciado | | | |
-| UC-16 | Buscar perfil | No iniciado | | | |
+| UC-16 | Buscar perfil | Iniciado | | | Busqueda desde el repo, findby... |
 | UC-17 | Asignar en calendario día disponible | No iniciado | | | |
 | UC-18 | Asignar en calendario día no disponible | No iniciado | | | |
 | UC-23 | Configurar términos y condiciones | No iniciado | | | |
