@@ -3,7 +3,11 @@ package org.mgroko.backend.security;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,9 +25,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UsuarioRepository usuarioRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarioRepository) {
         this.jwtService = jwtService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Override
@@ -50,15 +56,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtService.validarYObtenerClaims(jwt);
             String subject = claims.getSubject();
 
+            Optional<Usuario> usuarioOpt = usuarioRepository.findById(Long.parseLong(subject));
+            if (usuarioOpt.isEmpty() || usuarioOpt.get().getEstado() != EstadoUsuario.Activo) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             List<GrantedAuthority> authorities = new ArrayList<>();
 
-            // Rol como authority con prefijo ROLE_ (convención de Spring Security para hasRole())
             String rolGlobal = claims.get("rolGlobal", String.class);
             if (rolGlobal != null) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_" + rolGlobal.toUpperCase()));
             }
 
-            // Permisos finos como authorities planas(para hasAuthority())
             List<?> permisosGlobales = claims.get("permisosGlobales", List.class);
             if (permisosGlobales != null) {
                 for (Object permiso : permisosGlobales) {

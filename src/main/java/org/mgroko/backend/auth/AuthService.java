@@ -100,6 +100,10 @@ public class AuthService {
             throw new CredencialesInvalidasException("Correo o contraseña inválidos.");
         }
 
+        if (usuario.getEstado() != EstadoUsuario.Activo) {
+            throw new UsuarioDeshabilitadoException("Tu usuario está deshabilitado. Contactá al administrador.");
+        }
+
         return new AuthResponse(UsuarioMapper.toResponse(usuario));
     }
 

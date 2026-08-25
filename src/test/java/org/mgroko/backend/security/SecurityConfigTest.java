@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -22,7 +23,7 @@ class SecurityConfigTest {
 
     @Test
     void corsConfigurationSource_devuelveConfiguracionEsperada() {
-        SecurityConfig config = new SecurityConfig(mock(JwtService.class));
+        SecurityConfig config = new SecurityConfig(mock(JwtService.class), mock(UsuarioRepository.class));
 
         UrlBasedCorsConfigurationSource source =
                 (UrlBasedCorsConfigurationSource) config.corsConfigurationSource();
