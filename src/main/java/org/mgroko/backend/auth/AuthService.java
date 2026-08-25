@@ -16,6 +16,7 @@ import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Genero;
+import org.mgroko.backend.modelo.PermisoGlobal;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
@@ -112,6 +113,16 @@ public class AuthService {
         }
 
     return UsuarioMapper.toResponse(usuario);
+}
+
+@Transactional(readOnly = true)
+public java.util.List<String> obtenerNombresPermisosGlobales(String nombreRol) {
+    RolGlobal rol = rolGlobalRepository.findByNombre(nombreRol)
+            .orElseThrow(() -> new RolGlobalNoEncontradoException("No se encontró el rol global '" + nombreRol + "'."));
+
+    return rol.getPermisos().stream()
+            .map(PermisoGlobal::getNombre)
+            .toList();
 }
     
 

@@ -46,6 +46,7 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("correo", usuarioResponse.correo());
         claims.put("rolGlobal", usuarioResponse.rolGlobal());
+        claims.put("permisosGlobales", authService.obtenerNombresPermisosGlobales(usuarioResponse.rolGlobal()));
 
         String token = jwtService.generarToken(usuarioResponse.idUsuario().toString(), claims);
        AuthResponse authResponseSinToken = new AuthResponse(usuarioResponse); 
@@ -78,6 +79,7 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("correo", usuario.correo());
         claims.put("rolGlobal", usuario.rolGlobal());
+        claims.put("permisosGlobales", authService.obtenerNombresPermisosGlobales(usuario.rolGlobal()));
 
         String token = jwtService.generarToken(usuario.idUsuario().toString(), claims);
 
