@@ -15,7 +15,10 @@ public class AdminUsuarioMapper {
                 usuario.getCorreo(),
                 usuario.getEstado().name(),
                 usuario.getRolGlobal().getNombre(),
-                usuario.getFechaNacimiento()
+                usuario.getFechaNacimiento(),
+                usuario.getDni(),
+                usuario.getFechaSolicitudBaja(),
+                usuario.getGenero()
         );
     }
 }

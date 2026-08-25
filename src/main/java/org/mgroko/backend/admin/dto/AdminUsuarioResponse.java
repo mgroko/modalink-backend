@@ -1,6 +1,9 @@
 package org.mgroko.backend.admin.dto;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import org.mgroko.backend.modelo.Genero;
 
 public record AdminUsuarioResponse(
         Long idUsuario,
@@ -9,5 +12,8 @@ public record AdminUsuarioResponse(
         String correo,
         String estado,
         String rolGlobal,
-        LocalDate fechaNacimiento
+        LocalDate fechaNacimiento,
+        String dni,
+        LocalDateTime fechaSolicitudBaja,
+        Genero genero
 ) {}
