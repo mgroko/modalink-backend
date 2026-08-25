@@ -9,6 +9,6 @@ package org.mgroko.backend.modelo.enums;
 public enum EstadoUsuario {
     Activo,
     Deshabilitado,
-    Inactivo,
+    PendienteBaja,
     Baja
 }
