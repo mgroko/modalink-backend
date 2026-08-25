@@ -4,9 +4,9 @@ import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminUsuarioResponse;
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
+import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
 import org.mgroko.backend.admin.mapper.AdminUsuarioMapper;
-import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.UsuarioRepository;
@@ -61,7 +61,7 @@ public class AdminUsuarioService {
         }
     }
     private Usuario buscarOFallar(Long idUsuario) {
-        return usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
-    }
+    return usuarioRepository.findById(idUsuario)
+            .orElseThrow(() -> new UsuarioAdminNoEncontradoException("Usuario no encontrado."));
+}
 }
