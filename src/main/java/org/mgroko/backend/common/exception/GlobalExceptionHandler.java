@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
+import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
@@ -113,4 +115,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUsuarioDeshabilitado(UsuarioDeshabilitadoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
     }
+
+    /**
+     * Excepción de auto deshabilitación.
+     */
+    @ExceptionHandler(AutoDeshabilitacionException.class)
+    public ResponseEntity<Map<String, Object>> handleAutoDeshabilitacion(AutoDeshabilitacionException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Excepción de usuario en baja.
+     */
+    @ExceptionHandler(UsuarioEnBajaException.class)
+    public ResponseEntity<Map<String, Object>> handleUsuarioEnBaja(UsuarioEnBajaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
 }
