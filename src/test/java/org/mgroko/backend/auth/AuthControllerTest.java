@@ -115,9 +115,7 @@ class AuthControllerTest {
 
     @Test
     void registro_generoInexistente_devuelve400() throws Exception {
-        // GlobalExceptionHandler mapea GeneroNoEncontradoException -> 400.
-        // A diferencia del genero vacío (Bean Validation), este error ocurre
-        // DESPUÉS de llegar al servicio: el código no existe en la tabla genero.
+
         when(authService.registrar(any(RegistroRequest.class)))
                 .thenThrow(new GeneroNoEncontradoException("El género indicado no existe."));
 
