@@ -62,7 +62,7 @@ class AuthControllerTest {
     @Test
     void registro_datosValidos_devuelve200ConCookieJwt() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10));
         when(authService.registrar(any(RegistroRequest.class))).thenReturn(usuarioResponse);
         when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
  
@@ -139,7 +139,7 @@ class AuthControllerTest {
     @Test
     void login_credencialesValidas_devuelve200ConCookieJwt() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10));
         when(authService.login(any(LoginRequest.class)))
                 .thenReturn(new AuthResponse(usuarioResponse));
         when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
@@ -185,7 +185,7 @@ class AuthControllerTest {
     @Test
     void me_autenticado_devuelveDatosDelUsuario() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
+                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10));
         when(authService.obtenerUsuarioActual(123L)).thenReturn(usuarioResponse);
  
         var authentication = new UsernamePasswordAuthenticationToken("123", null, List.of());
