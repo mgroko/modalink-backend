@@ -24,11 +24,11 @@ el historial de git sirva de bitácora adicional.
 | UC-01 | Iniciar sesión | Implementado y testeado | `POST /auth/login` | Sí | |
 | UC-02 | Cerrar sesión | Implementado y testeado | `POST /auth/logout` | Sí | |
 | UC-03 | Registrarse | Implementado y testeado | `POST /auth/registro` | Sí | |
-| UC-04 | Deshabilitar usuario | Implementado y NO testeado | `/admin/usuarios/{id}/deshabilitar` | No | |
+| UC-04 | Deshabilitar usuario | Implementado | `/admin/usuarios/{id}/deshabilitar` | No | |
 | UC-05 | Habilitar usuario | Implementado y NO testeado | `/admin/usuarios/{id}/habilitar` | No | |
 | UC-06 | Buscar usuario | Implementado y NO testeado | `GET /admin/usuarios` | No | |
-| UC-07 | Solicitar baja en el sistema | No iniciado | | | |
-| UC-08 | Modificar datos personales | No iniciado | | | |
+| UC-07 | Solicitar baja en el sistema | En progreso | | | |
+| UC-08 | Modificar datos personales | En progreso | `PUT /usuario/datos-personales` | | |
 | UC-09 | Autenticar mediante Google OAuth | No iniciado | | | En roadmap cercano |
 | UC-56 | Gestionar habilidades del sistema | No iniciado | | | |
 | UC-57 | Gestionar características técnicas por profesión | No iniciado | | | |
