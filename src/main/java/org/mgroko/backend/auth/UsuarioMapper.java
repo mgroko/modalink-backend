@@ -17,7 +17,8 @@ final class UsuarioMapper {
                 usuario.getCorreo(),
                 usuario.getRolGlobal() != null ? usuario.getRolGlobal().getNombre() : null,
                 usuario.getGenero() != null ? usuario.getGenero().getCodigo() : null,
-                usuario.getFechaNacimiento()
+                usuario.getFechaNacimiento(),
+                usuario.getEstado() != null ? usuario.getEstado().name() : null
         );
     }
 }

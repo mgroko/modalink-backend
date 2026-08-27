@@ -312,7 +312,6 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
 
         RolGlobal rolUsuario = mock(RolGlobal.class);
-        when(rolUsuario.getNombre()).thenReturn("Usuario");
 
         Usuario usuarioDeshabilitado = Usuario.builder()
                 .nombre("Maria")

@@ -19,7 +19,6 @@ import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.PermisoGlobal;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
-import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
@@ -100,7 +99,7 @@ public class AuthService {
             throw new CredencialesInvalidasException("Correo o contraseña inválidos.");
         }
 
-        if (usuario.getEstado() != EstadoUsuario.Activo) {
+        if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioDeshabilitadoException("Tu usuario está deshabilitado. Contactá al administrador.");
         }
 

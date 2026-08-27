@@ -9,6 +9,7 @@ public record UsuarioResponse(
         String correo,
         String rolGlobal,
         String genero,
-        LocalDate fechaNacimiento
+        LocalDate fechaNacimiento,
+        String estado
 ) {
 }
