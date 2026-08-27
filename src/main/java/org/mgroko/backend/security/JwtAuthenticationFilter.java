@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.Usuario;
-import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -57,7 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String subject = claims.getSubject();
 
             Optional<Usuario> usuarioOpt = usuarioRepository.findById(Long.parseLong(subject));
-            if (usuarioOpt.isEmpty() || usuarioOpt.get().getEstado() != EstadoUsuario.Activo) {
+            if (usuarioOpt.isEmpty() || !usuarioOpt.get().getEstado().permiteAcceso()) {
                 SecurityContextHolder.clearContext();
                 filterChain.doFilter(request, response);
                 return;
@@ -84,11 +83,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
 
-        } catch (JwtException e) {
+        } catch (JwtException | NumberFormatException e) {
+        
             SecurityContextHolder.clearContext();
         }
-
+ 
         filterChain.doFilter(request, response);
     }
 }
-

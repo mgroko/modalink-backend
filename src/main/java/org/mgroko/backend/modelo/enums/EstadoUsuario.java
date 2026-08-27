@@ -10,5 +10,10 @@ public enum EstadoUsuario {
     Activo,
     Deshabilitado,
     PendienteBaja,
-    Baja
+    Baja;
+
+public boolean permiteAcceso() {
+        return this == Activo || this == PendienteBaja;
+    }
+
 }

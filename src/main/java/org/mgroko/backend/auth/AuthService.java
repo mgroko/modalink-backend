@@ -106,28 +106,24 @@ public class AuthService {
 
         return new AuthResponse(UsuarioMapper.toResponse(usuario));
     }
-
     @Transactional(readOnly = true)
-    public UsuarioResponse obtenerUsuarioActual(Long idUsuario) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+        public UsuarioResponse obtenerUsuarioActual(Long idUsuario) {
 
-        if (usuario.getEstado() != EstadoUsuario.Activo) {
-            throw new UsuarioDeshabilitadoException("Tu usuario no está activo. Contactá al administrador.");
+            Usuario usuario = usuarioRepository.findById(idUsuario)
+                    .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+
+            return UsuarioMapper.toResponse(usuario);
         }
 
-    return UsuarioMapper.toResponse(usuario);
-}
+    @Transactional(readOnly = true)
+    public java.util.List<String> obtenerNombresPermisosGlobales(String nombreRol) {
+        RolGlobal rol = rolGlobalRepository.findByNombre(nombreRol)
+                .orElseThrow(() -> new RolGlobalNoEncontradoException("No se encontró el rol global '" + nombreRol + "'."));
 
-@Transactional(readOnly = true)
-public java.util.List<String> obtenerNombresPermisosGlobales(String nombreRol) {
-    RolGlobal rol = rolGlobalRepository.findByNombre(nombreRol)
-            .orElseThrow(() -> new RolGlobalNoEncontradoException("No se encontró el rol global '" + nombreRol + "'."));
-
-    return rol.getPermisos().stream()
-            .map(PermisoGlobal::getNombre)
-            .toList();
-}
+        return rol.getPermisos().stream()
+                .map(PermisoGlobal::getNombre)
+                .toList();
+    }
     
 
 }

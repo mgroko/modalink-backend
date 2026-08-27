@@ -209,17 +209,5 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    @Test
-    void me_usuarioDeshabilitado_devuelve403() throws Exception {
-        // Token válido pero el usuario fue deshabilitado después de emitirlo
-        when(authService.obtenerUsuarioActual(888L))
-                .thenThrow(new org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException(
-                        "Usuario deshabilitado."));
- 
-        var authentication = new UsernamePasswordAuthenticationToken("888", null, List.of());
- 
-        mockMvc.perform(get("/auth/me").principal(authentication))
-                .andExpect(status().isForbidden());
-    }
     
 }
