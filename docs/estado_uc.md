@@ -25,10 +25,10 @@ el historial de git sirva de bitácora adicional.
 | UC-02 | Cerrar sesión | Implementado y testeado | `POST /auth/logout` | Sí | |
 | UC-03 | Registrarse | Implementado y testeado | `POST /auth/registro` | Sí | |
 | UC-04 | Deshabilitar usuario | Implementado | `/admin/usuarios/{id}/deshabilitar` | No | |
-| UC-05 | Habilitar usuario | Implementado y NO testeado | `/admin/usuarios/{id}/habilitar` | No | |
-| UC-06 | Buscar usuario | Implementado y NO testeado | `GET /admin/usuarios` | No | |
-| UC-07 | Solicitar baja en el sistema | En progreso | | | |
-| UC-08 | Modificar datos personales | En progreso | `PUT /usuario/datos-personales` | | |
+| UC-05 | Habilitar usuario | Implementado | `/admin/usuarios/{id}/habilitar` | No | |
+| UC-06 | Buscar usuario | Implementado y testeado | `GET /admin/usuarios` | Sí | |
+| UC-07 | Solicitar baja en el sistema | Implementado y testeado | `POST /usuario/solicitar-baja` y `POST /usuario/reactivar-cuenta` | Sí | |
+| UC-08 | Modificar datos personales | Implementado y testeado | `PUT /usuario/datos-personales` | Sí | |
 | UC-09 | Autenticar mediante Google OAuth | No iniciado | | | En roadmap cercano |
 | UC-56 | Gestionar habilidades del sistema | No iniciado | | | |
 | UC-57 | Gestionar características técnicas por profesión | No iniciado | | | |
@@ -44,7 +44,7 @@ el historial de git sirva de bitácora adicional.
 | UC-11 | Editar perfil | No iniciado | | | |
 | UC-12 | Eliminar perfil | No iniciado | | | |
 | UC-13 | Cambiar perfil activo | No iniciado | | | |
-| UC-14 | Ver perfil | Iniciado | | | Iniciado para el panel de admin, fase muy temprana (posibilidad de ver los perfiles asociados al Usuario desde el panel) |
+| UC-14 | Ver perfil | Iniciado | GET /admin/usuarios/{id}/perfiles y .... | | Iniciado para el panel de admin, fase muy temprana (posibilidad de ver los perfiles asociados al Usuario desde el panel) |
 | UC-15 | Reportar perfil | No iniciado | | | |
 | UC-16 | Buscar perfil | Iniciado | | | Busqueda desde el repo, findby... |
 | UC-17 | Asignar en calendario día disponible | No iniciado | | | |
