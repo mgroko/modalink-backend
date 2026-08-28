@@ -16,6 +16,11 @@ import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
+import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
+import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
 import org.springframework.http.HttpStatus;
@@ -156,6 +161,46 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SolicitudBajaException.class)
     public ResponseEntity<Map<String, Object>> handleSolicitudBaja(SolicitudBajaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Excepción de profesión inexistente.
+     */
+    @ExceptionHandler(ProfesionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleProfesionNoEncontrada(ProfesionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de característica técnica inexistente.
+     */
+    @ExceptionHandler(CaracteristicaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaNoEncontrada(CaracteristicaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de característica que no corresponde a la profesión del perfil.
+     */
+    @ExceptionHandler(CaracteristicaProfesionNoCoincideException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaProfesionNoCoincide(CaracteristicaProfesionNoCoincideException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de característica técnica repetida en el mismo perfil.
+     */
+    @ExceptionHandler(CaracteristicaDuplicateException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaDuplicate(CaracteristicaDuplicateException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de perfil duplicado para la misma profesión.
+     */
+    @ExceptionHandler(PerfilDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilDuplicado(PerfilDuplicadoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
