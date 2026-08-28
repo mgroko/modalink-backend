@@ -9,6 +9,11 @@ package org.mgroko.backend.modelo.enums;
 public enum EstadoUsuario {
     Activo,
     Deshabilitado,
-    Inactivo,
-    Baja
+    PendienteBaja,
+    Baja;
+
+public boolean permiteAcceso() {
+        return this == Activo || this == PendienteBaja;
+    }
+
 }

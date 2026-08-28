@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,11 +47,11 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("correo", usuarioResponse.correo());
         claims.put("rolGlobal", usuarioResponse.rolGlobal());
+        claims.put("permisosGlobales", authService.obtenerNombresPermisosGlobales(usuarioResponse.rolGlobal()));
 
         String token = jwtService.generarToken(usuarioResponse.idUsuario().toString(), claims);
        AuthResponse authResponseSinToken = new AuthResponse(usuarioResponse); 
         
-       // nuevo agregado para probar http cookies
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
             .httpOnly(true)
             .secure(false) // false para desarrollo, en produc debe ser true
@@ -78,6 +79,7 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("correo", usuario.correo());
         claims.put("rolGlobal", usuario.rolGlobal());
+        claims.put("permisosGlobales", authService.obtenerNombresPermisosGlobales(usuario.rolGlobal()));
 
         String token = jwtService.generarToken(usuario.idUsuario().toString(), claims);
 
@@ -95,6 +97,37 @@ public class AuthController {
             .body(authResponseSinToken);
 
     }
+
+     /**
+     * Endpoint de logout: invalida la cookie JWT del cliente y limpia el
+     * contexto de seguridad. Como el esquema de autenticación es stateless
+     * (JWT sin sesión de servidor), "cerrar sesión" consiste en instruir al
+     * navegador a descartar la cookie que contiene el token.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Se reconstruye la cookie con los mismos atributos (path, httpOnly,
+        // secure, sameSite) que en login/registro, pero con maxAge 0 para
+        // que el navegador la elimine inmediatamente.
+        ResponseCookie cookieVencida = ResponseCookie.from("jwt", "")
+            .httpOnly(true)
+            .secure(false) // false para desarrollo, en producción debe ser true
+            .path("/")
+            .maxAge(0)
+            .sameSite("Lax")
+            .build();
+
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookieVencida.toString())
+            .build();
+    }
+
 
     // agrego este endpoint para generar una cookie CSRF (y preparar al navegaodr con la cookie de seguridad)
     @GetMapping("/me")

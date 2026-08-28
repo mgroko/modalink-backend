@@ -7,10 +7,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Optional;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -33,6 +39,9 @@ class JwtAuthenticationFilterTest {
     private JwtService jwtService;
 
     @Mock
+    private UsuarioRepository usuarioRepository;
+
+    @Mock
     private HttpServletRequest request;
 
     @Mock
@@ -50,7 +59,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void doFilter_sinCookies_continuaCadenaSinAutenticar() throws Exception {
-        filter = new JwtAuthenticationFilter(jwtService);
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
         when(request.getCookies()).thenReturn(null);
 
         filter.doFilterInternal(request, response, filterChain);
@@ -61,7 +70,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void doFilter_conCookiesPeroSinJwt_continuaCadenaSinAutenticar() throws Exception {
-        filter = new JwtAuthenticationFilter(jwtService);
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
         Cookie otraCookie = new Cookie("otra", "valor");
         when(request.getCookies()).thenReturn(new Cookie[]{otraCookie});
 
@@ -72,14 +81,20 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void doFilter_tokenValido_autenticaEnElContexto() throws Exception {
-        filter = new JwtAuthenticationFilter(jwtService);
+    void doFilter_tokenValidoYUsuarioActivo_autenticaEnElContexto() throws Exception {
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
         Cookie jwtCookie = new Cookie("jwt", "token-valido");
         when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
 
         Claims claimsSimulados = mock(Claims.class);
         when(claimsSimulados.getSubject()).thenReturn("123");
         when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
+
+        Usuario usuarioActivo = Usuario.builder()
+                .idUsuario(123L)
+                .estado(EstadoUsuario.Activo)
+                .build();
+        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioActivo));
 
         filter.doFilterInternal(request, response, filterChain);
 
@@ -90,7 +105,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void doFilter_tokenInvalido_limpiaContextoYContinuaCadena() throws Exception {
-        filter = new JwtAuthenticationFilter(jwtService);
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
         Cookie jwtCookie = new Cookie("jwt", "token-invalido");
         when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
         when(jwtService.validarYObtenerClaims("token-invalido"))
@@ -101,6 +116,45 @@ class JwtAuthenticationFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         // Clave: aunque el token sea inválido, la cadena de filtros debe
         // seguir (para que otros endpoints públicos no queden bloqueados).
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilter_usuarioNoExisteEnBD_limpiaContextoYContinuaCadena() throws Exception {
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        Cookie jwtCookie = new Cookie("jwt", "token-valido");
+        when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
+
+        Claims claimsSimulados = mock(Claims.class);
+        when(claimsSimulados.getSubject()).thenReturn("999");
+        when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
+        when(usuarioRepository.findById(999L)).thenReturn(Optional.empty());
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilter_usuarioDeshabilitado_limpiaContextoYContinuaCadena() throws Exception {
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        Cookie jwtCookie = new Cookie("jwt", "token-valido");
+        when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
+
+        Claims claimsSimulados = mock(Claims.class);
+        when(claimsSimulados.getSubject()).thenReturn("123");
+        when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
+
+        Usuario usuarioDeshabilitado = Usuario.builder()
+                .idUsuario(123L)
+                .estado(EstadoUsuario.Deshabilitado)
+                .build();
+        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioDeshabilitado));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
 }

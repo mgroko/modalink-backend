@@ -62,7 +62,7 @@ class AuthControllerTest {
     @Test
     void registro_datosValidos_devuelve200ConCookieJwt() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10), "Activo");
         when(authService.registrar(any(RegistroRequest.class))).thenReturn(usuarioResponse);
         when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
  
@@ -115,9 +115,7 @@ class AuthControllerTest {
 
     @Test
     void registro_generoInexistente_devuelve400() throws Exception {
-        // GlobalExceptionHandler mapea GeneroNoEncontradoException -> 400.
-        // A diferencia del genero vacío (Bean Validation), este error ocurre
-        // DESPUÉS de llegar al servicio: el código no existe en la tabla genero.
+
         when(authService.registrar(any(RegistroRequest.class)))
                 .thenThrow(new GeneroNoEncontradoException("El género indicado no existe."));
 
@@ -141,7 +139,7 @@ class AuthControllerTest {
     @Test
     void login_credencialesValidas_devuelve200ConCookieJwt() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10), "Activo");
         when(authService.login(any(LoginRequest.class)))
                 .thenReturn(new AuthResponse(usuarioResponse));
         when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
@@ -187,7 +185,7 @@ class AuthControllerTest {
     @Test
     void me_autenticado_devuelveDatosDelUsuario() throws Exception {
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre");
+                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10), "Activo");
         when(authService.obtenerUsuarioActual(123L)).thenReturn(usuarioResponse);
  
         var authentication = new UsernamePasswordAuthenticationToken("123", null, List.of());
@@ -211,17 +209,5 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    @Test
-    void me_usuarioDeshabilitado_devuelve403() throws Exception {
-        // Token válido pero el usuario fue deshabilitado después de emitirlo
-        when(authService.obtenerUsuarioActual(888L))
-                .thenThrow(new org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException(
-                        "Usuario deshabilitado."));
- 
-        var authentication = new UsernamePasswordAuthenticationToken("888", null, List.of());
- 
-        mockMvc.perform(get("/auth/me").principal(authentication))
-                .andExpect(status().isForbidden());
-    }
     
 }

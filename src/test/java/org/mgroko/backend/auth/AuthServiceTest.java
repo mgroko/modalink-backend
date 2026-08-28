@@ -28,9 +28,9 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
@@ -308,6 +308,26 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_usuarioDeshabilitado_lanzaExcepcion() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
+
+        RolGlobal rolUsuario = mock(RolGlobal.class);
+
+        Usuario usuarioDeshabilitado = Usuario.builder()
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .rolGlobal(rolUsuario)
+                .estado(EstadoUsuario.Deshabilitado)
+                .build();
+
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuarioDeshabilitado));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+
+        assertThrows(UsuarioDeshabilitadoException.class, () -> authService.login(request));
+    }
+
+    @Test
     void obtenerUsuarioActual_usuarioNoExiste_lanzaExcepcion() {
         Long idInexistente = 999L;
         when(usuarioRepository.findById(idInexistente)).thenReturn(Optional.empty());
@@ -316,18 +336,27 @@ class AuthServiceTest {
     }
 
     @Test
-    void obtenerUsuarioActual_usuarioDeshabilitado_lanzaExcepcion() {
-        Long idUsuario = 1L;
+    void login_usuarioPendienteBaja_permiteLogin() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
 
-        Usuario usuarioDeshabilitado = Usuario.builder()
-                .idUsuario(idUsuario)
-                .nombre("Juan")
-                .correo("juan@test.com")
-                .estado(EstadoUsuario.Deshabilitado)
+        RolGlobal rolUsuario = mock(RolGlobal.class);
+        when(rolUsuario.getNombre()).thenReturn("Usuario");
+
+        Usuario usuario = Usuario.builder()
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .estado(EstadoUsuario.PendienteBaja)
+                .rolGlobal(rolUsuario)
                 .build();
 
-        when(usuarioRepository.findById(idUsuario)).thenReturn(Optional.of(usuarioDeshabilitado));
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
 
-        assertThrows(UsuarioDeshabilitadoException.class, () -> authService.obtenerUsuarioActual(idUsuario));
+        AuthResponse response = authService.login(request);
+
+        assertEquals("maria.flores@test.com", response.usuario().correo());
+        assertEquals("Usuario", response.usuario().rolGlobal());
     }
+
 }

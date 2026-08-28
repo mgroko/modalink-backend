@@ -16,9 +16,9 @@ import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Genero;
+import org.mgroko.backend.modelo.PermisoGlobal;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
-import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
@@ -99,20 +99,30 @@ public class AuthService {
             throw new CredencialesInvalidasException("Correo o contraseña inválidos.");
         }
 
-        return new AuthResponse(UsuarioMapper.toResponse(usuario));
-    }
-
-    @Transactional(readOnly = true)
-    public UsuarioResponse obtenerUsuarioActual(Long idUsuario) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
-
-        if (usuario.getEstado() != EstadoUsuario.Activo) {
-            throw new UsuarioDeshabilitadoException("Tu usuario no está activo. Contactá al administrador.");
+        if (!usuario.getEstado().permiteAcceso()) {
+            throw new UsuarioDeshabilitadoException("Tu usuario está deshabilitado. Contactá al administrador.");
         }
 
-    return UsuarioMapper.toResponse(usuario);
-}
+        return new AuthResponse(UsuarioMapper.toResponse(usuario));
+    }
+    @Transactional(readOnly = true)
+        public UsuarioResponse obtenerUsuarioActual(Long idUsuario) {
+
+            Usuario usuario = usuarioRepository.findById(idUsuario)
+                    .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+
+            return UsuarioMapper.toResponse(usuario);
+        }
+
+    @Transactional(readOnly = true)
+    public java.util.List<String> obtenerNombresPermisosGlobales(String nombreRol) {
+        RolGlobal rol = rolGlobalRepository.findByNombre(nombreRol)
+                .orElseThrow(() -> new RolGlobalNoEncontradoException("No se encontró el rol global '" + nombreRol + "'."));
+
+        return rol.getPermisos().stream()
+                .map(PermisoGlobal::getNombre)
+                .toList();
+    }
     
 
 }
