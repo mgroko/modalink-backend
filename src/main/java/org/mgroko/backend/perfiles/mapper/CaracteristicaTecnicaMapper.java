@@ -1,8 +1,11 @@
 package org.mgroko.backend.perfiles.mapper;
 
+import java.util.List;
+
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
+import org.mgroko.backend.perfiles.dto.ValorCaracteristicaResponse;
 
 public class CaracteristicaTecnicaMapper {
 
@@ -17,11 +20,17 @@ public class CaracteristicaTecnicaMapper {
             nombreProfesion = profesion.getNombre();
         }
 
+        List<ValorCaracteristicaResponse> valores = caracteristica.getValores().stream()
+                .map(ValorCaracteristicaMapper::toResponse)
+                .toList();
+
         return new CaracteristicaTecnicaResponse(
                 caracteristica.getIdCaracteristica(),
                 caracteristica.getCodigo(),
                 caracteristica.getUnidad(),
                 idProfesion,
-                nombreProfesion);
+                nombreProfesion,
+                caracteristica.getTipoDato(),
+                valores);
     }
 }

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record CaracteristicaPerfilRequest(
         @NotNull Long idCaracteristica,
-        String valor
+        String valor,
+        Long idValor
 ) {
 }

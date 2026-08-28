@@ -12,6 +12,7 @@ import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.ValorCaracteristica;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
@@ -19,13 +20,18 @@ import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaValorNoCoincideException;
+import org.mgroko.backend.perfiles.exception.IdValorObligatorioException;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
+import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,15 +42,18 @@ public class CrearPerfilService {
     private final ProfesionRepository profesionRepository;
     private final CaracteristicaTecnicaRepository caracteristicaTecnicaRepository;
     private final PerfilRepository perfilRepository;
+    private final ValorCaracteristicaRepository valorCaracteristicaRepository;
 
     public CrearPerfilService(UsuarioRepository usuarioRepository,
             ProfesionRepository profesionRepository,
             CaracteristicaTecnicaRepository caracteristicaTecnicaRepository,
-            PerfilRepository perfilRepository) {
+            PerfilRepository perfilRepository,
+            ValorCaracteristicaRepository valorCaracteristicaRepository) {
         this.usuarioRepository = usuarioRepository;
         this.profesionRepository = profesionRepository;
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.perfilRepository = perfilRepository;
+        this.valorCaracteristicaRepository = valorCaracteristicaRepository;
     }
 
     @Transactional
@@ -112,14 +121,37 @@ public class CrearPerfilService {
                                 + " no corresponde a la profesión del perfil.");
             }
 
-            CaracteristicaPerfil cp = CaracteristicaPerfil.builder()
+            CaracteristicaPerfil.CaracteristicaPerfilBuilder builder = CaracteristicaPerfil.builder()
                     .id(new CaracteristicaPerfilId(null, ct.getIdCaracteristica()))
                     .perfil(perfil)
                     .caracteristicaTecnica(ct)
-                    .valor(car.valor())
-                    .fechaRegistro(LocalDate.now())
-                    .build();
-            perfil.getCaracteristicas().add(cp);
+                    .fechaRegistro(LocalDate.now());
+
+            if (CaracteristicaTecnica.TIPO_ENUMERADO.equals(ct.getTipoDato())) {
+                if (car.idValor() == null) {
+                    throw new IdValorObligatorioException(
+                            "Para la característica " + ct.getCodigo()
+                                    + " (ENUMERADO) debe enviarse idValor.");
+                }
+                ValorCaracteristica vc = valorCaracteristicaRepository.findById(car.idValor())
+                        .orElseThrow(() -> new ValorCaracteristicaNoEncontradoException(
+                                "Valor de característica no encontrado: " + car.idValor()));
+                if (!vc.getCaracteristicaTecnica().getIdCaracteristica().equals(ct.getIdCaracteristica())) {
+                    throw new CaracteristicaValorNoCoincideException(
+                            "El valor " + car.idValor()
+                                    + " no corresponde a la característica técnica " + ct.getCodigo() + ".");
+                }
+                builder.valorCaracteristica(vc);
+            } else {
+                if (car.valor() == null || car.valor().isBlank()) {
+                    throw new ValorObligatorioException(
+                            "Para la característica " + ct.getCodigo()
+                                    + " (" + ct.getTipoDato() + ") debe enviarse valor.");
+                }
+                builder.valor(car.valor());
+            }
+
+            perfil.getCaracteristicas().add(builder.build());
         }
     }
 }
