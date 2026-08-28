@@ -103,6 +103,20 @@ Todos bajo el prefijo `/auth` (público, no requiere autenticación previa salvo
 | POST   | `/auth/login`     | Autentica con correo y contraseña. Devuelve el JWT en cookie HTTP-only. |
 | GET    | `/auth/me`        | Devuelve los datos del usuario autenticado (según el JWT de la cookie). |
 
+### Gestión de perfiles (requiere autenticación)
+
+| Método | Endpoint    | Descripción                                                                 |
+|--------|-------------|-----------------------------------------------------------------------------|
+| POST   | `/perfiles` | Crea un perfil profesional vinculado al usuario autenticado. Valida que el usuario no tenga ya un perfil para esa profesión, que las características técnicas correspondan a la profesión elegida y las longitudes de nombre artístico/biografía. Devuelve `201 Created` con el perfil creado. |
+| GET    | `/usuarios/me/perfiles` | Devuelve los perfiles del usuario autenticado (dashboard). Equivale a `GET /admin/usuarios/{id}/perfiles` pero restringido al propio usuario. |
+
+### Catálogos (requiere autenticación)
+
+| Método | Endpoint    | Descripción                                                                 |
+|--------|-------------|-----------------------------------------------------------------------------|
+| GET    | `/profesiones` | Busca profesiones por nombre (`?nombre=`). Sin filtro devuelve todas. Usado por UC-10 para el formulario de creación de perfil. |
+| GET    | `/profesiones/{id}/caracteristicas-tecnicas` | Busca las características técnicas de la profesión indicada, con filtros opcionales `codigo` y/o `unidad` (combinables con AND). Sin filtros devuelve todas las de esa profesión. Valida que la profesión exista. |
+
 Las validaciones de negocio (duplicados, edad mínima, existencia de rol) están implementadas tanto a nivel de base de datos (constraints/checks) como en el backend, siguiendo el criterio de la cátedra de no delegar validaciones al frontend.
 
 ## Testing
