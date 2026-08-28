@@ -35,6 +35,7 @@ el historial de git sirva de bitácora adicional.
 | UC-58 | Buscar características técnicas | No iniciado | | | Primera iteracion |
 | UC-59 | Buscar profesiones | No iniciado | | | Primera iteracion |
 | UC-67 | Generar informe de auditoría | No iniciado | | | Segunda iteracion |
+| UC-70 | Recuperar contraseña | No iniciado | | | Segunda iteracion |
 
 ## Gestión de perfiles (12 UC)
 
