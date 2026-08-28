@@ -31,4 +31,8 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
     List<CaracteristicaTecnica> buscar(@Param("patronCodigo") String patronCodigo,
                                        @Param("patronUnidad") String patronUnidad,
                                        @Param("idProfesion") Long idProfesion);
+
+    List<CaracteristicaTecnica> findAllByOrderByCodigo();
+
+    boolean existsByCodigo(String codigo);
 }
