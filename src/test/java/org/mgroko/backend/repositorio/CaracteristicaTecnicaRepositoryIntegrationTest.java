@@ -62,10 +62,10 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
     @Test
     void buscar_combinandoFiltros_devuelveCoincidencia() {
         List<CaracteristicaTecnica> resultado =
-                caracteristicaTecnicaRepository.buscar("%pecho%", "%", idProfesionModelo());
+                caracteristicaTecnicaRepository.buscar("%medida_pecho%", "%", idProfesionModelo());
 
         assertEquals(1, resultado.size());
-        assertEquals("pecho", resultado.get(0).getCodigo());
+        assertEquals("medida_pecho", resultado.get(0).getCodigo());
     }
 
     @Test

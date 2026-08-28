@@ -26,7 +26,7 @@ class CrearPerfilDTOValidationTest {
     private CrearPerfilRequest requestValido() {
         return new CrearPerfilRequest(
                 "Luna", 2L, "Modelo profesional.",
-                List.of(new CaracteristicaPerfilRequest(11L, "175")));
+                List.of(new CaracteristicaPerfilRequest(11L, "175", null)));
     }
 
     @Test
@@ -86,7 +86,7 @@ class CrearPerfilDTOValidationTest {
     void crear_caracteristicaSinId_generaViolacion() {
         CrearPerfilRequest request = new CrearPerfilRequest(
                 "Luna", 2L, "Modelo profesional.",
-                List.of(new CaracteristicaPerfilRequest(null, "175")));
+                List.of(new CaracteristicaPerfilRequest(null, "175", null)));
         Set<ConstraintViolation<CrearPerfilRequest>> violaciones = validator.validate(request);
         assertTrue(violaciones.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().equals("caracteristicas[0].idCaracteristica")));
@@ -96,7 +96,7 @@ class CrearPerfilDTOValidationTest {
     void crear_caracteristicaValorNulo_sinViolaciones() {
         CrearPerfilRequest request = new CrearPerfilRequest(
                 "Luna", 2L, "Modelo profesional.",
-                List.of(new CaracteristicaPerfilRequest(11L, null)));
+                List.of(new CaracteristicaPerfilRequest(11L, null, null)));
         assertTrue(validator.validate(request).isEmpty());
     }
 }

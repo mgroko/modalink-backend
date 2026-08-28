@@ -32,7 +32,7 @@ class CaracteristicaTecnicaControllerTest {
     @Test
     void buscar_conFiltros_devuelve200() throws Exception {
         when(caracteristicaTecnicaService.buscar(2L, "alt", null))
-                .thenReturn(List.of(new CaracteristicaTecnicaResponse(11L, "altura", "cm", 2L, "modelo")));
+                .thenReturn(List.of(new CaracteristicaTecnicaResponse(11L, "altura", "cm", 2L, "modelo", "TEXTO", List.of())));
 
         mockMvc.perform(get("/profesiones/2/caracteristicas-tecnicas")
                         .param("codigo", "alt"))

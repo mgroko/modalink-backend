@@ -54,7 +54,7 @@ class PerfilControllerTest {
     private CrearPerfilRequest requestValido() {
         return new CrearPerfilRequest(
                 "Luna", 2L, "Modelo profesional.",
-                List.of(new CaracteristicaPerfilRequest(11L, "175")));
+                List.of(new CaracteristicaPerfilRequest(11L, "175", null)));
     }
 
     @Test
@@ -63,7 +63,7 @@ class PerfilControllerTest {
 
         PerfilResponse response = new PerfilResponse(
                 10L, "Luna", "Modelo profesional.", "Activo", "modelo", null,
-                List.of(new CaracteristicaResponse(11L, "altura", "175")));
+                List.of(new CaracteristicaResponse(11L, "altura", "175", null, null, null)));
 
         when(crearPerfilService.crear(anyLong(), any(CrearPerfilRequest.class)))
                 .thenReturn(response);
@@ -150,7 +150,7 @@ class PerfilControllerTest {
 
         CrearPerfilRequest request = new CrearPerfilRequest(
                 "Luna", 2L, "Modelo profesional.",
-                List.of(new CaracteristicaPerfilRequest(null, "175")));
+                List.of(new CaracteristicaPerfilRequest(null, "175", null)));
 
         mockMvc.perform(post("/perfiles")
                         .principal(authentication)
@@ -197,7 +197,7 @@ class PerfilControllerTest {
 
         PerfilResponse perfil = new PerfilResponse(
                 10L, "Luna", "Modelo profesional.", "Activo", "modelo", null,
-                List.of(new CaracteristicaResponse(11L, "altura", "175")));
+                List.of(new CaracteristicaResponse(11L, "altura", "175", null, null, null)));
 
         when(usuarioPerfilService.listarPerfilesPropios(1L)).thenReturn(List.of(perfil));
 
