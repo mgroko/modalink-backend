@@ -51,14 +51,14 @@ El modelo (`modelo/`) ya incluye buena parte del dominio completo de ModaLink (p
 - JDK 25
 - Maven 3.9+
 - PostgreSQL 14+ corriendo localmente
-- Una base de datos llamada `proyectoMVP` (o el nombre que definas, ver configuración)
+- Una base de datos llamada `modalink` (o el nombre que definas, ver configuración)
 
 ## Configuración
 
 La configuración por defecto vive en `src/main/resources/application.properties`:
 
 ```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/proyectoMVP
+spring.datasource.url=jdbc:postgresql://localhost:5432/modalink
 spring.datasource.username=postgres
 spring.datasource.password=postgres
 
@@ -84,7 +84,7 @@ CORS está habilitado solo para `http://localhost:5173` (frontend en desarrollo 
 
 1. Crear la base de datos en PostgreSQL:
    ```sql
-   CREATE DATABASE "proyectoMVP";
+   CREATE DATABASE "modalink";
    ```
 2. Ajustar credenciales en `application.properties` si difieren de `postgres` / `postgres`.
 3. Ejecutar la aplicación (Flyway aplica las migraciones automáticamente al arrancar):
