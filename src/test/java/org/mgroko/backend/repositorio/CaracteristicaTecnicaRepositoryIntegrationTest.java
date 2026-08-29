@@ -11,7 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 /**
  * Test de integración de la búsqueda de características técnicas (UC-58)
- * contra PostgreSQL real. V8 deja sembradas las 7 características de la
+ * contra PostgreSQL real. V8/V10 dejan sembradas las 8 características de la
  * profesión "modelo"; este test valida la query de
  * {@link CaracteristicaTecnicaRepository#buscar}.
  */
@@ -32,7 +32,7 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
     void buscar_sinFiltro_devuelveTodasLasSembradas() {
         List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%", "%", null);
 
-        assertEquals(7, resultado.size());
+        assertEquals(8, resultado.size());
     }
 
     @Test
@@ -40,7 +40,7 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
         List<CaracteristicaTecnica> resultado =
                 caracteristicaTecnicaRepository.buscar("%", "%", idProfesionModelo());
 
-        assertEquals(7, resultado.size());
+        assertEquals(8, resultado.size());
         assertTrue(resultado.stream().allMatch(c -> c.getProfesion().getIdProfesion().equals(idProfesionModelo())));
     }
 
