@@ -61,8 +61,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
             // Autorización: /auth/** es público, el resto requiere autenticación
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
+           .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/auth/**", "/error").permitAll()
                 .anyRequest().authenticated()
             )
             
@@ -78,6 +78,8 @@ public class SecurityConfig {
             
             // Registrar el filtro JWT
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+            
 
         return http.build();
     }
