@@ -3,6 +3,7 @@ package org.mgroko.backend.perfiles.servicio;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminPerfilResponse;
+import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.mapper.AdminPerfilMapper;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
@@ -45,6 +46,18 @@ public class UsuarioPerfilService {
         return perfilRepository.findByUsuarioIdUsuario(idUsuario).stream()
                 .map(PerfilMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PerfilResponse obtenerPerfilPropio(Long idUsuario, Long idPerfil) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+        if (!usuario.getEstado().permiteAcceso()) {
+            throw new UsuarioNoEncontradoException("Usuario no encontrado.");
+        }
+        Perfil perfil = perfilRepository.findByIdPerfilAndUsuarioIdUsuario(idPerfil, idUsuario)
+                .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));
+        return PerfilMapper.toResponse(perfil);
     }
 
     private Usuario buscarUsuario(Long idUsuario) {
