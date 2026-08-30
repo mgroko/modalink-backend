@@ -15,11 +15,11 @@ import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.GeneroRepository;
-import org.mgroko.backend.repositorio.UbicacionRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
+import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.mgroko.backend.usuario.dto.DatosPersonalesRequest;
 import org.mgroko.backend.usuario.dto.DatosPersonalesResponse;
-import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
@@ -40,7 +40,7 @@ class DatosPersonalesServiceTest {
     private GeneroRepository generoRepository;
 
     @Mock
-    private UbicacionRepository ubicacionRepository;
+    private UbicacionService ubicacionService;
 
     @InjectMocks
     private DatosPersonalesService datosPersonalesService;
@@ -91,7 +91,7 @@ class DatosPersonalesServiceTest {
         when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
 
         Ubicacion ubicacion = mock(Ubicacion.class);
-        when(ubicacionRepository.findById(10L)).thenReturn(Optional.of(ubicacion));
+        when(ubicacionService.obtenerOCrear("0208401002")).thenReturn(ubicacion);
 
         when(usuarioRepository.save(any(Usuario.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -99,7 +99,7 @@ class DatosPersonalesServiceTest {
         DatosPersonalesRequest requestConUbicacion = new DatosPersonalesRequest(
                 "Maria", "Flores",
                 LocalDate.of(1990, 6, 15),
-                "mujer", 10L);
+                "mujer", "0208401002");
 
         DatosPersonalesResponse response = datosPersonalesService.actualizar(1L, requestConUbicacion);
 
@@ -179,22 +179,46 @@ class DatosPersonalesServiceTest {
     }
 
     @Test
-    void actualizar_ubicacionInexistente_lanzaExcepcion() {
+    void actualizar_localidadInexistente_lanzaExcepcion() {
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
 
         Genero generoMujer = mock(Genero.class);
         when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
 
-        when(ubicacionRepository.findById(999L)).thenReturn(Optional.empty());
+        when(ubicacionService.obtenerOCrear("999"))
+                .thenThrow(new LocalidadNoEncontradaException("Localidad no encontrada."));
 
         DatosPersonalesRequest requestUbicacionInvalida = new DatosPersonalesRequest(
                 "Maria", "Flores",
                 LocalDate.of(1990, 6, 15),
-                "mujer", 999L);
+                "mujer", "999");
 
-        assertThrows(UbicacionNoEncontradaException.class,
+        assertThrows(LocalidadNoEncontradaException.class,
                 () -> datosPersonalesService.actualizar(1L, requestUbicacionInvalida));
 
         verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizar_localidadEnBlanco_noAsociaUbicacion() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
+
+        Genero generoMujer = mock(Genero.class);
+        when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
+
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        DatosPersonalesRequest requestUbicacionBlanca = new DatosPersonalesRequest(
+                "Maria", "Flores",
+                LocalDate.of(1990, 6, 15),
+                "mujer", "  ");
+
+        DatosPersonalesResponse response = datosPersonalesService.actualizar(1L, requestUbicacionBlanca);
+
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(captor.capture());
+        verify(ubicacionService, never()).obtenerOCrear(any());
+        assertEquals("Maria", response.nombre());
     }
 }

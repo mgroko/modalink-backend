@@ -11,11 +11,10 @@ import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.GeneroRepository;
-import org.mgroko.backend.repositorio.UbicacionRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.mgroko.backend.usuario.dto.DatosPersonalesRequest;
 import org.mgroko.backend.usuario.dto.DatosPersonalesResponse;
-import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
 import org.mgroko.backend.usuario.mapper.DatosPersonalesMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,14 +24,14 @@ public class DatosPersonalesService {
 
     private final UsuarioRepository usuarioRepository;
     private final GeneroRepository generoRepository;
-    private final UbicacionRepository ubicacionRepository;
+    private final UbicacionService ubicacionService;
 
     public DatosPersonalesService(UsuarioRepository usuarioRepository,
             GeneroRepository generoRepository,
-            UbicacionRepository ubicacionRepository) {
+            UbicacionService ubicacionService) {
         this.usuarioRepository = usuarioRepository;
         this.generoRepository = generoRepository;
-        this.ubicacionRepository = ubicacionRepository;
+        this.ubicacionService = ubicacionService;
     }
 
     @Transactional
@@ -53,10 +52,9 @@ public class DatosPersonalesService {
                 .orElseThrow(() -> new GeneroNoEncontradoException("Género no encontrado: " + request.genero()));
 
         Ubicacion ubicacion = null;
-        if (request.idUbicacion() != null) {
-            ubicacion = ubicacionRepository.findById(request.idUbicacion())
-                    .orElseThrow(() -> new UbicacionNoEncontradaException(
-                            "Ubicación no encontrada con id: " + request.idUbicacion()));
+        String localidadId = request.localidadId();
+        if (localidadId != null && !localidadId.isBlank()) {
+            ubicacion = ubicacionService.obtenerOCrear(localidadId);
         }
 
         usuario.setNombre(request.nombre());

@@ -14,6 +14,10 @@ public class Ubicacion {
     @Column(name = "id_ubicacion")
     private Long idUbicacion;
 
+    // id de la localidad en el catálogo de Georef (para prellenar el selector)
+    @Column(name = "id_georef", length = 20)
+    private String idGeoref;
+
     @Column(name = "localidad", nullable = false, length = 100)
     private String localidad;
 

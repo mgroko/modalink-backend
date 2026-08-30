@@ -37,6 +37,10 @@ public class CaracteristicaPerfil {
     @Column(name = "valor", length = 50)
     private String valor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_valor")
+    private ValorCaracteristica valorCaracteristica;
+
     @Column(name = "fecha_registro")
     private LocalDate fechaRegistro;
 }

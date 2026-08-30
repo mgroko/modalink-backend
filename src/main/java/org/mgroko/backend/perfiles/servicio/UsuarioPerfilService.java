@@ -3,10 +3,14 @@ package org.mgroko.backend.perfiles.servicio;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminPerfilResponse;
+import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.mapper.AdminPerfilMapper;
+import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.perfiles.dto.PerfilResponse;
+import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,30 @@ public class UsuarioPerfilService {
         return perfiles.stream()
                 .map(AdminPerfilMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PerfilResponse> listarPerfilesPropios(Long idUsuario) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+        if (!usuario.getEstado().permiteAcceso()) {
+            throw new UsuarioNoEncontradoException("Usuario no encontrado.");
+        }
+        return perfilRepository.findByUsuarioIdUsuario(idUsuario).stream()
+                .map(PerfilMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PerfilResponse obtenerPerfilPropio(Long idUsuario, Long idPerfil) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+        if (!usuario.getEstado().permiteAcceso()) {
+            throw new UsuarioNoEncontradoException("Usuario no encontrado.");
+        }
+        Perfil perfil = perfilRepository.findByIdPerfilAndUsuarioIdUsuario(idPerfil, idUsuario)
+                .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));
+        return PerfilMapper.toResponse(perfil);
     }
 
     private Usuario buscarUsuario(Long idUsuario) {

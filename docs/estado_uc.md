@@ -32,19 +32,20 @@ el historial de git sirva de bitácora adicional.
 | UC-09 | Autenticar mediante Google OAuth | No iniciado | | | Primera iteracion |
 | UC-56 | Gestionar habilidades del sistema | No iniciado | | | Segunda iteracion |
 | UC-57 | Gestionar características técnicas por profesión | No iniciado | | | Segunda iteracion |
-| UC-58 | Buscar características técnicas | No iniciado | | | Primera iteracion |
-| UC-59 | Buscar profesiones | No iniciado | | | Primera iteracion |
+| UC-58 | Buscar características técnicas | Implementado y testeado | `GET /profesiones/{id}/caracteristicas-tecnicas` | Sí | Primera iteracion |
+| UC-59 | Buscar profesiones | Implementado y testeado | `GET /profesiones` | Sí | Primera iteracion |
 | UC-67 | Generar informe de auditoría | No iniciado | | | Segunda iteracion |
+| UC-70 | Recuperar contraseña | No iniciado | | | Segunda iteracion |
 
 ## Gestión de perfiles (12 UC)
 
 | UC | Nombre | Estado | Endpoint / clase | Tests | Notas |
 |------|--------------------------------------------|--------------|-------------------|-------|-------|
-| UC-10 | Crear perfil | En progreso | | | Primera iteracion |
-| UC-11 | Editar perfil | No iniciado | | | Primera iteracion |
-| UC-12 | Eliminar perfil | No iniciado | | | Primera iteracion |
+| UC-10 | Crear perfil | Implementado y testeado | `POST /perfiles` | Sí | Primera iteracion |
+| UC-11 | Editar perfil | En progreso | `GET /perfiles/{idPerfil}` y `PUT /perfiles/{idPerfil}` | Sí (servicio/DTO) | Primera iteracion |
+| UC-12 | Eliminar perfil | En progreso | `DELETE /perfiles/{idPerfil}` y `POST /perfiles/{idPerfil}/reactivar` | Sí (servicio/DTO) | Primera iteracion |
 | UC-13 | Cambiar perfil activo | No iniciado | | | Primera iteracion |
-| UC-14 | Ver perfil | Iniciado | GET /admin/usuarios/{id}/perfiles y .... | | Primera iteracion /// Iniciado para el panel de admin, fase muy temprana (posibilidad de ver los perfiles asociados al Usuario desde el panel) |
+| UC-14 | Ver perfil | Iniciado | `GET /admin/usuarios/{id}/perfiles` y `GET /usuarios/me/perfiles` | | Primera iteracion |
 | UC-15 | Reportar perfil | No iniciado | | | Segunda iteracion |
 | UC-16 | Buscar perfil | Iniciado | | | Primera iteracion |
 | UC-17 | Asignar en calendario día disponible | No iniciado | | | Primera iteracion |
@@ -122,10 +123,10 @@ el historial de git sirva de bitácora adicional.
 
 | Módulo | Total UC | Implementado y testeado | Implementado | En progreso | No iniciado |
 |--------------------------------------|----------|--------------------------|---------------|-------------|-------------|
-| Gestión de usuarios | 14 | 8 | 0 | 0 | 6 |
-| Gestión de perfiles | 12 | 0 | 1 | 1 | 10 |
+| Gestión de usuarios | 14 | 10 | 0 | 0 | 4 |
+| Gestión de perfiles | 12 | 1 | 0 | 4 | 7 |
 | Gestión de publicaciones | 11 | 0 | 0 | 0 | 11 |
 | Gestión de proyectos | 22 | 0 | 0 | 0 | 22 |
 | Gestión de contratos | 5 | 0 | 0 | 0 | 5 |
 | Gestión de conexiones y mensajería | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **69** | **8** | **1** | **1** | **59** |
+| **Total** | **69** | **11** | **0** | **4** | **54** |

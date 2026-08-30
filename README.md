@@ -5,7 +5,7 @@ Backend de **ModaLink**, una plataforma de networking profesional para la indust
 Proyecto final de la carrera Analista en Sistemas de Computación, desarrollado siguiendo la metodología **Proceso Unificado (UP)**, con foco en testing y calidad.
 
 > **Estado actual:**
-> Etapa: **Fase 1 — Gestión de usuarios** (Panel de administrador, habilitacion/deshabilitación de usuarios, modificacion de datos personales, etc). 
+> Etapa: **Fase 2 — Gestión de perfiles** (Panel de usuario, creación de perfiles, modificacion de perfiles, etc). 
 
 ## Stack tecnológico
 
@@ -51,14 +51,14 @@ El modelo (`modelo/`) ya incluye buena parte del dominio completo de ModaLink (p
 - JDK 25
 - Maven 3.9+
 - PostgreSQL 14+ corriendo localmente
-- Una base de datos llamada `proyectoMVP` (o el nombre que definas, ver configuración)
+- Una base de datos llamada `modalink` (o el nombre que definas, ver configuración)
 
 ## Configuración
 
 La configuración por defecto vive en `src/main/resources/application.properties`:
 
 ```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/proyectoMVP
+spring.datasource.url=jdbc:postgresql://localhost:5432/modalink
 spring.datasource.username=postgres
 spring.datasource.password=postgres
 
@@ -84,7 +84,7 @@ CORS está habilitado solo para `http://localhost:5173` (frontend en desarrollo 
 
 1. Crear la base de datos en PostgreSQL:
    ```sql
-   CREATE DATABASE "proyectoMVP";
+   CREATE DATABASE "modalink";
    ```
 2. Ajustar credenciales en `application.properties` si difieren de `postgres` / `postgres`.
 3. Ejecutar la aplicación (Flyway aplica las migraciones automáticamente al arrancar):
@@ -102,6 +102,32 @@ Todos bajo el prefijo `/auth` (público, no requiere autenticación previa salvo
 | POST   | `/auth/registro`  | Registra un nuevo usuario. Valida correo/DNI duplicados, edad mínima (18) y rol global. Devuelve el JWT en una cookie HTTP-only. |
 | POST   | `/auth/login`     | Autentica con correo y contraseña. Devuelve el JWT en cookie HTTP-only. |
 | GET    | `/auth/me`        | Devuelve los datos del usuario autenticado (según el JWT de la cookie). |
+
+### Gestión de perfiles (requiere autenticación)
+
+| Método | Endpoint    | Descripción                                                                 |
+|--------|-------------|-----------------------------------------------------------------------------|
+| POST   | `/perfiles` | Crea un perfil profesional vinculado al usuario autenticado. Valida que el usuario no tenga ya un perfil para esa profesión, que las características técnicas correspondan a la profesión elegida y las longitudes de nombre artístico/biografía. Devuelve `201 Created` con el perfil creado. |
+| GET    | `/perfiles/{idPerfil}` | Recupera los datos actuales de un perfil propio (UC-11, paso 2). Valida que el perfil pertenezca al usuario. |
+| PUT    | `/perfiles/{idPerfil}` | Edita el perfil propio (UC-11): nombre artístico, biografía, foto de perfil y características técnicas. La profesión no es modificable (reforzado por trigger). Valida campos obligatorios y las características. |
+| DELETE | `/perfiles/{idPerfil}` | Solicita la baja del perfil (UC-12): pasa a `PendienteBaja`, oculta el perfil a la comunidad y registra una cuenta regresiva de 30 días. Devuelve la fecha límite para reactivar. |
+| POST   | `/perfiles/{idPerfil}/reactivar` | Reactiva un perfil `PendienteBaja` dentro de los 30 días (UC-12). Un perfil no activado a tiempo se da de baja definitivamente por tarea programada diaria. |
+| GET    | `/usuarios/me/perfiles` | Devuelve los perfiles del usuario autenticado (dashboard). Equivale a `GET /admin/usuarios/{id}/perfiles` pero restringido al propio usuario. |
+
+### Catálogos (requiere autenticación)
+
+| Método | Endpoint    | Descripción                                                                 |
+|--------|-------------|-----------------------------------------------------------------------------|
+| GET    | `/profesiones` | Busca profesiones por nombre (`?nombre=`). Sin filtro devuelve todas. Usado por UC-10 para el formulario de creación de perfil. |
+| GET    | `/profesiones/{id}/caracteristicas-tecnicas` | Busca las características técnicas de la profesión indicada, con filtros opcionales `codigo` y/o `unidad` (combinables con AND). Sin filtros devuelve todas las de esa profesión. Valida que la profesión exista. |
+
+### Cuenta del usuario (requiere autenticación)
+
+| Método | Endpoint    | Descripción                                                                 |
+|--------|-------------|-----------------------------------------------------------------------------|
+| POST   | `/usuario/solicitar-baja` | Solicita la baja de la cuenta (UC-07): pasa a `PendienteBaja`, deja los perfiles ocultos a la comunidad y registra una cuenta regresiva de 30 días. Devuelve la fecha límite para recuperar los datos. |
+| POST   | `/usuario/reactivar-cuenta` | Reactiva la cuenta `PendienteBaja` dentro de los 30 días (UC-07). Una cuenta no reactivada a tiempo se da de baja definitivamente por tarea programada diaria. |
+| PUT    | `/usuario/datos-personales` | Actualiza los datos personales del usuario autenticado (UC-08). |
 
 Las validaciones de negocio (duplicados, edad mínima, existencia de rol) están implementadas tanto a nivel de base de datos (constraints/checks) como en el backend, siguiendo el criterio de la cátedra de no delegar validaciones al frontend.
 

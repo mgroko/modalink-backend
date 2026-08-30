@@ -5,9 +5,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
+import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException;
+import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
+import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
+import org.mgroko.backend.admin.exception.ValorCaracteristicaAdminNoEncontradoException;
+import org.mgroko.backend.admin.exception.ValorCodigoDuplicadoException;
+import org.mgroko.backend.admin.exception.ValorEnUsoException;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
@@ -16,8 +23,20 @@ import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
+import org.mgroko.backend.perfiles.exception.CaracteristicaValorNoCoincideException;
+import org.mgroko.backend.perfiles.exception.IdValorObligatorioException;
+import org.mgroko.backend.perfiles.exception.ImagenNoEncontradaException;
+import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
+import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
+import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
+import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
+import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -154,8 +173,129 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(LocalidadNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleLocalidadNoEncontrada(LocalidadNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(SolicitudBajaException.class)
     public ResponseEntity<Map<String, Object>> handleSolicitudBaja(SolicitudBajaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Excepción de profesión inexistente.
+     */
+    @ExceptionHandler(ProfesionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleProfesionNoEncontrada(ProfesionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de característica técnica inexistente.
+     */
+    @ExceptionHandler(CaracteristicaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaNoEncontrada(CaracteristicaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de característica que no corresponde a la profesión del perfil.
+     */
+    @ExceptionHandler(CaracteristicaProfesionNoCoincideException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaProfesionNoCoincide(CaracteristicaProfesionNoCoincideException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de característica técnica repetida en el mismo perfil.
+     */
+    @ExceptionHandler(CaracteristicaDuplicateException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaDuplicate(CaracteristicaDuplicateException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de perfil duplicado para la misma profesión.
+     */
+    @ExceptionHandler(PerfilDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilDuplicado(PerfilDuplicadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ValorCaracteristicaNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleValorCaracteristicaNoEncontrado(
+            ValorCaracteristicaNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IdValorObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleIdValorObligatorio(IdValorObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ValorObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleValorObligatorio(ValorObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(CaracteristicaValorNoCoincideException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaValorNoCoincide(
+            CaracteristicaValorNoCoincideException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de perfil dado de baja o con solicitud de baja activa.
+     */
+    @ExceptionHandler(PerfilEnBajaException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilEnBaja(PerfilEnBajaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Excepción de imagen de perfil inexistente.
+     */
+    @ExceptionHandler(ImagenNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleImagenNoEncontrada(ImagenNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(CaracteristicaTecnicaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaTecnicaNoEncontrada(
+            CaracteristicaTecnicaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ValorCaracteristicaAdminNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleValorCaracteristicaAdminNoEncontrado(
+            ValorCaracteristicaAdminNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(CaracteristicaCodigoDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaCodigoDuplicado(
+            CaracteristicaCodigoDuplicadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ValorCodigoDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handleValorCodigoDuplicado(ValorCodigoDuplicadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(TipoDatoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoDatoInvalido(TipoDatoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(CaracteristicaEnUsoException.class)
+    public ResponseEntity<Map<String, Object>> handleCaracteristicaEnUso(CaracteristicaEnUsoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ValorEnUsoException.class)
+    public ResponseEntity<Map<String, Object>> handleValorEnUso(ValorEnUsoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
