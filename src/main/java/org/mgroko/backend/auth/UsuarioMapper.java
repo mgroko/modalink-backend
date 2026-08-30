@@ -9,6 +9,10 @@ final class UsuarioMapper {
     }
 
     static UsuarioResponse toResponse(Usuario usuario) {
+        return toResponseConPerfilActivo(usuario, null, null);
+    }
+
+    static UsuarioResponse toResponseConPerfilActivo(Usuario usuario, Long idPerfilActivo, String nombreArtisticoActivo) {
         return new UsuarioResponse(
                 usuario.getIdUsuario(),
                 usuario.getNombre(),
@@ -18,7 +22,9 @@ final class UsuarioMapper {
                 usuario.getRolGlobal() != null ? usuario.getRolGlobal().getNombre() : null,
                 usuario.getGenero() != null ? usuario.getGenero().getCodigo() : null,
                 usuario.getFechaNacimiento(),
-                usuario.getEstado() != null ? usuario.getEstado().name() : null
+                usuario.getEstado() != null ? usuario.getEstado().name() : null,
+                idPerfilActivo,
+                nombreArtisticoActivo
         );
     }
 }

@@ -75,12 +75,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authorities.add(new SimpleGrantedAuthority(String.valueOf(permiso)));
                 }
             }
+            
+            ContextoAutenticacion contexto = new ContextoAutenticacion(
+                    Long.parseLong(subject),
+                    obtenerClaimLong(claims, "idPerfilActivo"),
+                    claims.get("nombreArtisticoActivo", String.class)
+            );
 
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                     subject,
                     null,
                     authorities
             );
+
+            auth.setDetails(contexto);
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (JwtException | NumberFormatException e) {
@@ -89,5 +97,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
  
         filterChain.doFilter(request, response);
+    }
+    private Long obtenerClaimLong(Claims claims, String key) {
+        Number valor = claims.get(key, Number.class);
+        return valor != null ? valor.longValue() : null;
     }
 }

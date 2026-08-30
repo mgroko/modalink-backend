@@ -10,6 +10,8 @@ public record UsuarioResponse(
         String rolGlobal,
         String genero,
         LocalDate fechaNacimiento,
-        String estado
+        String estado,
+        Long idPerfilActivo,
+        String nombreArtisticoActivo
 ) {
 }
