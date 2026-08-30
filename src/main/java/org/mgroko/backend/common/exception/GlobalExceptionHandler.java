@@ -28,12 +28,15 @@ import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaValorNoCoincideException;
 import org.mgroko.backend.perfiles.exception.IdValorObligatorioException;
+import org.mgroko.backend.perfiles.exception.ImagenNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
+import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
+import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -170,6 +173,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(LocalidadNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleLocalidadNoEncontrada(LocalidadNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(SolicitudBajaException.class)
     public ResponseEntity<Map<String, Object>> handleSolicitudBaja(SolicitudBajaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
@@ -235,6 +243,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleCaracteristicaValorNoCoincide(
             CaracteristicaValorNoCoincideException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de perfil dado de baja o con solicitud de baja activa.
+     */
+    @ExceptionHandler(PerfilEnBajaException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilEnBaja(PerfilEnBajaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Excepción de imagen de perfil inexistente.
+     */
+    @ExceptionHandler(ImagenNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleImagenNoEncontrada(ImagenNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(CaracteristicaTecnicaNoEncontradaException.class)
