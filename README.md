@@ -121,6 +121,14 @@ Todos bajo el prefijo `/auth` (público, no requiere autenticación previa salvo
 | GET    | `/profesiones` | Busca profesiones por nombre (`?nombre=`). Sin filtro devuelve todas. Usado por UC-10 para el formulario de creación de perfil. |
 | GET    | `/profesiones/{id}/caracteristicas-tecnicas` | Busca las características técnicas de la profesión indicada, con filtros opcionales `codigo` y/o `unidad` (combinables con AND). Sin filtros devuelve todas las de esa profesión. Valida que la profesión exista. |
 
+### Cuenta del usuario (requiere autenticación)
+
+| Método | Endpoint    | Descripción                                                                 |
+|--------|-------------|-----------------------------------------------------------------------------|
+| POST   | `/usuario/solicitar-baja` | Solicita la baja de la cuenta (UC-07): pasa a `PendienteBaja`, deja los perfiles ocultos a la comunidad y registra una cuenta regresiva de 30 días. Devuelve la fecha límite para recuperar los datos. |
+| POST   | `/usuario/reactivar-cuenta` | Reactiva la cuenta `PendienteBaja` dentro de los 30 días (UC-07). Una cuenta no reactivada a tiempo se da de baja definitivamente por tarea programada diaria. |
+| PUT    | `/usuario/datos-personales` | Actualiza los datos personales del usuario autenticado (UC-08). |
+
 Las validaciones de negocio (duplicados, edad mínima, existencia de rol) están implementadas tanto a nivel de base de datos (constraints/checks) como en el backend, siguiendo el criterio de la cátedra de no delegar validaciones al frontend.
 
 ## Testing
