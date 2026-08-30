@@ -7,10 +7,16 @@ import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
 import org.mgroko.backend.perfiles.dto.CaracteristicaResponse;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
+import org.mgroko.backend.perfiles.dto.EditarPerfilRequest;
+import org.mgroko.backend.perfiles.dto.EliminarPerfilResponse;
 import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
+import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
+import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
+import org.mgroko.backend.perfiles.servicio.EliminarPerfilService;
+import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -24,8 +30,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,6 +54,15 @@ class PerfilControllerTest {
 
     @MockitoBean
     private UsuarioPerfilService usuarioPerfilService;
+
+    @MockitoBean
+    private EditarPerfilService editarPerfilService;
+
+    @MockitoBean
+    private EliminarPerfilService eliminarPerfilService;
+
+    @MockitoBean
+    private ReactivarPerfilService reactivarPerfilService;
 
     private UsernamePasswordAuthenticationToken autenticacion() {
         return new UsernamePasswordAuthenticationToken("1", null, List.of());
@@ -233,5 +250,140 @@ class PerfilControllerTest {
                         .principal(authentication))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Usuario no encontrado."));
+    }
+
+    @Test
+    void obtener_perfilExistente_devuelve200() throws Exception {
+        var authentication = autenticacion();
+
+        PerfilResponse perfil = new PerfilResponse(
+                10L, "Luna", "Modelo profesional.", "Activo", "modelo", null, List.of());
+
+        when(usuarioPerfilService.obtenerPerfilPropio(1L, 10L)).thenReturn(perfil);
+
+        mockMvc.perform(get("/perfiles/10")
+                        .principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPerfil").value(10))
+                .andExpect(jsonPath("$.nombreArtistico").value("Luna"));
+    }
+
+    @Test
+    void obtener_perfilInexistente_devuelve404() throws Exception {
+        var authentication = autenticacion();
+
+        when(usuarioPerfilService.obtenerPerfilPropio(1L, 999L))
+                .thenThrow(new org.mgroko.backend.admin.exception.PerfilNoEncontradoException("Perfil no encontrado."));
+
+        mockMvc.perform(get("/perfiles/999")
+                        .principal(authentication))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Perfil no encontrado."));
+    }
+
+    @Test
+    void editar_datosValidos_devuelve200() throws Exception {
+        var authentication = autenticacion();
+
+        PerfilResponse perfil = new PerfilResponse(
+                10L, "Luna Nova", "Modelo renovada.", "Activo", "modelo", null,
+                List.of(new CaracteristicaResponse(11L, "altura", "176", null, null, null)));
+
+        when(editarPerfilService.editar(anyLong(), anyLong(), any(EditarPerfilRequest.class)))
+                .thenReturn(perfil);
+
+        EditarPerfilRequest request = new EditarPerfilRequest(
+                "Luna Nova", "Modelo renovada.", null,
+                List.of(new CaracteristicaPerfilRequest(11L, "176", null)));
+
+        mockMvc.perform(put("/perfiles/10")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombreArtistico").value("Luna Nova"))
+                .andExpect(jsonPath("$.biografia").value("Modelo renovada."));
+    }
+
+    @Test
+    void editar_nombreArtisticoVacio_devuelve400() throws Exception {
+        var authentication = autenticacion();
+
+        EditarPerfilRequest request = new EditarPerfilRequest(
+                "", "Modelo renovada.", null, List.of());
+
+        mockMvc.perform(put("/perfiles/10")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(editarPerfilService, never()).editar(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void editar_perfilEnBaja_devuelve409() throws Exception {
+        var authentication = autenticacion();
+
+        when(editarPerfilService.editar(anyLong(), anyLong(), any(EditarPerfilRequest.class)))
+                .thenThrow(new PerfilEnBajaException("No se puede editar un perfil dado de baja."));
+
+        EditarPerfilRequest request = new EditarPerfilRequest(
+                "Luna Nova", "Modelo renovada.", null, List.of());
+
+        mockMvc.perform(put("/perfiles/10")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("No se puede editar un perfil dado de baja."));
+    }
+
+    @Test
+    void eliminar_perfilActivo_devuelve200() throws Exception {
+        var authentication = autenticacion();
+
+        EliminarPerfilResponse response = new EliminarPerfilResponse(
+                "Solicitud de baja registrada.", java.time.LocalDateTime.now().plusDays(30));
+        when(eliminarPerfilService.eliminar(1L, 10L)).thenReturn(response);
+
+        mockMvc.perform(delete("/perfiles/10")
+                        .principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje").value("Solicitud de baja registrada."));
+    }
+
+    @Test
+    void eliminar_perfilPendienteBaja_devuelve409() throws Exception {
+        var authentication = autenticacion();
+
+        when(eliminarPerfilService.eliminar(1L, 10L))
+                .thenThrow(new PerfilEnBajaException("Ya existe una solicitud de baja activa para este perfil."));
+
+        mockMvc.perform(delete("/perfiles/10")
+                        .principal(authentication))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Ya existe una solicitud de baja activa para este perfil."));
+    }
+
+    @Test
+    void reactivar_dentroDePlazo_devuelve200() throws Exception {
+        var authentication = autenticacion();
+
+        PerfilResponse perfil = new PerfilResponse(
+                10L, "Luna", "Modelo profesional.", "Activo", "modelo", null, List.of());
+        when(reactivarPerfilService.reactivar(1L, 10L))
+                .thenReturn(org.mgroko.backend.modelo.Perfil.builder()
+                        .idPerfil(10L)
+                        .nombreArtistico("Luna")
+                        .biografia("Modelo profesional.")
+                        .estado(org.mgroko.backend.modelo.enums.EstadoPerfil.Activo)
+                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                        .build());
+
+        mockMvc.perform(post("/perfiles/10/reactivar")
+                        .principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("Activo"));
     }
 }

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Usuario;
@@ -100,5 +101,26 @@ class UsuarioPerfilServiceTest {
                 () -> usuarioPerfilService.listarPerfilesPropios(1L));
 
         verify(perfilRepository, never()).findByUsuarioIdUsuario(1L);
+    }
+
+    @Test
+    void obtenerPerfilPropio_retornaPerfilDelUsuario() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfilModelo()));
+
+        PerfilResponse response = usuarioPerfilService.obtenerPerfilPropio(1L, 10L);
+
+        assertEquals("Luna", response.nombreArtistico());
+        assertEquals("modelo", response.profesion());
+        assertEquals("Activo", response.estado());
+    }
+
+    @Test
+    void obtenerPerfilPropio_perfilDeOtroUsuario_lanzaExcepcion() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.empty());
+
+        assertThrows(PerfilNoEncontradoException.class,
+                () -> usuarioPerfilService.obtenerPerfilPropio(1L, 10L));
     }
 }
