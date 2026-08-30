@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.security.JwtCookieFactory;
 import org.mgroko.backend.security.JwtService;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -28,6 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithSecurityContext;
 import org.springframework.security.test.context.support.WithSecurityContextFactory;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.ResponseCookie;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -76,6 +78,9 @@ class LogoutIntegrationTest {
 
     @MockitoBean
     private JwtService jwtService;
+
+    @MockitoBean
+    private JwtCookieFactory jwtCookieFactory;
 
     @MockitoBean
     private UsuarioRepository usuarioRepository;
@@ -149,6 +154,9 @@ class LogoutIntegrationTest {
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 "1", null,
                 List.of(new SimpleGrantedAuthority("ROLE_USUARIO")));
+
+        when(jwtCookieFactory.crearExpirada())
+                .thenReturn(ResponseCookie.from("jwt", "").maxAge(0).path("/").build());
 
         mockMvc.perform(post("/auth/logout").principal(auth))
                 .andExpect(status().isOk())

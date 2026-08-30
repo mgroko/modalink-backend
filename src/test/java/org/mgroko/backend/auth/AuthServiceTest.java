@@ -2,9 +2,12 @@ package org.mgroko.backend.auth;
 
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,14 +25,20 @@ import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Genero;
+import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.GeneroRepository;
+import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.security.JwtService;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -44,9 +53,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
  * Tests unitarios de AuthService.
  *
  * Estrategia: mockeamos TODAS las dependencias externas (repositorios,
- * encoder) para probar únicamente la lógica que vive dentro de AuthService,
- * sin tocar una base de datos real. Cada método de test cubre una única
- * rama del if/else de registrar() o login().
+ * encoder, jwtService) para probar únicamente la lógica que vive dentro
+ * de AuthService, sin tocar una base de datos real. Cada método de test
+ * cubre una única rama del if/else de registrar() o login().
  */
 
 @ExtendWith(MockitoExtension.class)
@@ -64,6 +73,12 @@ class AuthServiceTest {
     @Mock
     private BCryptPasswordEncoder passwordEncoder;
 
+    @Mock
+    private PerfilRepository perfilRepository;
+
+    @Mock
+    private JwtService jwtService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -76,11 +91,43 @@ class AuthServiceTest {
                 "Maria",
                 "Flores",
                 "12345678",
-                LocalDate.of(1981, Month.JUNE, 24), 
+                LocalDate.of(1981, Month.JUNE, 24),
                 "maria.flores@test.com",
                 "mujer",
                 "password123"
         );
+    }
+
+    private RolGlobal rolUsuario() {
+        RolGlobal rol = mock(RolGlobal.class);
+        when(rol.getNombre()).thenReturn("Usuario");
+        when(rol.getPermisos()).thenReturn(Set.of());
+        return rol;
+    }
+
+    private void stubsRegistroExitoso(String password) {
+        when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
+        when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
+        RolGlobal rol = rolUsuario();
+        when(rolGlobalRepository.findByNombre("Usuario")).thenReturn(Optional.of(rol));
+        Genero generoMujer = mock(Genero.class);
+        when(generoMujer.getCodigo()).thenReturn("mujer");
+        when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
+        when(passwordEncoder.encode(password)).thenReturn("hash-simulado");
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocacion -> {
+                    Usuario guardado = invocacion.getArgument(0);
+                    guardado.setIdUsuario(1L);
+                    return guardado;
+                });
+        when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
+    }
+
+    private void stubsLoginExitoso(Usuario usuario) {
+        when(usuarioRepository.findByCorreo(usuario.getCorreo())).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("password123", usuario.getPasswordHash())).thenReturn(true);
+        when(rolGlobalRepository.findByNombre("Usuario")).thenReturn(Optional.of(usuario.getRolGlobal()));
+        when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
     }
 
     // ---------------------------------------------------------------
@@ -89,13 +136,9 @@ class AuthServiceTest {
 
     @Test
     void registrar_correoDuplicado_lanzaExcepcion() {
-        // Arrange
         when(usuarioRepository.existsByCorreo(registroValido.correo())).thenReturn(true);
 
-        // Act + Assert
         assertThrows(CorreoDuplicadoException.class, () -> authService.registrar(registroValido));
-
-        // Verificamos que, al fallar temprano, NUNCA se intenta guardar nada.
         verify(usuarioRepository, never()).save(any());
     }
 
@@ -145,60 +188,32 @@ class AuthServiceTest {
 
     @Test
     void registrar_datosValidos_creaUsuarioCorrectamente() {
-        // Arrange: todos los checks pasan
-        when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
-        when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
+        stubsRegistroExitoso(registroValido.password());
 
-        RolGlobal rolUsuario = mock(RolGlobal.class);
-        when(rolUsuario.getNombre()).thenReturn("Usuario");
-        when(rolGlobalRepository.findByNombre("Usuario")).thenReturn(Optional.of(rolUsuario));
+        AuthService.RegistroResultado resultado = authService.registrar(registroValido);
+        UsuarioResponse response = resultado.response();
 
-        Genero generoMujer = mock(Genero.class);
-        when(generoMujer.getCodigo()).thenReturn("mujer");
-        when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
-
-        when(passwordEncoder.encode(registroValido.password())).thenReturn("hash-simulado");
-
-        // save() devuelve el mismo objeto que le pasaron (simula la persistencia)
-        when(usuarioRepository.save(any(Usuario.class)))
-                .thenAnswer(invocacion -> invocacion.getArgument(0));
-
-        // Act
-        UsuarioResponse response = authService.registrar(registroValido);
-
-        // Assert: los datos del response son los que esperábamos
         assertEquals("Maria", response.nombre());
         assertEquals("Flores", response.apellido());
         assertEquals("maria.flores@test.com", response.correo());
         assertEquals("Usuario", response.rolGlobal());
         assertEquals("mujer", response.genero());
+        assertNull(response.idPerfilActivo());
 
-        // Verificamos que la password NUNCA se guarda en texto plano
         verify(passwordEncoder).encode("password123");
     }
 
     @Test
     void registrar_normalizaCampos_antesDeGuardar() {
-        // Los campos de texto se guardan trimmeados y el correo en minúsculas,
-        // tal como indica la política de normalización del registro.
         RegistroRequest conRuido = new RegistroRequest(
                 "  Maria  ", " Flores ", " 12345678 ",
                 LocalDate.of(1981, Month.JUNE, 24),
                 "  Maria.Flores@Test.COM ", "mujer", "password123"
         );
-        when(usuarioRepository.existsByCorreo("maria.flores@test.com")).thenReturn(false);
-        when(usuarioRepository.existsByDni("12345678")).thenReturn(false);
-        when(rolGlobalRepository.findByNombre("Usuario"))
-                .thenReturn(Optional.of(mock(RolGlobal.class)));
-        Genero generoMujer = mock(Genero.class);
-        when(generoRepository.findByCodigo("mujer")).thenReturn(Optional.of(generoMujer));
-        when(passwordEncoder.encode(anyString())).thenReturn("hash-simulado");
-        when(usuarioRepository.save(any(Usuario.class)))
-                .thenAnswer(invocacion -> invocacion.getArgument(0));
+        stubsRegistroExitoso(conRuido.password());
 
         authService.registrar(conRuido);
 
-        // Los checks de duplicados también usan los valores normalizados
         verify(usuarioRepository).existsByCorreo("maria.flores@test.com");
         verify(usuarioRepository).existsByDni("12345678");
 
@@ -213,8 +228,6 @@ class AuthServiceTest {
 
     @Test
     void registrar_generoNoCoincideExacto_lanzaExcepcion() {
-        // Decisión de diseño: el código de género es case-sensitive y sin espacios
-        // (match exacto contra la tabla genero). "MUJER" no es "mujer".
         RegistroRequest mayusculas = new RegistroRequest(
                 "Maria", "Flores", "12345678",
                 LocalDate.of(1981, Month.JUNE, 24),
@@ -222,8 +235,7 @@ class AuthServiceTest {
         );
         when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
         when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
-        when(rolGlobalRepository.findByNombre("Usuario"))
-                .thenReturn(Optional.of(mock(RolGlobal.class)));
+        when(rolGlobalRepository.findByNombre("Usuario")).thenReturn(Optional.of(mock(RolGlobal.class)));
         when(generoRepository.findByCodigo("MUJER")).thenReturn(Optional.empty());
 
         assertThrows(GeneroNoEncontradoException.class, () -> authService.registrar(mayusculas));
@@ -244,9 +256,6 @@ class AuthServiceTest {
 
     @Test
     void login_normalizaCorreo_antesDeBuscar() {
-        // El correo se busca trimmeado y en minúsculas, tal como quedó guardado
-        // al registrarse. Si el servicio buscara con el valor crudo del request,
-        // este test falla (el stub no coincidiría).
         LoginRequest request = new LoginRequest("  Maria.Flores@Test.COM ", "password123");
         when(usuarioRepository.findByCorreo("maria.flores@test.com")).thenReturn(Optional.empty());
 
@@ -259,7 +268,6 @@ class AuthServiceTest {
 
     @Test
     void login_passwordHashNulo_lanzaExcepcion() {
-        // Caso real: usuario registrado con Google, sin password local
         LoginRequest request = new LoginRequest("maria.flores@test.com", "cualquierPassword");
         Usuario usuarioSinPassword = Usuario.builder()
                 .correo("maria.flores@test.com")
@@ -287,37 +295,33 @@ class AuthServiceTest {
     @Test
     void login_credencialesValidas_devuelveAuthResponse() {
         LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
-
-        RolGlobal rolUsuario = mock(RolGlobal.class);
-        when(rolUsuario.getNombre()).thenReturn("Usuario");
-
+        RolGlobal rolUsuario = rolUsuario();
         Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
                 .nombre("Maria")
                 .correo("maria.flores@test.com")
                 .passwordHash("hash-guardado")
                 .rolGlobal(rolUsuario)
                 .build();
+        stubsLoginExitoso(usuario);
+        when(perfilRepository.findByUsuario_IdUsuarioAndEstado(anyLong(), any(EstadoPerfil.class)))
+                .thenReturn(List.of());
 
-        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuario));
-        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+        AuthService.LoginResultado resultado = authService.login(request);
 
-        AuthResponse response = authService.login(request);
-
-        assertEquals("maria.flores@test.com", response.usuario().correo());
-        assertEquals("Usuario", response.usuario().rolGlobal());
+        assertEquals("maria.flores@test.com", resultado.response().usuario().correo());
+        assertEquals("Usuario", resultado.response().usuario().rolGlobal());
+        assertNull(resultado.response().usuario().idPerfilActivo());
     }
 
     @Test
     void login_usuarioDeshabilitado_lanzaExcepcion() {
         LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
-
-        RolGlobal rolUsuario = mock(RolGlobal.class);
-
         Usuario usuarioDeshabilitado = Usuario.builder()
                 .nombre("Maria")
                 .correo("maria.flores@test.com")
                 .passwordHash("hash-guardado")
-                .rolGlobal(rolUsuario)
+                .rolGlobal(mock(RolGlobal.class))
                 .estado(EstadoUsuario.Deshabilitado)
                 .build();
 
@@ -325,38 +329,106 @@ class AuthServiceTest {
         when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
 
         assertThrows(UsuarioDeshabilitadoException.class, () -> authService.login(request));
-    }
-
-    @Test
-    void obtenerUsuarioActual_usuarioNoExiste_lanzaExcepcion() {
-        Long idInexistente = 999L;
-        when(usuarioRepository.findById(idInexistente)).thenReturn(Optional.empty());
-
-        assertThrows(UsuarioNoEncontradoException.class, () -> authService.obtenerUsuarioActual(idInexistente));
+        verify(perfilRepository, never()).findByUsuario_IdUsuarioAndEstado(anyLong(), any());
     }
 
     @Test
     void login_usuarioPendienteBaja_permiteLogin() {
         LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
-
-        RolGlobal rolUsuario = mock(RolGlobal.class);
-        when(rolUsuario.getNombre()).thenReturn("Usuario");
-
         Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
                 .nombre("Maria")
                 .correo("maria.flores@test.com")
                 .passwordHash("hash-guardado")
                 .estado(EstadoUsuario.PendienteBaja)
-                .rolGlobal(rolUsuario)
+                .rolGlobal(rolUsuario())
                 .build();
+        stubsLoginExitoso(usuario);
+        when(perfilRepository.findByUsuario_IdUsuarioAndEstado(anyLong(), any(EstadoPerfil.class)))
+                .thenReturn(List.of());
 
-        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuario));
-        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+        AuthService.LoginResultado resultado = authService.login(request);
 
-        AuthResponse response = authService.login(request);
+        assertEquals("maria.flores@test.com", resultado.response().usuario().correo());
+        assertEquals("Usuario", resultado.response().usuario().rolGlobal());
+    }
 
-        assertEquals("maria.flores@test.com", response.usuario().correo());
-        assertEquals("Usuario", response.usuario().rolGlobal());
+    @Test
+    void login_conUnPerfilActivo_incluyePerfilActivo() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .rolGlobal(rolUsuario())
+                .build();
+        stubsLoginExitoso(usuario);
+
+        Perfil perfilActivo = Perfil.builder().idPerfil(10L).nombreArtistico("Luna").build();
+        when(perfilRepository.findByUsuario_IdUsuarioAndEstado(anyLong(), any(EstadoPerfil.class)))
+                .thenReturn(List.of(perfilActivo));
+
+        AuthService.LoginResultado resultado = authService.login(request);
+
+        assertEquals(10L, resultado.response().usuario().idPerfilActivo());
+        assertEquals("Luna", resultado.response().usuario().nombreArtisticoActivo());
+    }
+
+    @Test
+    void login_conDosPerfilesActivos_noSeleccionaPerfilActivo() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .rolGlobal(rolUsuario())
+                .build();
+        stubsLoginExitoso(usuario);
+
+        when(perfilRepository.findByUsuario_IdUsuarioAndEstado(anyLong(), any(EstadoPerfil.class)))
+                .thenReturn(List.of(
+                        Perfil.builder().idPerfil(10L).nombreArtistico("Luna").build(),
+                        Perfil.builder().idPerfil(11L).nombreArtistico("Sol").build()));
+
+        AuthService.LoginResultado resultado = authService.login(request);
+
+        assertNull(resultado.response().usuario().idPerfilActivo());
+    }
+
+    // ---------------------------------------------------------------
+    // obtenerUsuarioActual()
+    // ---------------------------------------------------------------
+
+    @Test
+    void obtenerUsuarioActual_usuarioNoExiste_lanzaExcepcion() {
+        when(usuarioRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(UsuarioNoEncontradoException.class,
+                () -> authService.obtenerUsuarioActual(999L, null, null));
+    }
+
+    @Test
+    void obtenerUsuarioActual_usuarioValido_incluyePerfilActivo() {
+        RolGlobal rol = mock(RolGlobal.class);
+        when(rol.getNombre()).thenReturn("Usuario");
+        Genero generoMujer = mock(Genero.class);
+        when(generoMujer.getCodigo()).thenReturn("mujer");
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .rolGlobal(rol)
+                .genero(generoMujer)
+                .build();
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+
+        UsuarioResponse response = authService.obtenerUsuarioActual(1L, 10L, "Luna");
+
+        assertEquals("maria.flores@test.com", response.correo());
+        assertEquals(10L, response.idPerfilActivo());
+        assertEquals("Luna", response.nombreArtisticoActivo());
     }
 
 }

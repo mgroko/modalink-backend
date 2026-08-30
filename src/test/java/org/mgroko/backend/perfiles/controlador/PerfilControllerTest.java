@@ -13,11 +13,13 @@ import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
+import org.mgroko.backend.perfiles.servicio.ActivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarPerfilService;
 import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
+import org.mgroko.backend.security.JwtCookieFactory;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -27,11 +29,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -63,6 +67,12 @@ class PerfilControllerTest {
 
     @MockitoBean
     private ReactivarPerfilService reactivarPerfilService;
+
+    @MockitoBean
+    private ActivarPerfilService activarPerfilService;
+
+    @MockitoBean
+    private JwtCookieFactory jwtCookieFactory;
 
     private UsernamePasswordAuthenticationToken autenticacion() {
         return new UsernamePasswordAuthenticationToken("1", null, List.of());
@@ -385,5 +395,54 @@ class PerfilControllerTest {
                         .principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("Activo"));
+    }
+
+    @Test
+    void activar_perfilValido_devuelve200ConCookieJwt() throws Exception {
+        var authentication = autenticacion();
+
+        PerfilResponse perfil = new PerfilResponse(
+                10L, "Luna", "Modelo profesional.", "Activo", "modelo", null, List.of());
+        when(activarPerfilService.activar(1L, 10L))
+                .thenReturn(new ActivarPerfilService.ActivarPerfilResultado("token-nuevo", perfil));
+        when(jwtCookieFactory.crear("token-nuevo"))
+                .thenReturn(ResponseCookie.from("jwt", "token-nuevo").build());
+
+        mockMvc.perform(patch("/perfiles/10/activar")
+                        .principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    String cookie = result.getResponse().getHeader("Set-Cookie");
+                    org.junit.jupiter.api.Assertions.assertNotNull(cookie);
+                    org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("jwt=token-nuevo"));
+                })
+                .andExpect(jsonPath("$.idPerfil").value(10))
+                .andExpect(jsonPath("$.nombreArtistico").value("Luna"));
+    }
+
+    @Test
+    void activar_perfilNoEncontrado_devuelve404() throws Exception {
+        var authentication = autenticacion();
+
+        when(activarPerfilService.activar(1L, 999L))
+                .thenThrow(new org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException());
+
+        mockMvc.perform(patch("/perfiles/999/activar")
+                        .principal(authentication))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("El perfil no fue encontrado"));
+    }
+
+    @Test
+    void activar_perfilEnBaja_devuelve409() throws Exception {
+        var authentication = autenticacion();
+
+        when(activarPerfilService.activar(1L, 10L))
+                .thenThrow(new PerfilEnBajaException("No se puede activar un perfil que está en proceso de baja o dado de baja."));
+
+        mockMvc.perform(patch("/perfiles/10/activar")
+                        .principal(authentication))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("No se puede activar un perfil que está en proceso de baja o dado de baja."));
     }
 }

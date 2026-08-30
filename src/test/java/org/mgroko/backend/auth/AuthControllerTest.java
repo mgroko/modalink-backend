@@ -12,8 +12,11 @@ import org.mgroko.backend.auth.dto.RegistroRequest;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
+import org.mgroko.backend.security.ContextoAutenticacion;
+import org.mgroko.backend.security.JwtCookieFactory;
 import org.mgroko.backend.security.JwtService;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -23,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -50,9 +54,18 @@ class AuthControllerTest {
     @MockitoBean
     private JwtService jwtService;
 
+    @MockitoBean
+    private JwtCookieFactory jwtCookieFactory;
+
     @AfterEach
     void limpiarContexto() {
         SecurityContextHolder.clearContext();
+    }
+
+    private UsuarioResponse usuarioResponse(Long id, String correo) {
+        return new UsuarioResponse(
+                id, "Juan", "Perez", "12345678", correo, "Usuario", "hombre",
+                LocalDate.of(2003, 12, 10), "Activo", null, null);
     }
 
     // ---------------------------------------------------------------
@@ -61,15 +74,16 @@ class AuthControllerTest {
 
     @Test
     void registro_datosValidos_devuelve200ConCookieJwt() throws Exception {
-        UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10), "Activo");
-        when(authService.registrar(any(RegistroRequest.class))).thenReturn(usuarioResponse);
-        when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
- 
+        UsuarioResponse usuarioResponse = usuarioResponse(1L, "juan@test.com");
+        when(authService.registrar(any(RegistroRequest.class)))
+                .thenReturn(new AuthService.RegistroResultado("token-simulado", usuarioResponse));
+        when(jwtCookieFactory.crear(anyString()))
+                .thenReturn(ResponseCookie.from("jwt", "token-simulado").build());
+
         RegistroRequest request = new RegistroRequest(
                 "Juan", "Perez", "12345678",
                 LocalDate.of(1995, Month.MAY, 20), "juan@test.com", "hombre", "password123");
- 
+
         mockMvc.perform(post("/auth/registro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -81,8 +95,6 @@ class AuthControllerTest {
                 })
                 .andExpect(jsonPath("$.usuario.correo").value("juan@test.com"))
                 .andExpect(jsonPath("$.usuario.genero").value("hombre"));
-
-        verify(jwtService).generarToken(anyString(), anyMap());
     }
 
     @Test
@@ -138,11 +150,11 @@ class AuthControllerTest {
 
     @Test
     void login_credencialesValidas_devuelve200ConCookieJwt() throws Exception {
-        UsuarioResponse usuarioResponse = new UsuarioResponse(
-                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10), "Activo");
+        UsuarioResponse usuarioResponse = usuarioResponse(1L, "juan@test.com");
         when(authService.login(any(LoginRequest.class)))
-                .thenReturn(new AuthResponse(usuarioResponse));
-        when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
+                .thenReturn(new AuthService.LoginResultado("token-simulado", new AuthResponse(usuarioResponse)));
+        when(jwtCookieFactory.crear(anyString()))
+                .thenReturn(ResponseCookie.from("jwt", "token-simulado").build());
 
         LoginRequest request = new LoginRequest("juan@test.com", "password123");
 
@@ -151,6 +163,26 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.correo").value("juan@test.com"));
+    }
+
+    @Test
+    void login_conPerfilActivo_devuelvePerfilActivoEnUsuario() throws Exception {
+        UsuarioResponse usuarioResponse = new UsuarioResponse(
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre",
+                LocalDate.of(2003, 12, 10), "Activo", 10L, "Luna");
+        when(authService.login(any(LoginRequest.class)))
+                .thenReturn(new AuthService.LoginResultado("token-simulado", new AuthResponse(usuarioResponse)));
+        when(jwtCookieFactory.crear(anyString()))
+                .thenReturn(ResponseCookie.from("jwt", "token-simulado").build());
+
+        LoginRequest request = new LoginRequest("juan@test.com", "password123");
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuario.idPerfilActivo").value(10))
+                .andExpect(jsonPath("$.usuario.nombreArtisticoActivo").value("Luna"));
     }
 
     @Test
@@ -181,13 +213,12 @@ class AuthControllerTest {
         mockMvc.perform(get("/auth/me"))
                 .andExpect(status().isUnauthorized());
     }
- 
+
     @Test
     void me_autenticado_devuelveDatosDelUsuario() throws Exception {
-        UsuarioResponse usuarioResponse = new UsuarioResponse(
-                123L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre", LocalDate.of(2003, 12, 10), "Activo");
-        when(authService.obtenerUsuarioActual(123L)).thenReturn(usuarioResponse);
- 
+        UsuarioResponse usuarioResponse = usuarioResponse(123L, "juan@test.com");
+        when(authService.obtenerUsuarioActual(anyLong(), any(), any())).thenReturn(usuarioResponse);
+
         var authentication = new UsernamePasswordAuthenticationToken("123", null, List.of());
 
         mockMvc.perform(get("/auth/me").principal(authentication))
@@ -195,16 +226,34 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.correo").value("juan@test.com"))
                 .andExpect(jsonPath("$.idUsuario").value(123));
     }
- 
+
+    @Test
+    void me_autenticado_conPerfilActivo_pasaContextoAlServicio() throws Exception {
+        UsuarioResponse usuarioResponse = new UsuarioResponse(
+                1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre",
+                LocalDate.of(2003, 12, 10), "Activo", 10L, "Luna");
+        when(authService.obtenerUsuarioActual(anyLong(), any(), any())).thenReturn(usuarioResponse);
+
+        var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        authentication.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(get("/auth/me").principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPerfilActivo").value(10))
+                .andExpect(jsonPath("$.nombreArtisticoActivo").value("Luna"));
+
+        verify(authService).obtenerUsuarioActual(1L, 10L, "Luna");
+    }
+
     @Test
     void me_usuarioYaNoExiste_devuelve401() throws Exception {
         // Token válido pero el usuario fue dado de baja después de emitirlo
-        when(authService.obtenerUsuarioActual(999L))
+        when(authService.obtenerUsuarioActual(anyLong(), any(), any()))
                 .thenThrow(new org.mgroko.backend.auth.exception.UsuarioNoEncontradoException(
                         "Usuario no encontrado."));
- 
+
         var authentication = new UsernamePasswordAuthenticationToken("999", null, List.of());
- 
+
         mockMvc.perform(get("/auth/me").principal(authentication))
                 .andExpect(status().isUnauthorized());
     }
