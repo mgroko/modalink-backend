@@ -42,8 +42,8 @@ el historial de git sirva de bitácora adicional.
 | UC | Nombre | Estado | Endpoint / clase | Tests | Notas |
 |------|--------------------------------------------|--------------|-------------------|-------|-------|
 | UC-10 | Crear perfil | Implementado y testeado | `POST /perfiles` | Sí | Primera iteracion |
-| UC-11 | Editar perfil | No iniciado | | | Primera iteracion |
-| UC-12 | Eliminar perfil | No iniciado | | | Primera iteracion |
+| UC-11 | Editar perfil | En progreso | `GET /perfiles/{idPerfil}` y `PUT /perfiles/{idPerfil}` | Sí (servicio/DTO) | Primera iteracion |
+| UC-12 | Eliminar perfil | En progreso | `DELETE /perfiles/{idPerfil}` y `POST /perfiles/{idPerfil}/reactivar` | Sí (servicio/DTO) | Primera iteracion |
 | UC-13 | Cambiar perfil activo | No iniciado | | | Primera iteracion |
 | UC-14 | Ver perfil | Iniciado | `GET /admin/usuarios/{id}/perfiles` y `GET /usuarios/me/perfiles` | | Primera iteracion |
 | UC-15 | Reportar perfil | No iniciado | | | Segunda iteracion |
@@ -124,9 +124,9 @@ el historial de git sirva de bitácora adicional.
 | Módulo | Total UC | Implementado y testeado | Implementado | En progreso | No iniciado |
 |--------------------------------------|----------|--------------------------|---------------|-------------|-------------|
 | Gestión de usuarios | 14 | 10 | 0 | 0 | 4 |
-| Gestión de perfiles | 12 | 1 | 1 | 0 | 10 |
+| Gestión de perfiles | 12 | 1 | 0 | 4 | 7 |
 | Gestión de publicaciones | 11 | 0 | 0 | 0 | 11 |
 | Gestión de proyectos | 22 | 0 | 0 | 0 | 22 |
 | Gestión de contratos | 5 | 0 | 0 | 0 | 5 |
 | Gestión de conexiones y mensajería | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **69** | **11** | **1** | **0** | **57** |
+| **Total** | **69** | **11** | **0** | **4** | **54** |

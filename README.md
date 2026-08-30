@@ -108,6 +108,10 @@ Todos bajo el prefijo `/auth` (público, no requiere autenticación previa salvo
 | Método | Endpoint    | Descripción                                                                 |
 |--------|-------------|-----------------------------------------------------------------------------|
 | POST   | `/perfiles` | Crea un perfil profesional vinculado al usuario autenticado. Valida que el usuario no tenga ya un perfil para esa profesión, que las características técnicas correspondan a la profesión elegida y las longitudes de nombre artístico/biografía. Devuelve `201 Created` con el perfil creado. |
+| GET    | `/perfiles/{idPerfil}` | Recupera los datos actuales de un perfil propio (UC-11, paso 2). Valida que el perfil pertenezca al usuario. |
+| PUT    | `/perfiles/{idPerfil}` | Edita el perfil propio (UC-11): nombre artístico, biografía, foto de perfil y características técnicas. La profesión no es modificable (reforzado por trigger). Valida campos obligatorios y las características. |
+| DELETE | `/perfiles/{idPerfil}` | Solicita la baja del perfil (UC-12): pasa a `PendienteBaja`, oculta el perfil a la comunidad y registra una cuenta regresiva de 30 días. Devuelve la fecha límite para reactivar. |
+| POST   | `/perfiles/{idPerfil}/reactivar` | Reactiva un perfil `PendienteBaja` dentro de los 30 días (UC-12). Un perfil no activado a tiempo se da de baja definitivamente por tarea programada diaria. |
 | GET    | `/usuarios/me/perfiles` | Devuelve los perfiles del usuario autenticado (dashboard). Equivale a `GET /admin/usuarios/{id}/perfiles` pero restringido al propio usuario. |
 
 ### Catálogos (requiere autenticación)
