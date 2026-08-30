@@ -8,7 +8,6 @@ import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
 import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
-import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
@@ -34,9 +33,9 @@ import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
-import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -161,10 +160,20 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Excepción de perfil no encontrado.
+     * Excepción de perfil no encontrado (contexto: dueño del perfil / módulo perfiles).
      */
-    @ExceptionHandler(PerfilNoEncontradoException.class)
-    public ResponseEntity<Map<String, Object>> handlePerfilNoEncontrado(PerfilNoEncontradoException ex) {
+    @ExceptionHandler(org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilNoEncontrado(
+            org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Excepción de perfil no encontrado (contexto: Administrador).
+     */
+    @ExceptionHandler(org.mgroko.backend.admin.exception.PerfilNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilAdminNoEncontrado(
+            org.mgroko.backend.admin.exception.PerfilNoEncontradoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
@@ -252,6 +261,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePerfilEnBaja(PerfilEnBajaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
+
+    
 
     /**
      * Excepción de imagen de perfil inexistente.
