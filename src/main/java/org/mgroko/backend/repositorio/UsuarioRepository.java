@@ -1,5 +1,7 @@
 package org.mgroko.backend.repositorio;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.Usuario;
@@ -44,5 +46,16 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
      */
     @Query("SELECT u.estado FROM Usuario u WHERE u.idUsuario = :idUsuario")
     Optional<EstadoUsuario> findEstadoByIdUsuario(@Param("idUsuario") Long idUsuario);
+
+    /**
+     * Busca los usuarios en un estado cuya fecha de solicitud de baja sea
+     * anterior a la fecha pasada por parámetro. Se usa para expirar cuentas
+     * pendientes de baja pasados los 30 días (UC-07).
+     *
+     * @param estado      estado a buscar (por ejemplo {@code EstadoUsuario.PendienteBaja})
+     * @param fechaLimite fecha límite para considerar la cuenta vencida
+     * @return lista de usuarios vencidos
+     */
+    List<Usuario> findByEstadoAndFechaSolicitudBajaBefore(EstadoUsuario estado, LocalDateTime fechaLimite);
 
 }
