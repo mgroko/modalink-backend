@@ -22,6 +22,12 @@ import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.calendario.exception.AgendaNoEncontradaException;
+import org.mgroko.backend.calendario.exception.BloqueoNoEncontradoException;
+import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
+import org.mgroko.backend.calendario.exception.HorarioComprometidoException;
+import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
+import org.mgroko.backend.calendario.exception.RangoInvalidoException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
@@ -32,8 +38,10 @@ import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
+import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
 import org.springframework.http.HttpStatus;
@@ -187,6 +195,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(ProvinciaSinLocalidadException.class)
+    public ResponseEntity<Map<String, Object>> handleProvinciaSinLocalidad(ProvinciaSinLocalidadException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(SolicitudBajaException.class)
     public ResponseEntity<Map<String, Object>> handleSolicitudBaja(SolicitudBajaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
@@ -248,7 +261,10 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(CaracteristicaValorNoCoincideException.class)
+    @ExceptionHandler(ValorNumericoNegativoException.class)
+    public ResponseEntity<Map<String, Object>> handleValorNumericoNegativo(ValorNumericoNegativoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }    @ExceptionHandler(CaracteristicaValorNoCoincideException.class)
     public ResponseEntity<Map<String, Object>> handleCaracteristicaValorNoCoincide(
             CaracteristicaValorNoCoincideException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
@@ -308,6 +324,36 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ValorEnUsoException.class)
     public ResponseEntity<Map<String, Object>> handleValorEnUso(ValorEnUsoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(AgendaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleAgendaNoEncontrada(AgendaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(BloqueoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleBloqueoNoEncontrado(BloqueoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(BloqueoSolapadoException.class)
+    public ResponseEntity<Map<String, Object>> handleBloqueoSolapado(BloqueoSolapadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HorarioComprometidoException.class)
+    public ResponseEntity<Map<String, Object>> handleHorarioComprometido(HorarioComprometidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(JornadaInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleJornadaInvalida(JornadaInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RangoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoInvalido(RangoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
 }

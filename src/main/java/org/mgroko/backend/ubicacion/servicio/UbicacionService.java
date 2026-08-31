@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.repositorio.UbicacionRepository;
+import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,31 @@ public class UbicacionService {
      */
     @Transactional
     public Ubicacion obtenerOCrear(String localidadId) {
+        return obtenerOCrear(localidadId, null);
+    }
+
+    /**
+     * Devuelve la {@code Ubicacion} que corresponde a una localidad de Georef,
+     * creándola si todavía no existe.
+     *
+     * @param localidadId id de la localidad en el catálogo de Georef
+     * @param provinciaId id de la provincia en el catálogo de Georef (opcional)
+     * @return la fila de ubicación nueva o ya existente
+     * @throws org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException
+     *         si se indica una provincia pero no la localidad
+     * @throws org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException
+     *         si el id de localidad no existe en el catálogo
+     */
+    @Transactional
+    public Ubicacion obtenerOCrear(String localidadId, String provinciaId) {
+        boolean tieneProvincia = provinciaId != null && !provinciaId.isBlank();
+        boolean tieneLocalidad = localidadId != null && !localidadId.isBlank();
+
+        if (tieneProvincia && !tieneLocalidad) {
+            throw new ProvinciaSinLocalidadException(
+                    "No se puede guardar una ubicación indicando provincia sin localidad.");
+        }
+
         LocalidadGeoref localidad = catalogoGeoref.obtenerLocalidad(localidadId);
         return ubicacionRepository
                 .findByLocalidadAndProvincia(localidad.nombre(), localidad.provincia().nombre())
