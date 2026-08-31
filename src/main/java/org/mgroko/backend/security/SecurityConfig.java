@@ -19,6 +19,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -52,34 +53,34 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Agregar el filtro JWT antes del filtro de usuario/contraseña
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            CsrfAwareAccessDeniedHandler csrfAwareAccessDeniedHandler 
+    ) throws Exception {
+
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
 
         http
-            // Sesión stateless (sin cookies de sesión)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            
-            // Autorización: /auth/** es público, el resto requiere autenticación
-           .authorizeHttpRequests(auth -> auth
+
+            .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/error").permitAll()
                 .anyRequest().authenticated()
             )
-            
-            // CORS habilitado
+
             .cors(Customizer.withDefaults())
-            
-             .csrf(csrf -> csrf
+
+            .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
             )
-            .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class
-            )
-            
-            // Registrar el filtro JWT
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
 
-            
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+
+            .exceptionHandling(exceptions -> exceptions
+                .accessDeniedHandler(csrfAwareAccessDeniedHandler)
+            );
 
         return http.build();
     }
