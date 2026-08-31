@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.repositorio.UbicacionRepository;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
+import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.ubicacion.georef.CentroideGeoref;
 import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
 import org.mgroko.backend.ubicacion.georef.ProvinciaGeorefRef;
@@ -84,5 +85,31 @@ class UbicacionServiceTest {
 
         assertThrows(LocalidadNoEncontradaException.class,
                 () -> ubicacionService.obtenerOCrear("9999999999"));
+    }
+
+    @Test
+    void obtenerOCrear_provinciaSinLocalidad_lanzaExcepcion() {
+        assertThrows(ProvinciaSinLocalidadException.class,
+                () -> ubicacionService.obtenerOCrear(null, "02"));
+    }
+
+    @Test
+    void obtenerOCrear_provinciaSinLocalidadEnBlanco_lanzaExcepcion() {
+        assertThrows(ProvinciaSinLocalidadException.class,
+                () -> ubicacionService.obtenerOCrear("   ", "02"));
+    }
+
+    @Test
+    void obtenerOCrear_provinciaConLocalidad_creaUbicacion() {
+        when(catalogoGeoref.obtenerLocalidad("0208401002")).thenReturn(LOCALIDAD_SAAVEDRA);
+        when(ubicacionRepository.findByLocalidadAndProvincia("Saavedra", "Ciudad Autónoma de Buenos Aires"))
+                .thenReturn(Optional.empty());
+        when(ubicacionRepository.save(any(Ubicacion.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Ubicacion result = ubicacionService.obtenerOCrear("0208401002", "02");
+
+        assertEquals("0208401002", result.getIdGeoref());
+        verify(ubicacionRepository).save(any(Ubicacion.class));
     }
 }
