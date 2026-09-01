@@ -1,0 +1,1 @@
+ALTER TABLE agenda ALTER COLUMN margen_actividad_minutos SET DEFAULT 30;
