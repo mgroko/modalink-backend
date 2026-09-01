@@ -28,6 +28,7 @@ import org.mgroko.backend.perfiles.exception.IdValorObligatorioException;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -93,6 +94,16 @@ class CrearPerfilServiceTest {
                 .idCaracteristica(12L)
                 .codigo("color_ojos")
                 .tipoDato(CaracteristicaTecnica.TIPO_ENUMERADO)
+                .profesion(profesion)
+                .build();
+    }
+
+    private CaracteristicaTecnica caracteristicaMedida(Profesion profesion) {
+        return CaracteristicaTecnica.builder()
+                .idCaracteristica(13L)
+                .codigo("medida_pecho")
+                .unidad("cm")
+                .tipoDato(CaracteristicaTecnica.TIPO_NUMERICO)
                 .profesion(profesion)
                 .build();
     }
@@ -340,5 +351,79 @@ class CrearPerfilServiceTest {
                 () -> crearPerfilService.crear(1L, request));
 
         verify(perfilRepository, never()).save(any());
+    }
+
+    private void configurarFlujoParaCaracteristica(CaracteristicaTecnica caracteristica) {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
+        when(profesionRepository.findById(2L)).thenReturn(Optional.of(profesionModelo()));
+        when(perfilRepository.existsByUsuarioIdUsuarioAndProfesionIdProfesionAndEstadoNot(
+                anyLong(), anyLong(), any(EstadoPerfil.class))).thenReturn(false);
+        when(caracteristicaTecnicaRepository.findById(caracteristica.getIdCaracteristica()))
+                .thenReturn(Optional.of(caracteristica));
+    }
+
+    @Test
+    void crear_caracteristicaNumericoValorNegativo_lanzaExcepcion() {
+        configurarFlujoParaCaracteristica(caracteristicaMedida(profesionModelo()));
+
+        CrearPerfilRequest request = new CrearPerfilRequest(
+                "Luna", 2L, "Modelo profesional.",
+                List.of(new CaracteristicaPerfilRequest(13L, "-84", null)));
+
+        assertThrows(ValorNumericoNegativoException.class,
+                () -> crearPerfilService.crear(1L, request));
+
+        verify(perfilRepository, never()).save(any());
+    }
+
+    @Test
+    void crear_caracteristicaNumericoNoEsNumero_lanzaExcepcion() {
+        configurarFlujoParaCaracteristica(caracteristicaMedida(profesionModelo()));
+
+        CrearPerfilRequest request = new CrearPerfilRequest(
+                "Luna", 2L, "Modelo profesional.",
+                List.of(new CaracteristicaPerfilRequest(13L, "abc", null)));
+
+        assertThrows(ValorNumericoNegativoException.class,
+                () -> crearPerfilService.crear(1L, request));
+
+        verify(perfilRepository, never()).save(any());
+    }
+
+    @Test
+    void crear_caracteristicaNumericoValorValido_devuelveResponse() {
+        configurarFlujoParaCaracteristica(caracteristicaMedida(profesionModelo()));
+        when(perfilRepository.save(any(Perfil.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CrearPerfilRequest request = new CrearPerfilRequest(
+                "Luna", 2L, "Modelo profesional.",
+                List.of(new CaracteristicaPerfilRequest(13L, "84", null)));
+
+        ArgumentCaptor<Perfil> captor = ArgumentCaptor.forClass(Perfil.class);
+        PerfilResponse response = crearPerfilService.crear(1L, request);
+
+        verify(perfilRepository).save(captor.capture());
+        CaracteristicaPerfil cp = captor.getValue().getCaracteristicas().iterator().next();
+        assertEquals("84", cp.getValor());
+        assertEquals("84", response.caracteristicas().get(0).valor());
+    }
+
+    @Test
+    void crear_caracteristicaTextoValorNegativo_noLanzaExcepcion() {
+        configurarFlujoParaCaracteristica(caracteristicaAltura(profesionModelo()));
+        when(perfilRepository.save(any(Perfil.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CrearPerfilRequest request = new CrearPerfilRequest(
+                "Luna", 2L, "Modelo profesional.",
+                List.of(new CaracteristicaPerfilRequest(11L, "nota-personal", null)));
+
+        ArgumentCaptor<Perfil> captor = ArgumentCaptor.forClass(Perfil.class);
+        crearPerfilService.crear(1L, request);
+
+        verify(perfilRepository).save(captor.capture());
+        assertEquals("nota-personal",
+                captor.getValue().getCaracteristicas().iterator().next().getValor());
     }
 }
