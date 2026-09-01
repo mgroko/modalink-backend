@@ -54,8 +54,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            CsrfAwareAccessDeniedHandler csrfAwareAccessDeniedHandler 
+            HttpSecurity http
     ) throws Exception {
 
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
@@ -76,11 +75,7 @@ public class SecurityConfig {
             )
             .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
 
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-
-            .exceptionHandling(exceptions -> exceptions
-                .accessDeniedHandler(csrfAwareAccessDeniedHandler)
-            );
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
