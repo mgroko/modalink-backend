@@ -13,6 +13,7 @@ import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
+import org.mgroko.backend.auth.exception.DniInvalidoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
@@ -67,6 +68,10 @@ public class AuthService {
         String nombre = request.nombre().trim();
         String apellido = request.apellido().trim();
         String dni = request.dni().trim();
+
+        if (!dni.matches("^[0-9]+$")) {
+            throw new DniInvalidoException("El DNI debe contener únicamente dígitos numéricos.");
+        }
 
         if (usuarioRepository.existsByCorreo(correo)) {
             throw new CorreoDuplicadoException("Ya existe un usuario registrado con ese correo.");
