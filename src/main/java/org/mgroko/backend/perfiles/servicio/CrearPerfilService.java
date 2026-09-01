@@ -25,6 +25,7 @@ import org.mgroko.backend.perfiles.exception.IdValorObligatorioException;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
@@ -148,10 +149,26 @@ public class CrearPerfilService {
                             "Para la característica " + ct.getCodigo()
                                     + " (" + ct.getTipoDato() + ") debe enviarse valor.");
                 }
+                if (CaracteristicaTecnica.TIPO_NUMERICO.equals(ct.getTipoDato())) {
+                    validarValorNumerico(ct, car.valor());
+                }
                 builder.valor(car.valor());
             }
 
             perfil.getCaracteristicas().add(builder.build());
+        }
+    }
+
+    private void validarValorNumerico(CaracteristicaTecnica ct, String valor) {
+        try {
+            double numero = Double.parseDouble(valor.trim());
+            if (numero < 0) {
+                throw new ValorNumericoNegativoException(
+                        "La característica " + ct.getCodigo() + " no admite valores negativos.");
+            }
+        } catch (NumberFormatException e) {
+            throw new ValorNumericoNegativoException(
+                    "La característica " + ct.getCodigo() + " debe ser un número válido.");
         }
     }
 }
