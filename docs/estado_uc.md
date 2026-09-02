@@ -24,7 +24,7 @@ el historial de git sirva de bitácora adicional.
 | UC-01 | Iniciar sesión | Implementado y testeado | `POST /auth/login` | Sí | Primera iteracion |
 | UC-02 | Cerrar sesión | Implementado y testeado | `POST /auth/logout` | Sí | Primera iteracion |
 | UC-03 | Registrarse | Implementado y testeado | `POST /auth/registro` | Sí | Primera iteracion |
-| UC-04 | Deshabilitar usuario | Implementado y testeado | `/admin/usuarios/{id}/deshabilitar` | Sí | Primera iteracion |
+| UC-04 | Deshabilitar usuario | Implementado y testeado | `/admin/usuarios/{id}/deshabilitar` | Sí | Primera iteracion. Motivo obligatorio + duración opcional (días) con reactivación automática al vencer |
 | UC-05 | Habilitar usuario | Implementado y testeado | `/admin/usuarios/{id}/habilitar` | Sí | Primera iteracion |
 | UC-06 | Buscar usuario | Implementado y testeado | `GET /admin/usuarios` | Sí | Primera iteracion |
 | UC-07 | Solicitar baja en el sistema | Implementado y testeado | `POST /usuario/solicitar-baja` y `POST /usuario/reactivar-cuenta` | Sí | Primera iteracion |

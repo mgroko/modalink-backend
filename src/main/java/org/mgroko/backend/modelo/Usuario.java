@@ -69,6 +69,14 @@ public class Usuario {
     @Column(name = "fecha_solicitud_baja")
     private LocalDateTime fechaSolicitudBaja;
 
+    // Motivo registrado por el administrador al deshabilitar la cuenta (UC-04).
+    @Column(name = "motivo_deshabilitacion", length = 200)
+    private String motivoDeshabilitacion;
+
+    // Fin de la deshabilitación; null = deshabilitación indefinida (UC-04).
+    @Column(name = "fecha_hasta_deshabilitacion")
+    private LocalDateTime fechaHastaDeshabilitacion;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ubicacion")
     private Ubicacion ubicacion;

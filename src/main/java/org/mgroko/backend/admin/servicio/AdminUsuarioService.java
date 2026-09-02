@@ -1,8 +1,10 @@
 package org.mgroko.backend.admin.servicio;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminUsuarioResponse;
+import org.mgroko.backend.admin.dto.DeshabilitarUsuarioRequest;
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
@@ -40,17 +42,30 @@ public class AdminUsuarioService {
         Usuario usuario = buscarOFallar(idUsuario);
         rechazarSiEstaEnBaja(usuario);
         usuario.setEstado(EstadoUsuario.Activo);
+        usuario.setMotivoDeshabilitacion(null);
+        usuario.setFechaHastaDeshabilitacion(null);
         return AdminUsuarioMapper.toResponse(usuarioRepository.save(usuario));
     }
 
+    /**
+     * Deshabilita un usuario (UC-04). El motivo es obligatorio y la
+     * duración opcional: si {@code duracionDias} se indica, la cuenta se
+     * reactiva automáticamente al vencer; si no, la deshabilitación es
+     * indefinida y solo se revierte con {@code /habilitar}.
+     */
     @Transactional
-    public AdminUsuarioResponse deshabilitar(Long idUsuario, Long idUsuarioSolicitante) {
+    public AdminUsuarioResponse deshabilitar(Long idUsuario, Long idUsuarioSolicitante, DeshabilitarUsuarioRequest request) {
         if (idUsuario.equals(idUsuarioSolicitante)) {
             throw new AutoDeshabilitacionException("No podés deshabilitar tu propia cuenta.");
         }
         Usuario usuario = buscarOFallar(idUsuario);
         rechazarSiEstaEnBaja(usuario);
         usuario.setEstado(EstadoUsuario.Deshabilitado);
+        usuario.setMotivoDeshabilitacion(request.motivo());
+        usuario.setFechaHastaDeshabilitacion(
+                request.duracionDias() != null
+                        ? LocalDateTime.now().plusDays(request.duracionDias())
+                        : null);
         return AdminUsuarioMapper.toResponse(usuarioRepository.save(usuario));
     }
 
