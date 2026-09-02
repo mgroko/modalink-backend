@@ -16,6 +16,7 @@ class AdminUsuarioMapperTest {
     @Test
     void toResponse_remapeaCamposCompletos() {
         LocalDateTime fechaBaja = LocalDateTime.of(2026, 8, 1, 10, 30);
+        LocalDateTime fechaHasta = LocalDateTime.of(2026, 9, 1, 10, 30);
 
         Usuario usuario = Usuario.builder()
                 .idUsuario(2L)
@@ -23,9 +24,11 @@ class AdminUsuarioMapperTest {
                 .apellido("Flores")
                 .correo("maria@test.com")
                 .dni("12345678")
-                .estado(EstadoUsuario.Activo)
+                .estado(EstadoUsuario.Deshabilitado)
                 .fechaNacimiento(LocalDate.of(1990, 6, 15))
                 .fechaSolicitudBaja(fechaBaja)
+                .motivoDeshabilitacion("Incumplimiento de normas")
+                .fechaHastaDeshabilitacion(fechaHasta)
                 .rolGlobal(RolGlobal.builder().nombre("USUARIO").build())
                 .genero(Genero.builder().codigo("mujer").build())
                 .build();
@@ -37,10 +40,12 @@ class AdminUsuarioMapperTest {
         assertEquals("Flores", response.apellido());
         assertEquals("maria@test.com", response.correo());
         assertEquals("12345678", response.dni());
-        assertEquals("Activo", response.estado());
+        assertEquals("Deshabilitado", response.estado());
         assertEquals("USUARIO", response.rolGlobal());
         assertEquals(LocalDate.of(1990, 6, 15), response.fechaNacimiento());
         assertEquals(fechaBaja, response.fechaSolicitudBaja());
+        assertEquals("Incumplimiento de normas", response.motivoDeshabilitacion());
+        assertEquals(fechaHasta, response.fechaHastaDeshabilitacion());
         assertEquals("mujer", response.genero().getCodigo());
     }
 
@@ -61,6 +66,8 @@ class AdminUsuarioMapperTest {
         assertEquals("Deshabilitado", response.estado());
         assertNull(response.fechaNacimiento());
         assertNull(response.fechaSolicitudBaja());
+        assertNull(response.motivoDeshabilitacion());
+        assertNull(response.fechaHastaDeshabilitacion());
         assertNull(response.genero());
     }
 }
