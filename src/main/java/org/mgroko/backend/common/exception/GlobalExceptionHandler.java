@@ -182,6 +182,30 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handleNombreProyectoDuplicado(
+            org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasProyectoInvalido(
+            org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleRolProyectoNoEncontrado(
+            org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException.class)
+    public ResponseEntity<Map<String, Object>> handleAccesoDenegadoProyecto(
+            org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
     /**
      * Excepción de perfil no encontrado (contexto: Administrador).
      */
