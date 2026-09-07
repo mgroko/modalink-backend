@@ -13,6 +13,8 @@ import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarPerfilService;
 import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
+import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.security.ContextoAutenticacion;
 import org.mgroko.backend.security.JwtCookieFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -127,6 +129,24 @@ public class PerfilController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(resultado.perfil());
+    }
+
+    // Obtener perfil actualmente activo en la sesión
+    @GetMapping("/perfiles/activo")
+    public ResponseEntity<PerfilResponse> obtenerPerfilActivo(Authentication authentication) {
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        PerfilResponse response = usuarioPerfilService.obtenerPerfilPropio(idUsuario, idPerfilActivo);
+        return ResponseEntity.ok(response);
     }
 
 }
