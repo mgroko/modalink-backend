@@ -445,4 +445,42 @@ class PerfilControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("No se puede activar un perfil que está en proceso de baja o dado de baja."));
     }
+
+    @Test
+    void obtenerPerfilActivo_conPerfilEnContexto_devuelve200() throws Exception {
+        var auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("1", null, java.util.List.of());
+        auth.setDetails(new org.mgroko.backend.security.ContextoAutenticacion(1L, 10L, "Luna"));
+
+        PerfilResponse perfil = new PerfilResponse(
+                10L, "Luna", "Modelo profesional.", "Activo", "modelo", null, java.util.List.of());
+
+        when(usuarioPerfilService.obtenerPerfilPropio(1L, 10L)).thenReturn(perfil);
+
+        mockMvc.perform(get("/perfiles/activo")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPerfil").value(10))
+                .andExpect(jsonPath("$.nombreArtistico").value("Luna"));
+    }
+
+    @Test
+    void obtenerPerfilActivo_sinPerfilEnContexto_devuelve404() throws Exception {
+        var auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("1", null, java.util.List.of());
+        auth.setDetails(new org.mgroko.backend.security.ContextoAutenticacion(1L, null, null));
+
+        mockMvc.perform(get("/perfiles/activo")
+                        .principal(auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
+    }
+
+    @Test
+    void obtenerPerfilActivo_sinDetailsEnAuth_devuelve404() throws Exception {
+        var auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("1", null, java.util.List.of());
+
+        mockMvc.perform(get("/perfiles/activo")
+                        .principal(auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
+    }
 }
