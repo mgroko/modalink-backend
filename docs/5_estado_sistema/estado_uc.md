@@ -74,7 +74,7 @@ el historial de git sirva de bitácora adicional.
 
 | UC    | Nombre                               | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | ------------------------------------ | ----------- | ---------------- | ----- | ----------------- |
-| UC-24 | Crear proyecto                       | No iniciado |                  |       | Primera iteracion |
+| UC-24 | Crear proyecto                       | Implementado y testeado | `POST /proyectos` | Sí    | Primera iteracion. Proyecto en estado Borrador, director asignado y planificación inicializada |
 | UC-25 | Publicar proyecto                    | No iniciado |                  |       | Primera iteracion |
 | UC-26 | Dar de alta postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
 | UC-27 | Dar de baja postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
@@ -126,7 +126,7 @@ el historial de git sirva de bitácora adicional.
 | Gestión de usuarios                | 14       | 10                      | 0            | 0           | 4           |
 | Gestión de perfiles                | 12       | 3                       | 0            | 4           | 5           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
-| Gestión de proyectos               | 22       | 0                       | 0            | 0           | 22          |
+| Gestión de proyectos               | 22       | 1                       | 0            | 0           | 21          |
 | Gestión de contratos               | 5        | 0                       | 0            | 0           | 5           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **69**   | **13**                  | **0**        | **4**       | **52**      |
+| **Total**                          | **69**   | **14**                  | **0**        | **4**       | **51**      |

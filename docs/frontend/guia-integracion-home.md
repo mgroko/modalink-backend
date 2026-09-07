@@ -1,3 +1,5 @@
+TODO: mandarle al frontend la guia esta.
+
 # Guía de Integración Frontend (Vue 3): Perfil Activo y Pantalla Home
 
 Esta guía contiene **exclusivamente las nuevas instrucciones y contratos de API** agregados para dar soporte a la pantalla de inicio (**Home**) y a la consulta directa del **perfil activo**, orientada a una arquitectura modular en **Vue 3**.
@@ -22,6 +24,7 @@ Permite obtener los datos completos del perfil con el que el usuario está opera
   - `401 Unauthorized`: Si la sesión no es válida o expiró.
 
 ### Ejemplo de respuesta `200 OK`:
+
 ```json
 {
   "idPerfil": 10,
@@ -52,6 +55,7 @@ Si la pantalla de Home prefiere cargar su estado inicial en una sola llamada:
 - **Método y Ruta:** `GET /home/resumen`
 - **Autenticación requerida:** Sí (`credentials: 'include'`).
 - **Respuesta Exitosa (`200 OK`):**
+
 ```json
 {
   "perfilActivo": {
@@ -67,13 +71,15 @@ Si la pantalla de Home prefiere cargar su estado inicial en una sola llamada:
   "publicacionesRecientes": []
 }
 ```
-*(Nota: Si no hay perfil activo seleccionado, el campo `perfilActivo` se enviará en `null`).*
+
+_(Nota: Si no hay perfil activo seleccionado, el campo `perfilActivo` se enviará en `null`)._
 
 ---
 
 ## 3. Flujo Recomendado en Vue 3
 
 ### A. Al Activar un Perfil (`PATCH /perfiles/{idPerfil}/activar`)
+
 1. Tras ejecutar con éxito la activación del perfil:
    ```ts
    await apiClient.patch(`/perfiles/${idPerfil}/activar`);
@@ -81,10 +87,11 @@ Si la pantalla de Home prefiere cargar su estado inicial en una sola llamada:
 2. Guardar en el store de Pinia (ej. `useAuthStore` o `useProfileStore`) el perfil devuelto.
 3. Redirigir inmediatamente a la vista principal:
    ```ts
-   router.push('/home'); // o router.push({ name: 'home' })
+   router.push("/home"); // o router.push({ name: 'home' })
    ```
 
 ### B. En la Vista `HomeView.vue` (Enfoque Modular por Recursos)
+
 En `HomeView.vue`, orquestar la vista mediante componentes independientes:
 
 ```vue
@@ -104,10 +111,10 @@ En `HomeView.vue`, orquestar la vista mediante componentes independientes:
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import apiClient from '@/api/client';
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import apiClient from "@/api/client";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -116,13 +123,13 @@ const perfilActivo = ref(null);
 onMounted(async () => {
   try {
     // Si no está ya en el store de Pinia, se puede consultar directamente:
-    const { data } = await apiClient.get('/perfiles/activo');
+    const { data } = await apiClient.get("/perfiles/activo");
     perfilActivo.value = data;
     authStore.setPerfilActivo(data);
   } catch (error: any) {
     if (error.response?.status === 404) {
       // No hay perfil activo seleccionado -> redirigir a selección de perfil
-      router.push('/perfiles/seleccionar');
+      router.push("/perfiles/seleccionar");
     }
   }
 });
@@ -130,7 +137,81 @@ onMounted(async () => {
 ```
 
 ### C. Manejo de Rutas Protegidas en Vue Router
+
 En la guardia de navegación global (`router.beforeEach`):
+
 - Si la ruta requiere un perfil activo (`meta: { requiresActiveProfile: true }`):
   - Verificar si existe `idPerfilActivo` en el store.
   - Si no existe o es `null`, redirigir al usuario a la vista de selección de perfil antes de permitirle entrar a `/home` o `/proyectos`.
+
+---
+
+## 4. Gestión de Proyectos: Crear Proyecto (UC-24)
+
+Cuando el usuario con un perfil activo crea un proyecto, se convierte automáticamente en el **Director** del mismo:
+
+- **Método y Ruta:** `POST /proyectos`
+- **Autenticación requerida:** Sí (`credentials: 'include'`). Requiere que la sesión posea un perfil activo.
+- **Cuerpo (JSON Request):**
+
+```json
+{
+  "nombre": "Campaña Urbana 2026",
+  "descripcion": "Producción fotográfica y estilismo para indumentaria de calle.",
+  "privacidad": "Publico", // "Publico", "Privado", "Oculto"
+  "fechaInicio": "2026-06-01",
+  "fechaFinEstipulada": "2026-06-15", // Opcional (debe ser >= fechaInicio)
+  "aceptaPostulacionGral": true, // Opcional (default: false)
+  "ubicacion": {
+    // Opcional
+    "localidadId": "06441010000",
+    "provinciaId": "06"
+  },
+  "objetivos": [
+    // Opcional
+    {
+      "nombre": "Conseguir marcas patrocinadoras",
+      "descripcion": "Contactar al menos 3 marcas locales"
+    }
+  ]
+}
+```
+
+- **Respuesta Exitosa (`201 Created`):**
+
+```json
+{
+  "idProyecto": 100,
+  "nombre": "Campaña Urbana 2026",
+  "descripcion": "Producción fotográfica y estilismo para indumentaria de calle.",
+  "fechaInicio": "2026-06-01",
+  "fechaFinEstipulada": "2026-06-15",
+  "estado": "Borrador",
+  "privacidad": "Publico",
+  "aceptaPostulacionGral": true,
+  "ubicacion": {
+    "idUbicacion": 50,
+    "localidadId": "06441010000",
+    "localidad": "La Plata",
+    "provincia": "Buenos Aires",
+    "pais": "Argentina",
+    "codigoPostal": null,
+    "latitud": -34.9214,
+    "longitud": -57.9545
+  },
+  "idDirector": 10,
+  "nombreDirector": "Luna Diseños",
+  "objetivos": [
+    {
+      "idObjetivo": 1,
+      "nombre": "Conseguir marcas patrocinadoras",
+      "descripcion": "Contactar al menos 3 marcas locales"
+    }
+  ]
+}
+```
+
+- **Errores Posibles:**
+  - `400 Bad Request`: Campos obligatorios vacíos, nombres/descripciones excedidos en longitud, o si `fechaFinEstipulada` es menor a `fechaInicio`.
+  - `404 Not Found`: Si el usuario no tiene perfil activo seleccionado (`"No hay un perfil activo seleccionado en la sesión."`).
+  - `409 Conflict`: Si el perfil activo ya tiene otro proyecto con ese mismo nombre (`"Ya tienes un proyecto con el nombre '...'."`).
