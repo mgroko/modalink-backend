@@ -1,9 +1,12 @@
-package org.mgroko.backend.auth;
+package org.mgroko.backend.auth.controlador;
 
 import org.mgroko.backend.auth.dto.AuthResponse;
 import org.mgroko.backend.auth.dto.LoginRequest;
 import org.mgroko.backend.auth.dto.RegistroRequest;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
+import org.mgroko.backend.auth.servicio.AuthService;
+import org.mgroko.backend.auth.servicio.AuthService.LoginResultado;
+import org.mgroko.backend.auth.servicio.AuthService.RegistroResultado;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.mgroko.backend.security.JwtCookieFactory;
 import org.springframework.http.HttpHeaders;
@@ -40,8 +43,8 @@ public class AuthController {
         ResponseCookie cookie = jwtCookieFactory.crear(resultado.token());
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, cookie.toString())
-            .body(authResponseSinToken);
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(authResponseSinToken);
     }
 
     @PostMapping("/login")
@@ -51,8 +54,8 @@ public class AuthController {
         ResponseCookie cookie = jwtCookieFactory.crear(resultado.token());
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, cookie.toString())
-            .body(resultado.response());
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(resultado.response());
     }
 
     @PostMapping("/logout")
@@ -64,8 +67,8 @@ public class AuthController {
         SecurityContextHolder.clearContext();
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, jwtCookieFactory.crearExpirada().toString())
-            .build();
+                .header(HttpHeaders.SET_COOKIE, jwtCookieFactory.crearExpirada().toString())
+                .build();
     }
 
     @GetMapping("/me")
@@ -83,7 +86,8 @@ public class AuthController {
             nombreArtisticoActivo = contexto.nombreArtisticoActivo();
         }
 
-        UsuarioResponse usuarioActual = authService.obtenerUsuarioActual(idUsuario, idPerfilActivo, nombreArtisticoActivo);
+        UsuarioResponse usuarioActual = authService.obtenerUsuarioActual(idUsuario, idPerfilActivo,
+                nombreArtisticoActivo);
 
         return ResponseEntity.ok(usuarioActual);
     }

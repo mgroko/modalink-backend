@@ -1,4 +1,4 @@
-package org.mgroko.backend.auth;
+package org.mgroko.backend.auth.servicio;
 
 import java.time.LocalDate;
 import java.time.Period;
@@ -19,6 +19,7 @@ import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.auth.mapper.UsuarioMapper;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PermisoGlobal;
@@ -38,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
-     private final UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
     private final RolGlobalRepository rolGlobalRepository;
     private final GeneroRepository generoRepository;
     private final PerfilRepository perfilRepository;
@@ -51,8 +52,7 @@ public class AuthService {
             GeneroRepository generoRepository,
             BCryptPasswordEncoder passwordEncoder,
             PerfilRepository perfilRepository,
-            JwtService jwtService
-    ) {
+            JwtService jwtService) {
         this.usuarioRepository = usuarioRepository;
         this.rolGlobalRepository = rolGlobalRepository;
         this.generoRepository = generoRepository;
@@ -107,12 +107,10 @@ public class AuthService {
 
         String token = jwtService.generarToken(
                 guardado.getIdUsuario().toString(),
-                construirClaims(guardado, null)
-        );
+                construirClaims(guardado, null));
 
         return new RegistroResultado(token, UsuarioMapper.toResponse(guardado));
     }
-    
 
     @Transactional(readOnly = true)
     public LoginResultado login(LoginRequest request) {
@@ -120,7 +118,8 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new CredencialesInvalidasException("Correo o contraseña inválidos."));
 
-        if (usuario.getPasswordHash() == null || !passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
+        if (usuario.getPasswordHash() == null
+                || !passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
             throw new CredencialesInvalidasException("Correo o contraseña inválidos.");
         }
 
@@ -132,31 +131,30 @@ public class AuthService {
 
         String token = jwtService.generarToken(
                 usuario.getIdUsuario().toString(),
-                construirClaims(usuario, perfilActivoInicial)
-        );
+                construirClaims(usuario, perfilActivoInicial));
 
         UsuarioResponse usuarioResponse = UsuarioMapper.toResponseConPerfilActivo(
                 usuario,
                 perfilActivoInicial != null ? perfilActivoInicial.getIdPerfil() : null,
-                perfilActivoInicial != null ? perfilActivoInicial.getNombreArtistico() : null
-        );
+                perfilActivoInicial != null ? perfilActivoInicial.getNombreArtistico() : null);
 
         return new LoginResultado(token, new AuthResponse(usuarioResponse));
-    } 
+    }
 
     @Transactional(readOnly = true)
-        public UsuarioResponse obtenerUsuarioActual(Long idUsuario, Long idPerfilActivo, String nombreArtisticoActivo) {
+    public UsuarioResponse obtenerUsuarioActual(Long idUsuario, Long idPerfilActivo, String nombreArtisticoActivo) {
 
-            Usuario usuario = usuarioRepository.findById(idUsuario)
-                    .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
-            return UsuarioMapper.toResponseConPerfilActivo(usuario, idPerfilActivo, nombreArtisticoActivo);
-        }
+        return UsuarioMapper.toResponseConPerfilActivo(usuario, idPerfilActivo, nombreArtisticoActivo);
+    }
 
     @Transactional(readOnly = true)
     public List<String> obtenerNombresPermisosGlobales(String nombreRol) {
         RolGlobal rol = rolGlobalRepository.findByNombre(nombreRol)
-                .orElseThrow(() -> new RolGlobalNoEncontradoException("No se encontró el rol global '" + nombreRol + "'."));
+                .orElseThrow(
+                        () -> new RolGlobalNoEncontradoException("No se encontró el rol global '" + nombreRol + "'."));
 
         return rol.getPermisos().stream()
                 .map(PermisoGlobal::getNombre)
@@ -164,26 +162,28 @@ public class AuthService {
     }
 
     public Map<String, Object> construirClaims(Usuario usuario, Perfil perfilActivo) {
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("correo", usuario.getCorreo());
-    claims.put("rolGlobal", usuario.getRolGlobal().getNombre());
-    claims.put("permisosGlobales", obtenerNombresPermisosGlobales(usuario.getRolGlobal().getNombre()));
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("correo", usuario.getCorreo());
+        claims.put("rolGlobal", usuario.getRolGlobal().getNombre());
+        claims.put("permisosGlobales", obtenerNombresPermisosGlobales(usuario.getRolGlobal().getNombre()));
 
-    if (perfilActivo != null) {
-        claims.put("idPerfilActivo", perfilActivo.getIdPerfil());
-        claims.put("nombreArtisticoActivo", perfilActivo.getNombreArtistico());
-    }
-    return claims;
+        if (perfilActivo != null) {
+            claims.put("idPerfilActivo", perfilActivo.getIdPerfil());
+            claims.put("nombreArtisticoActivo", perfilActivo.getNombreArtistico());
+        }
+        return claims;
     }
 
     public Perfil resolverPerfilActivoPorDefecto(Long idUsuario) {
-    List<Perfil> perfilesActivos = perfilRepository
-            .findByUsuario_IdUsuarioAndEstado(idUsuario, EstadoPerfil.Activo);
-    return perfilesActivos.size() == 1 ? perfilesActivos.get(0) : null;
+        List<Perfil> perfilesActivos = perfilRepository
+                .findByUsuario_IdUsuarioAndEstado(idUsuario, EstadoPerfil.Activo);
+        return perfilesActivos.size() == 1 ? perfilesActivos.get(0) : null;
     }
 
-    public record LoginResultado(String token, AuthResponse response) {}
+    public record LoginResultado(String token, AuthResponse response) {
+    }
 
-    public record RegistroResultado(String token, UsuarioResponse response) {}
+    public record RegistroResultado(String token, UsuarioResponse response) {
+    }
 
 }
