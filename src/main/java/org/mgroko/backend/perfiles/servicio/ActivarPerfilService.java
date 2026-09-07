@@ -1,6 +1,6 @@
 package org.mgroko.backend.perfiles.servicio;
 
-import org.mgroko.backend.auth.AuthService;
+import org.mgroko.backend.auth.servicio.AuthService;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -40,18 +40,19 @@ public class ActivarPerfilService {
         }
 
         if (perfil.getEstado() != EstadoPerfil.Activo) {
-            throw new PerfilEnBajaException("No se puede activar un perfil que está en proceso de baja o dado de baja.");
+            throw new PerfilEnBajaException(
+                    "No se puede activar un perfil que está en proceso de baja o dado de baja.");
         }
 
         Usuario usuario = usuarioRepository.findById(idUsuario).orElseThrow();
 
         String token = jwtService.generarToken(
                 idUsuario.toString(),
-                authService.construirClaims(usuario, perfil)
-        );
+                authService.construirClaims(usuario, perfil));
 
         return new ActivarPerfilResultado(token, PerfilMapper.toResponse(perfil));
     }
 
-    public record ActivarPerfilResultado(String token, PerfilResponse perfil) {}
+    public record ActivarPerfilResultado(String token, PerfilResponse perfil) {
+    }
 }

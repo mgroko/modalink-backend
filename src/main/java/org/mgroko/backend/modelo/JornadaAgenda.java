@@ -23,6 +23,12 @@ import java.time.LocalTime;
  * Cada fila es un día de la semana (1 = Lunes ... 7 = Domingo); un día
  * ausente significa que no es laborable. Permite jornadas personalizadas
  * por día o una misma jornada para varios días (filas con igual horario).
+ *
+ * <p>La jornada puede ser "de corrido" (se usan {@code horarioInicioManiana}
+ * y {@code horarioFinTarde}, con el par del mediodía en {@code null}) o
+ * "partida" (bloques de mañana y tarde, con las cuatro horas en orden
+ * estricto). La base de datos lo garantiza con los checks chk_jornada_*
+ * de la migración V19.
  */
 @Entity
 @Table(name = "jornada_agenda",
@@ -38,13 +44,27 @@ public class JornadaAgenda {
     @Column(name = "dia_semana", nullable = false)
     private Integer diaSemana;
 
-    @Column(name = "hora_inicio", nullable = false)
-    private LocalTime horaInicio;
+    @Column(name = "horario_inicio_maniana", nullable = false)
+    private LocalTime horarioInicioManiana;
 
-    @Column(name = "hora_fin", nullable = false)
-    private LocalTime horaFin;
+    @Column(name = "horario_fin_maniana")
+    private LocalTime horarioFinManiana;
+
+    @Column(name = "horario_inicio_tarde")
+    private LocalTime horarioInicioTarde;
+
+    @Column(name = "horario_fin_tarde", nullable = false)
+    private LocalTime horarioFinTarde;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_agenda", nullable = false)
     private Agenda agenda;
+
+    /**
+     * Indica si la jornada es partida (bloques de mañana y tarde). Si es
+     * {@code false}, la jornada es de corrido.
+     */
+    public boolean esPartida() {
+        return horarioFinManiana != null && horarioInicioTarde != null;
+    }
 }

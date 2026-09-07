@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -119,13 +120,16 @@ public class CalendarioService {
                 jornadaAgendaRepository.save(JornadaAgenda.builder()
                         .agenda(agenda)
                         .diaSemana(dia.diaSemana())
-                        .horaInicio(dia.horaInicio())
-                        .horaFin(dia.horaFin())
+                        .horarioInicioManiana(dia.horarioInicioManiana())
+                        .horarioFinManiana(dia.horarioFinManiana())
+                        .horarioInicioTarde(dia.horarioInicioTarde())
+                        .horarioFinTarde(dia.horarioFinTarde())
                         .build());
-            } else if (!existente.getHoraInicio().equals(dia.horaInicio())
-                    || !existente.getHoraFin().equals(dia.horaFin())) {
-                existente.setHoraInicio(dia.horaInicio());
-                existente.setHoraFin(dia.horaFin());
+            } else if (cambioHorario(existente, dia)) {
+                existente.setHorarioInicioManiana(dia.horarioInicioManiana());
+                existente.setHorarioFinManiana(dia.horarioFinManiana());
+                existente.setHorarioInicioTarde(dia.horarioInicioTarde());
+                existente.setHorarioFinTarde(dia.horarioFinTarde());
             }
         }
         jornadaAgendaRepository.deleteAll(porDia.values());
@@ -211,13 +215,49 @@ public class CalendarioService {
             if (dia.diaSemana() < 1 || dia.diaSemana() > 7) {
                 throw new JornadaInvalidaException("El día de la semana debe estar entre 1 (Lunes) y 7 (Domingo).");
             }
-            if (!dia.horaFin().isAfter(dia.horaInicio())) {
-                throw new JornadaInvalidaException("El horario de fin debe ser posterior al horario de inicio.");
-            }
+            validarHorarios(dia);
             if (!vistos.add(dia.diaSemana())) {
                 throw new JornadaInvalidaException("No se puede repetir el mismo día de la semana en la jornada.");
             }
         }
+    }
+
+    /**
+     * Valida la consistencia del horario del día: jornada de corrido (par
+     * del mediodía ausente) o partida (bloques de mañana y tarde en orden
+     * estricto). No se admite informar solo una de las dos horas del
+     * mediodía. Refleja los checks chk_jornada_* de la migración V19.
+     */
+    private void validarHorarios(JornadaDiaRequest dia) {
+        boolean tieneFinManiana = dia.horarioFinManiana() != null;
+        boolean tieneInicioTarde = dia.horarioInicioTarde() != null;
+
+        if (tieneFinManiana != tieneInicioTarde) {
+            throw new JornadaInvalidaException(
+                    "Para una jornada partida se deben informar el fin del bloque de la mañana y el inicio del bloque de la tarde; para una jornada de corrido, ninguno de los dos.");
+        }
+        if (!dia.horarioFinTarde().isAfter(dia.horarioInicioManiana())) {
+            throw new JornadaInvalidaException("El horario de fin debe ser posterior al horario de inicio.");
+        }
+        if (tieneFinManiana) {
+            if (!dia.horarioFinManiana().isAfter(dia.horarioInicioManiana())) {
+                throw new JornadaInvalidaException("El fin del bloque de la mañana debe ser posterior a su inicio.");
+            }
+            if (!dia.horarioInicioTarde().isAfter(dia.horarioFinManiana())) {
+                throw new JornadaInvalidaException("El bloque de la tarde debe comenzar después del fin del bloque de la mañana.");
+            }
+            if (!dia.horarioFinTarde().isAfter(dia.horarioInicioTarde())) {
+                throw new JornadaInvalidaException("El fin del bloque de la tarde debe ser posterior a su inicio.");
+            }
+        }
+    }
+
+    /** Indica si el horario persistido del día difiere del enviado. */
+    private boolean cambioHorario(JornadaAgenda existente, JornadaDiaRequest dia) {
+        return !Objects.equals(existente.getHorarioInicioManiana(), dia.horarioInicioManiana())
+                || !Objects.equals(existente.getHorarioFinManiana(), dia.horarioFinManiana())
+                || !Objects.equals(existente.getHorarioInicioTarde(), dia.horarioInicioTarde())
+                || !Objects.equals(existente.getHorarioFinTarde(), dia.horarioFinTarde());
     }
 
     private void validarRango(LocalDateTime inicio, LocalDateTime fin) {
