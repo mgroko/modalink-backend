@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -100,7 +101,8 @@ class CalendarioServiceTest {
         mockAgenda();
         when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
                 .thenReturn(List.of(JornadaAgenda.builder().diaSemana(1)
-                        .horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(18, 0)).build()));
+                        .horarioInicioManiana(LocalTime.of(9, 0))
+                        .horarioFinTarde(LocalTime.of(18, 0)).build()));
         when(bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(10L))
                 .thenReturn(List.of(BloqueoAgenda.builder().idBloqueo(1L)
                         .fechaHoraInicio(LocalDateTime.of(2026, 9, 15, 10, 0))
@@ -137,8 +139,8 @@ class CalendarioServiceTest {
         mockUsuarioActivo();
         mockAgenda();
         ConfigJornadaRequest request = new ConfigJornadaRequest(90, List.of(
-                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                new JornadaDiaRequest(3, LocalTime.of(10, 0), LocalTime.of(20, 0))));
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                new JornadaDiaRequest(3, LocalTime.of(10, 0), null, null, LocalTime.of(20, 0))));
         when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L)).thenReturn(List.of());
         when(jornadaAgendaRepository.save(any(JornadaAgenda.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -157,18 +159,19 @@ class CalendarioServiceTest {
         mockUsuarioActivo();
         mockAgenda();
         JornadaAgenda lunes = JornadaAgenda.builder().idJornada(1L).diaSemana(1)
-                .horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(18, 0)).build();
+                .horarioInicioManiana(LocalTime.of(9, 0))
+                .horarioFinTarde(LocalTime.of(18, 0)).build();
         when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
                 .thenReturn(List.of(lunes));
         when(agendaRepository.save(any(Agenda.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ConfigJornadaResponse response = calendarioService.configurarJornada(1L,
                 new ConfigJornadaRequest(60, List.of(
-                        new JornadaDiaRequest(1, LocalTime.of(10, 0), LocalTime.of(19, 0)))));
+                        new JornadaDiaRequest(1, LocalTime.of(10, 0), null, null, LocalTime.of(19, 0)))));
 
-        assertEquals(LocalTime.of(10, 0), lunes.getHoraInicio());
-        assertEquals(LocalTime.of(19, 0), lunes.getHoraFin());
-        assertEquals(LocalTime.of(10, 0), response.dias().get(0).horaInicio());
+        assertEquals(LocalTime.of(10, 0), lunes.getHorarioInicioManiana());
+        assertEquals(LocalTime.of(19, 0), lunes.getHorarioFinTarde());
+        assertEquals(LocalTime.of(10, 0), response.dias().get(0).horarioInicioManiana());
         verify(jornadaAgendaRepository, never()).save(any(JornadaAgenda.class));
     }
 
@@ -177,16 +180,18 @@ class CalendarioServiceTest {
         mockUsuarioActivo();
         mockAgenda();
         JornadaAgenda lunes = JornadaAgenda.builder().idJornada(1L).diaSemana(1)
-                .horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(18, 0)).build();
+                .horarioInicioManiana(LocalTime.of(9, 0))
+                .horarioFinTarde(LocalTime.of(18, 0)).build();
         JornadaAgenda martes = JornadaAgenda.builder().idJornada(2L).diaSemana(2)
-                .horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(18, 0)).build();
+                .horarioInicioManiana(LocalTime.of(9, 0))
+                .horarioFinTarde(LocalTime.of(18, 0)).build();
         when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
                 .thenReturn(List.of(lunes, martes));
         when(agendaRepository.save(any(Agenda.class))).thenAnswer(inv -> inv.getArgument(0));
 
         calendarioService.configurarJornada(1L,
                 new ConfigJornadaRequest(60, List.of(
-                        new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0)))));
+                        new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Collection<JornadaAgenda>> captor = ArgumentCaptor.forClass(Collection.class);
@@ -200,14 +205,15 @@ class CalendarioServiceTest {
         mockUsuarioActivo();
         mockAgenda();
         JornadaAgenda lunes = JornadaAgenda.builder().idJornada(1L).diaSemana(1)
-                .horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(18, 0)).build();
+                .horarioInicioManiana(LocalTime.of(9, 0))
+                .horarioFinTarde(LocalTime.of(18, 0)).build();
         when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
                 .thenReturn(List.of(lunes));
         when(agendaRepository.save(any(Agenda.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ConfigJornadaResponse response = calendarioService.configurarJornada(1L,
                 new ConfigJornadaRequest(60, List.of(
-                        new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0)))));
+                        new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
 
         verify(jornadaAgendaRepository, never()).save(any(JornadaAgenda.class));
         assertEquals(1, response.dias().size());
@@ -218,17 +224,17 @@ class CalendarioServiceTest {
     void configurarJornada_diaFueraDeRango_lanzaJornadaInvalida() {
         mockUsuarioActivo();
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
-                new JornadaDiaRequest(8, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+                new JornadaDiaRequest(8, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
 
         assertThrows(JornadaInvalidaException.class,
                 () -> calendarioService.configurarJornada(1L, request));
     }
 
     @Test
-    void configurarJornada_horaFinAntesDeInicio_lanzaJornadaInvalida() {
+    void configurarJornada_finTardeAntesDeInicioManiana_lanzaJornadaInvalida() {
         mockUsuarioActivo();
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
-                new JornadaDiaRequest(1, LocalTime.of(18, 0), LocalTime.of(9, 0))));
+                new JornadaDiaRequest(1, LocalTime.of(18, 0), null, null, LocalTime.of(9, 0))));
 
         assertThrows(JornadaInvalidaException.class,
                 () -> calendarioService.configurarJornada(1L, request));
@@ -238,11 +244,137 @@ class CalendarioServiceTest {
     void configurarJornada_diaDuplicado_lanzaJornadaInvalida() {
         mockUsuarioActivo();
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
-                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                new JornadaDiaRequest(1, LocalTime.of(10, 0), LocalTime.of(20, 0))));
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                new JornadaDiaRequest(1, LocalTime.of(10, 0), null, null, LocalTime.of(20, 0))));
 
         assertThrows(JornadaInvalidaException.class,
                 () -> calendarioService.configurarJornada(1L, request));
+    }
+
+    // ------------------------------------------------------------------
+    // configurarJornada: jornada partida
+    // ------------------------------------------------------------------
+
+    @Test
+    void configurarJornada_partidaValida_insertaConLosCuatroHorarios() {
+        mockUsuarioActivo();
+        mockAgenda();
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        LocalTime.of(15, 0), LocalTime.of(19, 0))));
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L)).thenReturn(List.of());
+        when(jornadaAgendaRepository.save(any(JornadaAgenda.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(agendaRepository.save(any(Agenda.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        calendarioService.configurarJornada(1L, request);
+
+        ArgumentCaptor<JornadaAgenda> captor = ArgumentCaptor.forClass(JornadaAgenda.class);
+        verify(jornadaAgendaRepository).save(captor.capture());
+        JornadaAgenda guardada = captor.getValue();
+        assertEquals(LocalTime.of(9, 0), guardada.getHorarioInicioManiana());
+        assertEquals(LocalTime.of(13, 0), guardada.getHorarioFinManiana());
+        assertEquals(LocalTime.of(15, 0), guardada.getHorarioInicioTarde());
+        assertEquals(LocalTime.of(19, 0), guardada.getHorarioFinTarde());
+    }
+
+    @Test
+    void configurarJornada_soloFinManiana_lanzaJornadaInvalida() {
+        mockUsuarioActivo();
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        null, LocalTime.of(18, 0))));
+
+        assertThrows(JornadaInvalidaException.class,
+                () -> calendarioService.configurarJornada(1L, request));
+    }
+
+    @Test
+    void configurarJornada_soloInicioTarde_lanzaJornadaInvalida() {
+        mockUsuarioActivo();
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null,
+                        LocalTime.of(14, 0), LocalTime.of(18, 0))));
+
+        assertThrows(JornadaInvalidaException.class,
+                () -> calendarioService.configurarJornada(1L, request));
+    }
+
+    @Test
+    void configurarJornada_finManianaNoPosteriorAInicioManiana_lanzaJornadaInvalida() {
+        mockUsuarioActivo();
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(13, 0), LocalTime.of(9, 0),
+                        LocalTime.of(14, 0), LocalTime.of(18, 0))));
+
+        assertThrows(JornadaInvalidaException.class,
+                () -> calendarioService.configurarJornada(1L, request));
+    }
+
+    @Test
+    void configurarJornada_inicioTardeNoPosteriorAFinManiana_lanzaJornadaInvalida() {
+        mockUsuarioActivo();
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        LocalTime.of(13, 0), LocalTime.of(18, 0))));
+
+        assertThrows(JornadaInvalidaException.class,
+                () -> calendarioService.configurarJornada(1L, request));
+    }
+
+    @Test
+    void configurarJornada_finTardeNoPosteriorAInicioTarde_lanzaJornadaInvalida() {
+        mockUsuarioActivo();
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        LocalTime.of(15, 0), LocalTime.of(14, 0))));
+
+        assertThrows(JornadaInvalidaException.class,
+                () -> calendarioService.configurarJornada(1L, request));
+    }
+
+    @Test
+    void configurarJornada_deCorridoAPartido_actualizaDiaExistente() {
+        mockUsuarioActivo();
+        mockAgenda();
+        JornadaAgenda lunes = JornadaAgenda.builder().idJornada(1L).diaSemana(1)
+                .horarioInicioManiana(LocalTime.of(9, 0))
+                .horarioFinTarde(LocalTime.of(18, 0)).build();
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(lunes));
+        when(agendaRepository.save(any(Agenda.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        calendarioService.configurarJornada(1L,
+                new ConfigJornadaRequest(60, List.of(
+                        new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                                LocalTime.of(15, 0), LocalTime.of(19, 0)))));
+
+        assertEquals(LocalTime.of(13, 0), lunes.getHorarioFinManiana());
+        assertEquals(LocalTime.of(15, 0), lunes.getHorarioInicioTarde());
+        assertEquals(LocalTime.of(19, 0), lunes.getHorarioFinTarde());
+        verify(jornadaAgendaRepository, never()).save(any(JornadaAgenda.class));
+    }
+
+    @Test
+    void configurarJornada_dePartidoACorrido_limpiaElParDelMediodia() {
+        mockUsuarioActivo();
+        mockAgenda();
+        JornadaAgenda lunes = JornadaAgenda.builder().idJornada(1L).diaSemana(1)
+                .horarioInicioManiana(LocalTime.of(9, 0))
+                .horarioFinManiana(LocalTime.of(13, 0))
+                .horarioInicioTarde(LocalTime.of(15, 0))
+                .horarioFinTarde(LocalTime.of(19, 0)).build();
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(lunes));
+        when(agendaRepository.save(any(Agenda.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        calendarioService.configurarJornada(1L,
+                new ConfigJornadaRequest(60, List.of(
+                        new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(19, 0)))));
+
+        assertNull(lunes.getHorarioFinManiana());
+        assertNull(lunes.getHorarioInicioTarde());
+        verify(jornadaAgendaRepository, never()).save(any(JornadaAgenda.class));
     }
 
     // ------------------------------------------------------------------

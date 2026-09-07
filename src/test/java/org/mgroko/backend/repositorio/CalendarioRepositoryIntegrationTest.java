@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,8 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integración del calendario contra PostgreSQL real (Testcontainers).
- * Valida los triggers de la migración V14 y las consultas de los
- * repositorios de agenda/jornada/bloqueo, además del índice de rango.
+ * Valida los triggers de la migración V14, los checks de jornada partida
+ * de la migración V19 y las consultas de los repositorios de
+ * agenda/jornada/bloqueo, además del índice de rango.
  */
 @SpringBootTest
 @Transactional
@@ -103,8 +105,12 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         List<JornadaAgenda> dias = jornadaAgendaRepository
                 .findByAgenda_IdAgendaOrderByDiaSemana(agenda.getIdAgenda());
         assertEquals(5, dias.size());
-        assertTrue(dias.stream().allMatch(d -> d.getHoraInicio().equals(LocalTime.of(9, 0))));
-        assertTrue(dias.stream().allMatch(d -> d.getHoraFin().equals(LocalTime.of(18, 0))));
+        assertTrue(dias.stream().allMatch(d -> d.getHorarioInicioManiana().equals(LocalTime.of(9, 0))));
+        assertTrue(dias.stream().allMatch(d -> d.getHorarioFinTarde().equals(LocalTime.of(18, 0))));
+        // La jornada por defecto es de corrido (par del mediodía ausente).
+        assertTrue(dias.stream().allMatch(d -> d.getHorarioFinManiana() == null));
+        assertTrue(dias.stream().allMatch(d -> d.getHorarioInicioTarde() == null));
+        assertTrue(dias.stream().noneMatch(JornadaAgenda::esPartida));
     }
 
     // ------------------------------------------------------------------
@@ -212,11 +218,11 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
     void editarJornada_conMismosDias_noLanzaViolacionDeIntegridad() {
         Usuario usuario = guardarUsuario();
         ConfigJornadaRequest lunVie = new ConfigJornadaRequest(45, List.of(
-                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                new JornadaDiaRequest(2, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                new JornadaDiaRequest(3, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                new JornadaDiaRequest(4, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                new JornadaDiaRequest(5, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                new JornadaDiaRequest(2, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                new JornadaDiaRequest(3, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                new JornadaDiaRequest(4, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                new JornadaDiaRequest(5, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
 
         // Primera edición: cambia el margen manteniendo L-V por defecto.
         ConfigJornadaResponse primera =
@@ -235,25 +241,99 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         ConfigJornadaResponse tercera = calendarioService.configurarJornada(
                 usuario.getIdUsuario(),
                 new ConfigJornadaRequest(45, List.of(
-                        new JornadaDiaRequest(1, LocalTime.of(8, 0), LocalTime.of(17, 0)),
-                        new JornadaDiaRequest(2, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                        new JornadaDiaRequest(3, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                        new JornadaDiaRequest(4, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                        new JornadaDiaRequest(5, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                        new JornadaDiaRequest(6, LocalTime.of(10, 0), LocalTime.of(16, 0)))));
+                        new JornadaDiaRequest(1, LocalTime.of(8, 0), null, null, LocalTime.of(17, 0)),
+                        new JornadaDiaRequest(2, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                        new JornadaDiaRequest(3, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                        new JornadaDiaRequest(4, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                        new JornadaDiaRequest(5, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                        new JornadaDiaRequest(6, LocalTime.of(10, 0), null, null, LocalTime.of(16, 0)))));
         assertEquals(6, tercera.dias().size());
-        assertEquals(LocalTime.of(8, 0), tercera.dias().get(0).horaInicio());
+        assertEquals(LocalTime.of(8, 0), tercera.dias().get(0).horarioInicioManiana());
 
         // Y una que quita días: vuelve a eliminar el sábado.
         ConfigJornadaResponse cuarta = calendarioService.configurarJornada(
                 usuario.getIdUsuario(),
                 new ConfigJornadaRequest(45, List.of(
-                        new JornadaDiaRequest(1, LocalTime.of(8, 0), LocalTime.of(17, 0)),
-                        new JornadaDiaRequest(2, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                        new JornadaDiaRequest(3, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                        new JornadaDiaRequest(4, LocalTime.of(9, 0), LocalTime.of(18, 0)),
-                        new JornadaDiaRequest(5, LocalTime.of(9, 0), LocalTime.of(18, 0)))));
+                        new JornadaDiaRequest(1, LocalTime.of(8, 0), null, null, LocalTime.of(17, 0)),
+                        new JornadaDiaRequest(2, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                        new JornadaDiaRequest(3, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                        new JornadaDiaRequest(4, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
+                        new JornadaDiaRequest(5, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
         assertEquals(5, cuarta.dias().size());
+    }
+
+    // ------------------------------------------------------------------
+    // Jornada partida (checks de la migración V19)
+    // ------------------------------------------------------------------
+
+    @Test
+    void configurarJornada_partida_persisteLosCuatroHorarios() {
+        Usuario usuario = guardarUsuario();
+
+        ConfigJornadaResponse response = calendarioService.configurarJornada(
+                usuario.getIdUsuario(),
+                new ConfigJornadaRequest(45, List.of(
+                        new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                                LocalTime.of(15, 0), LocalTime.of(19, 0)))));
+
+        assertEquals(1, response.dias().size());
+        assertEquals(LocalTime.of(9, 0), response.dias().get(0).horarioInicioManiana());
+        assertEquals(LocalTime.of(13, 0), response.dias().get(0).horarioFinManiana());
+        assertEquals(LocalTime.of(15, 0), response.dias().get(0).horarioInicioTarde());
+        assertEquals(LocalTime.of(19, 0), response.dias().get(0).horarioFinTarde());
+
+        // Y puede volver a corrido (el par del mediodía queda en NULL).
+        ConfigJornadaResponse corrido = calendarioService.configurarJornada(
+                usuario.getIdUsuario(),
+                new ConfigJornadaRequest(45, List.of(
+                        new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
+        assertNull(corrido.dias().get(0).horarioFinManiana());
+        assertNull(corrido.dias().get(0).horarioInicioTarde());
+    }
+
+    @Test
+    void insertarJornada_mediodiaIncompleto_violaCheck() {
+        Agenda agenda = agendaDe(guardarUsuario());
+
+        // Solo fin de mañana, sin inicio de tarde: chk_jornada_mediodia_completo.
+        assertExcepcionConMensaje(
+                () -> jornadaAgendaRepository.saveAndFlush(JornadaAgenda.builder()
+                        .agenda(agenda).diaSemana(6)
+                        .horarioInicioManiana(LocalTime.of(9, 0))
+                        .horarioFinManiana(LocalTime.of(13, 0))
+                        .horarioFinTarde(LocalTime.of(18, 0))
+                        .build()),
+                "chk_jornada_mediodia_completo");
+    }
+
+    @Test
+    void insertarJornada_tardeAntesQueManiana_violaCheck() {
+        Agenda agenda = agendaDe(guardarUsuario());
+
+        // inicio_tarde <= fin_maniana: chk_jornada_orden_bloques.
+        assertExcepcionConMensaje(
+                () -> jornadaAgendaRepository.saveAndFlush(JornadaAgenda.builder()
+                        .agenda(agenda).diaSemana(6)
+                        .horarioInicioManiana(LocalTime.of(9, 0))
+                        .horarioFinManiana(LocalTime.of(13, 0))
+                        .horarioInicioTarde(LocalTime.of(13, 0))
+                        .horarioFinTarde(LocalTime.of(18, 0))
+                        .build()),
+                "chk_jornada_orden_bloques");
+    }
+
+    @Test
+    void insertarJornada_finTardeAntesDeInicioManiana_violaCheck() {
+        Agenda agenda = agendaDe(guardarUsuario());
+
+        // Jornada corrida con fin <= inicio: chk_jornada_rango_total.
+        assertExcepcionConMensaje(
+                () -> jornadaAgendaRepository.saveAndFlush(JornadaAgenda.builder()
+                        .agenda(agenda).diaSemana(6)
+                        .horarioInicioManiana(LocalTime.of(18, 0))
+                        .horarioFinTarde(LocalTime.of(9, 0))
+                        .build()),
+                "chk_jornada_rango_total");
     }
 
     /**

@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.calendario.dto.BloqueoActividadResponse;
@@ -19,19 +20,41 @@ import org.mgroko.backend.modelo.JornadaAgenda;
 class CalendarioMapperTest {
 
     @Test
-    void toJornadaDiaResponse_mapeaCampos() {
+    void toJornadaDiaResponse_corrido_mapeaCamposConMediodiaNulo() {
         JornadaAgenda jornada = JornadaAgenda.builder()
                 .idJornada(5L)
                 .diaSemana(3)
-                .horaInicio(LocalTime.of(10, 0))
-                .horaFin(LocalTime.of(20, 0))
+                .horarioInicioManiana(LocalTime.of(10, 0))
+                .horarioFinTarde(LocalTime.of(20, 0))
                 .build();
 
         JornadaDiaResponse response = CalendarioMapper.toJornadaDiaResponse(jornada);
 
         assertEquals(3, response.diaSemana());
-        assertEquals(LocalTime.of(10, 0), response.horaInicio());
-        assertEquals(LocalTime.of(20, 0), response.horaFin());
+        assertEquals(LocalTime.of(10, 0), response.horarioInicioManiana());
+        assertNull(response.horarioFinManiana());
+        assertNull(response.horarioInicioTarde());
+        assertEquals(LocalTime.of(20, 0), response.horarioFinTarde());
+    }
+
+    @Test
+    void toJornadaDiaResponse_partido_mapeaLosCuatroHorarios() {
+        JornadaAgenda jornada = JornadaAgenda.builder()
+                .idJornada(6L)
+                .diaSemana(2)
+                .horarioInicioManiana(LocalTime.of(9, 0))
+                .horarioFinManiana(LocalTime.of(13, 0))
+                .horarioInicioTarde(LocalTime.of(15, 0))
+                .horarioFinTarde(LocalTime.of(19, 0))
+                .build();
+
+        JornadaDiaResponse response = CalendarioMapper.toJornadaDiaResponse(jornada);
+
+        assertEquals(2, response.diaSemana());
+        assertEquals(LocalTime.of(9, 0), response.horarioInicioManiana());
+        assertEquals(LocalTime.of(13, 0), response.horarioFinManiana());
+        assertEquals(LocalTime.of(15, 0), response.horarioInicioTarde());
+        assertEquals(LocalTime.of(19, 0), response.horarioFinTarde());
     }
 
     @Test
@@ -39,9 +62,13 @@ class CalendarioMapperTest {
         Agenda agenda = Agenda.builder().idAgenda(1L).margenActividadMinutos(90).build();
         List<JornadaAgenda> dias = List.of(
                 JornadaAgenda.builder().diaSemana(1)
-                        .horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(18, 0)).build(),
+                        .horarioInicioManiana(LocalTime.of(9, 0))
+                        .horarioFinTarde(LocalTime.of(18, 0)).build(),
                 JornadaAgenda.builder().diaSemana(2)
-                        .horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(18, 0)).build());
+                        .horarioInicioManiana(LocalTime.of(9, 0))
+                        .horarioFinManiana(LocalTime.of(13, 0))
+                        .horarioInicioTarde(LocalTime.of(15, 0))
+                        .horarioFinTarde(LocalTime.of(19, 0)).build());
 
         ConfigJornadaResponse response = CalendarioMapper.toConfigJornadaResponse(agenda, dias);
 

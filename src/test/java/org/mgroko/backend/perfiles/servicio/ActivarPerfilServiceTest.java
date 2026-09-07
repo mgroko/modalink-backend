@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mgroko.backend.auth.AuthService;
+import org.mgroko.backend.auth.servicio.AuthService;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Usuario;

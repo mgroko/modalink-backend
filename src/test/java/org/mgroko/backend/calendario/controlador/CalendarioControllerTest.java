@@ -23,6 +23,7 @@ import org.mgroko.backend.calendario.dto.MarcarNoDisponibleRequest;
 import org.mgroko.backend.calendario.exception.BloqueoNoEncontradoException;
 import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
 import org.mgroko.backend.calendario.exception.HorarioComprometidoException;
+import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -56,7 +57,7 @@ class CalendarioControllerTest {
 
     private static final CalendarioResponse CALENDARIO = new CalendarioResponse(
             new ConfigJornadaResponse(60, List.of(
-                    new JornadaDiaResponse(1, LocalTime.of(9, 0), LocalTime.of(18, 0)))),
+                    new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))),
             List.of(new BloqueoResponse(1L,
                     LocalDateTime.of(2026, 9, 15, 10, 0),
                     LocalDateTime.of(2026, 9, 15, 14, 0), "X")),
@@ -83,18 +84,57 @@ class CalendarioControllerTest {
     @Test
     void configurarJornada_valido_devuelve200() throws Exception {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
-                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
                 .thenReturn(new ConfigJornadaResponse(60, List.of(
-                        new JornadaDiaResponse(1, LocalTime.of(9, 0), LocalTime.of(18, 0)))));
+                        new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
 
         mockMvc.perform(put("/calendario/jornada")
                         .principal(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dias[0].horarioInicioManiana").value("09:00:00"))
+                .andExpect(jsonPath("$.dias[0].horarioFinTarde").value("18:00:00"));
 
         verify(calendarioService).configurarJornada(anyLong(), any(ConfigJornadaRequest.class));
+    }
+
+    @Test
+    void configurarJornada_partidaValida_devuelve200ConBloques() throws Exception {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        LocalTime.of(15, 0), LocalTime.of(19, 0))));
+        when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
+                .thenReturn(new ConfigJornadaResponse(60, List.of(
+                        new JornadaDiaResponse(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                                LocalTime.of(15, 0), LocalTime.of(19, 0)))));
+
+        mockMvc.perform(put("/calendario/jornada")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dias[0].horarioFinManiana").value("13:00:00"))
+                .andExpect(jsonPath("$.dias[0].horarioInicioTarde").value("15:00:00"));
+    }
+
+    @Test
+    void configurarJornada_jornadaInvalida_devuelve400() throws Exception {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        null, LocalTime.of(18, 0))));
+        when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
+                .thenThrow(new JornadaInvalidaException(
+                        "Para una jornada partida se deben informar el fin del bloque de la mañana y el inicio del bloque de la tarde; para una jornada de corrido, ninguno de los dos."));
+
+        mockMvc.perform(put("/calendario/jornada")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        "Para una jornada partida se deben informar el fin del bloque de la mañana y el inicio del bloque de la tarde; para una jornada de corrido, ninguno de los dos."));
     }
 
     @Test

@@ -2,14 +2,12 @@ package org.mgroko.backend.calendario.dto;
 
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -25,9 +23,18 @@ class ConfigJornadaRequestValidationTest {
     }
 
     @Test
-    void valido_sinViolaciones() {
+    void valido_jornadaCorrida_sinViolaciones() {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
-                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+
+        assertTrue(validator.validate(request).isEmpty());
+    }
+
+    @Test
+    void valido_jornadaPartida_sinViolaciones() {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        LocalTime.of(15, 0), LocalTime.of(19, 0))));
 
         assertTrue(validator.validate(request).isEmpty());
     }
@@ -43,7 +50,7 @@ class ConfigJornadaRequestValidationTest {
     @Test
     void margenNulo_generaViolacion() {
         ConfigJornadaRequest request = new ConfigJornadaRequest(null, List.of(
-                new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
 
         assertTrue(validator.validate(request).stream()
                 .anyMatch(v -> v.getPropertyPath().toString().equals("margenActividadMinutos")));
@@ -52,18 +59,20 @@ class ConfigJornadaRequestValidationTest {
     @Test
     void diaSinDiaSemana_generaViolacion() {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
-                new JornadaDiaRequest(null, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+                new JornadaDiaRequest(null, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
 
         assertTrue(validator.validate(request).stream()
                 .anyMatch(v -> v.getPropertyPath().toString().contains("diaSemana")));
     }
 
     @Test
-    void diaSinHoras_generaViolacion() {
+    void diaSinExtremosObligatorios_generaViolacion() {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
-                new JornadaDiaRequest(1, null, null)));
+                new JornadaDiaRequest(1, null, null, null, null)));
 
         assertTrue(validator.validate(request).stream()
-                .anyMatch(v -> v.getPropertyPath().toString().contains("horaInicio")));
+                .anyMatch(v -> v.getPropertyPath().toString().contains("horarioInicioManiana")));
+        assertTrue(validator.validate(request).stream()
+                .anyMatch(v -> v.getPropertyPath().toString().contains("horarioFinTarde")));
     }
 }

@@ -8,12 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import org.junit.jupiter.api.Test;
-import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Genero;
-import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
-import org.mgroko.backend.modelo.ValorCaracteristica;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
 import org.mgroko.backend.perfiles.dto.EditarPerfilRequest;
