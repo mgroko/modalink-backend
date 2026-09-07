@@ -18,6 +18,8 @@ public class AdminUsuarioMapper {
                 usuario.getFechaNacimiento(),
                 usuario.getDni(),
                 usuario.getFechaSolicitudBaja(),
+                usuario.getMotivoDeshabilitacion(),
+                usuario.getFechaHastaDeshabilitacion(),
                 usuario.getGenero()
         );
     }

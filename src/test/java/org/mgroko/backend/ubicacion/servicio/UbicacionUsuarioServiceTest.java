@@ -107,7 +107,7 @@ class UbicacionUsuarioServiceTest {
         Ubicacion nueva = ubicacionSaavedra(10L);
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-        when(ubicacionService.obtenerOCrear("0208401002")).thenReturn(nueva);
+        when(ubicacionService.obtenerOCrear("0208401002", null)).thenReturn(nueva);
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
         UbicacionResponse response = ubicacionUsuarioService
@@ -117,7 +117,7 @@ class UbicacionUsuarioServiceTest {
         assertEquals("0208401002", response.localidadId());
         assertEquals(nueva, usuario.getUbicacion());
         verify(usuarioRepository).save(usuario);
-        verify(ubicacionService).obtenerOCrear("0208401002");
+        verify(ubicacionService).obtenerOCrear("0208401002", null);
     }
 
     @Test
@@ -133,7 +133,7 @@ class UbicacionUsuarioServiceTest {
                 .build();
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-        when(ubicacionService.obtenerOCrear("06441030")).thenReturn(otra);
+        when(ubicacionService.obtenerOCrear("06441030", null)).thenReturn(otra);
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
         UbicacionResponse response = ubicacionUsuarioService
@@ -146,7 +146,7 @@ class UbicacionUsuarioServiceTest {
     @Test
     void asignar_localidadInexistente_lanzaExcepcion() {
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
-        when(ubicacionService.obtenerOCrear("9999999999"))
+        when(ubicacionService.obtenerOCrear("9999999999", null))
                 .thenThrow(new LocalidadNoEncontradaException("Localidad no encontrada."));
 
         assertThrows(LocalidadNoEncontradaException.class,

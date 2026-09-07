@@ -1,18 +1,23 @@
 package org.mgroko.backend.repositorio;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.admin.servicio.ExpirarDeshabilitacionService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,6 +51,9 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private RolGlobalRepository rolGlobalRepository;
+
+    @Autowired
+    private ExpirarDeshabilitacionService expirarDeshabilitacionService;
 
     /**
      * Construye un usuario válido según las constraints del esquema
@@ -150,5 +158,58 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
         Usuario duplicado = construirUsuario("otro.correo@example.com", DNI);
         assertThrows(DataIntegrityViolationException.class,
                 () -> usuarioRepository.saveAndFlush(duplicado));
+    }
+
+    // ------------------------------------------------------------------
+    // UC-04: motivo y duración de la deshabilitación (migración V18)
+    // ------------------------------------------------------------------
+
+    @Test
+    void save_deshabilitadoConMotivoYDuracion_persiste() {
+        Usuario usuario = guardarUsuarioBase();
+        usuario.setEstado(EstadoUsuario.Deshabilitado);
+        usuario.setMotivoDeshabilitacion("Incumplimiento de normas");
+        usuario.setFechaHastaDeshabilitacion(LocalDateTime.now().plusDays(7));
+        usuarioRepository.saveAndFlush(usuario);
+
+        Optional<Usuario> resultado = usuarioRepository.findById(usuario.getIdUsuario());
+
+        assertTrue(resultado.isPresent());
+        assertEquals(EstadoUsuario.Deshabilitado, resultado.get().getEstado());
+        assertEquals("Incumplimiento de normas", resultado.get().getMotivoDeshabilitacion());
+        assertNotNull(resultado.get().getFechaHastaDeshabilitacion());
+    }
+
+    @Test
+    void findByEstadoAndFechaHastaDeshabilitacionBefore_devuelveVencidos() {
+        Usuario vencido = guardarUsuarioBase();
+        vencido.setEstado(EstadoUsuario.Deshabilitado);
+        vencido.setMotivoDeshabilitacion("Motivo");
+        vencido.setFechaHastaDeshabilitacion(LocalDateTime.now().minusDays(1));
+        usuarioRepository.saveAndFlush(vencido);
+
+        List<Usuario> vencidos = usuarioRepository
+                .findByEstadoAndFechaHastaDeshabilitacionBefore(EstadoUsuario.Deshabilitado, LocalDateTime.now());
+
+        assertEquals(1, vencidos.size());
+        assertEquals(vencido.getIdUsuario(), vencidos.get(0).getIdUsuario());
+    }
+
+    @Test
+    void reactivarVencidos_vencida_reactivaLaCuentaContraPostgres() {
+        Usuario vencido = guardarUsuarioBase();
+        vencido.setEstado(EstadoUsuario.Deshabilitado);
+        vencido.setMotivoDeshabilitacion("Motivo");
+        vencido.setFechaHastaDeshabilitacion(LocalDateTime.now().minusDays(1));
+        usuarioRepository.saveAndFlush(vencido);
+
+        int cantidad = expirarDeshabilitacionService.reactivarVencidos();
+
+        assertEquals(1, cantidad);
+        Optional<Usuario> resultado = usuarioRepository.findById(vencido.getIdUsuario());
+        assertTrue(resultado.isPresent());
+        assertEquals(EstadoUsuario.Activo, resultado.get().getEstado());
+        assertNull(resultado.get().getMotivoDeshabilitacion());
+        assertNull(resultado.get().getFechaHastaDeshabilitacion());
     }
 }

@@ -1,12 +1,17 @@
 package org.mgroko.backend.admin.servicio;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.dto.AdminUsuarioResponse;
+import org.mgroko.backend.admin.dto.DeshabilitarUsuarioRequest;
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
@@ -44,6 +49,10 @@ class AdminUsuarioServiceTest {
                 .rolGlobal(RolGlobal.builder().nombre("USUARIO").build())
                 .genero(Genero.builder().codigo("mujer").build())
                 .build();
+    }
+
+    private DeshabilitarUsuarioRequest deshabilitarRequest(String motivo, Integer duracionDias) {
+        return new DeshabilitarUsuarioRequest(motivo, duracionDias);
     }
 
     @Test
@@ -101,17 +110,51 @@ class AdminUsuarioServiceTest {
         when(usuarioRepository.save(any(Usuario.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        AdminUsuarioResponse response = adminUsuarioService.deshabilitar(2L, 1L);
+        AdminUsuarioResponse response =
+                adminUsuarioService.deshabilitar(2L, 1L, deshabilitarRequest("Incumplimiento de normas", 7));
 
         assertEquals("Deshabilitado", response.estado());
+        assertEquals("Incumplimiento de normas", response.motivoDeshabilitacion());
+        assertNotNull(response.fechaHastaDeshabilitacion());
         assertEquals(EstadoUsuario.Deshabilitado, usuario.getEstado());
         verify(usuarioRepository).save(usuario);
     }
 
     @Test
+    void deshabilitar_conDuracion_calculaFechaHasta() {
+        Usuario usuario = usuarioConRol(EstadoUsuario.Activo);
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        adminUsuarioService.deshabilitar(2L, 1L, deshabilitarRequest("Motivo", 7));
+
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(captor.capture());
+        Usuario guardado = captor.getValue();
+        assertNotNull(guardado.getFechaHastaDeshabilitacion());
+        assertTrue(guardado.getFechaHastaDeshabilitacion().isAfter(LocalDateTime.now()));
+        assertTrue(guardado.getFechaHastaDeshabilitacion().isBefore(LocalDateTime.now().plusDays(7).plusSeconds(1)));
+    }
+
+    @Test
+    void deshabilitar_sinDuracion_deshabilitacionIndefinida() {
+        Usuario usuario = usuarioConRol(EstadoUsuario.Activo);
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AdminUsuarioResponse response =
+                adminUsuarioService.deshabilitar(2L, 1L, deshabilitarRequest("Motivo", null));
+
+        assertEquals("Motivo", response.motivoDeshabilitacion());
+        assertNull(response.fechaHastaDeshabilitacion());
+    }
+
+    @Test
     void deshabilitar_autoDeshabilitacion_lanzaExcepcion() {
         assertThrows(AutoDeshabilitacionException.class,
-                () -> adminUsuarioService.deshabilitar(1L, 1L));
+                () -> adminUsuarioService.deshabilitar(1L, 1L, deshabilitarRequest("Motivo", 7)));
 
         verify(usuarioRepository, never()).findById(any());
         verify(usuarioRepository, never()).save(any());
@@ -122,7 +165,7 @@ class AdminUsuarioServiceTest {
         when(usuarioRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(UsuarioAdminNoEncontradoException.class,
-                () -> adminUsuarioService.deshabilitar(999L, 1L));
+                () -> adminUsuarioService.deshabilitar(999L, 1L, deshabilitarRequest("Motivo", 7)));
 
         verify(usuarioRepository, never()).save(any());
     }
@@ -133,7 +176,7 @@ class AdminUsuarioServiceTest {
         when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
 
         assertThrows(UsuarioEnBajaException.class,
-                () -> adminUsuarioService.deshabilitar(2L, 1L));
+                () -> adminUsuarioService.deshabilitar(2L, 1L, deshabilitarRequest("Motivo", 7)));
 
         verify(usuarioRepository, never()).save(any());
     }
@@ -153,13 +196,32 @@ class AdminUsuarioServiceTest {
     }
 
     @Test
+    void habilitar_limpiaMotivoYDuracionDeLaDeshabilitacion() {
+        Usuario usuario = usuarioConRol(EstadoUsuario.Deshabilitado);
+        usuario.setMotivoDeshabilitacion("Incumplimiento de normas");
+        usuario.setFechaHastaDeshabilitacion(LocalDateTime.now().plusDays(7));
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        adminUsuarioService.habilitar(2L);
+
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(captor.capture());
+        assertEquals(EstadoUsuario.Activo, captor.getValue().getEstado());
+        assertNull(captor.getValue().getMotivoDeshabilitacion());
+        assertNull(captor.getValue().getFechaHastaDeshabilitacion());
+    }
+
+    @Test
     void deshabilitar_idSolicitanteDiferenteDeshabilitaOtroUsuario() {
         Usuario usuario = usuarioConRol(EstadoUsuario.Activo);
         when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
         when(usuarioRepository.save(any(Usuario.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        AdminUsuarioResponse response = adminUsuarioService.deshabilitar(2L, 1L);
+        AdminUsuarioResponse response =
+                adminUsuarioService.deshabilitar(2L, 1L, deshabilitarRequest("Motivo", null));
 
         assertEquals("Deshabilitado", response.estado());
         verify(usuarioRepository).save(usuario);

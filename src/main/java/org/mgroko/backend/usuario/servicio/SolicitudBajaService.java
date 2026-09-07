@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SolicitudBajaService {
 
-    private static final int DIAS_PARA_ELIMINACION = 30;
+    private static final int DIAS_PARA_ELIMINACION = 30; //TODO parametrizable desde panel de admin? 
 
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;

@@ -15,5 +15,7 @@ public record AdminUsuarioResponse(
         LocalDate fechaNacimiento,
         String dni,
         LocalDateTime fechaSolicitudBaja,
+        String motivoDeshabilitacion,
+        LocalDateTime fechaHastaDeshabilitacion,
         Genero genero
 ) {}

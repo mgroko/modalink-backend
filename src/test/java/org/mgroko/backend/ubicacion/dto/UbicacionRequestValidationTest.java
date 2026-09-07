@@ -32,6 +32,35 @@ class UbicacionRequestValidationTest {
     }
 
     @Test
+    void localidadYProvinciaValidas_sinViolaciones() {
+        UbicacionRequest request = new UbicacionRequest("0208401002", "02");
+
+        Set<ConstraintViolation<UbicacionRequest>> violaciones = validator.validate(request);
+
+        assertTrue(violaciones.isEmpty());
+    }
+
+    @Test
+    void provinciaSinLocalidad_generaViolacion() {
+        UbicacionRequest request = new UbicacionRequest(null, "02");
+
+        Set<ConstraintViolation<UbicacionRequest>> violaciones = validator.validate(request);
+
+        assertTrue(violaciones.stream()
+                .anyMatch(v -> v.getMessage().equals("No se puede enviar provincia sin localidad.")));
+    }
+
+    @Test
+    void provinciaSinLocalidadIncluyendoBlanco_generaViolacion() {
+        UbicacionRequest request = new UbicacionRequest("   ", "02");
+
+        Set<ConstraintViolation<UbicacionRequest>> violaciones = validator.validate(request);
+
+        assertTrue(violaciones.stream()
+                .anyMatch(v -> v.getMessage().equals("No se puede enviar provincia sin localidad.")));
+    }
+
+    @Test
     void localidadIdNulo_generaViolacion() {
         UbicacionRequest request = new UbicacionRequest(null);
 

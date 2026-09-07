@@ -1,14 +1,19 @@
-package org.mgroko.backend.auth;
+package org.mgroko.backend.auth.mapper;
 
 import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.modelo.Usuario;
 
-final class UsuarioMapper {
+public final class UsuarioMapper {
 
     private UsuarioMapper() {
     }
 
-    static UsuarioResponse toResponse(Usuario usuario) {
+    public static UsuarioResponse toResponse(Usuario usuario) {
+        return toResponseConPerfilActivo(usuario, null, null);
+    }
+
+    public static UsuarioResponse toResponseConPerfilActivo(Usuario usuario, Long idPerfilActivo,
+            String nombreArtisticoActivo) {
         return new UsuarioResponse(
                 usuario.getIdUsuario(),
                 usuario.getNombre(),
@@ -18,7 +23,8 @@ final class UsuarioMapper {
                 usuario.getRolGlobal() != null ? usuario.getRolGlobal().getNombre() : null,
                 usuario.getGenero() != null ? usuario.getGenero().getCodigo() : null,
                 usuario.getFechaNacimiento(),
-                usuario.getEstado() != null ? usuario.getEstado().name() : null
-        );
+                usuario.getEstado() != null ? usuario.getEstado().name() : null,
+                idPerfilActivo,
+                nombreArtisticoActivo);
     }
 }

@@ -106,8 +106,20 @@ class UbicacionUsuarioControllerTest {
     }
 
     @Test
-    void asignar_localidadInexistente_devuelve400() throws Exception {
+    void asignar_provinciaSinLocalidad_devuelve400() throws Exception {
         var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+        mockMvc.perform(put("/usuario/ubicacion")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UbicacionRequest(null, "02"))))
+                .andExpect(status().isBadRequest());
+
+        verify(ubicacionUsuarioService, never()).asignar(anyLong(), any());
+    }
+
+    @Test
+    void asignar_localidadInexistente_devuelve400() throws Exception {        var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
 
         when(ubicacionUsuarioService.asignar(anyLong(), any(UbicacionRequest.class)))
                 .thenThrow(new LocalidadNoEncontradaException("Localidad no encontrada con id: 999"));

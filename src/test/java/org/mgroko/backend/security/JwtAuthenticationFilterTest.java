@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -155,6 +156,57 @@ class JwtAuthenticationFilterTest {
         filter.doFilterInternal(request, response, filterChain);
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilter_tokenConPerfilActivo_guardaContextoEnDetails() throws Exception {
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        Cookie jwtCookie = new Cookie("jwt", "token-valido");
+        when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
+
+        Claims claimsSimulados = new io.jsonwebtoken.impl.DefaultClaims(
+                java.util.Map.of("sub", "123", "idPerfilActivo", 10, "nombreArtisticoActivo", "Luna"));
+        when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
+
+        Usuario usuarioActivo = Usuario.builder()
+                .idUsuario(123L)
+                .estado(EstadoUsuario.Activo)
+                .build();
+        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioActivo));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        ContextoAutenticacion contexto = (ContextoAutenticacion) authentication.getDetails();
+        assertEquals(123L, contexto.idUsuario());
+        assertEquals(10L, contexto.idPerfilActivo());
+        assertEquals("Luna", contexto.nombreArtisticoActivo());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilter_tokenSinPerfilActivo_contextoConValoresNulos() throws Exception {
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        Cookie jwtCookie = new Cookie("jwt", "token-valido");
+        when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
+
+        Claims claimsSimulados = new io.jsonwebtoken.impl.DefaultClaims(java.util.Map.of("sub", "123"));
+        when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
+
+        Usuario usuarioActivo = Usuario.builder()
+                .idUsuario(123L)
+                .estado(EstadoUsuario.Activo)
+                .build();
+        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioActivo));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        ContextoAutenticacion contexto = (ContextoAutenticacion) authentication.getDetails();
+        assertEquals(123L, contexto.idUsuario());
+        assertNull(contexto.idPerfilActivo());
+        assertNull(contexto.nombreArtisticoActivo());
         verify(filterChain).doFilter(request, response);
     }
 }

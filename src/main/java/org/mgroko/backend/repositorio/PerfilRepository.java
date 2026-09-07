@@ -49,4 +49,13 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long> {
      * @return lista de perfiles vencidos
      */
     List<Perfil> findByEstadoAndFechaSolicitudBajaBefore(EstadoPerfil estado, LocalDateTime fechaLimite);
+
+    /**
+     * Busca perfiles de un usuario en un estado específico.
+     *
+     * @param idUsuario el ID del usuario
+     * @param estado    el estado a buscar
+     * @return lista de perfiles del usuario en el estado especificado
+     */
+    List<Perfil> findByUsuario_IdUsuarioAndEstado(Long idUsuario, EstadoPerfil estado);
 }

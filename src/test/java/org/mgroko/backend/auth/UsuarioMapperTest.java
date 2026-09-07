@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
+import org.mgroko.backend.auth.mapper.UsuarioMapper;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;

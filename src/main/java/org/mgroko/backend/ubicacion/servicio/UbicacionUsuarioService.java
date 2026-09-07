@@ -50,7 +50,7 @@ public class UbicacionUsuarioService {
     @Transactional
     public UbicacionResponse asignar(Long idUsuario, UbicacionRequest request) {
         Usuario usuario = usuarioActivo(idUsuario);
-        Ubicacion ubicacion = ubicacionService.obtenerOCrear(request.localidadId());
+        Ubicacion ubicacion = ubicacionService.obtenerOCrear(request.localidadId(), request.provinciaId());
         usuario.setUbicacion(ubicacion);
         usuarioRepository.save(usuario);
         return UbicacionMapper.toResponse(ubicacion);

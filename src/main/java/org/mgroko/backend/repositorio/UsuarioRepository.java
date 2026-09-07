@@ -58,4 +58,15 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
      */
     List<Usuario> findByEstadoAndFechaSolicitudBajaBefore(EstadoUsuario estado, LocalDateTime fechaLimite);
 
+    /**
+     * Busca los usuarios deshabilitados cuya deshabilitación venció antes de
+     * la fecha pasada por parámetro. Se usa para reactivar automáticamente
+     * las cuentas con duración definida (UC-04).
+     *
+     * @param estado      estado a buscar (por ejemplo {@code EstadoUsuario.Deshabilitado})
+     * @param fechaLimite fecha límite para considerar vencida la deshabilitación
+     * @return lista de usuarios con deshabilitación vencida
+     */
+    List<Usuario> findByEstadoAndFechaHastaDeshabilitacionBefore(EstadoUsuario estado, LocalDateTime fechaLimite);
+
 }
