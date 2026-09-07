@@ -24,6 +24,7 @@ import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.auth.servicio.AuthService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.RolGlobal;
@@ -94,8 +95,7 @@ class AuthServiceTest {
                 LocalDate.of(1981, Month.JUNE, 24),
                 "maria.flores@test.com",
                 "mujer",
-                "password123"
-        );
+                "password123");
     }
 
     private RolGlobal rolUsuario() {
@@ -156,8 +156,7 @@ class AuthServiceTest {
         RegistroRequest menorDeEdad = new RegistroRequest(
                 "Ana", "Gomez", "87654321",
                 LocalDate.now().minusYears(10), // 10 años: inválido
-                "ana@test.com", "mujer", "password123"
-        );
+                "ana@test.com", "mujer", "password123");
         when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
         when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
 
@@ -208,8 +207,7 @@ class AuthServiceTest {
         RegistroRequest conRuido = new RegistroRequest(
                 "  Maria  ", " Flores ", " 12345678 ",
                 LocalDate.of(1981, Month.JUNE, 24),
-                "  Maria.Flores@Test.COM ", "mujer", "password123"
-        );
+                "  Maria.Flores@Test.COM ", "mujer", "password123");
         stubsRegistroExitoso(conRuido.password());
 
         authService.registrar(conRuido);
@@ -231,8 +229,7 @@ class AuthServiceTest {
         RegistroRequest mayusculas = new RegistroRequest(
                 "Maria", "Flores", "12345678",
                 LocalDate.of(1981, Month.JUNE, 24),
-                "maria.flores@test.com", "MUJER", "password123"
-        );
+                "maria.flores@test.com", "MUJER", "password123");
         when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
         when(usuarioRepository.existsByDni(anyString())).thenReturn(false);
         when(rolGlobalRepository.findByNombre("Usuario")).thenReturn(Optional.of(mock(RolGlobal.class)));
