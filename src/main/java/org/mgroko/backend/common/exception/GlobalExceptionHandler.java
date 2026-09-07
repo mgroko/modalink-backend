@@ -176,6 +176,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException.class)
+    public ResponseEntity<Map<String, Object>> handlePerfilActivoNoSeleccionado(
+            org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
     /**
      * Excepción de perfil no encontrado (contexto: Administrador).
      */
