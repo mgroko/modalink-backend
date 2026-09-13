@@ -40,6 +40,9 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.storage.exception.ArchivoVacioException;
+import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
+import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
@@ -384,6 +387,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RangoInvalidoException.class)
     public ResponseEntity<Map<String, Object>> handleRangoInvalido(RangoInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ArchivoVacioException.class)
+    public ResponseEntity<Map<String, Object>> handleArchivoVacio(ArchivoVacioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(FormatoImagenInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleFormatoImagenInvalido(FormatoImagenInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ErrorAlmacenamientoException.class)
+    public ResponseEntity<Map<String, Object>> handleErrorAlmacenamiento(ErrorAlmacenamientoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }
