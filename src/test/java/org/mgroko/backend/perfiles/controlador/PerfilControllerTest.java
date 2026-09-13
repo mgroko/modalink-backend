@@ -81,6 +81,9 @@ class PerfilControllerTest {
     @MockitoBean
     private org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService;
 
+    @MockitoBean
+    private org.mgroko.backend.perfiles.servicio.VerPerfilService verPerfilService;
+
     private UsernamePasswordAuthenticationToken autenticacion() {
         return new UsernamePasswordAuthenticationToken("1", null, List.of());
     }
@@ -273,23 +276,29 @@ class PerfilControllerTest {
     void obtener_perfilExistente_devuelve200() throws Exception {
         var authentication = autenticacion();
 
-        PerfilResponse perfil = new PerfilResponse(
-                10L, "Luna", "Modelo profesional.", "Activo", "modelo", null, List.of());
+        org.mgroko.backend.perfiles.dto.PerfilDetalleResponse perfil = new org.mgroko.backend.perfiles.dto.PerfilDetalleResponse(
+                10L, "Luna", "Modelo profesional.", "Activo", null,
+                2L, "modelo", 5L, "https://cloudinary.com/foto.jpg",
+                1L, "Luna", "Perez", "FEM", "Rosario", "Santa Fe",
+                List.of("Pasarela", "Fotogenia"), List.of(), true);
 
-        when(usuarioPerfilService.obtenerPerfilPropio(1L, 10L)).thenReturn(perfil);
+        when(verPerfilService.obtenerDetalle(10L, 1L)).thenReturn(perfil);
 
         mockMvc.perform(get("/perfiles/10")
                         .principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idPerfil").value(10))
-                .andExpect(jsonPath("$.nombreArtistico").value("Luna"));
+                .andExpect(jsonPath("$.nombreArtistico").value("Luna"))
+                .andExpect(jsonPath("$.profesion").value("modelo"))
+                .andExpect(jsonPath("$.localidad").value("Rosario"))
+                .andExpect(jsonPath("$.esPropietario").value(true));
     }
 
     @Test
     void obtener_perfilInexistente_devuelve404() throws Exception {
         var authentication = autenticacion();
 
-        when(usuarioPerfilService.obtenerPerfilPropio(1L, 999L))
+        when(verPerfilService.obtenerDetalle(999L, 1L))
                 .thenThrow(new org.mgroko.backend.admin.exception.PerfilNoEncontradoException("Perfil no encontrado."));
 
         mockMvc.perform(get("/perfiles/999")
