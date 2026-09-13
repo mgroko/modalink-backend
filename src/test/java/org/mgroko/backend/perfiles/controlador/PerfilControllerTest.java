@@ -78,6 +78,9 @@ class PerfilControllerTest {
     @MockitoBean
     private JwtCookieFactory jwtCookieFactory;
 
+    @MockitoBean
+    private org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService;
+
     private UsernamePasswordAuthenticationToken autenticacion() {
         return new UsernamePasswordAuthenticationToken("1", null, List.of());
     }
@@ -543,5 +546,68 @@ class PerfilControllerTest {
                 .andExpect(jsonPath("$.idPerfil").value(10))
                 .andExpect(jsonPath("$.idImagen").doesNotExist())
                 .andExpect(jsonPath("$.fotoUrl").doesNotExist());
+    }
+
+    // UC-16 - Buscar perfil
+    @Test
+    void buscar_conFiltrosYPaginacion_retorna200ConPaginaResponse() throws Exception {
+        var perfilDto = new org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse(
+                1L, "Luna Sol", "Bio", "Activo",
+                2L, "Modelo", null, null,
+                5L, "Ana", "Gomez", "FEM",
+                "Rosario", "Santa Fe",
+                List.of("Pasarela", "Fotogenia"),
+                List.of()
+        );
+
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
+                List.of(perfilDto),
+                0,
+                20,
+                1L,
+                1,
+                true,
+                true
+        );
+
+        when(buscarPerfilService.buscarPerfiles(any(), org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(20), org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/perfiles/buscar")
+                        .principal(autenticacion())
+                        .param("nombreArtistico", "Luna")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .param("todos", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].idPerfil").value(1))
+                .andExpect(jsonPath("$.contenido[0].nombreArtistico").value("Luna Sol"))
+                .andExpect(jsonPath("$.contenido[0].profesion").value("Modelo"))
+                .andExpect(jsonPath("$.contenido[0].nombreUsuario").value("Ana"))
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.tamanoPagina").value(20));
+    }
+
+    @Test
+    void buscar_sinResultados_retorna200ConContenidoVacio() throws Exception {
+        var paginaVacia = new org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse>(
+                List.of(),
+                0,
+                50,
+                0L,
+                0,
+                true,
+                true
+        );
+
+        when(buscarPerfilService.buscarPerfiles(any(), org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(50), org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(paginaVacia);
+
+        mockMvc.perform(get("/perfiles/buscar")
+                        .principal(autenticacion())
+                        .param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido").isEmpty())
+                .andExpect(jsonPath("$.totalElementos").value(0));
     }
 }
