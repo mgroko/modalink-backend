@@ -44,6 +44,7 @@ public class PerfilController {
     private final ActivarPerfilService activarPerfilService;
     private final FotoPerfilService fotoPerfilService;
     private final JwtCookieFactory jwtCookieFactory;
+    private final org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService;
 
     public PerfilController(CrearPerfilService crearPerfilService,
             UsuarioPerfilService usuarioPerfilService,
@@ -52,7 +53,8 @@ public class PerfilController {
             ReactivarPerfilService reactivarPerfilService,
             ActivarPerfilService activarPerfilService,
             FotoPerfilService fotoPerfilService,
-            JwtCookieFactory jwtCookieFactory) {
+            JwtCookieFactory jwtCookieFactory,
+            org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService) {
         this.crearPerfilService = crearPerfilService;
         this.usuarioPerfilService = usuarioPerfilService;
         this.editarPerfilService = editarPerfilService;
@@ -61,6 +63,19 @@ public class PerfilController {
         this.activarPerfilService = activarPerfilService;
         this.fotoPerfilService = fotoPerfilService;
         this.jwtCookieFactory = jwtCookieFactory;
+        this.buscarPerfilService = buscarPerfilService;
+    }
+
+    // UC-16 - Buscar perfiles registrados con criterios de filtrado y paginación parametrizable
+    @GetMapping("/perfiles/buscar")
+    public ResponseEntity<org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse>> buscar(
+            @org.springframework.web.bind.annotation.ModelAttribute org.mgroko.backend.perfiles.dto.BuscarPerfilesFiltro filtro,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean todos,
+            Authentication authentication) {
+        var response = buscarPerfilService.buscarPerfiles(filtro, page, size, todos);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/perfiles")
