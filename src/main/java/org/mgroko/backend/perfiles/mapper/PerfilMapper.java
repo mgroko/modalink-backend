@@ -19,6 +19,9 @@ public class PerfilMapper {
                 .map(PerfilMapper::toCaracteristicaResponse)
                 .toList();
 
+        Long idImagen = perfil.getImagen() != null ? perfil.getImagen().getIdImagen() : null;
+        String fotoUrl = perfil.getImagen() != null ? perfil.getImagen().getUrl() : null;
+
         return new PerfilResponse(
                 perfil.getIdPerfil(),
                 perfil.getNombreArtistico(),
@@ -26,6 +29,8 @@ public class PerfilMapper {
                 perfil.getEstado().name(),
                 perfil.getProfesion().getNombre(),
                 perfil.getFechaSolicitudBaja(),
+                idImagen,
+                fotoUrl,
                 caracteristicas);
     }
 

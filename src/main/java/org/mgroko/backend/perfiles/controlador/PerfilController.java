@@ -11,6 +11,7 @@ import org.mgroko.backend.perfiles.servicio.ActivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarPerfilService;
+import org.mgroko.backend.perfiles.servicio.FotoPerfilService;
 import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -41,6 +42,7 @@ public class PerfilController {
     private final EliminarPerfilService eliminarPerfilService;
     private final ReactivarPerfilService reactivarPerfilService;
     private final ActivarPerfilService activarPerfilService;
+    private final FotoPerfilService fotoPerfilService;
     private final JwtCookieFactory jwtCookieFactory;
 
     public PerfilController(CrearPerfilService crearPerfilService,
@@ -49,6 +51,7 @@ public class PerfilController {
             EliminarPerfilService eliminarPerfilService,
             ReactivarPerfilService reactivarPerfilService,
             ActivarPerfilService activarPerfilService,
+            FotoPerfilService fotoPerfilService,
             JwtCookieFactory jwtCookieFactory) {
         this.crearPerfilService = crearPerfilService;
         this.usuarioPerfilService = usuarioPerfilService;
@@ -56,6 +59,7 @@ public class PerfilController {
         this.eliminarPerfilService = eliminarPerfilService;
         this.reactivarPerfilService = reactivarPerfilService;
         this.activarPerfilService = activarPerfilService;
+        this.fotoPerfilService = fotoPerfilService;
         this.jwtCookieFactory = jwtCookieFactory;
     }
 
@@ -146,6 +150,25 @@ public class PerfilController {
         }
 
         PerfilResponse response = usuarioPerfilService.obtenerPerfilPropio(idUsuario, idPerfilActivo);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/perfiles/{idPerfil}/foto", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PerfilResponse> subirFoto(
+            @PathVariable Long idPerfil,
+            @org.springframework.web.bind.annotation.RequestParam("archivo") org.springframework.web.multipart.MultipartFile archivo,
+            Authentication authentication) {
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        PerfilResponse response = fotoPerfilService.subirFoto(idUsuario, idPerfil, archivo);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/perfiles/{idPerfil}/foto")
+    public ResponseEntity<PerfilResponse> eliminarFoto(
+            @PathVariable Long idPerfil,
+            Authentication authentication) {
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        PerfilResponse response = fotoPerfilService.eliminarFoto(idUsuario, idPerfil);
         return ResponseEntity.ok(response);
     }
 
