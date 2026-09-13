@@ -17,6 +17,7 @@ import org.mgroko.backend.perfiles.servicio.ActivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarPerfilService;
+import org.mgroko.backend.perfiles.servicio.FotoPerfilService;
 import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
 import org.mgroko.backend.security.JwtCookieFactory;
@@ -70,6 +71,9 @@ class PerfilControllerTest {
 
     @MockitoBean
     private ActivarPerfilService activarPerfilService;
+
+    @MockitoBean
+    private FotoPerfilService fotoPerfilService;
 
     @MockitoBean
     private JwtCookieFactory jwtCookieFactory;
@@ -482,5 +486,62 @@ class PerfilControllerTest {
                         .principal(auth))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
+    }
+
+    @Test
+    void subirFoto_archivoValido_retorna200ConPerfilActualizado() throws Exception {
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "archivo",
+                "foto.jpg",
+                "image/jpeg",
+                "contenido".getBytes()
+        );
+
+        PerfilResponse response = new PerfilResponse(
+                10L,
+                "Luna",
+                "Bio",
+                "Activo",
+                "Modelo",
+                null,
+                100L,
+                "/uploads/perfiles/perfil_100.jpg",
+                List.of()
+        );
+
+        org.mockito.Mockito.when(fotoPerfilService.subirFoto(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(response);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/perfiles/10/foto")
+                        .file(file)
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPerfil").value(10))
+                .andExpect(jsonPath("$.idImagen").value(100))
+                .andExpect(jsonPath("$.fotoUrl").value("/uploads/perfiles/perfil_100.jpg"));
+    }
+
+    @Test
+    void eliminarFoto_retorna200ConFotoRemovida() throws Exception {
+        PerfilResponse response = new PerfilResponse(
+                10L,
+                "Luna",
+                "Bio",
+                "Activo",
+                "Modelo",
+                null,
+                null,
+                null,
+                List.of()
+        );
+
+        org.mockito.Mockito.when(fotoPerfilService.eliminarFoto(1L, 10L)).thenReturn(response);
+
+        mockMvc.perform(delete("/perfiles/10/foto")
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPerfil").value(10))
+                .andExpect(jsonPath("$.idImagen").doesNotExist())
+                .andExpect(jsonPath("$.fotoUrl").doesNotExist());
     }
 }
