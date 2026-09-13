@@ -32,6 +32,34 @@ public class AdminUsuarioService {
     }
 
     @Transactional(readOnly = true)
+    public org.mgroko.backend.common.dto.PaginaResponse<AdminUsuarioResponse> buscar(
+            org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro filtro,
+            int page,
+            int size,
+            boolean todos) {
+
+        org.springframework.data.domain.Pageable pageable;
+        org.springframework.data.domain.Sort sort = org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.ASC, "apellido", "nombre");
+
+        if (todos || size <= 0) {
+            pageable = org.springframework.data.domain.Pageable.unpaged(sort);
+        } else {
+            int paginaAjustada = Math.max(0, page);
+            pageable = org.springframework.data.domain.PageRequest.of(paginaAjustada, size, sort);
+        }
+
+        org.springframework.data.jpa.domain.Specification<Usuario> spec =
+                org.mgroko.backend.admin.especificacion.UsuarioSpecifications.conFiltros(filtro);
+        org.springframework.data.domain.Page<Usuario> resultado = usuarioRepository.findAll(spec, pageable);
+
+        org.springframework.data.domain.Page<AdminUsuarioResponse> paginaDto =
+                resultado.map(AdminUsuarioMapper::toResponse);
+
+        return org.mgroko.backend.common.dto.PaginaResponse.fromPage(paginaDto);
+    }
+
+    @Transactional(readOnly = true)
     public AdminUsuarioResponse obtenerDetalle(Long idUsuario) {
         Usuario usuario = buscarOFallar(idUsuario);
         return AdminUsuarioMapper.toResponse(usuario);
