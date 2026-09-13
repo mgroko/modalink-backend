@@ -45,6 +45,7 @@ public class PerfilController {
     private final FotoPerfilService fotoPerfilService;
     private final JwtCookieFactory jwtCookieFactory;
     private final org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService;
+    private final org.mgroko.backend.perfiles.servicio.VerPerfilService verPerfilService;
 
     public PerfilController(CrearPerfilService crearPerfilService,
             UsuarioPerfilService usuarioPerfilService,
@@ -54,7 +55,8 @@ public class PerfilController {
             ActivarPerfilService activarPerfilService,
             FotoPerfilService fotoPerfilService,
             JwtCookieFactory jwtCookieFactory,
-            org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService) {
+            org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService,
+            org.mgroko.backend.perfiles.servicio.VerPerfilService verPerfilService) {
         this.crearPerfilService = crearPerfilService;
         this.usuarioPerfilService = usuarioPerfilService;
         this.editarPerfilService = editarPerfilService;
@@ -64,6 +66,7 @@ public class PerfilController {
         this.fotoPerfilService = fotoPerfilService;
         this.jwtCookieFactory = jwtCookieFactory;
         this.buscarPerfilService = buscarPerfilService;
+        this.verPerfilService = verPerfilService;
     }
 
     // UC-16 - Buscar perfiles registrados con criterios de filtrado y paginación parametrizable
@@ -94,13 +97,13 @@ public class PerfilController {
         return ResponseEntity.ok(response);
     }
 
-    // UC-11 - Paso 2: recuperar los datos actuales del perfil
+    // UC-14 - Ver perfil completo (propio o de terceros activos) / UC-11 Paso 2
     @GetMapping("/perfiles/{idPerfil}")
-    public ResponseEntity<PerfilResponse> obtener(
+    public ResponseEntity<org.mgroko.backend.perfiles.dto.PerfilDetalleResponse> obtener(
             @PathVariable Long idPerfil,
             Authentication authentication) {
         Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
-        PerfilResponse response = usuarioPerfilService.obtenerPerfilPropio(idUsuario, idPerfil);
+        org.mgroko.backend.perfiles.dto.PerfilDetalleResponse response = verPerfilService.obtenerDetalle(idPerfil, idUsuario);
         return ResponseEntity.ok(response);
     }
 

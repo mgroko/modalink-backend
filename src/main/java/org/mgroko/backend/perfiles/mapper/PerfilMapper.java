@@ -72,6 +72,46 @@ public class PerfilMapper {
         );
     }
 
+    public static org.mgroko.backend.perfiles.dto.PerfilDetalleResponse toDetalleResponse(Perfil perfil, boolean esPropietario) {
+        List<CaracteristicaResponse> caracteristicas = perfil.getCaracteristicas().stream()
+                .sorted(Comparator.comparing(c -> c.getCaracteristicaTecnica().getCodigo()))
+                .map(PerfilMapper::toCaracteristicaResponse)
+                .toList();
+
+        List<String> habilidades = perfil.getHabilidades().stream()
+                .sorted(Comparator.comparing(org.mgroko.backend.modelo.Habilidad::getNombre))
+                .map(org.mgroko.backend.modelo.Habilidad::getNombre)
+                .toList();
+
+        Long idImagen = perfil.getImagen() != null ? perfil.getImagen().getIdImagen() : null;
+        String fotoUrl = perfil.getImagen() != null ? perfil.getImagen().getUrl() : null;
+
+        var usuario = perfil.getUsuario();
+        var ubicacion = usuario.getUbicacion();
+        var genero = usuario.getGenero();
+
+        return new org.mgroko.backend.perfiles.dto.PerfilDetalleResponse(
+                perfil.getIdPerfil(),
+                perfil.getNombreArtistico(),
+                perfil.getBiografia(),
+                perfil.getEstado().name(),
+                perfil.getFechaSolicitudBaja(),
+                perfil.getProfesion().getIdProfesion(),
+                perfil.getProfesion().getNombre(),
+                idImagen,
+                fotoUrl,
+                usuario.getIdUsuario(),
+                usuario.getNombre(),
+                usuario.getApellido(),
+                genero != null ? genero.getCodigo() : null,
+                ubicacion != null ? ubicacion.getLocalidad() : null,
+                ubicacion != null ? ubicacion.getProvincia() : null,
+                habilidades,
+                caracteristicas,
+                esPropietario
+        );
+    }
+
     private static CaracteristicaResponse toCaracteristicaResponse(CaracteristicaPerfil cp) {
         ValorCaracteristica valor = cp.getValorCaracteristica();
         return new CaracteristicaResponse(
