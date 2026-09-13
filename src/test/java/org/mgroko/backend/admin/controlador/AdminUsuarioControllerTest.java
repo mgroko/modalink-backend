@@ -163,4 +163,60 @@ class AdminUsuarioControllerTest {
                                 new DeshabilitarUsuarioRequest("Motivo", 7))))
                 .andExpect(status().isNotFound());
     }
+
+    // UC-06 - Buscar usuario
+    @Test
+    void buscar_conFiltrosYPaginacion_devuelve200ConPaginaResponse() throws Exception {
+        var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        var userDto = response(new Genero(1L, "mujer"), "Activo");
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
+                List.of(userDto),
+                0,
+                20,
+                1L,
+                1,
+                true,
+                true
+        );
+
+        when(adminUsuarioService.buscar(any(), org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(20), org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/admin/usuarios/buscar")
+                        .principal(authentication)
+                        .param("nombre", "Maria")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .param("todos", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].idUsuario").value(2))
+                .andExpect(jsonPath("$.contenido[0].nombre").value("Maria"))
+                .andExpect(jsonPath("$.contenido[0].correo").value("maria@test.com"))
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.tamanoPagina").value(20));
+    }
+
+    @Test
+    void buscar_sinCoincidencias_devuelve200ConContenidoVacio() throws Exception {
+        var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        var paginaVacia = new org.mgroko.backend.common.dto.PaginaResponse<AdminUsuarioResponse>(
+                List.of(),
+                0,
+                50,
+                0L,
+                0,
+                true,
+                true
+        );
+
+        when(adminUsuarioService.buscar(any(), org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(50), org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(paginaVacia);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/admin/usuarios/buscar")
+                        .principal(authentication)
+                        .param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido").isEmpty())
+                .andExpect(jsonPath("$.totalElementos").value(0));
+    }
 }

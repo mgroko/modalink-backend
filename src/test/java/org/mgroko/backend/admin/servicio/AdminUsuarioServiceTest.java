@@ -226,4 +226,72 @@ class AdminUsuarioServiceTest {
         assertEquals("Deshabilitado", response.estado());
         verify(usuarioRepository).save(usuario);
     }
+
+    // UC-06 - Buscar usuario
+    @Test
+    void buscar_conPaginacionPorDefecto_devuelvePaginaResponse() {
+        Usuario u1 = usuarioConRol(EstadoUsuario.Activo);
+        Usuario u2 = usuarioConRol(EstadoUsuario.Deshabilitado);
+        org.springframework.data.domain.PageImpl<Usuario> page =
+                new org.springframework.data.domain.PageImpl<>(java.util.List.of(u1, u2),
+                        org.springframework.data.domain.PageRequest.of(0, 20), 2);
+
+        when(usuarioRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
+
+        org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro filtro =
+                new org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro("Maria", null, null, null, null, null, null);
+
+        org.mgroko.backend.common.dto.PaginaResponse<AdminUsuarioResponse> resultado =
+                adminUsuarioService.buscar(filtro, 0, 20, false);
+
+        assertNotNull(resultado);
+        assertEquals(2, resultado.contenido().size());
+        assertEquals(2, resultado.totalElementos());
+        assertEquals(20, resultado.tamanoPagina());
+        assertEquals(0, resultado.paginaActual());
+    }
+
+    @Test
+    void buscar_conOpcionTodos_usaPageableUnpaged() {
+        Usuario u1 = usuarioConRol(EstadoUsuario.Activo);
+        org.springframework.data.domain.PageImpl<Usuario> page =
+                new org.springframework.data.domain.PageImpl<>(java.util.List.of(u1));
+
+        when(usuarioRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
+
+        org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro filtro =
+                new org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro(null, null, null, null, null, null, null);
+
+        org.mgroko.backend.common.dto.PaginaResponse<AdminUsuarioResponse> resultado =
+                adminUsuarioService.buscar(filtro, 0, 0, true);
+
+        ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+                ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        verify(usuarioRepository).findAll(any(org.springframework.data.jpa.domain.Specification.class), captor.capture());
+
+        assertTrue(captor.getValue().isUnpaged());
+        assertEquals(1, resultado.contenido().size());
+    }
+
+    @Test
+    void buscar_sinCoincidencias_devuelvePaginaVacia() {
+        org.springframework.data.domain.PageImpl<Usuario> page =
+                new org.springframework.data.domain.PageImpl<>(java.util.List.of(),
+                        org.springframework.data.domain.PageRequest.of(0, 50), 0);
+
+        when(usuarioRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
+
+        org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro filtro =
+                new org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro("Inexistente", null, null, null, null, null, null);
+
+        org.mgroko.backend.common.dto.PaginaResponse<AdminUsuarioResponse> resultado =
+                adminUsuarioService.buscar(filtro, 0, 50, false);
+
+        assertTrue(resultado.contenido().isEmpty());
+        assertEquals(0, resultado.totalElementos());
+        assertEquals(50, resultado.tamanoPagina());
+    }
 }
