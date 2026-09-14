@@ -131,6 +131,48 @@ class CalendarioServiceTest {
     }
 
     // ------------------------------------------------------------------
+    // obtenerPublico
+    // ------------------------------------------------------------------
+
+    @Test
+    void obtenerPublico_devuelveJornadaBloqueosAnonimizadosYActividades() {
+        mockUsuarioActivo();
+        mockAgenda();
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(JornadaAgenda.builder().diaSemana(1)
+                        .horarioInicioManiana(LocalTime.of(9, 0))
+                        .horarioFinTarde(LocalTime.of(18, 0)).build()));
+        when(bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(10L))
+                .thenReturn(List.of(BloqueoAgenda.builder().idBloqueo(1L)
+                        .fechaHoraInicio(LocalDateTime.of(2026, 9, 15, 10, 0))
+                        .fechaHoraFin(LocalDateTime.of(2026, 9, 15, 14, 0))
+                        .motivo("Motivo personal privado").build()));
+        when(actividadRepository.findActividadesDeUsuario(anyLong(), anyCollection()))
+                .thenReturn(List.of(actividad(
+                        LocalDateTime.of(2026, 9, 10, 10, 0),
+                        LocalDateTime.of(2026, 9, 10, 12, 0))));
+
+        CalendarioResponse response = calendarioService.obtenerPublico(1L);
+
+        assertEquals(60, response.jornada().margenActividadMinutos());
+        assertEquals(1, response.jornada().dias().size());
+        assertEquals(1, response.bloqueosManuales().size());
+        assertEquals(1L, response.bloqueosManuales().get(0).idBloqueo());
+        assertNull(response.bloqueosManuales().get(0).motivo());
+        assertEquals(1, response.actividades().size());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 0), response.actividades().get(0).fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 13, 0), response.actividades().get(0).fechaHoraFin());
+    }
+
+    @Test
+    void obtenerPublico_sinAgenda_lanzaAgendaNoEncontrada() {
+        mockUsuarioActivo();
+        when(agendaRepository.findByUsuario_IdUsuario(1L)).thenReturn(Optional.empty());
+
+        assertThrows(AgendaNoEncontradaException.class, () -> calendarioService.obtenerPublico(1L));
+    }
+
+    // ------------------------------------------------------------------
     // configurarJornada
     // ------------------------------------------------------------------
 

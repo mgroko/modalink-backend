@@ -96,6 +96,23 @@ class CalendarioMapperTest {
     }
 
     @Test
+    void toBloqueoResponseAnonimizado_ocultaMotivo() {
+        BloqueoAgenda bloqueo = BloqueoAgenda.builder()
+                .idBloqueo(7L)
+                .fechaHoraInicio(LocalDateTime.of(2026, 9, 15, 10, 0))
+                .fechaHoraFin(LocalDateTime.of(2026, 9, 15, 14, 0))
+                .motivo("Dentista confidencial")
+                .build();
+
+        BloqueoResponse response = CalendarioMapper.toBloqueoResponseAnonimizado(bloqueo);
+
+        assertEquals(7L, response.idBloqueo());
+        assertEquals(LocalDateTime.of(2026, 9, 15, 10, 0), response.fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 15, 14, 0), response.fechaHoraFin());
+        assertNull(response.motivo());
+    }
+
+    @Test
     void toBloqueoActividadResponse_aplicaMargenALosDosExtremos() {
         Actividad actividad = Actividad.builder()
                 .idActividad(11L)

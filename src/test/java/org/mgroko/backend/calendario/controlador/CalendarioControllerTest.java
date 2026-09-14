@@ -82,6 +82,31 @@ class CalendarioControllerTest {
     }
 
     @Test
+    void obtenerPorPerfil_devuelve200ConCuerpo() throws Exception {
+        CalendarioResponse calendarioPublico = new CalendarioResponse(
+                new ConfigJornadaResponse(60, List.of(
+                        new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))),
+                List.of(new BloqueoResponse(1L,
+                        LocalDateTime.of(2026, 9, 15, 10, 0),
+                        LocalDateTime.of(2026, 9, 15, 14, 0), null)),
+                List.of(new BloqueoActividadResponse(5L, "Sesión",
+                        LocalDateTime.of(2026, 9, 10, 9, 0),
+                        LocalDateTime.of(2026, 9, 10, 13, 0))));
+
+        when(calendarioService.obtenerPublico(2L)).thenReturn(calendarioPublico);
+
+        mockMvc.perform(get("/calendario/perfil/2").principal(auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(60))
+                .andExpect(jsonPath("$.jornada.dias[0].diaSemana").value(1))
+                .andExpect(jsonPath("$.bloqueosManuales[0].idBloqueo").value(1))
+                .andExpect(jsonPath("$.bloqueosManuales[0].motivo").doesNotExist())
+                .andExpect(jsonPath("$.actividades[0].nombre").value("Sesión"));
+
+        verify(calendarioService).obtenerPublico(2L);
+    }
+
+    @Test
     void configurarJornada_valido_devuelve200() throws Exception {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
