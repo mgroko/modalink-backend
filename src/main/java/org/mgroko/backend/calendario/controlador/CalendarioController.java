@@ -35,6 +35,11 @@ public class CalendarioController {
         return ResponseEntity.ok(calendarioService.obtener(idUsuario));
     }
 
+    @GetMapping("/perfil/{id}")
+    public ResponseEntity<CalendarioResponse> obtenerPorPerfil(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(calendarioService.obtenerPublico(id));
+    }
+
     @PutMapping("/jornada")
     public ResponseEntity<ConfigJornadaResponse> configurarJornada(
             @Valid @RequestBody ConfigJornadaRequest request,

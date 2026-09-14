@@ -40,6 +40,17 @@ public class CalendarioMapper {
     }
 
     /**
+     * Mapea un bloqueo manual ocultando el motivo para visualización pública (terceros).
+     */
+    public static BloqueoResponse toBloqueoResponseAnonimizado(BloqueoAgenda bloqueo) {
+        return new BloqueoResponse(
+                bloqueo.getIdBloqueo(),
+                bloqueo.getFechaHoraInicio(),
+                bloqueo.getFechaHoraFin(),
+                null);
+    }
+
+    /**
      * Convierte una actividad en el bloqueo calculado correspondiente,
      * extendiendo el rango con el margen por actividad (buffer) a cada lado.
      */

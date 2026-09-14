@@ -95,6 +95,32 @@ public class CalendarioService {
     }
 
     /**
+     * Devuelve la agenda pública de un usuario (para visualización de disponibilidad
+     * en su perfil). Incluye la jornada laboral, los bloqueos por actividades y los
+     * bloqueos manuales con el motivo oculto para proteger la privacidad.
+     */
+    @Transactional(readOnly = true)
+    public CalendarioResponse obtenerPublico(Long idUsuario) {
+        usuarioActivo(idUsuario);
+        Agenda agenda = agendaDe(idUsuario);
+        List<JornadaAgenda> dias =
+                jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(agenda.getIdAgenda());
+        List<BloqueoAgenda> bloqueos =
+                bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
+        List<Actividad> actividades = actividadesDe(idUsuario);
+        int margen = agenda.getMargenActividadMinutos() != null
+                ? agenda.getMargenActividadMinutos()
+                : Agenda.MARGEN_ACTIVIDAD_MINUTOS_DEFECTO;
+
+        return new CalendarioResponse(
+                CalendarioMapper.toConfigJornadaResponse(agenda, dias),
+                bloqueos.stream().map(CalendarioMapper::toBloqueoResponseAnonimizado).toList(),
+                actividades.stream()
+                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(a, margen))
+                        .toList());
+    }
+
+    /**
      * Reemplaza la jornada laboral completa del usuario (días con sus
      * horarios) y el margen por actividad. La sincronización es por diff:
      * se insertan solo los días nuevos, se actualizan los que cambian de
