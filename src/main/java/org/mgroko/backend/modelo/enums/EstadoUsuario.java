@@ -1,19 +1,21 @@
 package org.mgroko.backend.modelo.enums;
 
 /**
- * Valores exactos según el CHECK de la tabla usuario.
- * Los nombres de las constantes respetan el string guardado en la base
- * (no la convención ALL_CAPS de Java) para que @Enumerated(EnumType.STRING)
- * escriba y compare exactamente lo que exige el CHECK constraint.
+ * Valores exactos según el CHECK de la tabla usuario en ModaLinkBD.sql:
+ * CHECK (estado IN ('ACTIVO', 'DESHABILITADO', 'PENDIENTE_BAJA', 'BAJA'))
  */
 public enum EstadoUsuario {
-    Activo,
-    Deshabilitado,
-    PendienteBaja,
-    Baja;
+    ACTIVO,
+    DESHABILITADO,
+    PENDIENTE_BAJA,
+    BAJA;
 
-public boolean permiteAcceso() {
-        return this == Activo || this == PendienteBaja;
+    public static final EstadoUsuario Activo = ACTIVO;
+    public static final EstadoUsuario Deshabilitado = DESHABILITADO;
+    public static final EstadoUsuario PendienteBaja = PENDIENTE_BAJA;
+    public static final EstadoUsuario Baja = BAJA;
+
+    public boolean permiteAcceso() {
+        return this == ACTIVO || this == PENDIENTE_BAJA;
     }
-
 }

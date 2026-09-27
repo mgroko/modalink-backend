@@ -28,7 +28,7 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long> {
         JOIN asg.miembro m
         JOIN m.perfil per
         WHERE per.usuario.id = :idUsuario
-          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.Activo
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
           AND a.planificacion.proyecto.estado IN :estados
     """)
     List<Actividad> findActividadesDeUsuario(

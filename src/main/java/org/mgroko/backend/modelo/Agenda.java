@@ -33,7 +33,7 @@ public class Agenda {
     private Long idAgenda;
 
     @Builder.Default
-    @Column(name = "margen_actividad_minutos", nullable = false)
+    @Column(name = "margen_actividad_min", nullable = false)
     private Integer margenActividadMinutos = MARGEN_ACTIVIDAD_MINUTOS_DEFECTO;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)

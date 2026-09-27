@@ -44,16 +44,16 @@ public class JornadaAgenda {
     @Column(name = "dia_semana", nullable = false)
     private Integer diaSemana;
 
-    @Column(name = "horario_inicio_maniana", nullable = false)
+    @Column(name = "hora_inicio_manana", nullable = false)
     private LocalTime horarioInicioManiana;
 
-    @Column(name = "horario_fin_maniana")
+    @Column(name = "hora_fin_manana")
     private LocalTime horarioFinManiana;
 
-    @Column(name = "horario_inicio_tarde")
+    @Column(name = "hora_inicio_tarde")
     private LocalTime horarioInicioTarde;
 
-    @Column(name = "horario_fin_tarde", nullable = false)
+    @Column(name = "hora_fin_tarde", nullable = false)
     private LocalTime horarioFinTarde;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

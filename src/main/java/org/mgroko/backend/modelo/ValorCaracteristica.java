@@ -17,9 +17,24 @@ public class ValorCaracteristica {
     @JoinColumn(name = "id_caracteristica", nullable = false)
     private CaracteristicaTecnica caracteristicaTecnica;
 
-    @Column(name = "codigo", nullable = false, length = 50)
-    private String codigo;
+    @Column(name = "etiqueta", length = 255)
+    private String etiqueta;
 
     @Column(name = "color_hex", length = 7)
     private String colorHex;
+
+    public String getCodigo() {
+        return etiqueta;
+    }
+
+    public void setCodigo(String codigo) {
+        this.etiqueta = codigo;
+    }
+
+    public static class ValorCaracteristicaBuilder {
+        public ValorCaracteristicaBuilder codigo(String codigo) {
+            this.etiqueta = codigo;
+            return this;
+        }
+    }
 }

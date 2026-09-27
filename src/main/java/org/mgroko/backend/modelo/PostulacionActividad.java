@@ -29,6 +29,6 @@ public class PostulacionActividad {
     private Perfil perfil;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_requerimiento", nullable = false)
+    @JoinColumn(name = "id_requerimiento_act", nullable = false)
     private RequerimientoActividad requerimiento;
 }
