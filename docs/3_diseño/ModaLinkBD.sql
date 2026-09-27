@@ -388,32 +388,7 @@ CREATE TABLE caracteristica_tecnica(
     CONSTRAINT "PK_caracteristica_tecnica" PRIMARY KEY (id_caracteristica)
 )
 ;
-INSERT INTO caracteristica_tecnica (id_caracteristica, codigo, nombre, tipo_dato, id_unidad, id_profesion)
-SELECT 
-    v.id_caracteristica,
-    v.codigo,
-    v.nombre,
-    v.tipo_dato,
-    u.id_unidad,
-    p.id_profesion
-FROM (VALUES
-    (1, 'ALTURA',         'Altura',             'NUMERICO',  'cm'),
-    (2, 'MEDIDA_PECHO',   'Medida de Pecho',    'NUMERICO',  'cm'),
-    (3, 'MEDIDA_CINTURA', 'Medida de Cintura',  'NUMERICO',  'cm'),
-    (4, 'MEDIDA_CADERA',  'Medida de Cadera',   'NUMERICO',  'cm'),
-    (5, 'COLOR_OJOS',     'Color de Ojos',      'ENUMERADO', 'color'),
-    (6, 'COLOR_CABELLO',  'Color de Cabello',   'ENUMERADO', 'color'),
-    (7, 'COLOR_PIEL',     'Tono de Piel',       'ENUMERADO', 'color'),
-    (8, 'TIPO_CABELLO',   'Tipo de Cabello',    'ENUMERADO', NULL)
-) AS v(id_caracteristica, codigo, nombre, tipo_dato, unidad_simbolo)
-JOIN profesion p ON p.codigo = 'MODELO'
-LEFT JOIN unidad_medida u ON u.simbolo = v.unidad_simbolo
-ON CONFLICT (id_caracteristica) DO UPDATE 
-    SET codigo       = EXCLUDED.codigo,
-        nombre       = EXCLUDED.nombre,
-        tipo_dato    = EXCLUDED.tipo_dato,
-        id_unidad    = EXCLUDED.id_unidad,
-        id_profesion = EXCLUDED.id_profesion;
+
 
 -- 
 -- TABLE: ciudad 
@@ -476,13 +451,7 @@ CREATE TABLE configuracion_sistema(
     CONSTRAINT "PK_clave_config" PRIMARY KEY (clave)
 )
 ;
-INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
-    ('SCHEDULER_DESHABILITACION_HORA',   '2',           'Hora del dia (0-23) en la que se ejecuta el scheduler de deshabilitacion'),
-    ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
-    ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios')
-ON CONFLICT (clave) DO UPDATE 
-    SET valor       = EXCLUDED.valor,
-        descripcion = EXCLUDED.descripcion;
+
 
 -- 
 -- TABLE: dependencia_actividades 
@@ -524,14 +493,7 @@ CREATE TABLE genero(
     CONSTRAINT "PK_genero" PRIMARY KEY (id_genero)
 )
 ;
-INSERT INTO genero (id_genero, codigo, nombre) VALUES
-    (1, 'MUJER',      'Mujer'),
-    (2, 'HOMBRE',     'Hombre'),
-    (3, 'NO_BINARIO', 'No binario'),
-    (4, 'NO_DECIRLO', 'Prefiero no decirlo')
-ON CONFLICT (id_genero) DO UPDATE 
-    SET codigo = EXCLUDED.codigo,
-        nombre = EXCLUDED.nombre;
+
 
 -- 
 -- TABLE: habilidad 
@@ -545,21 +507,7 @@ CREATE TABLE habilidad(
     CONSTRAINT "PK_habilidad" PRIMARY KEY (id_habilidad)
 )
 ;
-INSERT INTO habilidad (id_habilidad, codigo, nombre, descripcion) VALUES
-    (1,  'FOTO_ESTUDIO',        'Fotografía de Estudio',      'Manejo experto de iluminación y sets fotográficos en interiores.'),
-    (2,  'FOTO_EXTERIOR',       'Fotografía en Exteriores',   'Dominio de luz natural y encuadres en locaciones abiertas.'),
-    (3,  'EDICION_DIGITAL',     'Retoque y Edición Digital',  'Postproducción digital y corrección cromática avanzada.'),
-    (4,  'PASARELA',            'Desfile en Pasarela',        'Dominio de ritmo, postura y modelaje en vivo.'),
-    (5,  'MODELAJE_EDITORIAL', 'Modelaje Editorial',         'Capacidad de expresión visual para revistas y catálogos de moda.'),
-    (6,  'MAQUILLAJE_HD',       'Maquillaje Audiovisual/HD',  'Técnicas de maquillaje aptas para cámaras de alta definición.'),
-    (7,  'MAQUILLAJE_ARTISTICO','Maquillaje Artístico',       'Caracterización, fantasía y efectos visuales de maquillaje.'),
-    (8,  'CORTE_CONFECCION',    'Corte y Confección',         'Habilidad de patronaje y armado artesanal de prendas.'),
-    (9,  'PEINADO_EDITORIAL',   'Peinado Editorial',          'Creación de peinados estructurados para producciones de moda.'),
-    (10,  'MAQUILLAJE_FX',   'Maquillaje de efectos especiales (FX)',          'Técnicas de maquillaje para simular heridas, envejecimiento, transformaciones en la piel, entre otros')
-ON CONFLICT (id_habilidad) DO UPDATE 
-    SET codigo      = EXCLUDED.codigo,
-        nombre      = EXCLUDED.nombre,
-        descripcion = EXCLUDED.descripcion;
+
 
 -- 
 -- TABLE: habilidad_perfil 
@@ -897,12 +845,7 @@ CREATE TABLE pais(
     CONSTRAINT "PK_pais" PRIMARY KEY (id_pais)
 )
 ;
-INSERT INTO pais (id_pais, codigo_iso, nombre, activo) VALUES
-    (1, 'AR', 'Argentina', true)
-ON CONFLICT (id_pais) DO UPDATE 
-    SET codigo_iso = EXCLUDED.codigo_iso,
-        nombre     = EXCLUDED.nombre,
-        activo     = EXCLUDED.activo;
+
 
 -- 
 -- TABLE: perfil 
@@ -1004,16 +947,7 @@ CREATE TABLE permiso_global(
     CONSTRAINT "PK_permiso_global" PRIMARY KEY (id_permiso_global)
 )
 ;
-INSERT INTO permiso_global (id_permiso_global, nombre) VALUES
-    (1, 'VER_USUARIOS'),
-    (2, 'HABILITAR_USUARIO'),
-    (3, 'DESHABILITAR_USUARIO'),
-    (4, 'VER_CARACTERISTICAS'),
-    (5, 'CREAR_CARACTERISTICA'),
-    (6, 'MODIFICAR_CARACTERISTICA'),
-    (7, 'ELIMINAR_CARACTERISTICA'),
-    (8, 'ADMINISTRAR_CONFIGURACION')
-ON CONFLICT (id_permiso_global) DO UPDATE SET nombre = EXCLUDED.nombre;
+
 
 -- 
 -- TABLE: permiso_proyecto 
@@ -1025,22 +959,7 @@ CREATE TABLE permiso_proyecto(
     CONSTRAINT "PK_permiso_proyecto" PRIMARY KEY (id_permiso_proyecto)
 )
 ;
-INSERT INTO permiso_proyecto (id_permiso_proyecto, nombre) VALUES
-    (1,  'VER_PROYECTO'),
-    (2,  'MODIFICAR_PROYECTO'),
-    (3,  'PUBLICAR_PROYECTO'),
-    (4,  'CONFIRMAR_PROYECTO'),
-    (5,  'FINALIZAR_PROYECTO'),
-    (6,  'CANCELAR_PROYECTO'),
-    (7,  'CREAR_ACTIVIDAD'),
-    (8,  'MODIFICAR_ACTIVIDAD'),
-    (9,  'ELIMINAR_ACTIVIDAD'),
-    (10, 'ASIGNAR_ACTIVIDAD'),
-    (11, 'GESTIONAR_POSTULACIONES'),
-    (12, 'INVITAR_MIEMBRO'),
-    (13, 'ELIMINAR_INVITACION'),
-    (14, 'ELIMINAR_INTEGRANTE')
-ON CONFLICT (id_permiso_proyecto) DO UPDATE SET nombre = EXCLUDED.nombre;
+
 
 -- 
 -- TABLE: planificacion 
@@ -1191,18 +1110,7 @@ CREATE TABLE profesion(
     CONSTRAINT "PK_profesion" PRIMARY KEY (id_profesion)
 )
 ;
-INSERT INTO profesion (id_profesion, codigo, nombre, descripcion) VALUES
-    (1, 'FOTOGRAFO',         'Fotógrafo',            'Profesional dedicado a la captura y edición de imágenes fotográficas.'),
-    (2, 'MODELO',            'Modelo',               'Profesional que posa para producciones fotográficas, audiovisuales o pasarelas.'),
-    (3, 'MAQUILLADOR',       'Maquillador',          'Especialista en estilismo facial, caracterización y técnicas de maquillaje.'),
-    (4, 'DISENIADOR_MODA',   'Diseñador de Moda',    'Profesional dedicado a la creación, confección y diseño de indumentaria.'),
-    (5, 'PRODUCTOR_MODA',    'Productor de Moda',    'Encargado de coordinar y organizar los recursos logísticos y visuales.'),
-    (6, 'ESTILISTA_IMAGEN',  'Estilista de Imagen',  'Asesor responsable de definir la coherencia estilística e indumentaria.'),
-    (7, 'ESTILISTA_CABELLO', 'Estilista de Cabello', 'Especialista en peinado, corte y tratamiento capilar para producciones.')
-ON CONFLICT (id_profesion) DO UPDATE 
-    SET codigo      = EXCLUDED.codigo,
-        nombre      = EXCLUDED.nombre,
-        descripcion = EXCLUDED.descripcion;
+
 
 -- 
 -- TABLE: provincia 
@@ -1477,12 +1385,7 @@ CREATE TABLE rol_global(
     CONSTRAINT "PK_rol_global" PRIMARY KEY (id_rol_global)
 )
 ;
-INSERT INTO rol_global (id_rol_global, nombre, codigo) VALUES
-    (1, 'Administrador', 'ADMINISTRADOR'),
-    (2, 'Usuario', 'USUARIO')
-ON CONFLICT (id_rol_global) DO UPDATE
-	SET nombre = EXCLUDED.nombre,
-		codigo = EXCLUDED.codigo;
+
 
 -- 
 -- TABLE: rol_global_permiso 
@@ -1494,12 +1397,7 @@ CREATE TABLE rol_global_permiso(
     CONSTRAINT "PK_rol_global_permiso" PRIMARY KEY (id_rol_global, id_permiso_global)
 )
 ;
-INSERT INTO rol_global_permiso (id_rol_global, id_permiso_global)
-SELECT rg.id_rol_global, pg.id_permiso_global
-FROM rol_global rg
-CROSS JOIN permiso_global pg
-WHERE rg.nombre = 'Administrador'
-ON CONFLICT (id_rol_global, id_permiso_global) DO NOTHING;
+
 
 -- 
 -- TABLE: rol_proyecto 
@@ -1512,12 +1410,7 @@ CREATE TABLE rol_proyecto(
     CONSTRAINT "PK_rol_proyecto" PRIMARY KEY (id_rol_proyecto)
 )
 ;
-INSERT INTO rol_proyecto (id_rol_proyecto, codigo, nombre) VALUES
-    (1, 'DIRECTOR', 'Director de proyecto'),
-    (2, 'MIEMBRO', 'Miembro de proyecto')
-ON CONFLICT (id_rol_proyecto) DO UPDATE
-	SET codigo = EXCLUDED.codigo,
-		nombre = EXCLUDED.nombre;
+
 
 -- 
 -- TABLE: rol_proyecto_permiso 
@@ -1529,19 +1422,9 @@ CREATE TABLE rol_proyecto_permiso(
     CONSTRAINT "PK_rol_proyecto_permiso" PRIMARY KEY (id_rol_proyecto, id_permiso_proyecto)
 )
 ;
-INSERT INTO rol_proyecto_permiso (id_rol_proyecto, id_permiso_proyecto)
-SELECT rp.id_rol_proyecto, pp.id_permiso_proyecto
-FROM rol_proyecto rp
-CROSS JOIN permiso_proyecto pp
-WHERE rp.codigo = 'DIRECTOR'
-ON CONFLICT (id_rol_proyecto, id_permiso_proyecto) DO NOTHING;
 
-INSERT INTO rol_proyecto_permiso (id_rol_proyecto, id_permiso_proyecto)
-SELECT rp.id_rol_proyecto, pp.id_permiso_proyecto
-FROM rol_proyecto rp
-JOIN permiso_proyecto pp ON pp.nombre IN ('VER_PROYECTO')
-WHERE rp.codigo = 'MIEMBRO'
-ON CONFLICT (id_rol_proyecto, id_permiso_proyecto) DO NOTHING;
+
+
 
 -- 
 -- TABLE: solicitud_colaboracion 
@@ -1570,14 +1453,7 @@ CREATE TABLE tipo_accion_auditoria(
     CONSTRAINT "PK_tipo_auditoria" PRIMARY KEY (id_tipo_auditoria)
 )
 ;
-INSERT INTO tipo_accion_auditoria (id_tipo_auditoria, nombre) VALUES
-    (1, 'INSERT'),
-    (2, 'UPDATE'),
-    (3, 'DELETE'),
-    (4, 'LOGIN'),
-    (5, 'LOGOUT')
-ON CONFLICT (id_tipo_auditoria) DO UPDATE 
-    SET nombre = EXCLUDED.nombre;
+
 
 -- 
 -- TABLE: ubicacion 
@@ -1622,15 +1498,7 @@ CREATE TABLE unidad_medida(
     CONSTRAINT "PK_unidad" PRIMARY KEY (id_unidad)
 )
 ;
-INSERT INTO unidad_medida (id_unidad, nombre, simbolo, tipo_dato_permitido) VALUES
-    (1, 'Centímetro', 'cm',    'NUMERICO'),
-    (2, 'Metro',      'm',     'NUMERICO'),
-    (3, 'Pulgada',    'in',    'NUMERICO'),
-    (4, 'Kilogramo',  'kg',    'NUMERICO'),
-ON CONFLICT (id_unidad) DO UPDATE 
-    SET nombre              = EXCLUDED.nombre,
-        simbolo             = EXCLUDED.simbolo,
-        tipo_dato_permitido = EXCLUDED.tipo_dato_permitido;
+
 
 -- 
 -- TABLE: usuario 
@@ -1782,73 +1650,13 @@ CREATE TRIGGER trg_auditar_cambio_usuario
     AFTER UPDATE OF estado, id_rol_global OR DELETE ON usuario
     FOR EACH ROW EXECUTE FUNCTION fn_auditar_cambio_usuario();
 
--- Seeds para el catálogo de características de modelos
-INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
-SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, v.color_hex
-FROM (VALUES
-    (1, 'Marrón',   '#6B4226'),
-    (2, 'Negro',    '#1C1C1C'),
-    (3, 'Azul',     '#3D85C6'),
-    (4, 'Verde',    '#4E9A51'),
-    (5, 'Avellana', '#A67B5B'),
-    (6, 'Gris',     '#A9A9A9')
-) AS v(id_valor, etiqueta, color_hex)
-JOIN caracteristica_tecnica ct ON ct.codigo = 'COLOR_OJOS'
-ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
-    SET etiqueta  = EXCLUDED.etiqueta,
-        color_hex = EXCLUDED.color_hex;
 
--- Valores para 'COLOR_CABELLO' (id_caracteristica = 6)
-INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
-SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, v.color_hex
-FROM (VALUES
-    (1,  'Negro',     '#1C1C1C'),
-    (2,  'Castaño',   '#4A2E1F'),
-    (3,  'Rubio',     '#E8C267'),
-    (4,  'Pelirrojo', '#B23A1E'),
-    (5,  'Vino',      '#5F0000'),
-    (6,  'Canoso',    '#C9C9C9'),
-    (7,  'Verde',     '#519E35'),
-    (8,  'Azul',      '#107AB3'),
-    (9,  'Rosa',      '#FF33C2'),
-    (10, 'Blanco',    '#FFFFFF'),
-    (11, 'Violeta',   '#560080'),
-    (12, 'Otro',      NULL)
-) AS v(id_valor, etiqueta, color_hex)
-JOIN caracteristica_tecnica ct ON ct.codigo = 'COLOR_CABELLO'
-ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
-    SET etiqueta  = EXCLUDED.etiqueta,
-        color_hex = EXCLUDED.color_hex;
 
--- Valores para 'COLOR_PIEL' (id_caracteristica = 7)
-INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
-SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, v.color_hex
-FROM (VALUES
-    (1, 'Muy clara',  '#F6D8C6'),
-    (2, 'Clara',      '#EAC1A0'),
-    (3, 'Media',      '#C68863'),
-    (4, 'Morena',     '#8D5A3B'),
-    (5, 'Oscura',     '#5C3A21'),
-    (6, 'Muy oscura', '#3B2415')
-) AS v(id_valor, etiqueta, color_hex)
-JOIN caracteristica_tecnica ct ON ct.codigo = 'COLOR_PIEL'
-ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
-    SET etiqueta  = EXCLUDED.etiqueta,
-        color_hex = EXCLUDED.color_hex;
 
--- Valores para 'TIPO_CABELLO' (id_caracteristica = 8)
-INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
-SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, NULL
-FROM (VALUES
-    (1, 'Lacio'),
-    (2, 'Ondulado'),
-    (3, 'Rizado'),
-    (4, 'Afro')
-) AS v(id_valor, etiqueta)
-JOIN caracteristica_tecnica ct ON ct.codigo = 'TIPO_CABELLO'
-ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
-    SET etiqueta  = EXCLUDED.etiqueta,
-        color_hex = EXCLUDED.color_hex;
+
+
+
+
 -- 
 -- TABLE: valor_caracteristica 
 --
@@ -2660,6 +2468,242 @@ ALTER TABLE valor_caracteristica ADD CONSTRAINT "Refcaracteristica_tecnica1721"
     REFERENCES caracteristica_tecnica(id_caracteristica)
 ;
 
+
+
+-- ============================================================================
+-- CARGA DE SEMILLAS (SEEDS)
+-- (Ejecutadas tras la creación de todas las tablas e índices)
+-- ============================================================================
+
+INSERT INTO tipo_accion_auditoria (id_tipo_auditoria, nombre) VALUES
+    (1, 'INSERT'),
+    (2, 'UPDATE'),
+    (3, 'DELETE'),
+    (4, 'LOGIN'),
+    (5, 'LOGOUT')
+ON CONFLICT (id_tipo_auditoria) DO UPDATE 
+    SET nombre = EXCLUDED.nombre;
+
+INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
+    ('SCHEDULER_DESHABILITACION_HORA',   '2',           'Hora del dia (0-23) en la que se ejecuta el scheduler de deshabilitacion'),
+    ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
+    ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios')
+ON CONFLICT (clave) DO UPDATE 
+    SET valor       = EXCLUDED.valor,
+        descripcion = EXCLUDED.descripcion;
+
+INSERT INTO genero (id_genero, codigo, nombre) VALUES
+    (1, 'MUJER',      'Mujer'),
+    (2, 'HOMBRE',     'Hombre'),
+    (3, 'NO_BINARIO', 'No binario'),
+    (4, 'NO_DECIRLO', 'Prefiero no decirlo')
+ON CONFLICT (id_genero) DO UPDATE 
+    SET codigo = EXCLUDED.codigo,
+        nombre = EXCLUDED.nombre;
+
+INSERT INTO pais (id_pais, codigo_iso, nombre, activo) VALUES
+    (1, 'AR', 'Argentina', true)
+ON CONFLICT (id_pais) DO UPDATE 
+    SET codigo_iso = EXCLUDED.codigo_iso,
+        nombre     = EXCLUDED.nombre,
+        activo     = EXCLUDED.activo;
+
+INSERT INTO habilidad (id_habilidad, codigo, nombre, descripcion) VALUES
+    (1,  'FOTO_ESTUDIO',        'Fotografía de Estudio',      'Manejo experto de iluminación y sets fotográficos en interiores.'),
+    (2,  'FOTO_EXTERIOR',       'Fotografía en Exteriores',   'Dominio de luz natural y encuadres en locaciones abiertas.'),
+    (3,  'EDICION_DIGITAL',     'Retoque y Edición Digital',  'Postproducción digital y corrección cromática avanzada.'),
+    (4,  'PASARELA',            'Desfile en Pasarela',        'Dominio de ritmo, postura y modelaje en vivo.'),
+    (5,  'MODELAJE_EDITORIAL', 'Modelaje Editorial',         'Capacidad de expresión visual para revistas y catálogos de moda.'),
+    (6,  'MAQUILLAJE_HD',       'Maquillaje Audiovisual/HD',  'Técnicas de maquillaje aptas para cámaras de alta definición.'),
+    (7,  'MAQUILLAJE_ARTISTICO','Maquillaje Artístico',       'Caracterización, fantasía y efectos visuales de maquillaje.'),
+    (8,  'CORTE_CONFECCION',    'Corte y Confección',         'Habilidad de patronaje y armado artesanal de prendas.'),
+    (9,  'PEINADO_EDITORIAL',   'Peinado Editorial',          'Creación de peinados estructurados para producciones de moda.'),
+    (10,  'MAQUILLAJE_FX',   'Maquillaje de efectos especiales (FX)',          'Técnicas de maquillaje para simular heridas, envejecimiento, transformaciones en la piel, entre otros')
+ON CONFLICT (id_habilidad) DO UPDATE 
+    SET codigo      = EXCLUDED.codigo,
+        nombre      = EXCLUDED.nombre,
+        descripcion = EXCLUDED.descripcion;
+
+INSERT INTO permiso_global (id_permiso_global, nombre) VALUES
+    (1, 'VER_USUARIOS'),
+    (2, 'HABILITAR_USUARIO'),
+    (3, 'DESHABILITAR_USUARIO'),
+    (4, 'VER_CARACTERISTICAS'),
+    (5, 'CREAR_CARACTERISTICA'),
+    (6, 'MODIFICAR_CARACTERISTICA'),
+    (7, 'ELIMINAR_CARACTERISTICA'),
+    (8, 'ADMINISTRAR_CONFIGURACION')
+ON CONFLICT (id_permiso_global) DO UPDATE SET nombre = EXCLUDED.nombre;
+
+INSERT INTO permiso_proyecto (id_permiso_proyecto, nombre) VALUES
+    (1,  'VER_PROYECTO'),
+    (2,  'MODIFICAR_PROYECTO'),
+    (3,  'PUBLICAR_PROYECTO'),
+    (4,  'CONFIRMAR_PROYECTO'),
+    (5,  'FINALIZAR_PROYECTO'),
+    (6,  'CANCELAR_PROYECTO'),
+    (7,  'CREAR_ACTIVIDAD'),
+    (8,  'MODIFICAR_ACTIVIDAD'),
+    (9,  'ELIMINAR_ACTIVIDAD'),
+    (10, 'ASIGNAR_ACTIVIDAD'),
+    (11, 'GESTIONAR_POSTULACIONES'),
+    (12, 'INVITAR_MIEMBRO'),
+    (13, 'ELIMINAR_INVITACION'),
+    (14, 'ELIMINAR_INTEGRANTE')
+ON CONFLICT (id_permiso_proyecto) DO UPDATE SET nombre = EXCLUDED.nombre;
+
+INSERT INTO rol_global (id_rol_global, nombre, codigo) VALUES
+    (1, 'Administrador', 'ADMINISTRADOR'),
+    (2, 'Usuario', 'USUARIO')
+ON CONFLICT (id_rol_global) DO UPDATE
+	SET nombre = EXCLUDED.nombre,
+		codigo = EXCLUDED.codigo;
+
+INSERT INTO rol_global_permiso (id_rol_global, id_permiso_global)
+SELECT rg.id_rol_global, pg.id_permiso_global
+FROM rol_global rg
+CROSS JOIN permiso_global pg
+WHERE rg.nombre = 'Administrador'
+ON CONFLICT (id_rol_global, id_permiso_global) DO NOTHING;
+
+INSERT INTO rol_proyecto (id_rol_proyecto, codigo, nombre) VALUES
+    (1, 'DIRECTOR', 'Director de proyecto'),
+    (2, 'MIEMBRO', 'Miembro de proyecto')
+ON CONFLICT (id_rol_proyecto) DO UPDATE
+	SET codigo = EXCLUDED.codigo,
+		nombre = EXCLUDED.nombre;
+
+INSERT INTO rol_proyecto_permiso (id_rol_proyecto, id_permiso_proyecto)
+SELECT rp.id_rol_proyecto, pp.id_permiso_proyecto
+FROM rol_proyecto rp
+CROSS JOIN permiso_proyecto pp
+WHERE rp.codigo = 'DIRECTOR'
+ON CONFLICT (id_rol_proyecto, id_permiso_proyecto) DO NOTHING;
+
+INSERT INTO rol_proyecto_permiso (id_rol_proyecto, id_permiso_proyecto)
+SELECT rp.id_rol_proyecto, pp.id_permiso_proyecto
+FROM rol_proyecto rp
+JOIN permiso_proyecto pp ON pp.nombre IN ('VER_PROYECTO')
+WHERE rp.codigo = 'MIEMBRO'
+ON CONFLICT (id_rol_proyecto, id_permiso_proyecto) DO NOTHING;
+
+INSERT INTO unidad_medida (id_unidad, nombre, simbolo, tipo_dato_permitido) VALUES
+    (1, 'Centímetro', 'cm',    'NUMERICO'),
+    (2, 'Metro',      'm',     'NUMERICO'),
+    (3, 'Pulgada',    'in',    'NUMERICO'),
+    (4, 'Kilogramo',  'kg',    'NUMERICO')
+ON CONFLICT (id_unidad) DO UPDATE 
+    SET nombre              = EXCLUDED.nombre,
+        simbolo             = EXCLUDED.simbolo,
+        tipo_dato_permitido = EXCLUDED.tipo_dato_permitido;
+
+INSERT INTO profesion (id_profesion, codigo, nombre, descripcion) VALUES
+    (1, 'FOTOGRAFO',         'Fotógrafo',            'Profesional dedicado a la captura y edición de imágenes fotográficas.'),
+    (2, 'MODELO',            'Modelo',               'Profesional que posa para producciones fotográficas, audiovisuales o pasarelas.'),
+    (3, 'MAQUILLADOR',       'Maquillador',          'Especialista en estilismo facial, caracterización y técnicas de maquillaje.'),
+    (4, 'DISENIADOR_MODA',   'Diseñador de Moda',    'Profesional dedicado a la creación, confección y diseño de indumentaria.'),
+    (5, 'PRODUCTOR_MODA',    'Productor de Moda',    'Encargado de coordinar y organizar los recursos logísticos y visuales.'),
+    (6, 'ESTILISTA_IMAGEN',  'Estilista de Imagen',  'Asesor responsable de definir la coherencia estilística e indumentaria.'),
+    (7, 'ESTILISTA_CABELLO', 'Estilista de Cabello', 'Especialista en peinado, corte y tratamiento capilar para producciones.')
+ON CONFLICT (id_profesion) DO UPDATE 
+    SET codigo      = EXCLUDED.codigo,
+        nombre      = EXCLUDED.nombre,
+        descripcion = EXCLUDED.descripcion;
+
+INSERT INTO caracteristica_tecnica (id_caracteristica, codigo, nombre, tipo_dato, id_unidad, id_profesion)
+SELECT 
+    v.id_caracteristica,
+    v.codigo,
+    v.nombre,
+    v.tipo_dato,
+    u.id_unidad,
+    p.id_profesion
+FROM (VALUES
+    (1, 'ALTURA',         'Altura',             'NUMERICO',  'cm'),
+    (2, 'MEDIDA_PECHO',   'Medida de Pecho',    'NUMERICO',  'cm'),
+    (3, 'MEDIDA_CINTURA', 'Medida de Cintura',  'NUMERICO',  'cm'),
+    (4, 'MEDIDA_CADERA',  'Medida de Cadera',   'NUMERICO',  'cm'),
+    (5, 'COLOR_OJOS',     'Color de Ojos',      'ENUMERADO', 'color'),
+    (6, 'COLOR_CABELLO',  'Color de Cabello',   'ENUMERADO', 'color'),
+    (7, 'COLOR_PIEL',     'Tono de Piel',       'ENUMERADO', 'color'),
+    (8, 'TIPO_CABELLO',   'Tipo de Cabello',    'ENUMERADO', NULL)
+) AS v(id_caracteristica, codigo, nombre, tipo_dato, unidad_simbolo)
+JOIN profesion p ON p.codigo = 'MODELO'
+LEFT JOIN unidad_medida u ON u.simbolo = v.unidad_simbolo
+ON CONFLICT (id_caracteristica) DO UPDATE 
+    SET codigo       = EXCLUDED.codigo,
+        nombre       = EXCLUDED.nombre,
+        tipo_dato    = EXCLUDED.tipo_dato,
+        id_unidad    = EXCLUDED.id_unidad,
+        id_profesion = EXCLUDED.id_profesion;
+
+-- Seeds para el catálogo de características de modelos
+INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
+SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, v.color_hex
+FROM (VALUES
+    (1, 'Marrón',   '#6B4226'),
+    (2, 'Negro',    '#1C1C1C'),
+    (3, 'Azul',     '#3D85C6'),
+    (4, 'Verde',    '#4E9A51'),
+    (5, 'Avellana', '#A67B5B'),
+    (6, 'Gris',     '#A9A9A9')
+) AS v(id_valor, etiqueta, color_hex)
+JOIN caracteristica_tecnica ct ON ct.codigo = 'COLOR_OJOS'
+ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
+    SET etiqueta  = EXCLUDED.etiqueta,
+        color_hex = EXCLUDED.color_hex;
+
+-- Valores para 'COLOR_CABELLO' (id_caracteristica = 6)
+INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
+SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, v.color_hex
+FROM (VALUES
+    (1,  'Negro',     '#1C1C1C'),
+    (2,  'Castaño',   '#4A2E1F'),
+    (3,  'Rubio',     '#E8C267'),
+    (4,  'Pelirrojo', '#B23A1E'),
+    (5,  'Vino',      '#5F0000'),
+    (6,  'Canoso',    '#C9C9C9'),
+    (7,  'Verde',     '#519E35'),
+    (8,  'Azul',      '#107AB3'),
+    (9,  'Rosa',      '#FF33C2'),
+    (10, 'Blanco',    '#FFFFFF'),
+    (11, 'Violeta',   '#560080'),
+    (12, 'Otro',      NULL)
+) AS v(id_valor, etiqueta, color_hex)
+JOIN caracteristica_tecnica ct ON ct.codigo = 'COLOR_CABELLO'
+ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
+    SET etiqueta  = EXCLUDED.etiqueta,
+        color_hex = EXCLUDED.color_hex;
+
+-- Valores para 'COLOR_PIEL' (id_caracteristica = 7)
+INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
+SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, v.color_hex
+FROM (VALUES
+    (1, 'Muy clara',  '#F6D8C6'),
+    (2, 'Clara',      '#EAC1A0'),
+    (3, 'Media',      '#C68863'),
+    (4, 'Morena',     '#8D5A3B'),
+    (5, 'Oscura',     '#5C3A21'),
+    (6, 'Muy oscura', '#3B2415')
+) AS v(id_valor, etiqueta, color_hex)
+JOIN caracteristica_tecnica ct ON ct.codigo = 'COLOR_PIEL'
+ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
+    SET etiqueta  = EXCLUDED.etiqueta,
+        color_hex = EXCLUDED.color_hex;
+
+-- Valores para 'TIPO_CABELLO' (id_caracteristica = 8)
+INSERT INTO valor_caracteristica (id_valor, id_caracteristica, etiqueta, color_hex)
+SELECT v.id_valor, ct.id_caracteristica, v.etiqueta, NULL
+FROM (VALUES
+    (1, 'Lacio'),
+    (2, 'Ondulado'),
+    (3, 'Rizado'),
+    (4, 'Afro')
+) AS v(id_valor, etiqueta)
+JOIN caracteristica_tecnica ct ON ct.codigo = 'TIPO_CABELLO'
+ON CONFLICT (id_valor, id_caracteristica) DO UPDATE 
+    SET etiqueta  = EXCLUDED.etiqueta,
+        color_hex = EXCLUDED.color_hex;
 
 -- ============================================================================
 -- Sincronización de secuencias post-seeds
