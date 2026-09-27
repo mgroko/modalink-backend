@@ -60,10 +60,6 @@ public class Ubicacion {
         private BigDecimal latitud;
         private BigDecimal longitud;
         private Ciudad ciudad;
-        private String localidadTemp;
-        private String provinciaTemp;
-        private String paisTemp;
-        private String idGeorefTemp;
 
         public UbicacionBuilder idUbicacion(Long idUbicacion) {
             this.idUbicacion = idUbicacion;
@@ -118,8 +114,13 @@ public class Ubicacion {
         public Ubicacion build() {
             Ciudad c = this.ciudad;
             if (c == null && (this.localidadTemp != null || this.provinciaTemp != null || this.idGeorefTemp != null)) {
-                Pais p = Pais.builder().nombre(this.paisTemp != null ? this.paisTemp : "Argentina").codigoIso("AR").build();
-                Provincia prov = Provincia.builder().nombre(this.provinciaTemp != null ? this.provinciaTemp : "Provincia").pais(p).build();
+                // Si no hay ciudad pero se proporcionan datos sueltos, se construye una ciudad mínima
+                // SIN hardcodeo de país: se usa el paisTemp si viene, si no, se deja nombre/código null
+                String paisNombre = this.paisTemp != null ? this.paisTemp : null;
+                String paisCodigo = null; // null para evitar hardcodeo "AR"
+                Pais p = Pais.builder().nombre(paisNombre).codigoIso(paisCodigo).build();
+                String provNombre = this.provinciaTemp != null ? this.provinciaTemp : "Provincia";
+                Provincia prov = Provincia.builder().nombre(provNombre).pais(p).build();
                 c = Ciudad.builder()
                         .nombre(this.localidadTemp != null ? this.localidadTemp : "Localidad")
                         .idExterno(this.idGeorefTemp)

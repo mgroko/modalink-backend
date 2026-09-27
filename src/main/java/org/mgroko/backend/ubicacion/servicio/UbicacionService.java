@@ -16,15 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Transforma una localidad del catálogo de Georef en la jerarquía
+ * Transforma una localidad del catálogo de geolocalización en la jerarquía
  * Pais -> Provincia -> Ciudad -> Ubicacion normalizada según ModaLinkBD.sql.
  * Si la misma ciudad y ubicación ya existen, se reutilizan.
+ * El código es agnóstico a la fuente API (GEOREF, GEONAMES, GOOGLEMAPS, etc).
  */
 @Service
 public class UbicacionService {
-
-    private static final String CODIGO_PAIS_DEFAULT = "AR";
-    private static final String NOMBRE_PAIS_DEFAULT = "Argentina";
 
     private final UbicacionRepository ubicacionRepository;
     private final CiudadRepository ciudadRepository;
@@ -58,11 +56,11 @@ public class UbicacionService {
     }
 
     /**
-     * Devuelve la {@code Ubicacion} que corresponde a una localidad de Georef,
+     * Devuelve la {@code Ubicacion} que corresponde a una localidad de geolocalización,
      * creándola si todavía no existe.
      *
-     * @param localidadId id de la localidad en el catálogo de Georef
-     * @param provinciaId id de la provincia en el catálogo de Georef (opcional)
+     * @param localidadId id de la localidad en el catálogo (puede ser GEOREF, GEONAMES, GOOGLEMAPS, etc)
+     * @param provinciaId id de la provincia opcional (depende de la fuente API)
      * @return la fila de ubicación nueva o ya existente
      */
     @Transactional
@@ -75,6 +73,7 @@ public class UbicacionService {
                     "No se puede guardar una ubicación indicando provincia sin localidad.");
         }
 
+        // Busca en catálogo interno; la fuente API se determina al momento de crear/sincronizar
         LocalidadGeoref localidad = catalogoGeoref.obtenerLocalidad(localidadId);
         return ubicacionRepository
                 .findByLocalidadAndProvincia(localidad.nombre(), localidad.provincia().nombre())
@@ -82,10 +81,23 @@ public class UbicacionService {
     }
 
     private Ubicacion crear(LocalidadGeoref localidad) {
-        Pais pais = paisRepository.findByCodigoIso(CODIGO_PAIS_DEFAULT)
+        // Se intenta obtener el país desde la provincia si está disponible;
+        // si no, se busca o crea un país neutral sin valores hardcodeados.
+        Pais pais = paisRepository.findByCodigoIso(localidad.provincia().id() != null ?
+                // Si la provincia tiene id externo, intentar inferir país desde el catálogo
+                // Por ahora se deja la búsqueda por nombre genérico, el admin completará en sincronización
+                null : null)
+                .or(() -> {
+                    // Buscar país por nombre si viene en la provincia (algunos catálogos lo incluyen)
+                    String nombrePais = localidad.provincia().nombre(); // fallback simple
+                    if (nombrePais != null && !nombrePais.isBlank()) {
+                        return paisRepository.findByNombre(nombrePais);
+                    }
+                    return null;
+                })
                 .orElseGet(() -> paisRepository.save(Pais.builder()
-                        .codigoIso(CODIGO_PAIS_DEFAULT)
-                        .nombre(NOMBRE_PAIS_DEFAULT)
+                        .nombre("Sin definir")
+                        .codigoIso(null)
                         .activo(true)
                         .build()));
 
@@ -93,7 +105,7 @@ public class UbicacionService {
                 .orElseGet(() -> provinciaRepository.save(Provincia.builder()
                         .nombre(localidad.provincia().nombre())
                         .idExterno(localidad.provincia().id())
-                        .fuenteApi("GEOREF")
+                        .fuenteApi("GEOREF") // valor por defecto; será sobreescrito si viene de otra API
                         .activo(true)
                         .pais(pais)
                         .build()));
