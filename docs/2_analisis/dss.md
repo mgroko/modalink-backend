@@ -250,80 +250,6 @@
 
 ---
 
-### **UC-49: Crear actividad a planificación**
-
-- **Actor:** Director de proyecto
-- **Sistema:** `:ModaLink`
-- **Flujo de interacción:**
-  1. **Referencia/Inclusión:** Comienza el DSS de `UC-29 Buscar proyecto`.
-  2. El actor solicita crear la actividad enviando `unaActividad = crearActividad(unProyecto, nombre, descripcion, duracion)`.
-  3. **Bloque Opcional (`opt`)** `[si la actividad tiene predecesoras]`:
-     - **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
-     - **Bloque Bucle (`loop`)** `[mientras existan actividades predecesoras]`:
-       - El actor envía `predecesoras[] = agregarPredecesora(unaActividad, unaPredecesora)`.
-  4. **Bloque Opcional (`opt`)** `[si la actividad tiene ubicacion]`:
-     - El actor envía `unaUbicacion = buscarUbicacion(idUbicacion)`.
-     - El actor envía `agregarUbicacion(unaActividad, unaUbicacion)`.
-  5. **Bloque Alternativo (`alt`)**:
-     - `[si el actor deja campos obligatorios vacíos]`: El sistema retorna `excepcion()`.
-     - `[si el actor ingresó los datos correctos]`:
-       - **Bloque Bucle (`loop`)** `[mientras exista requerimiento profesional por cargar]`:
-         - **Referencia/Inclusión:** Comienza el DSS de `UC-59 Buscar profesiones`.
-         - **Referencia/Inclusión:** Comienza el DSS de `UC-58 Buscar características técnicas`.
-         - **Referencia/Inclusión:** Comienza el DSS de `UC-48 Buscar habilidades`.
-         - El actor envía `agregarRequerimiento(unaActividad, unaProfesion, caracteristicas[], habilidades[])`.
-       - El sistema retorna `unaActividad`.
-
----
-
-### **UC-50: Modificar actividad de planificación**
-
-- **Actor:** Director de Proyecto
-- **Sistema:** `:ModaLink`
-- **Flujo de interacción:**
-  1. **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
-  2. El actor envía el mensaje `modificarActividad(unaActividad, nombre, descripcion, duracionEstimada, requerimiento[], predecesoras[], ubicacion, estado)`.
-  3. El sistema retorna `unaActividad`.
-
----
-
-### **UC-51: Eliminar actividad de planificación**
-
-- **Actor:** Director de proyecto
-- **Sistema:** `:ModaLink`
-- **Flujo de interacción:**
-  1. **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
-  2. El actor solicita eliminar la actividad enviando `eliminarActividad(unaActividad, motivo)`.
-  3. **Bloque Alternativo (`alt`)**:
-     - `[Excepción: estado inválido]`: El sistema retorna `excepcion()`.
-     - `[Estado válido]`:
-       - **Bloque Alternativo anidado (`alt`)** `[Si la actividad tenía miembros asignados]`:
-         - **Bloque Bucle (`loop`)** `[mientras existan miembros asignados a la actividad]`:
-           - **Bloque Opcional (`opt`)** `[El director decide eliminar al integrante]`:
-             - **Referencia/Inclusión:** Comienza el DSS de `UC-38 Eliminar integrante`.
-           - **Bloque Opcional (`opt`)** `[El director decide guardar de forma temporal al integrante]`:
-             - El actor envía el mensaje `guardarMiembro(unPerfil)`.
-       - El sistema retorna `operacion exitosa`.
-
----
-
-### **UC-70: Asignar actividad a miembro**
-
-- **Actor:** Director de proyecto
-- **Sistema:** `:ModaLink`
-- **Flujo de interacción:**
-  1. **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
-  2. **Referencia/Inclusión:** Comienza el DSS de `UC-16 Buscar perfil`.
-  3. El actor envía el mensaje `unUsuario = buscarUsuario(unPerfil)`.
-  4. El actor envía el mensaje `verificarDisponibilidad(unUsuario, unaActividad)`.
-  5. **Bloque Alternativo (`alt`)**:
-     - `[si el miembro no tiene disponibilidad]`: El sistema retorna `excepcion()`.
-     - `[el miembro tiene disponibilidad frente al rango factible de la actividad]`:
-       - El actor envía el mensaje `unaAsignacionActividad = asignarActividad(unPerfil, unaActividad)`.
-       - El sistema retorna `asignacionExitosa(unaAsignacionActividad)`.
-
----
-
 ### **UC-28: Aceptar solicitud de incorporación**
 
 - **Actor:** Usuario
@@ -519,6 +445,63 @@
 
 ---
 
+### **UC-49: Crear actividad a planificación**
+
+- **Actor:** Director de proyecto
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-29 Buscar proyecto`.
+  2. El actor solicita crear la actividad enviando `unaActividad = crearActividad(unProyecto, nombre, descripcion, duracion)`.
+  3. **Bloque Opcional (`opt`)** `[si la actividad tiene predecesoras]`:
+     - **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
+     - **Bloque Bucle (`loop`)** `[mientras existan actividades predecesoras]`:
+       - El actor envía `predecesoras[] = agregarPredecesora(unaActividad, unaPredecesora)`.
+  4. **Bloque Opcional (`opt`)** `[si la actividad tiene ubicacion]`:
+     - El actor envía `unaUbicacion = buscarUbicacion(idUbicacion)`.
+     - El actor envía `agregarUbicacion(unaActividad, unaUbicacion)`.
+  5. **Bloque Alternativo (`alt`)**:
+     - `[si el actor deja campos obligatorios vacíos]`: El sistema retorna `excepcion()`.
+     - `[si el actor ingresó los datos correctos]`:
+       - **Bloque Bucle (`loop`)** `[mientras exista requerimiento profesional por cargar]`:
+         - **Referencia/Inclusión:** Comienza el DSS de `UC-59 Buscar profesiones`.
+         - **Referencia/Inclusión:** Comienza el DSS de `UC-58 Buscar características técnicas`.
+         - **Referencia/Inclusión:** Comienza el DSS de `UC-48 Buscar habilidades`.
+         - El actor envía `agregarRequerimiento(unaActividad, unaProfesion, caracteristicas[], habilidades[])`.
+       - El sistema retorna `unaActividad`.
+
+---
+
+### **UC-50: Modificar actividad de planificación**
+
+- **Actor:** Director de Proyecto
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
+  2. El actor envía el mensaje `modificarActividad(unaActividad, nombre, descripcion, duracionEstimada, requerimiento[], predecesoras[], ubicacion, estado)`.
+  3. El sistema retorna `unaActividad`.
+
+---
+
+### **UC-51: Eliminar actividad de planificación**
+
+- **Actor:** Director de proyecto
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
+  2. El actor solicita eliminar la actividad enviando `eliminarActividad(unaActividad, motivo)`.
+  3. **Bloque Alternativo (`alt`)**:
+     - `[Excepción: estado inválido]`: El sistema retorna `excepcion()`.
+     - `[Estado válido]`:
+       - **Bloque Alternativo anidado (`alt`)** `[Si la actividad tenía miembros asignados]`:
+         - **Bloque Bucle (`loop`)** `[mientras existan miembros asignados a la actividad]`:
+           - **Bloque Opcional (`opt`)** `[El director decide eliminar al integrante]`:
+             - **Referencia/Inclusión:** Comienza el DSS de `UC-38 Eliminar integrante`.
+           - **Bloque Opcional (`opt`)** `[El director decide guardar de forma temporal al integrante]`:
+             - El actor envía el mensaje `guardarMiembro(unPerfil)`.
+       - El sistema retorna `operacion exitosa`.
+
+---
+
 ### **UC-52: Buscar actividades**
 
 - **Actor:** Director de proyecto / Miembro de proyecto
@@ -530,7 +513,6 @@
      - `[existen actividades]`: El sistema retorna `actividades[]`.
 
 ---
-
 ### **UC-60: Confirmar proyecto**
 
 - **Actor:** Director de proyecto
@@ -548,6 +530,23 @@
          - El sistema retorna `cambiarEstadoConfirmado(unProyecto)`.
          - El sistema retorna `cerrarPostulaciones(unProyecto)`.
          - El sistema retorna `notificarParticipantes(unProyecto)`.
+
+---
+
+### **UC-70: Asignar actividad a miembro**
+
+- **Actor:** Director de proyecto
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-52 Buscar actividades`.
+  2. **Referencia/Inclusión:** Comienza el DSS de `UC-16 Buscar perfil`.
+  3. El actor envía el mensaje `unUsuario = buscarUsuario(unPerfil)`.
+  4. El actor envía el mensaje `verificarDisponibilidad(unUsuario, unaActividad)`.
+  5. **Bloque Alternativo (`alt`)**:
+     - `[si el miembro no tiene disponibilidad]`: El sistema retorna `excepcion()`.
+     - `[el miembro tiene disponibilidad frente al rango factible de la actividad]`:
+       - El actor envía el mensaje `unaAsignacionActividad = asignarActividad(unPerfil, unaActividad)`.
+       - El sistema retorna `asignacionExitosa(unaAsignacionActividad)`.
 
 ---
 

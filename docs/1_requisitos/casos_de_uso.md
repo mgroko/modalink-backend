@@ -487,7 +487,7 @@
 | **Descripción**  | El caso de uso inicia cuando el usuario desea crear un proyecto profesional.  |  |
 | **Precondición**  | El usuario debe haber iniciado sesión en el sistema. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
-|  | 1 | El sistema despliega un formulario solicitando información básica del proyecto.  Campos obligatorios: Nombre del proyecto Descripción del proyecto Privacidad del proyecto (público o privado) Fecha de inicio  Campos opcionales: Ubicación Requerimientos de personal (cantidad, tipo de profesionales y características técnicas) Material de inspiración / Moodboard  Objetivos del proyecto Fecha de entrega final estipulada |
+|  | 1 | El sistema despliega un formulario solicitando información básica del proyecto.  Campos obligatorios: Nombre del proyecto Descripción del proyecto Privacidad del proyecto (público o privado) Fecha de inicio estipulada  Campos opcionales: Ubicación Requerimientos de personal (cantidad, tipo de profesionales y características técnicas) Material de inspiración / Moodboard  Objetivos del proyecto Fecha de entrega final estipulada |
 |  | 2 | El usuario ingresa la información solicitada. |
 |  | 3 | El sistema crea el proyecto en estado “Borrador” y asocia al perfil de usuario como “Director de proyecto”. |
 | **Postcondición** | Se dió de alta un proyecto con estado “Borrador”.  El perfil de usuario adquiere los permisos y el rol de “Director de proyecto” sobre el proyecto creado. |  |
@@ -572,9 +572,15 @@
 |  | 2 | El sistema recupera la información del proyecto asociado a la invitación (ver caso de uso UC-29 Buscar proyecto). Luego despliega la información de la invitación junto con la información del proyecto.  Finalmente solicita confirmación de incorporación. |
 |  | 3 | El usuario confirma la acción. |
 |  | 4 | El sistema registra una incorporación al proyecto asociado con la invitación. |
-| **Postcondición** | Se registró la incorporación del usuario como miembro del proyecto. Se actualizaron los requerimientos de personal asociados al proyecto. El sistema crea una solicitud de notificación al director de proyecto informando sobre la incorporación. |  |
+| **Postcondición** | Se registró la incorporación del usuario como miembro del proyecto. El sistema crea una solicitud de notificación al director de proyecto informando sobre la incorporación. |  |
+| **Flujo alternativo** | 2.1 | Si la invitación es para una actividad del proyecto: |
+|  | 2.1.1 | El sistema recupera la información del requerimiento asociado a la invitación (ver caso de uso UC-73 Buscar requerimiento de actividad) y verifica la disponibilidad del usuario frente al rango factible de la actividad. |
+|  | 2.1.2 | El usuario confirma la acción. |
+|  | 2.1.3 | El sistema registra una incorporación al proyecto asociado con la invitación y satisface el requerimiento de actividad asociado. |
+| **Postcondición 2.1** | Se registró la incorporación del usuario como miembro del proyecto. Se satisfizo el requerimiento de actividad asociado. El sistema crea una solicitud de notificación al director de proyecto informando sobre la incorporación. |  |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 2 | Si la invitación no es válida (requerimiento de personal ya satisfecho, fue eliminada o el proyecto cancelado) el sistema notifica al usuario y el caso de uso finaliza. |
+|  | 2 | Si la invitación no es válida (fue eliminada o el proyecto cancelado) el sistema notifica al usuario y el caso de uso finaliza. |
+|  | 2.1.1 | Si el usuario no tiene disponibilidad suficiente, el sistema informa al actor y el caso de uso finaliza. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
 |  | 2 | 2 segundos |
 | **Frecuencia**  | 35 veces/día |  |
@@ -632,12 +638,17 @@
 | **Precondición**  | El usuario inició sesión en el sistema y tiene al menos un proyecto con estado “Publicado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto del cual quiere generar una invitación (ver caso de uso UC-29 Buscar proyecto) |
-|  | 2 | El sistema despliega la información básica del proyecto |
-|  | 3 | El actor selecciona el perfil destinatario de la invitación (ver caso de uso UC-16 Buscar perfil) |
-|  | 4 | El sistema despliega la información del perfil y de forma opcional solicita un mensaje personalizado junto con la invitación. |
-|  | 5 | El actor introduce el mensaje (si aplica) y confirma la acción.  |
-|  | 6 | El sistema registra la nueva invitación y notifica a los involucrados. |
+|  | 2 | El sistema despliega la información básica del proyecto y muestra dos opciones: Invitación general Invitación por actividad |
+|  | 3 | El actor selecciona “invitación general”.  |
+|  | 4 | El actor selecciona el perfil destinatario de la invitación (ver caso de uso UC-16 Buscar perfil) |
+|  | 5 | El sistema despliega la información del perfil y de forma opcional solicita un mensaje personalizado junto con la invitación. |
+|  | 6 | El actor introduce el mensaje (si aplica) y confirma la acción.  |
+|  | 7 | El sistema registra la nueva invitación y notifica a los involucrados. |
 | **Postcondición** | Se registró una nueva invitación al proyecto. El sistema crea una solicitud de notificación al perfil destinatario sobre la invitación al proyecto. |  |
+| **Flujo alternativo** | 2.1 | Si el actor selecciona “Invitación por actividad”: |
+|  | 2.1.1 | El actor selecciona el requerimiento de actividad del cual quiere realizar la invitación (ver caso de uso UC-73 Buscar requerimiento de actividad) |
+|  | 2.1.2 | El sistema despliega información del requerimiento de la actividad |
+|  | 2.1.3 | El caso de uso continúa desde el paso 4\. |
 | **Excepciones** | **Paso** | **Acción** |
 |  | 5 | Si el perfil seleccionado ya tiene una invitación activa para el mismo proyecto, el sistema notifica al actor y vuelve al paso 3 o el caso de uso finaliza. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
@@ -692,7 +703,7 @@
 | **Descripción**  | El caso de uso inicia cuando el director de proyecto quiere gestionar las postulaciones de un proyecto. El sistema le permitirá aceptar una postulación, incorporando al proyecto a un perfil, o rechazar la postulación. |  |
 | **Precondición**  | El usuario ha iniciado sesión en el sistema, tiene al menos un proyecto en estado “Publicado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
-|  | 1 | El actor selecciona el proyecto del cual quiere gestionar las postulaciones (ver caso de uso UC-29 Buscar proyecto). |
+|  | 1 | El actor selecciona la postulación que desea gestionar (ver caso de uso UC-74 Buscar postulaciones). |
 |  | 2 | El sistema despliega las postulaciones del proyecto y junto a cada una muestra dos opciones: “Aceptar postulación” “Rechazar postulación” |
 |  | 3 | El actor selecciona “Aceptar postulación”. |
 |  | 4 | El sistema solicita confirmación para la incorporación al proyecto. |
@@ -758,7 +769,7 @@
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que quiere finalizar (ver caso de uso UC-29 Buscar proyecto). |
 |  | 2 | El sistema solicita al director de proyecto que califique al equipo. |
-|  | 3 | El director de proyecto califica el desempeño de cada uno de los participantes. |
+|  | 3 | El director de proyecto califica el desempeño de cada uno de los participantes. (ver caso de uso UC-16 Buscar perfil) |
 |  | 4 | El sistema ofrece la opción de subir imágenes del resultado del proyecto.   |
 |  | 5 | El director de proyecto confirma la finalización del proyecto. |
 |  | 6 | El sistema actualiza el estado del proyecto a Finalizado. |
@@ -829,7 +840,7 @@
 |  | 2 | El sistema despliega la información del proyecto y solicita de manera obligatoria el motivo de la baja. |
 |  | 3 | El actor introduce el motivo y confirma la acción. |
 |  | 4 | El sistema registra la desvinculación. |
-| **Postcondición** | Se registró una baja voluntaria y se actualizó el registro de miembros del proyecto. Se actualizó el estado de participación de “Activo” a “Baja voluntaria”. Se reabrió la vacante correspondiente en los requerimientos del proyecto. Se eliminó la asignación del profesional como recurso en las actividades. (si corresponde) El sistema generó una notificación al perfil del director de proyecto para informar sobre su desvinculación del proyecto. |  |
+| **Postcondición** | Se registró una baja voluntaria y se actualizó el registro de miembros del proyecto. Se actualizó el estado de participación de “Activo” a “Baja voluntaria”. Se reabrió la vacante correspondiente en los requerimientos del proyecto. (si corresponde) Se eliminó la asignación del profesional en las actividades que tenia asignadas. (si corresponde) El sistema generó una notificación al perfil del director de proyecto para informar sobre su desvinculación del proyecto. |  |
 | **Excepciones** | **Paso** | **Acción** |
 |  | 3 | Si el actor no introduce un motivo, el sistema notifica el error y vuelve al paso 2 o el caso de uso finaliza. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
@@ -1029,7 +1040,7 @@
 |  | 4.c | El sistema registra el nuevo requerimiento |
 |  | 5 | El actor confirma la creación de la actividad |
 |  | 6 | El sistema registra la nueva actividad con estado “Pendiente”. |
-| **Postcondición** | Se registró una nueva actividad con estado “Pendiente”. Se actualizó el requerimiento del proyecto (si corresponde). Se actualizó el cronograma del proyecto con la nueva actividad. El sistema, por cada miembro designado, emite una notificación para informar sobre la nueva actividad. El sistema, por cada miembro designado, asigna en su calendario como no disponible el bloque de tiempo que dura la actividad. |  |
+| **Postcondición** | Se registró una nueva actividad con estado “Pendiente”. Se actualizó el cronograma del proyecto con la nueva actividad. |  |
 | **Excepciones** | 3 | Si el usuario deja campos obligatorios vacíos, el nombre es igual al de otra actividad en la planificación o ingresa una duración menor o igual a cero, el sistema informa el error y vuelve al paso 2 o el caso de uso finaliza. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
 |  | 4 | 2 segundos |
@@ -1073,12 +1084,12 @@
 |  | 3 | El actor ingresa la razón de la eliminación y confirma la acción.  |
 |  | 4 | El sistema registra la baja y recalcula la planificación. |
 | **Postcondición** | Se eliminó una actividad. Se actualizó el cronograma del proyecto. El sistema, por cada miembro designado a la actividad, emite una notificación para informar sobre la baja. Se actualizó la planificación, conectando las actividades predecesoras con las sucesoras de la actividad eliminada.  Si la actividad tenía postulaciones activas, el sistema las elimina notificando la razón. |  |
-| **Flujo alternativo**  | 4.1 | Si la actividad tenía miembros asignados en solo esa actividad, el sistema ofrece dos opciones: Eliminar integrante del proyecto Guardar integrante de forma temporal |
+| **Flujo alternativo**  | 4.1 | Si la actividad tenía miembros asignados en solo esa actividad, el sistema ofrece dos opciones: Eliminar integrante del proyecto Guardar integrante |
 | **Flujo alternativo 4.2** | 4.2 | El actor selecciona “Eliminar integrante del proyecto” |
 |  | 4.2.1 | El sistema solicita un motivo y la confirmación por cada integrante asociado a la actividad |
 |  | 4.2.2 | El actor confirma la acción |
 | **Postcondición 4.2** | El sistema, por cada miembro designado a la actividad, emite una notificación para informar sobre la baja de la actividad y su eliminación del proyecto. |  |
-| **Flujo alternativo 4.3** | 4.3 | El actor selecciona “Guardar integrante de forma temporal” |
+| **Flujo alternativo 4.3** | 4.3 | El actor selecciona “Guardar integrante” |
 |  | 4.3.1 | El sistema solicita la confirmación. |
 |  | 4.3.2 | El actor confirma la acción |
 | **Postcondición 4.3** | El sistema, por cada miembro designado a la actividad, emite una notificación para informar sobre la baja de la actividad y su continuidad en el proyecto. |  |
@@ -1298,15 +1309,14 @@
 | **Objetivos asociados**  | OBJ-02 OBJ-03 |  |
 | **Requisitos asociados**  | IRQ-03 |  |
 | **Descripción**  | El caso de uso inicia cuando el director de proyecto quiere confirmar un proyecto en estado “Publicado”.  |  |
-| **Precondición**  | El usuario inició sesión en el sistema. Existen actividades en la planificación. Los requerimientos de las actividades en la planificación están completos.  El director de proyecto cuenta con disponibilidad en su calendario personal para los bloques de tiempo y fechas estipulados en las actividades planificadas del proyecto |  |
+| **Precondición**  | El usuario inició sesión en el sistema. Los requerimientos de las actividades en la planificación están completos.  Los requerimientos generales del proyecto están completos. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que desea confirmar (ver caso de uso UC-29 Buscar proyecto) |
-|  | 2 | El sistema verifica que el requerimiento de personal de las actividades de la planificación esté completo. Luego solicita confirmación |
+|  | 2 | El sistema verifica que el requerimiento general y de actividades esté completo. Luego solicita confirmación |
 |  | 3 | El actor confirma la acción. |
 |  | 4 | El sistema actualiza el estado del proyecto a “Confirmado”.  |
 | **Postcondición** | El estado del proyecto se actualizó de “Publicado” a “Confirmado”. El proyecto deja de estar abierto a nuevas postulaciones. El sistema por cada participante del proyecto, emite una notificación informando sobre el cambio de estado del proyecto.  |  |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 2 | Si el proyecto no tiene actividades en la planificación, el sistema informa al actor y el caso de uso finaliza |
 |  | 2 | Si el proyecto no tiene el requerimiento completo, el sistema informa al actor y el caso de uso finaliza |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
 |  | 4 | 2 segundos |
@@ -1507,7 +1517,7 @@
 | **Descripción**  | El caso de uso inicia cuando el director de proyecto necesita asignarle una actividad a un miembro del proyecto. |  |
 | **Precondición**  | El usuario inició sesión en el sistema y tiene permisos de director en el proyecto |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
-|  | 1 | El actor selecciona la actividad a la que quiere asignar al miembro del proyecto (ver caso de uso UC-48 Buscar actividad) y luego selecciona al miembro de proyecto al que quiere asignarla (ver caso de uso UC-16 buscar perfil) |
+|  | 1 | El actor selecciona la actividad a la que quiere asignar al miembro del proyecto (ver caso de uso UC-52 Buscar actividades) y luego selecciona al miembro de proyecto al que quiere asignarla (ver caso de uso UC-16 buscar perfil) |
 |  | 2 | El sistema verifica la disponibilidad del miembro de proyecto frente al rango factible de la actividad  |
 |  | 3 | El usuario confirma la acción. |
 |  | 4 | El sistema registra una nueva asignación de actividad al miembro.. |
@@ -1551,7 +1561,7 @@
 | **Descripción**  | El caso de uso inicia cuando se desea buscar un requerimiento general |  |
 | **Precondición**  | El usuario inició sesión en el sistema y tiene un perfil activo |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
-|  | 1 | El sistema solicita el ingreso de al menos un criterio de filtrado (profesión (ver caso de uso UC-xx Buscar profesiones, características técnicas (ver caso de uso UC-xx buscar características técnicas) proyecto asociado (ver caso de uso UC-29 Buscar proyecto). |
+|  | 1 | El sistema solicita el ingreso de al menos un criterio de filtrado (profesión (ver caso de uso UC-59 Buscar profesiones, características técnicas (ver caso de uso UC-xx buscar características técnicas) proyecto asociado (ver caso de uso UC-29 Buscar proyecto). |
 |  | 2 | El actor ingresa los parámetros de búsqueda. |
 |  | 3 | El sistema consulta el repositorio de requerimientos generales y filtra aquellos que coinciden con los criterios. |
 |  | 4 | El sistema lista los resultados obtenidos. |
@@ -1570,7 +1580,7 @@
 | **Descripción**  | El caso de uso inicia cuando se desea buscar un requerimiento de actividad |  |
 | **Precondición**  | El usuario inició sesión en el sistema y tiene un perfil activo |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
-|  | 1 | El sistema solicita el ingreso de al menos un criterio de filtrado (profesión (ver caso de uso UC-xx Buscar profesiones, características técnicas (ver caso de uso UC-xx buscar características técnicas) proyecto asociado (ver caso de uso UC-29 Buscar proyecto) o actividad asociada (ver caso de uso UC-xx Buscar actividades)). |
+|  | 1 | El sistema solicita el ingreso de al menos un criterio de filtrado (profesión (ver caso de uso UC-59 Buscar profesiones, características técnicas (ver caso de uso UC-58 buscar características técnicas) proyecto asociado (ver caso de uso UC-29 Buscar proyecto) o actividad asociada (ver caso de uso UC-52 Buscar actividades)). |
 |  | 2 | El actor ingresa los parámetros de búsqueda. |
 |  | 3 | El sistema consulta el repositorio de requerimientos de actividades y filtra aquellos que coinciden con los criterios. |
 |  | 4 | El sistema lista los resultados obtenidos. |
