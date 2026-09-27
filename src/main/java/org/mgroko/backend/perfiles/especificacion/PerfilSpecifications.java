@@ -75,11 +75,11 @@ public class PerfilSpecifications {
                 predicates.add(cb.equal(root.get("usuario").get("ubicacion").get("idUbicacion"), filtro.idUbicacion()));
             }
             if (filtro.localidad() != null && !filtro.localidad().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("localidad")),
+                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("ciudad").get("nombre")),
                         "%" + filtro.localidad().trim().toLowerCase() + "%"));
             }
             if (filtro.provincia() != null && !filtro.provincia().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("provincia")),
+                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("ciudad").get("provincia").get("nombre")),
                         "%" + filtro.provincia().trim().toLowerCase() + "%"));
             }
 

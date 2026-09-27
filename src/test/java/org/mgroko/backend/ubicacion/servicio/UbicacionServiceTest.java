@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.Ubicacion;
+import org.mgroko.backend.repositorio.PaisRepository;
 import org.mgroko.backend.repositorio.UbicacionRepository;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
@@ -14,9 +15,9 @@ import org.mgroko.backend.ubicacion.georef.CentroideGeoref;
 import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
 import org.mgroko.backend.ubicacion.georef.ProvinciaGeorefRef;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +34,9 @@ class UbicacionServiceTest {
 
     @InjectMocks
     private UbicacionService ubicacionService;
+
+    @Mock
+    private PaisRepository paisRepository;
 
     private static final LocalidadGeoref LOCALIDAD_SAAVEDRA = new LocalidadGeoref(
             "0208401002",

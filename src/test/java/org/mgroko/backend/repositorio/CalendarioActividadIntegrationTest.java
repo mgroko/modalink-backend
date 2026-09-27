@@ -15,11 +15,14 @@ import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.BloqueoAgenda;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Pais;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
@@ -114,9 +117,20 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 .build();
         em.persist(tyc);
 
-        Ubicacion ubicacion = Ubicacion.builder()
-                .localidad("CABA").provincia("Buenos Aires")
-                .build();
+        Pais pais = em.createQuery("SELECT p FROM Pais p WHERE p.codigoIso = 'AR'", Pais.class)
+                .getResultList().stream().findFirst().orElseGet(() -> {
+                    Pais nuevo = Pais.builder().codigoIso("AR").nombre("Argentina").activo(true).build();
+                    em.persist(nuevo);
+                    return nuevo;
+                });
+
+        Provincia prov = Provincia.builder().nombre("Buenos Aires").activo(true).pais(pais).build();
+        em.persist(prov);
+
+        Ciudad ciudad = Ciudad.builder().nombre("CABA").activo(true).provincia(prov).build();
+        em.persist(ciudad);
+
+        Ubicacion ubicacion = Ubicacion.builder().ciudad(ciudad).build();
         em.persist(ubicacion);
 
         Proyecto proyecto = Proyecto.builder()

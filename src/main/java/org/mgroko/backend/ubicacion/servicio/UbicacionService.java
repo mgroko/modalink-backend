@@ -2,7 +2,13 @@ package org.mgroko.backend.ubicacion.servicio;
 
 import java.math.BigDecimal;
 
+import org.mgroko.backend.modelo.Ciudad;
+import org.mgroko.backend.modelo.Pais;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
+import org.mgroko.backend.repositorio.CiudadRepository;
+import org.mgroko.backend.repositorio.PaisRepository;
+import org.mgroko.backend.repositorio.ProvinciaRepository;
 import org.mgroko.backend.repositorio.UbicacionRepository;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
@@ -10,21 +16,32 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Transforma una localidad del catálogo de Georef en una fila de la tabla
- * {@code ubicacion}. La tabla es compartida (usuario, y más adelante
- * proyecto y actividad): si la misma localidad+provincia ya existe, se
- * reutiliza esa fila en lugar de duplicarla.
+ * Transforma una localidad del catálogo de Georef en la jerarquía
+ * Pais -> Provincia -> Ciudad -> Ubicacion normalizada según ModaLinkBD.sql.
+ * Si la misma ciudad y ubicación ya existen, se reutilizan.
  */
 @Service
 public class UbicacionService {
 
-    private static final String PAIS_DEFAULT = "Argentina";
+    private static final String CODIGO_PAIS_DEFAULT = "AR";
+    private static final String NOMBRE_PAIS_DEFAULT = "Argentina";
 
     private final UbicacionRepository ubicacionRepository;
+    private final CiudadRepository ciudadRepository;
+    private final ProvinciaRepository provinciaRepository;
+    private final PaisRepository paisRepository;
     private final GeorefCatalogoService catalogoGeoref;
 
-    public UbicacionService(UbicacionRepository ubicacionRepository, GeorefCatalogoService catalogoGeoref) {
+    public UbicacionService(
+            UbicacionRepository ubicacionRepository,
+            CiudadRepository ciudadRepository,
+            ProvinciaRepository provinciaRepository,
+            PaisRepository paisRepository,
+            GeorefCatalogoService catalogoGeoref) {
         this.ubicacionRepository = ubicacionRepository;
+        this.ciudadRepository = ciudadRepository;
+        this.provinciaRepository = provinciaRepository;
+        this.paisRepository = paisRepository;
         this.catalogoGeoref = catalogoGeoref;
     }
 
@@ -34,8 +51,6 @@ public class UbicacionService {
      *
      * @param localidadId id de la localidad en el catálogo de Georef
      * @return la fila de ubicación nueva o ya existente
-     * @throws org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException
-     *         si el id no existe en el catálogo
      */
     @Transactional
     public Ubicacion obtenerOCrear(String localidadId) {
@@ -49,10 +64,6 @@ public class UbicacionService {
      * @param localidadId id de la localidad en el catálogo de Georef
      * @param provinciaId id de la provincia en el catálogo de Georef (opcional)
      * @return la fila de ubicación nueva o ya existente
-     * @throws org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException
-     *         si se indica una provincia pero no la localidad
-     * @throws org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException
-     *         si el id de localidad no existe en el catálogo
      */
     @Transactional
     public Ubicacion obtenerOCrear(String localidadId, String provinciaId) {
@@ -71,14 +82,42 @@ public class UbicacionService {
     }
 
     private Ubicacion crear(LocalidadGeoref localidad) {
+        Pais pais = paisRepository.findByCodigoIso(CODIGO_PAIS_DEFAULT)
+                .orElseGet(() -> paisRepository.save(Pais.builder()
+                        .codigoIso(CODIGO_PAIS_DEFAULT)
+                        .nombre(NOMBRE_PAIS_DEFAULT)
+                        .activo(true)
+                        .build()));
+
+        Provincia provincia = provinciaRepository.findByNombre(localidad.provincia().nombre())
+                .orElseGet(() -> provinciaRepository.save(Provincia.builder()
+                        .nombre(localidad.provincia().nombre())
+                        .idExterno(localidad.provincia().id())
+                        .fuenteApi("GEOREF")
+                        .activo(true)
+                        .pais(pais)
+                        .build()));
+
+        BigDecimal lat = BigDecimal.valueOf(localidad.centroide().lat());
+        BigDecimal lon = BigDecimal.valueOf(localidad.centroide().lon());
+
+        Ciudad ciudad = ciudadRepository.findByNombreAndProvincia_IdProvincia(localidad.nombre(), provincia.getIdProvincia())
+                .orElseGet(() -> ciudadRepository.save(Ciudad.builder()
+                        .nombre(localidad.nombre())
+                        .idExterno(localidad.id())
+                        .fuenteApi("GEOREF")
+                        .activo(true)
+                        .latitudDefecto(lat)
+                        .longitudDefecto(lon)
+                        .provincia(provincia)
+                        .build()));
+
         Ubicacion nueva = Ubicacion.builder()
-                .idGeoref(localidad.id())
-                .localidad(localidad.nombre())
-                .provincia(localidad.provincia().nombre())
-                .pais(PAIS_DEFAULT)
-                .latitud(BigDecimal.valueOf(localidad.centroide().lat()))
-                .longitud(BigDecimal.valueOf(localidad.centroide().lon()))
+                .ciudad(ciudad)
+                .latitud(lat)
+                .longitud(lon)
                 .build();
+
         return ubicacionRepository.save(nueva);
     }
 }

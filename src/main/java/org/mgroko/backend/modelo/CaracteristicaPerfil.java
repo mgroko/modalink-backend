@@ -1,6 +1,6 @@
 package org.mgroko.backend.modelo;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -42,5 +42,6 @@ public class CaracteristicaPerfil {
     private ValorCaracteristica valorCaracteristica;
 
     @Column(name = "fecha_registro")
-    private LocalDate fechaRegistro;
+    @Builder.Default
+    private LocalDateTime fechaRegistro = LocalDateTime.now();
 }

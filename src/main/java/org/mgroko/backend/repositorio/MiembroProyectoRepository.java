@@ -24,7 +24,7 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
         LEFT JOIN FETCH rp.permisos
         WHERE mp.proyecto.idProyecto = :idProyecto
           AND mp.perfil.idPerfil = :idPerfil
-          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.Activo
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
     """)
     Optional<MiembroProyecto> findMiembroActivoConPermisos(
             @Param("idProyecto") Long idProyecto,

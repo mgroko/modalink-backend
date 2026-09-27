@@ -1,6 +1,7 @@
 package org.mgroko.backend.perfiles.servicio;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -126,7 +127,7 @@ public class CrearPerfilService {
                     .id(new CaracteristicaPerfilId(null, ct.getIdCaracteristica()))
                     .perfil(perfil)
                     .caracteristicaTecnica(ct)
-                    .fechaRegistro(LocalDate.now());
+                    .fechaRegistro(LocalDateTime.now());
 
             if (CaracteristicaTecnica.TIPO_ENUMERADO.equals(ct.getTipoDato())) {
                 if (car.idValor() == null) {

@@ -4,6 +4,8 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.Ubicacion;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface UbicacionRepository extends JpaRepository<Ubicacion, Long> {
 
@@ -13,9 +15,12 @@ public interface UbicacionRepository extends JpaRepository<Ubicacion, Long> {
      * adelante proyecto y actividad), se reutiliza la fila existente cuando
      * ya se creó esa misma localidad en la provincia.
      *
-     * @param localidad nombre de la localidad
+     * @param localidad nombre de la localidad (nombre de la ciudad)
      * @param provincia nombre de la provincia
      * @return un Optional con la Ubicacion si existe, vacío en caso contrario
      */
-    Optional<Ubicacion> findByLocalidadAndProvincia(String localidad, String provincia);
+    @Query("SELECT u FROM Ubicacion u WHERE LOWER(u.ciudad.nombre) = LOWER(:localidad) AND LOWER(u.ciudad.provincia.nombre) = LOWER(:provincia)")
+    Optional<Ubicacion> findByLocalidadAndProvincia(@Param("localidad") String localidad, @Param("provincia") String provincia);
+
+    Optional<Ubicacion> findByCiudad_IdCiudad(Long idCiudad);
 }

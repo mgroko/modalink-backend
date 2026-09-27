@@ -36,7 +36,7 @@ public final class ProyectoMapper {
                 proyecto.getIdProyecto(),
                 proyecto.getNombre(),
                 proyecto.getDescripcion(),
-                proyecto.getFechaInicio(),
+                proyecto.getFechaInicio() != null ? proyecto.getFechaInicio().toLocalDate() : null,
                 fechaFinEstipulada,
                 proyecto.getEstado().getNombre(),
                 proyecto.getPrivacidad().name(),

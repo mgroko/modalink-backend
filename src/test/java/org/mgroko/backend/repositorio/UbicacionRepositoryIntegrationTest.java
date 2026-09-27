@@ -5,6 +5,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.modelo.Ciudad;
+import org.mgroko.backend.modelo.Pais;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,15 +27,44 @@ class UbicacionRepositoryIntegrationTest extends AbstractPostgresIntegrationTest
     @Autowired
     private UbicacionRepository ubicacionRepository;
 
+    @Autowired
+    private CiudadRepository ciudadRepository;
+
+    @Autowired
+    private ProvinciaRepository provinciaRepository;
+
+    @Autowired
+    private PaisRepository paisRepository;
+
     private Ubicacion guardar(String localidad, String provincia) {
         return guardar(localidad, provincia, "X");
     }
 
     private Ubicacion guardar(String localidad, String provincia, String idGeoref) {
+        Pais pais = paisRepository.findByCodigoIso("AR")
+                .orElseGet(() -> paisRepository.save(Pais.builder()
+                        .codigoIso("AR")
+                        .nombre("Argentina")
+                        .activo(true)
+                        .build()));
+
+        Provincia prov = provinciaRepository.findByNombre(provincia)
+                .orElseGet(() -> provinciaRepository.save(Provincia.builder()
+                        .nombre(provincia)
+                        .activo(true)
+                        .pais(pais)
+                        .build()));
+
+        Ciudad ciudad = ciudadRepository.findByNombreAndProvincia_IdProvincia(localidad, prov.getIdProvincia())
+                .orElseGet(() -> ciudadRepository.save(Ciudad.builder()
+                        .nombre(localidad)
+                        .idExterno(idGeoref)
+                        .activo(true)
+                        .provincia(prov)
+                        .build()));
+
         return ubicacionRepository.saveAndFlush(Ubicacion.builder()
-                .localidad(localidad)
-                .provincia(provincia)
-                .idGeoref(idGeoref)
+                .ciudad(ciudad)
                 .build());
     }
 
