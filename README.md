@@ -13,8 +13,7 @@ Proyecto final de la carrera Analista en Sistemas de Computación, desarrollado 
 |--------------------|----------------------------------------------|
 | Lenguaje           | Java 25                                      |
 | Framework          | Spring Boot 4.1.0 (Web, Security, Data JPA, Validation, Actuator) |
-| Base de datos      | PostgreSQL                                   |
-| Migraciones        | Flyway                                       |
+| Base de datos      | PostgreSQL                                   |                                      |
 | Autenticación      | JWT (JJWT 0.13.0) en cookies HTTP-only + CSRF vía `CookieCsrfTokenRepository` |
 | Hashing de contraseñas | BCrypt                                   |
 | Testing            | JUnit 5, Spring Security Test, Testcontainers (PostgreSQL), JaCoCo |
@@ -39,7 +38,6 @@ src/main/java/org/mgroko/backend/
 
 src/main/resources/
 ├── application.properties
-└── db/migration/         # Scripts Flyway (V1, V2, V3...)
 
 src/test/java/org/mgroko/backend/   # Pruebas unitarias e integración (auth y security)
 ```
@@ -64,9 +62,6 @@ spring.datasource.password=postgres
 
 server.port=8080
 
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration
-spring.flyway.schemas=public
 ```
 
 Variables de entorno soportadas (con valores por defecto para desarrollo):
@@ -87,11 +82,10 @@ CORS está habilitado solo para `http://localhost:5173` (frontend en desarrollo 
    CREATE DATABASE "modalink";
    ```
 2. Ajustar credenciales en `application.properties` si difieren de `postgres` / `postgres`.
-3. Ejecutar la aplicación (Flyway aplica las migraciones automáticamente al arrancar):
    ```bash
    ./mvnw spring-boot:run
    ```
-4. La API queda disponible en `http://localhost:8080`.
+3. La API queda disponible en `http://localhost:8080`.
 
 ## Endpoints disponibles
 

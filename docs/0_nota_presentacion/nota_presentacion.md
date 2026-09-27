@@ -49,20 +49,24 @@ Licenciatura en Sistemas de Información
 
 ## Contenidos
 
-1. [Planteo del problema](#planteo-del-problema)
-2. [Introducción y Objetivos](#introducción-y-objetivos)
-   - [Objetivos Generales](#objetivos-generales)
-   - [Objetivos Específicos](#objetivos-específicos)
-3. [Requisitos de Información (RI)](#requisitos-de-información-ri)
-4. [Alcance y Limitaciones](#alcance-y-limitaciones)
-5. [Especificación de Módulos](#especificación-de-módulos)
-   - [Módulos Funcionales (MOD-F)](#módulos-funcionales-mod-f)
-   - [Módulos No Funcionales (MOD-NF)](#módulos-no-funcionales-mod-nf)
-6. [Actores y Matriz Preliminar de Alcance](#actores-y-matriz-preliminar-de-alcance)
-7. [Procesos Automatizados](#procesos-automatizados)
-8. [Estimación de Tamaño por Módulo](#estimación-de-tamaño-por-módulo)
-9. [Entorno Tecnológico y Metodológico](#entorno-tecnológico-y-metodológico)
-10. [Planificación de Actividades (UP)](#planificación-de-actividades)
+- [Evaluación de la propuesta](#evaluación-de-la-propuesta)
+- [Contenidos](#contenidos)
+- [Planteo del problema](#planteo-del-problema)
+- [Introducción y objetivos](#introducción-y-objetivos)
+  - [Objetivos Generales](#objetivos-generales)
+  - [Objetivos Específicos](#objetivos-específicos)
+- [Requisitos de Información (RI)](#requisitos-de-información-ri)
+- [Alcance y limitaciones](#alcance-y-limitaciones)
+  - [Alcance](#alcance)
+  - [Limitaciones](#limitaciones)
+- [Especificación de módulos](#especificación-de-módulos)
+  - [Módulos Funcionales (MOD-F)](#módulos-funcionales-mod-f)
+  - [Módulos No Funcionales (MOD-NF)](#módulos-no-funcionales-mod-nf)
+- [Actores y Matriz Preliminar de Alcance](#actores-y-matriz-preliminar-de-alcance)
+- [Procesos automatizados](#procesos-automatizados)
+- [Estimación de tamaño por módulo](#estimación-de-tamaño-por-módulo)
+- [Entorno tecnológico y metodológico](#entorno-tecnológico-y-metodológico)
+- [Planificación de actividades](#planificación-de-actividades)
 
 ---
 
@@ -209,7 +213,7 @@ El presente proyecto propone el desarrollo de una Plataforma de Networking para 
 | :---- | :---- |
 | **Lenguaje Backend:** | Java 25 |
 | **Framework Backend:** | Spring Boot 4.1.0, Spring Security |
-| **Persistencia & Migraciones:** | PostgreSQL, Flyway (`V1` a `V19+`) |
+| **Persistencia:** | PostgreSQL |
 | **Seguridad:** | JWT (JJWT 0.13.0, HttpOnly Cookie), CSRF token repository, BCrypt |
 | **Testing & Cobertura:** | JUnit 5, AssertJ, Mockito, JaCoCo (mínimo 80%) |
 | **Arquitectura:** | Cliente - Servidor RESTful por capas |
