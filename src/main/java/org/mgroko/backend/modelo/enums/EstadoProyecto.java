@@ -16,4 +16,14 @@ public enum EstadoProyecto {
     public static final EstadoProyecto Confirmado = CONFIRMADO;
     public static final EstadoProyecto Finalizado = FINALIZADO;
     public static final EstadoProyecto Cancelado = CANCELADO;
+
+    public String getNombre() {
+        return switch (this) {
+            case BORRADOR -> "Borrador";
+            case PUBLICADO -> "Publicado";
+            case CONFIRMADO -> "Confirmado";
+            case FINALIZADO -> "Finalizado";
+            case CANCELADO -> "Cancelado";
+        };
+    }
 }

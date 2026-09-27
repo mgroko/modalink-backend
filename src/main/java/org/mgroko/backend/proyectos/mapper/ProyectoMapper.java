@@ -38,7 +38,7 @@ public final class ProyectoMapper {
                 proyecto.getDescripcion(),
                 proyecto.getFechaInicio(),
                 fechaFinEstipulada,
-                proyecto.getEstado().name(),
+                proyecto.getEstado().getNombre(),
                 proyecto.getPrivacidad().name(),
                 proyecto.getAceptaPostulacionGral(),
                 ubicacionResponse,

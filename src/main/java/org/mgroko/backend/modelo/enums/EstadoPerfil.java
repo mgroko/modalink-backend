@@ -14,4 +14,13 @@ public enum EstadoPerfil {
     public static final EstadoPerfil Deshabilitado = DESHABILITADO;
     public static final EstadoPerfil PendienteBaja = PENDIENTE_BAJA;
     public static final EstadoPerfil Baja = BAJA;
+
+    public String getNombre() {
+        return switch (this) {
+            case ACTIVO -> "Activo";
+            case DESHABILITADO -> "Deshabilitado";
+            case PENDIENTE_BAJA -> "PendienteBaja";
+            case BAJA -> "Baja";
+        };
+    }
 }

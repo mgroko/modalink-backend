@@ -23,7 +23,9 @@ import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
+import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.PerfilTyc;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -82,8 +84,8 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
     }
 
     private RolProyecto rolMiembro() {
-        return em.createQuery("SELECT r FROM RolProyecto r WHERE r.nombre = :n", RolProyecto.class)
-                .setParameter("n", "Miembro")
+        return em.createQuery("SELECT r FROM RolProyecto r WHERE r.codigo = 'MIEMBRO' OR LOWER(r.nombre) LIKE 'miembro%'", RolProyecto.class)
+                .setMaxResults(1)
                 .getSingleResult();
     }
 
@@ -104,6 +106,19 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 .usuario(usuario).profesion(profesion).build();
         em.persist(perfil);
 
+        PerfilTyc tyc = PerfilTyc.builder()
+                .id(new org.mgroko.backend.modelo.PerfilTycId(perfil.getIdPerfil(), 1L))
+                .perfil(perfil)
+                .descripcion("T&C Base")
+                .fechaInicio(LocalDateTime.now())
+                .build();
+        em.persist(tyc);
+
+        Ubicacion ubicacion = Ubicacion.builder()
+                .localidad("CABA").provincia("Buenos Aires")
+                .build();
+        em.persist(ubicacion);
+
         Proyecto proyecto = Proyecto.builder()
                 .nombre("Proyecto Test").descripcion("Descripción de test")
                 .fechaInicio(LocalDate.now()).estado(estado).privacidad(Privacidad.Publico).build();
@@ -114,12 +129,15 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
 
         MiembroProyecto miembro = MiembroProyecto.builder()
                 .proyecto(proyecto).perfil(perfil).rolProyecto(rolMiembro())
+                .idTycAceptado(1L)
                 .estadoParticipacion(EstadoParticipacion.Activo).build();
         em.persist(miembro);
 
         Actividad actividad = Actividad.builder()
                 .nombre("Sesión").duracionMinutos(duracionMin)
-                .fechaHoraInicio(actInicio).planificacion(planificacion).build();
+                .fechaHoraInicio(actInicio).planificacion(planificacion)
+                .ubicacion(ubicacion)
+                .build();
         em.persist(actividad);
 
         AsignacionActividad asignacion = AsignacionActividad.builder()
@@ -127,7 +145,7 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
         em.persist(asignacion);
 
         em.flush();
-        em.refresh(actividad); // carga la columna generada fecha_hora_fin
+        em.refresh(actividad);
         return actividad;
     }
 

@@ -18,4 +18,13 @@ public enum EstadoUsuario {
     public boolean permiteAcceso() {
         return this == ACTIVO || this == PENDIENTE_BAJA;
     }
+
+    public String getNombre() {
+        return switch (this) {
+            case ACTIVO -> "Activo";
+            case DESHABILITADO -> "Deshabilitado";
+            case PENDIENTE_BAJA -> "PendienteBaja";
+            case BAJA -> "Baja";
+        };
+    }
 }

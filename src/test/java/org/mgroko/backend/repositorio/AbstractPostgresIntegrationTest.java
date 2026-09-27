@@ -23,7 +23,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 abstract class AbstractPostgresIntegrationTest {
 
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
+            .withInitScript("ModaLinkBD.sql");
 
     static {
         POSTGRES.start();

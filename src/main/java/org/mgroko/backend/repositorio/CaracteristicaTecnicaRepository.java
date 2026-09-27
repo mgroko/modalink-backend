@@ -24,7 +24,7 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
     @Query("""
             SELECT c FROM CaracteristicaTecnica c
             WHERE (:patronCodigo = '%' OR LOWER(c.codigo) LIKE :patronCodigo)
-              AND (:patronUnidad = '%' OR (c.unidad IS NOT NULL AND LOWER(c.unidad) LIKE :patronUnidad))
+              AND (:patronUnidad = '%' OR (c.unidadMedida IS NOT NULL AND LOWER(c.unidadMedida.simbolo) LIKE :patronUnidad))
               AND (:idProfesion IS NULL OR c.profesion.idProfesion = :idProfesion)
             ORDER BY c.codigo
             """)

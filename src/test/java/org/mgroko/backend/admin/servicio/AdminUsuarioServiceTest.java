@@ -65,7 +65,7 @@ class AdminUsuarioServiceTest {
         AdminUsuarioResponse response = adminUsuarioService.habilitar(2L);
 
         assertEquals("Activo", response.estado());
-        assertEquals("Activo", usuario.getEstado().name());
+        assertEquals(EstadoUsuario.Activo, usuario.getEstado());
         verify(usuarioRepository).save(usuario);
     }
 
