@@ -10,6 +10,7 @@ import org.mgroko.backend.repositorio.ProvinciaRepository;
 import org.mgroko.backend.repositorio.UbicacionRepository;
 import org.mgroko.backend.ubicacion.catalogo.LocalidadCatalogo;
 import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
+import org.mgroko.backend.ubicacion.exception.ProvinciaLocalidadIncoherenteException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,6 +85,18 @@ public class UbicacionService {
 
         // Busca en catálogo interno; la fuente API se determina al momento de crear/sincronizar
         LocalidadCatalogo localidad = catalogoGeografico.obtenerLocalidad(localidadId);
+
+        // NUEVA validación: coherencia entre provincia indicada y provincia de la localidad
+        // Si el usuario indicó una provincia, verificamos que coincida con la de la localidad
+        if (tieneProvincia && localidad.idProvincia() != null && !localidad.idProvincia().isBlank()) {
+            String provinciaLocalidad = localidad.idProvincia();
+            if (!provinciaId.equals(provinciaLocalidad)) {
+                throw new ProvinciaLocalidadIncoherenteException(
+                        "La localidad " + localidad.nombre() + " pertenece a la provincia " + provinciaLocalidad
+                                + ", pero se indicó la provincia: " + provinciaId);
+            }
+        }
+
         return crear(localidad);
     }
 
