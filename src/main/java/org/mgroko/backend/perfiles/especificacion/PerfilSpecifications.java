@@ -70,9 +70,9 @@ public class PerfilSpecifications {
                         filtro.genero().trim().toLowerCase()));
             }
 
-            // Filtrado por ubicación
+            // Filtrado por ubicación (por ciudad, no por fila de ubicacion surrogate)
             if (filtro.idUbicacion() != null) {
-                predicates.add(cb.equal(root.get("usuario").get("ubicacion").get("idUbicacion"), filtro.idUbicacion()));
+                predicates.add(cb.equal(root.get("usuario").get("ubicacion").get("ciudad").get("idCiudad"), filtro.idUbicacion()));
             }
             if (filtro.localidad() != null && !filtro.localidad().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("ciudad").get("nombre")),

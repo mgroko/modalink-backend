@@ -107,8 +107,6 @@ public class UbicacionService {
                 .findByCiudad_IdCiudad(ciudad.getIdCiudad())
                 .orElseGet(() -> ubicacionRepository.save(Ubicacion.builder()
                         .ciudad(ciudad)
-                        .latitud(latitud)
-                        .longitud(longitud)
                         .build()));
     }
 

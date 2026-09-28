@@ -93,16 +93,18 @@ public class AdminSeeder implements CommandLineRunner {
                             .activo(true)
                             .build()));
 
-            Provincia provincia = provinciaRepository.findByNombre("Buenos Aires").orElseGet(() ->
+            Provincia provincia = provinciaRepository.findByNombreAndPais_IdPais("Buenos Aires", pais.getIdPais()).orElseGet(() ->
                     provinciaRepository.save(Provincia.builder()
                             .nombre("Buenos Aires")
                             .pais(pais)
                             .activo(true)
                             .build()));
 
-            Ciudad ciudad = ciudadRepository.findByNombreAndProvincia_IdProvincia("La Plata", provincia.getIdProvincia()).orElseGet(() ->
+            Ciudad ciudad = ciudadRepository.findByFuenteApiAndIdExterno("GEOREF", "LA_PLATA").orElseGet(() ->
                     ciudadRepository.save(Ciudad.builder()
                             .nombre("La Plata")
+                            .idExterno("LA_PLATA")
+                            .fuenteApi("GEOREF")
                             .provincia(provincia)
                             .activo(true)
                             .build()));

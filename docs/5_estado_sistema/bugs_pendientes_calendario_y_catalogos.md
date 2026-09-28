@@ -447,15 +447,15 @@ resolución del país:
   búsqueda por nombre global, que colisiona en cuanto haya más de un país.~~ **[RESUELTO]** — método y *fast path*
   eliminados. Era un bug de corrección, no solo nomenclatura: la query no filtraba por `pais`, `id_externo` ni
   `fuente_api`, y podía devolver la ubicación de otro país u otro catálogo.
-- **R3-bis** — **NUEVO, descubierto al verificar R3.** `UQ_ciudad_provincia_nombre` sobre
+- **R3-bis** — ~~**NUEVO, descubierto al verificar R3.** `UQ_ciudad_provincia_nombre` sobre
   `ciudad(nombre, id_provincia)` y `UQ_provincia_pais_nombre` sobre `provincia(nombre, id_pais)` son índices únicos
   **por nombre** que coexisten con la clave natural `(id_externo, fuente_api)`. Contradicen la decisión de que la
   identidad es la clave natural y **bloquean el diseño multi-catálogo a nivel de esquema**: el mismo nombre de
   ciudad en la misma provincia se rechaza aunque venga de otra fuente. **Requiere decisión + SQL.** Detalle y
   evidencia en la sección 5.3 de
-  [`eliminacion_getters_fantasma_ubicacion.md`](file:///c:/Users/HP/Desktop/modalink-backend/docs/5_estado_sistema/eliminacion_getters_fantasma_ubicacion.md).
-- **R4** — `BuscarPerfilesFiltro.idUbicacion` filtra perfiles por la clave surrogata de `ubicacion` en lugar de
-  `idCiudad`.
+  [`eliminacion_getters_fantasma_ubicacion.md`](file:///c:/Users/HP/Desktop/modalink-backend/docs/5_estado_sistema/eliminacion_getters_fantasma_ubicacion.md).~~ **[RESUELTO]**
+- **R4** — ~~`BuscarPerfilesFiltro.idUbicacion` filtra perfiles por la clave surrogata de `ubicacion` en lugar de
+  `idCiudad`.~~ **[RESUELTO]**
 - **R5** — ~~`DatosPersonalesResponse.ubicacion` es un `String` compuesto a mano con `", "`, residuo del modelo plano.~~
   **[RESUELTO]** — ahora es un `UbicacionResponse` estructurado.
 - **R6** — ~~`PerfilBusquedaResponse` y `PerfilDetalleResponse` exponen `localidad` y `provincia` pero no `pais`,
@@ -465,17 +465,17 @@ resolución del país:
   nunca lanzada.~~ **[RESUELTO]** — clase y handler eliminados. Era además un duplicado exacto de
   `LocalidadNoEncontradaException` (mismo 400 y mismo cuerpo `buildErrorResponse`), sin ningún hueco semántico que
   cubriera.
-- **R8** — Métodos de repositorio declarados y nunca invocados. **Parcialmente resuelto**: `findByCiudad_IdCiudad`
+- **R8** — ~~Métodos de repositorio declarados y nunca invocados. **Parcialmente resuelto**: `findByCiudad_IdCiudad`
   y `findByFuenteApiAndIdExterno` (nuevos) están en uso; `findByNombre` y `findByNombreAndProvincia_IdProvincia`
-  siguen sin uso.
+  siguen sin uso.~~ **[RESUELTO]**
 - **B4** — Doble escritura de lat/long: `UbicacionService` las escribe a mano y además existe el trigger
   `fn_heredar_coordenadas_ciudad`, que ya las hereda. Dos fuentes de verdad.
 - **B8** — El campo `activo` existe en `pais`, `provincia` y `ciudad` pero las búsquedas no lo filtran.
 - **M1** — No existe el puerto `CatalogoGeografico`: `UbicacionService` y `UbicacionCatalogoController` dependen
   de la clase concreta `GeorefCatalogoService`. Cambiar de API implica cambiar firmas.
-- **M10** — Los índices únicos `(id_externo, fuente_api)` ya existen, pero son uniques sobre columnas **nullable**:
+- **M10** — ~~Los índices únicos `(id_externo, fuente_api)` ya existen, pero son uniques sobre columnas **nullable**:
   en PostgreSQL los `NULL` se consideran distintos entre sí, así que no restringen las filas con `id_externo` nulo.
-  Invariante a documentar: el código nunca debe escribir `null` en esas columnas.
+  Invariante a documentar: el código nunca debe escribir `null` en esas columnas.~~ **[RESUELTO]**
 
 **Resuelto en esta iteración**: la resolución del país (B1–B3, M4, M6) mediante `PaisCatalogoService` y la clave
 `CATALOGO_GEOREF_PAIS_ISO` en `configuracion_sistema`.
