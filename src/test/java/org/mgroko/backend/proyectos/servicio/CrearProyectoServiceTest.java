@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
@@ -110,7 +111,10 @@ class CrearProyectoServiceTest {
                 .thenReturn(false);
         when(rolProyectoRepository.findByNombre("Director")).thenReturn(Optional.of(rolDirector));
 
-        Ubicacion ubicacion = Ubicacion.builder().idUbicacion(50L).localidad("La Plata").build();
+        Ubicacion ubicacion = Ubicacion.builder()
+                .idUbicacion(50L)
+                .ciudad(Ciudad.builder().nombre("La Plata").build())
+                .build();
         when(ubicacionService.obtenerOCrear("12345", "06")).thenReturn(ubicacion);
 
         when(proyectoRepository.save(any(Proyecto.class))).thenAnswer(invocation -> {

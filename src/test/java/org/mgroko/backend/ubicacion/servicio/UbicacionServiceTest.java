@@ -1,19 +1,21 @@
 package org.mgroko.backend.ubicacion.servicio;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.modelo.Ciudad;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.repositorio.PaisRepository;
 import org.mgroko.backend.repositorio.UbicacionRepository;
+import org.mgroko.backend.ubicacion.catalogo.FuenteCatalogo;
+import org.mgroko.backend.ubicacion.catalogo.LocalidadCatalogo;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
-import org.mgroko.backend.ubicacion.georef.CentroideGeoref;
-import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
-import org.mgroko.backend.ubicacion.georef.ProvinciaGeorefRef;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
@@ -38,11 +40,17 @@ class UbicacionServiceTest {
     @Mock
     private PaisRepository paisRepository;
 
-    private static final LocalidadGeoref LOCALIDAD_SAAVEDRA = new LocalidadGeoref(
+    @Mock
+    private PaisCatalogoService paisCatalogoService;
+
+    private static final LocalidadCatalogo LOCALIDAD_SAAVEDRA = new LocalidadCatalogo(
             "0208401002",
             "Saavedra",
-            new CentroideGeoref(-34.5548978526608, -58.4863271154338),
-            new ProvinciaGeorefRef("02", "Ciudad Autónoma de Buenos Aires"));
+            "02",
+            "Ciudad Autónoma de Buenos Aires",
+            FuenteCatalogo.GEOREF,
+            new BigDecimal("-34.5548978526608"),
+            new BigDecimal("-58.4863271154338"));
 
     @Test
     void obtenerOCrear_localidadNueva_creaUbicacionConIdGeoref() {
@@ -67,9 +75,13 @@ class UbicacionServiceTest {
     void obtenerOCrear_localidadExistente_reutilizaSinGuardar() {
         Ubicacion existente = Ubicacion.builder()
                 .idUbicacion(3L)
-                .idGeoref("0208401002")
-                .localidad("Saavedra")
-                .provincia("Ciudad Autónoma de Buenos Aires")
+                .ciudad(Ciudad.builder()
+                        .nombre("Saavedra")
+                        .idExterno("0208401002")
+                        .provincia(Provincia.builder()
+                                .nombre("Ciudad Autónoma de Buenos Aires")
+                                .build())
+                        .build())
                 .build();
 
         when(catalogoGeoref.obtenerLocalidad("0208401002")).thenReturn(LOCALIDAD_SAAVEDRA);

@@ -18,9 +18,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -63,7 +65,13 @@ class VerPerfilServiceTest {
                 .correo("maria@test.com")
                 .estado(EstadoUsuario.Activo)
                 .genero(Genero.builder().idGenero(1L).codigo("FEM").build())
-                .ubicacion(Ubicacion.builder().idUbicacion(1L).localidad("Rosario").provincia("Santa Fe").build())
+                .ubicacion(Ubicacion.builder()
+                        .idUbicacion(1L)
+                        .ciudad(Ciudad.builder()
+                                .nombre("Rosario")
+                                .provincia(Provincia.builder().nombre("Santa Fe").build())
+                                .build())
+                        .build())
                 .build();
 
         profesion = Profesion.builder()

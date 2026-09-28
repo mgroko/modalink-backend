@@ -1143,7 +1143,7 @@ CREATE TABLE proyecto(
                                CHECK (estado IN ('BORRADOR', 'PUBLICADO', 'CONFIRMADO', 'FINALIZADO', 'CANCELADO')),
     privacidad                 varchar(20)     NOT NULL
                                CHECK (privacidad IN ('PUBLICO', 'PRIVADO', 'OCULTO')),
-    id_ubicacion               int8            NOT NULL,
+    id_ubicacion               int8,
     CONSTRAINT "PK_proyecto" PRIMARY KEY (id_proyecto)
 )
 ;
@@ -1465,7 +1465,7 @@ CREATE TABLE ubicacion(
     codigo_postal    varchar(10),
     latitud          decimal(10, 8),
     longitud         decimal(11, 8),
-    id_ciudad        int8              NOT NULL,
+    id_ciudad        int8,
     CONSTRAINT "PK_ubicacion" PRIMARY KEY (id_ubicacion)
 )
 ;
@@ -1524,7 +1524,7 @@ CREATE TABLE usuario(
                                    CHECK (char_length(trim(apellido)) >= 2),
     correo                         varchar(255)    NOT NULL
                                    CHECK (correo LIKE '%@%.%'),
-    id_ubicacion                   int8            NOT NULL,
+    id_ubicacion                   int8,
     id_genero                      int8            NOT NULL,
     id_rol_global                  int8            NOT NULL,
     CONSTRAINT "PK_usuario" PRIMARY KEY (id_usuario)
@@ -1799,6 +1799,20 @@ CREATE UNIQUE INDEX "UQ_usuario_correo" ON usuario(correo)
 
 CREATE UNIQUE INDEX "UQ_usuario_dni" ON usuario(dni)
 ;
+
+-- 
+-- INDEX: "UQ_ciudad_id_externo_y_api" 
+--
+
+CREATE UNIQUE INDEX "UQ_ciudad_id_externo_y_api" ON ciudad(id_externo, fuente_api)
+;
+-- 
+-- INDEX: "UQ_provincia_id_externo_y_api" 
+--
+
+CREATE UNIQUE INDEX "UQ_provincia_id_externo_y_api" ON provincia(id_externo, fuente_api)
+;
+
 -- 
 -- TABLE: actividad 
 --
@@ -2487,7 +2501,9 @@ ON CONFLICT (id_tipo_auditoria) DO UPDATE
 INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('SCHEDULER_DESHABILITACION_HORA',   '2',           'Hora del dia (0-23) en la que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
-    ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios')
+    ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios'),
+    ('CATALOGO_GEOREF_PAIS_ISO',        'AR',          'Codigo ISO del pais para georeferenciacion de ubicaciones con API Georef')
+
 ON CONFLICT (clave) DO UPDATE 
     SET valor       = EXCLUDED.valor,
         descripcion = EXCLUDED.descripcion;

@@ -5,19 +5,29 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.modelo.Ciudad;
+import org.mgroko.backend.modelo.Pais;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.ubicacion.dto.UbicacionResponse;
 
 class UbicacionMapperTest {
 
+    private static Ciudad ciudad(String nombre, String idExterno, String provincia, String pais) {
+        Provincia prov = provincia != null
+                ? Provincia.builder()
+                        .nombre(provincia)
+                        .pais(pais != null ? Pais.builder().codigoIso("AR").nombre(pais).build() : null)
+                        .build()
+                : null;
+        return Ciudad.builder().nombre(nombre).idExterno(idExterno).provincia(prov).build();
+    }
+
     @Test
     void toResponse_conTodosLosCampos_mapea() {
         Ubicacion ubicacion = Ubicacion.builder()
                 .idUbicacion(7L)
-                .idGeoref("0208401001")
-                .localidad("Recoleta")
-                .provincia("Ciudad Autónoma de Buenos Aires")
-                .pais("Argentina")
+                .ciudad(ciudad("Recoleta", "0208401001", "Ciudad Autónoma de Buenos Aires", "Argentina"))
                 .codigoPostal("C1024")
                 .latitud(new BigDecimal("-34.588043854884"))
                 .longitud(new BigDecimal("-58.3971817497302"))
@@ -39,8 +49,7 @@ class UbicacionMapperTest {
     void toResponse_conCamposOpcionalesNulos_devuelveNull() {
         Ubicacion ubicacion = Ubicacion.builder()
                 .idUbicacion(8L)
-                .localidad("Saavedra")
-                .provincia("Ciudad Autónoma de Buenos Aires")
+                .ciudad(ciudad("Saavedra", null, "Ciudad Autónoma de Buenos Aires", null))
                 .build();
 
         UbicacionResponse response = UbicacionMapper.toResponse(ubicacion);

@@ -10,6 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.modelo.Ciudad;
+import org.mgroko.backend.modelo.Pais;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
@@ -46,13 +49,20 @@ class UbicacionUsuarioServiceTest {
                 .build();
     }
 
+    private static Ciudad ciudad(String nombre, String idExterno, String provincia, String pais) {
+        Provincia prov = provincia != null
+                ? Provincia.builder()
+                        .nombre(provincia)
+                        .pais(pais != null ? Pais.builder().codigoIso("AR").nombre(pais).build() : null)
+                        .build()
+                : null;
+        return Ciudad.builder().nombre(nombre).idExterno(idExterno).provincia(prov).build();
+    }
+
     private Ubicacion ubicacionSaavedra(Long id) {
         return Ubicacion.builder()
                 .idUbicacion(id)
-                .idGeoref("0208401002")
-                .localidad("Saavedra")
-                .provincia("Ciudad Autónoma de Buenos Aires")
-                .pais("Argentina")
+                .ciudad(ciudad("Saavedra", "0208401002", "Ciudad Autónoma de Buenos Aires", "Argentina"))
                 .latitud(new BigDecimal("-34.5548978526608"))
                 .longitud(new BigDecimal("-58.4863271154338"))
                 .build();
@@ -127,9 +137,7 @@ class UbicacionUsuarioServiceTest {
 
         Ubicacion otra = Ubicacion.builder()
                 .idUbicacion(4L)
-                .idGeoref("06441030")
-                .localidad("La Plata")
-                .provincia("Buenos Aires")
+                .ciudad(ciudad("La Plata", "06441030", "Buenos Aires", null))
                 .build();
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
