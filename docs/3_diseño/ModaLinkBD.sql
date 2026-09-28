@@ -1685,12 +1685,7 @@ CREATE UNIQUE INDEX "UQ_asignacion_miembro_actividad" ON asignacion_actividad(id
 
 CREATE UNIQUE INDEX "UQ_perfil_caracteristica" ON caracteristica_perfil(id_perfil, id_caracteristica)
 ;
--- 
--- INDEX: "UQ_ciudad_provincia_nombre" 
---
 
-CREATE UNIQUE INDEX "UQ_ciudad_provincia_nombre" ON ciudad(nombre, id_provincia)
-;
 -- 
 -- INDEX: "UQ_genero_codigo" 
 --
