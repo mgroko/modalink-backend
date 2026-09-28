@@ -49,7 +49,7 @@ class UbicacionServiceTest {
     private ProvinciaRepository provinciaRepository;
 
     @Mock
-    private GeorefCatalogoService catalogoGeoref;
+    private CatalogoGeograficoService catalogoGeografico;
 
     @Mock
     private PaisCatalogoService paisCatalogoService;
@@ -115,7 +115,7 @@ class UbicacionServiceTest {
 
     @Test
     void obtenerOCrear_paisNoConfigurable_fallaSinDejarProvinciaHuerfana() {
-        when(catalogoGeoref.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
+        when(catalogoGeografico.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
         when(ciudadRepository.findByFuenteApiAndIdExterno(FUENTE, CLAVE_LOCALIDAD))
                 .thenReturn(Optional.empty());
         when(provinciaRepository.findByFuenteApiAndIdExterno(FUENTE, ID_PROVINCIA))
@@ -135,7 +135,7 @@ class UbicacionServiceTest {
     @Test
     void obtenerOCrear_siLaCiudadYaExiste_noConsultaElPais() {
         Ciudad ciudadExistente = ciudadExistente(7L);
-        when(catalogoGeoref.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
+        when(catalogoGeografico.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
         when(ciudadRepository.findByFuenteApiAndIdExterno(FUENTE, CLAVE_LOCALIDAD))
                 .thenReturn(Optional.of(ciudadExistente));
         when(ubicacionRepository.findByCiudad_IdCiudad(7L)).thenReturn(Optional.empty());
@@ -157,7 +157,7 @@ class UbicacionServiceTest {
                 .idUbicacion(55L)
                 .ciudad(ciudadExistente)
                 .build();
-        when(catalogoGeoref.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
+        when(catalogoGeografico.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
         when(ciudadRepository.findByFuenteApiAndIdExterno(FUENTE, CLAVE_LOCALIDAD))
                 .thenReturn(Optional.of(ciudadExistente));
         when(ubicacionRepository.findByCiudad_IdCiudad(7L)).thenReturn(Optional.of(ubicacionExistente));
@@ -174,7 +174,7 @@ class UbicacionServiceTest {
                 "9999999999", "Localidad Sin Provincia", null, null,
                 FuenteCatalogo.GEOREF,
                 new BigDecimal("-34.0"), new BigDecimal("-58.0"));
-        when(catalogoGeoref.obtenerLocalidad("9999999999")).thenReturn(sinProvincia);
+        when(catalogoGeografico.obtenerLocalidad("9999999999")).thenReturn(sinProvincia);
 
         assertThrows(LocalidadSinProvinciaException.class,
                 () -> ubicacionService.obtenerOCrear("9999999999"));
@@ -187,7 +187,7 @@ class UbicacionServiceTest {
      */
     @Test
     void obtenerOCrear_noConsultaPorNombre_paraDecidirElReuso() {
-        when(catalogoGeoref.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
+        when(catalogoGeografico.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
         when(ciudadRepository.findByFuenteApiAndIdExterno(FUENTE, CLAVE_LOCALIDAD))
                 .thenReturn(Optional.of(ciudadExistente(7L)));
         when(ubicacionRepository.findByCiudad_IdCiudad(7L)).thenReturn(Optional.empty());
@@ -202,7 +202,7 @@ class UbicacionServiceTest {
 
     @Test
     void obtenerOCrear_localidadInexistente_lanzaExcepcion() {
-        when(catalogoGeoref.obtenerLocalidad("9999999999"))
+        when(catalogoGeografico.obtenerLocalidad("9999999999"))
                 .thenThrow(new LocalidadNoEncontradaException("Localidad no encontrada."));
 
         assertThrows(LocalidadNoEncontradaException.class,
@@ -236,7 +236,7 @@ class UbicacionServiceTest {
      * existen todavia, y el pais se resuelve desde la configuracion.
      */
     private void prepararAltaCompleta() {
-        when(catalogoGeoref.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
+        when(catalogoGeografico.obtenerLocalidad(CLAVE_LOCALIDAD)).thenReturn(LOCALIDAD_SAAVEDRA);
         when(ciudadRepository.findByFuenteApiAndIdExterno(FUENTE, CLAVE_LOCALIDAD))
                 .thenReturn(Optional.empty());
         when(provinciaRepository.findByFuenteApiAndIdExterno(FUENTE, ID_PROVINCIA))

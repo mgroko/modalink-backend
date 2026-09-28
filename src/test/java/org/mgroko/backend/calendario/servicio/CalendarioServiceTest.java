@@ -10,15 +10,6 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
@@ -45,8 +36,15 @@ import org.mgroko.backend.repositorio.BloqueoAgendaRepository;
 import org.mgroko.backend.repositorio.JornadaAgendaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,7 +75,7 @@ class CalendarioServiceTest {
     }
 
     private void mockAgenda() {
-        Agenda agenda = Agenda.builder().idAgenda(10L).margenActividadMinutos(60).build();
+        Agenda agenda = Agenda.builder().idAgenda(10L).margenActividadMinutos(30).build();
         when(agendaRepository.findByUsuario_IdUsuario(1L)).thenReturn(Optional.of(agenda));
     }
 
@@ -114,7 +112,7 @@ class CalendarioServiceTest {
 
         CalendarioResponse response = calendarioService.obtener(1L);
 
-        assertEquals(60, response.jornada().margenActividadMinutos());
+        assertEquals(30, response.jornada().margenActividadMinutos());
         assertEquals(1, response.jornada().dias().size());
         assertEquals(1, response.bloqueosManuales().size());
         assertEquals(1, response.actividades().size());
@@ -154,7 +152,7 @@ class CalendarioServiceTest {
 
         CalendarioResponse response = calendarioService.obtenerPublico(1L);
 
-        assertEquals(60, response.jornada().margenActividadMinutos());
+        assertEquals(30, response.jornada().margenActividadMinutos());
         assertEquals(1, response.jornada().dias().size());
         assertEquals(1, response.bloqueosManuales().size());
         assertEquals(1L, response.bloqueosManuales().get(0).idBloqueo());
@@ -334,7 +332,7 @@ class CalendarioServiceTest {
     @Test
     void configurarJornada_soloInicioTarde_lanzaJornadaInvalida() {
         mockUsuarioActivo();
-        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+        ConfigJornadaRequest request = new ConfigJornadaRequest(30, List.of(
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), null,
                         LocalTime.of(14, 0), LocalTime.of(18, 0))));
 
@@ -411,7 +409,7 @@ class CalendarioServiceTest {
         when(agendaRepository.save(any(Agenda.class))).thenAnswer(inv -> inv.getArgument(0));
 
         calendarioService.configurarJornada(1L,
-                new ConfigJornadaRequest(60, List.of(
+                new ConfigJornadaRequest(30, List.of(
                         new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(19, 0)))));
 
         assertNull(lunes.getHorarioFinManiana());
@@ -478,7 +476,7 @@ class CalendarioServiceTest {
     void marcarNoDisponible_solapaActividadSoloPorMargen_lanzaHorarioComprometido() {
         mockUsuarioActivo();
         mockAgenda();
-        // Actividad 10:00-12:00, margen 60 -> ocupa 09:00-13:00.
+        // Actividad 10:00-12:00, margen 30 -> ocupa 09:30-12:30.
         when(actividadRepository.findActividadesDeUsuario(anyLong(), anyCollection()))
                 .thenReturn(List.of(actividad(
                         LocalDateTime.of(2026, 9, 15, 10, 0),

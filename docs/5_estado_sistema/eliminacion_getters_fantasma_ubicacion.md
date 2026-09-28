@@ -427,29 +427,29 @@ ubicación. Cero regresiones. El desglose por clase está en
 
 ---
 
-## 8. Lo que queda abierto
+## 8. Lo que queda abierto [YA FUE TODO CERRADO]
 
 Cerrado en este trabajo: **R1, R2, R3, R5, R6, R7**. Sigue abierto de la auditoría de ubicación:
 
-- **R3-bis** — **Nuevo, descubierto al verificar R3.** `UQ_ciudad_provincia_nombre` y
+- ~~**R3-bis** — **Nuevo, descubierto al verificar R3.** `UQ_ciudad_provincia_nombre` y
   `UQ_provincia_pais_nombre` son índices únicos **por nombre** que contradicen la clave natural y bloquean el
-  diseño multi-catálogo a nivel de esquema. Ver sección 5.3. **Requiere SQL.**
-- **R4** — `BuscarPerfilesFiltro.idUbicacion` filtra perfiles por la clave surrogata de `ubicacion` en lugar de
-  `idCiudad`.
-- **R7** — ~~`UbicacionNoEncontradaException` es código muerto: sigue importada y registrada en
+  diseño multi-catálogo a nivel de esquema. Ver sección 5.3. **Requiere SQL.**~~
+- ~~**R4** — `BuscarPerfilesFiltro.idUbicacion` filtra perfiles por la clave surrogata de `ubicacion` en lugar de
+  `idCiudad`.~~
+- ~~**R7** — `UbicacionNoEncontradaException` es código muerto: sigue importada y registrada en
   `GlobalExceptionHandler`, nunca lanzada.~~ **[RESUELTO]** — clase y handler eliminados. Ver sección 5.1.
-- **R8** — Métodos de repositorio declarados y nunca invocados: `findByNombre` y
+- ~~**R8** — Métodos de repositorio declarados y nunca invocados: `findByNombre` y
   `findByNombreAndProvincia_IdProvincia` siguen sin uso en producción (solo los usa
-  `UbicacionRepositoryIntegrationTest` para armar datos). `findByLocalidadAndProvincia` ya no existe.
-- **B4** — Doble escritura de lat/long: `UbicacionService` las escribe a mano y además existe el trigger
-  `fn_heredar_coordenadas_ciudad` (`ModaLinkBD.sql:1473-1487`), que ya las hereda. Dos fuentes de verdad.
-- **B8** — El campo `activo` existe en `pais`, `provincia` y `ciudad` pero las búsquedas no lo filtran.
-- **M1** — No existe el puerto `CatalogoGeografico`: `UbicacionService` y `UbicacionCatalogoController` dependen
-  de la clase concreta `GeorefCatalogoService`.
-- **M10** — Los índices únicos `(id_externo, fuente_api)` son uniques sobre columnas nullable. Invariante a
-  documentar: el código nunca debe escribir `null` en esas columnas.
-- **Índice faltante en `ubicacion`** — `ubicacion` no tiene **ningún** índice. `findByCiudad_IdCiudad`, que es el
-  camino caliente de reuso, hace seq scan. Era la opción C de R3, deliberadamente diferida. **Requiere SQL.**
+  `UbicacionRepositoryIntegrationTest` para armar datos). `findByLocalidadAndProvincia` ya no existe.~~
+- ~~**B4** — Doble escritura de lat/long: `UbicacionService` las escribe a mano y además existe el trigger
+  `fn_heredar_coordenadas_ciudad` (`ModaLinkBD.sql:1473-1487`), que ya las hereda. Dos fuentes de verdad.~~
+- ~~**B8** — El campo `activo` existe en `pais`, `provincia` y `ciudad` pero las búsquedas no lo filtran.~~
+- ~~**M1** — No existe el puerto `CatalogoGeografico`: `UbicacionService` y `UbicacionCatalogoController` dependen
+  de la clase concreta `GeorefCatalogoService`.~~
+- ~~**M10** — Los índices únicos `(id_externo, fuente_api)` son uniques sobre columnas nullable. Invariante a
+  documentar: el código nunca debe escribir `null` en esas columnas.~~
+- ~~**Índice faltante en `ubicacion`** — `ubicacion` no tiene **ningún** índice. `findByCiudad_IdCiudad`, que es el
+  camino caliente de reuso, hace seq scan. Era la opción C de R3, deliberadamente diferida. **Requiere SQL.**~~
 
 Deudas menores que dejó este trabajo:
 

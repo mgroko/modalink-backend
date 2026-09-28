@@ -54,17 +54,20 @@ class UbicacionRepositoryIntegrationTest extends AbstractPostgresIntegrationTest
     }
 
     private Provincia provincia(String nombre) {
-        return provinciaRepository.findByNombre(nombre)
+        Pais paisArg = pais();
+        return provinciaRepository.findByNombreAndPais_IdPais(nombre, paisArg.getIdPais())
                 .orElseGet(() -> provinciaRepository.save(Provincia.builder()
                         .nombre(nombre)
+                        .idExterno(nombre)
+                        .fuenteApi(FUENTE)
                         .activo(true)
-                        .pais(pais())
+                        .pais(paisArg)
                         .build()));
     }
 
     private Ciudad ciudad(String nombre, String idExterno, String provinciaNombre) {
         Provincia prov = provincia(provinciaNombre);
-        return ciudadRepository.findByNombreAndProvincia_IdProvincia(nombre, prov.getIdProvincia())
+        return ciudadRepository.findByFuenteApiAndIdExterno(FUENTE, idExterno)
                 .orElseGet(() -> ciudadRepository.save(Ciudad.builder()
                         .nombre(nombre)
                         .idExterno(idExterno)

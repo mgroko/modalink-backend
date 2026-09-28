@@ -96,6 +96,8 @@ public class AdminSeeder implements CommandLineRunner {
             Provincia provincia = provinciaRepository.findByNombreAndPais_IdPais("Buenos Aires", pais.getIdPais()).orElseGet(() ->
                     provinciaRepository.save(Provincia.builder()
                             .nombre("Buenos Aires")
+                            .idExterno("02")
+                            .fuenteApi("GEOREF")
                             .pais(pais)
                             .activo(true)
                             .build()));
