@@ -37,19 +37,19 @@ public class UbicacionService {
     private final CiudadRepository ciudadRepository;
     private final ProvinciaRepository provinciaRepository;
     private final PaisCatalogoService paisCatalogoService;
-    private final GeorefCatalogoService catalogoGeoref;
+    private final CatalogoGeograficoService catalogoGeografico;
 
     public UbicacionService(
             UbicacionRepository ubicacionRepository,
             CiudadRepository ciudadRepository,
             ProvinciaRepository provinciaRepository,
             PaisCatalogoService paisCatalogoService,
-            GeorefCatalogoService catalogoGeoref) {
+            CatalogoGeograficoService catalogoGeografico) {
         this.ubicacionRepository = ubicacionRepository;
         this.ciudadRepository = ciudadRepository;
         this.provinciaRepository = provinciaRepository;
         this.paisCatalogoService = paisCatalogoService;
-        this.catalogoGeoref = catalogoGeoref;
+        this.catalogoGeografico = catalogoGeografico;
     }
 
     /**
@@ -83,7 +83,7 @@ public class UbicacionService {
         }
 
         // Busca en catálogo interno; la fuente API se determina al momento de crear/sincronizar
-        LocalidadCatalogo localidad = catalogoGeoref.obtenerLocalidad(localidadId);
+        LocalidadCatalogo localidad = catalogoGeografico.obtenerLocalidad(localidadId);
         return crear(localidad);
     }
 

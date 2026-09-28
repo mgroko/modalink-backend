@@ -438,8 +438,7 @@ Confirmar si la tabla debe sembrarse. Si es un catálogo de valores por defecto,
 Defectos identificados durante la migración a la arquitectura normalizada que **siguen abiertos** al cierre de la
 resolución del país:
 
-- **R1** — ~~Los 4 getters fantasma de `modelo/Ubicacion.java` (`getLocalidad`, `getProvincia`, `getPais`,
-  `getIdGeoref`). Jackson los serializa y pueden disparar `LazyInitializationException` fuera de transacción.~~
+- **R1** — ~~Los 4 getters fantasma de `modelo/Ubicacion.java` (`getLocalidad`, `getProvincia`, `getPais`,`getIdGeoref`). Jackson los serializa y pueden disparar `LazyInitializationException` fuera de transacción.~~
   **[RESUELTO]** — getters eliminados.
 - **R2** — ~~`UbicacionMapper` mapea el id externo de Georef a un campo llamado `localidadId`: dos espacios de ids
   mezclados en un mismo DTO.~~ **[RESUELTO]** — la clave natural `(idExterno, fuenteApi)` se expone en cada nivel.
@@ -458,19 +457,14 @@ resolución del país:
   `idCiudad`.~~ **[RESUELTO]**
 - **R5** — ~~`DatosPersonalesResponse.ubicacion` es un `String` compuesto a mano con `", "`, residuo del modelo plano.~~
   **[RESUELTO]** — ahora es un `UbicacionResponse` estructurado.
-- **R6** — ~~`PerfilBusquedaResponse` y `PerfilDetalleResponse` exponen `localidad` y `provincia` pero no `pais`,
-  contrato distinto del de `UbicacionResponse`.~~ **[RESUELTO]** — ambos exponen `CiudadResponse`, que ya incluye
+- **R6** — ~~`PerfilBusquedaResponse` y `PerfilDetalleResponse` exponen `localidad` y `provincia` pero no `pais`,contrato distinto del de `UbicacionResponse`.~~ **[RESUELTO]** — ambos exponen `CiudadResponse`, que ya incluye
   provincia y país.
-- **R7** — ~~`UbicacionNoEncontradaException` es código muerto: importada y registrada en `GlobalExceptionHandler`,
-  nunca lanzada.~~ **[RESUELTO]** — clase y handler eliminados. Era además un duplicado exacto de
+- **R7** — ~~`UbicacionNoEncontradaException` es código muerto: importada y registrada en `GlobalExceptionHandler`,nunca lanzada.~~ **[RESUELTO]** — clase y handler eliminados. Era además un duplicado exacto de
   `LocalidadNoEncontradaException` (mismo 400 y mismo cuerpo `buildErrorResponse`), sin ningún hueco semántico que
   cubriera.
-- **R8** — ~~Métodos de repositorio declarados y nunca invocados. **Parcialmente resuelto**: `findByCiudad_IdCiudad`
-  y `findByFuenteApiAndIdExterno` (nuevos) están en uso; `findByNombre` y `findByNombreAndProvincia_IdProvincia`
-  siguen sin uso.~~ **[RESUELTO]**
-- **B4** — Doble escritura de lat/long: `UbicacionService` las escribe a mano y además existe el trigger
-  `fn_heredar_coordenadas_ciudad`, que ya las hereda. Dos fuentes de verdad.
-- **B8** — El campo `activo` existe en `pais`, `provincia` y `ciudad` pero las búsquedas no lo filtran.
+- **R8** — ~~Métodos de repositorio declarados y nunca invocados. **Parcialmente resuelto**: `findByCiudad_IdCiudad`y `findByFuenteApiAndIdExterno` (nuevos) están en uso; `findByNombre` y `findByNombreAndProvincia_IdProvincia`siguen sin uso.~~ **[RESUELTO]**
+- **B4** — ~~Doble escritura de lat/long: `UbicacionService` las escribe a mano y además existe el trigger`fn_heredar_coordenadas_ciudad`, que ya las hereda. Dos fuentes de verdad.~~ **[RESUELTO]**
+- **B8** — ~~El campo `activo` existe en `pais`, `provincia` y `ciudad` pero las búsquedas no lo filtran.~~ **[RESUELTO]**
 - **M1** — No existe el puerto `CatalogoGeografico`: `UbicacionService` y `UbicacionCatalogoController` dependen
   de la clase concreta `GeorefCatalogoService`. Cambiar de API implica cambiar firmas.
 - **M10** — ~~Los índices únicos `(id_externo, fuente_api)` ya existen, pero son uniques sobre columnas **nullable**:

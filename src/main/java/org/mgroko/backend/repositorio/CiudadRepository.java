@@ -1,5 +1,6 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.Ciudad;
@@ -16,4 +17,9 @@ public interface CiudadRepository extends JpaRepository<Ciudad, Long> {
     Optional<Ciudad> findByFuenteApiAndIdExterno(String fuenteApi, String idExterno);
 
     Optional<Ciudad> findByIdExterno(String idExterno);
+
+    /**
+     * Busca todas las ciudades activas (activo = true).
+     */
+    List<Ciudad> findByActivoTrue();
 }

@@ -1,5 +1,6 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.Provincia;
@@ -23,4 +24,9 @@ public interface ProvinciaRepository extends JpaRepository<Provincia, Long> {
     Optional<Provincia> findByFuenteApiAndIdExterno(String fuenteApi, String idExterno);
 
     Optional<Provincia> findByIdExterno(String idExterno);
+
+    /**
+     * Busca todas las provincias activas (activo = true).
+     */
+    List<Provincia> findByActivoTrue();
 }

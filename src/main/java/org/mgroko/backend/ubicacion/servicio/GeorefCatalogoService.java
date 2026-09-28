@@ -36,7 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * fuente cuando viene y el país por defecto cuando la fuente no lo entrega.</p>
  */
 @Service
-public class GeorefCatalogoService {
+public class GeorefCatalogoService implements CatalogoGeograficoService {
 
     private static final String RUTA_PROVINCIAS = "classpath:georef/provincias.json";
     private static final String RUTA_LOCALIDADES = "classpath:georef/localidades.json";
