@@ -106,8 +106,8 @@ class VerPerfilServiceTest {
         assertThat(response.idUsuario()).isEqualTo(2L);
         assertThat(response.nombreUsuario()).isEqualTo("Maria");
         assertThat(response.apellidoUsuario()).isEqualTo("Gomez");
-        assertThat(response.localidad()).isEqualTo("Rosario");
-        assertThat(response.provincia()).isEqualTo("Santa Fe");
+        assertThat(response.ciudad().nombre()).isEqualTo("Rosario");
+        assertThat(response.ciudad().provincia().nombre()).isEqualTo("Santa Fe");
         assertThat(response.genero()).isEqualTo("FEM");
         assertThat(response.esPropietario()).isFalse();
     }

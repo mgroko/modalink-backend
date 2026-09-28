@@ -77,8 +77,10 @@ class UbicacionUsuarioServiceTest {
         Optional<UbicacionResponse> response = ubicacionUsuarioService.obtener(1L);
 
         assertTrue(response.isPresent());
-        assertEquals("Saavedra", response.get().localidad());
-        assertEquals("0208401002", response.get().localidadId());
+        assertEquals("Saavedra", response.get().ciudad().nombre());
+        assertEquals("0208401002", response.get().ciudad().idExterno());
+        assertEquals("Ciudad Autónoma de Buenos Aires", response.get().ciudad().provincia().nombre());
+        assertEquals("Argentina", response.get().ciudad().provincia().pais().nombre());
     }
 
     @Test
@@ -123,8 +125,8 @@ class UbicacionUsuarioServiceTest {
         UbicacionResponse response = ubicacionUsuarioService
                 .asignar(1L, new UbicacionRequest("0208401002"));
 
-        assertEquals("Saavedra", response.localidad());
-        assertEquals("0208401002", response.localidadId());
+        assertEquals("Saavedra", response.ciudad().nombre());
+        assertEquals("0208401002", response.ciudad().idExterno());
         assertEquals(nueva, usuario.getUbicacion());
         verify(usuarioRepository).save(usuario);
         verify(ubicacionService).obtenerOCrear("0208401002", null);

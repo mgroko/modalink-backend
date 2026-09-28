@@ -3,6 +3,7 @@ package org.mgroko.backend.repositorio;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Ciudad;
@@ -19,6 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
  * La clase se anota con @Transactional para que cada método haga rollback y
  * no contamine a los demás tests (la BD es compartida entre todas las
  * clases de integración).
+ *
+ * <p>El sujeto de prueba es {@code findByCiudad_IdCiudad}, que es la unica via
+ * de reuso de una ubicacion. No existe una busqueda por
+ * {@code (nombre ciudad, nombre provincia)}: no filtraba por pais ni por
+ * fuente, y podia devolver la fila de otra ciudad con el mismo nombre.</p>
  */
 @SpringBootTest
 @Transactional
@@ -36,69 +42,82 @@ class UbicacionRepositoryIntegrationTest extends AbstractPostgresIntegrationTest
     @Autowired
     private PaisRepository paisRepository;
 
-    private Ubicacion guardar(String localidad, String provincia) {
-        return guardar(localidad, provincia, "X");
-    }
+    private static final String FUENTE = "GEOREF";
 
-    private Ubicacion guardar(String localidad, String provincia, String idGeoref) {
-        Pais pais = paisRepository.findByCodigoIso("AR")
+    private Pais pais() {
+        return paisRepository.findByCodigoIso("AR")
                 .orElseGet(() -> paisRepository.save(Pais.builder()
                         .codigoIso("AR")
                         .nombre("Argentina")
                         .activo(true)
                         .build()));
+    }
 
-        Provincia prov = provinciaRepository.findByNombre(provincia)
+    private Provincia provincia(String nombre) {
+        return provinciaRepository.findByNombre(nombre)
                 .orElseGet(() -> provinciaRepository.save(Provincia.builder()
-                        .nombre(provincia)
+                        .nombre(nombre)
                         .activo(true)
-                        .pais(pais)
+                        .pais(pais())
                         .build()));
+    }
 
-        Ciudad ciudad = ciudadRepository.findByNombreAndProvincia_IdProvincia(localidad, prov.getIdProvincia())
+    private Ciudad ciudad(String nombre, String idExterno, String provinciaNombre) {
+        Provincia prov = provincia(provinciaNombre);
+        return ciudadRepository.findByNombreAndProvincia_IdProvincia(nombre, prov.getIdProvincia())
                 .orElseGet(() -> ciudadRepository.save(Ciudad.builder()
-                        .nombre(localidad)
-                        .idExterno(idGeoref)
+                        .nombre(nombre)
+                        .idExterno(idExterno)
+                        .fuenteApi(FUENTE)
                         .activo(true)
                         .provincia(prov)
                         .build()));
+    }
 
+    private Ubicacion guardar(String localidad, String provincia, String idExterno) {
         return ubicacionRepository.saveAndFlush(Ubicacion.builder()
-                .ciudad(ciudad)
+                .ciudad(ciudad(localidad, idExterno, provincia))
                 .build());
     }
 
     @Test
-    void findByLocalidadAndProvincia_existente_encontrada() {
-        guardar("Saavedra", "Ciudad Autónoma de Buenos Aires", "0208401002");
+    void findByCiudad_IdCiudad_existente_encuentraLaUbicacionDeEsaCadena() {
+        Ubicacion guardada = guardar("Saavedra", "Ciudad Autónoma de Buenos Aires", "0208401002");
 
-        Optional<Ubicacion> resultado = ubicacionRepository
-                .findByLocalidadAndProvincia("Saavedra", "Ciudad Autónoma de Buenos Aires");
+        Optional<Ubicacion> resultado = ubicacionRepository.findByCiudad_IdCiudad(guardada.getCiudad().getIdCiudad());
 
         assertTrue(resultado.isPresent());
-        assertEquals("Saavedra", resultado.get().getLocalidad());
-        assertEquals("Ciudad Autónoma de Buenos Aires", resultado.get().getProvincia());
-        assertEquals("0208401002", resultado.get().getIdGeoref());
+        assertEquals(guardada.getIdUbicacion(), resultado.get().getIdUbicacion());
+        assertEquals("Saavedra", resultado.get().getCiudad().getNombre());
+        assertEquals("0208401002", resultado.get().getCiudad().getIdExterno());
+        assertEquals("Ciudad Autónoma de Buenos Aires", resultado.get().getCiudad().getProvincia().getNombre());
+        assertEquals("Argentina", resultado.get().getCiudad().getProvincia().getPais().getNombre());
     }
 
     @Test
-    void findByLocalidadAndProvincia_inexistente_devuelveVacio() {
-        Optional<Ubicacion> resultado = ubicacionRepository
-                .findByLocalidadAndProvincia("Localidad Inexistente", "Provincia Inexistente");
+    void findByCiudad_IdCiudad_inexistente_devuelveVacio() {
+        Optional<Ubicacion> resultado = ubicacionRepository.findByCiudad_IdCiudad(999_999L);
 
         assertTrue(resultado.isEmpty());
     }
 
+    /**
+     * El caso que justifico eliminar la busqueda por nombre: dos ciudades con el
+     * mismo nombre en provincias distintas son filas distintas y no deben
+     * confundirse. Con nombre y provincia como clave, "San Martín" se resolvia
+     * contra cualquier provincia; con la clave natural, cada una tiene su fila.
+     */
     @Test
-    void findByLocalidadAndProvincia_mismaLocalidadEnOtraProvincia_esDistinta() {
-        Ubicacion caba = guardar("San Martín", "Ciudad Autónoma de Buenos Aires");
-        Ubicacion buenosAires = guardar("San Martín", "Buenos Aires");
+    void mismaLocalidadEnOtraProvincia_sonUbicacionesDistintas() {
+        Ubicacion caba = guardar("San Martín", "Ciudad Autónoma de Buenos Aires", "0208401006");
+        Ubicacion buenosAires = guardar("San Martín", "Buenos Aires", "06442030");
 
         Optional<Ubicacion> resultado = ubicacionRepository
-                .findByLocalidadAndProvincia("San Martín", "Buenos Aires");
+                .findByCiudad_IdCiudad(buenosAires.getCiudad().getIdCiudad());
 
         assertTrue(resultado.isPresent());
         assertEquals(buenosAires.getIdUbicacion(), resultado.get().getIdUbicacion());
-        assertTrue(!resultado.get().getIdUbicacion().equals(caba.getIdUbicacion()));
+        assertNotEquals(caba.getIdUbicacion(), resultado.get().getIdUbicacion());
+        assertEquals("Buenos Aires", resultado.get().getCiudad().getProvincia().getNombre());
     }
 }

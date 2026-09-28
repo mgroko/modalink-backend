@@ -279,7 +279,12 @@ class PerfilControllerTest {
         org.mgroko.backend.perfiles.dto.PerfilDetalleResponse perfil = new org.mgroko.backend.perfiles.dto.PerfilDetalleResponse(
                 10L, "Luna", "Modelo profesional.", "Activo", null,
                 2L, "modelo", 5L, "https://cloudinary.com/foto.jpg",
-                1L, "Luna", "Perez", "FEM", "Rosario", "Santa Fe",
+                1L, "Luna", "Perez", "FEM",
+                new org.mgroko.backend.ubicacion.dto.CiudadResponse(
+                        100L, "0320104", "GEOREF", "Rosario",
+                        new org.mgroko.backend.ubicacion.dto.ProvinciaResponse(
+                                10L, "24", "GEOREF", "Santa Fe",
+                                new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
                 List.of("Pasarela", "Fotogenia"), List.of(), true);
 
         when(verPerfilService.obtenerDetalle(10L, 1L)).thenReturn(perfil);
@@ -290,7 +295,8 @@ class PerfilControllerTest {
                 .andExpect(jsonPath("$.idPerfil").value(10))
                 .andExpect(jsonPath("$.nombreArtistico").value("Luna"))
                 .andExpect(jsonPath("$.profesion").value("modelo"))
-                .andExpect(jsonPath("$.localidad").value("Rosario"))
+                .andExpect(jsonPath("$.ciudad.nombre").value("Rosario"))
+                .andExpect(jsonPath("$.ciudad.provincia.nombre").value("Santa Fe"))
                 .andExpect(jsonPath("$.esPropietario").value(true));
     }
 
@@ -564,7 +570,11 @@ class PerfilControllerTest {
                 1L, "Luna Sol", "Bio", "Activo",
                 2L, "Modelo", null, null,
                 5L, "Ana", "Gomez", "FEM",
-                "Rosario", "Santa Fe",
+                new org.mgroko.backend.ubicacion.dto.CiudadResponse(
+                        100L, "0320104", "GEOREF", "Rosario",
+                        new org.mgroko.backend.ubicacion.dto.ProvinciaResponse(
+                                10L, "24", "GEOREF", "Santa Fe",
+                                new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
                 List.of("Pasarela", "Fotogenia"),
                 List.of()
         );

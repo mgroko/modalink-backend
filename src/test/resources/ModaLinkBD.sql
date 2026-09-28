@@ -1465,7 +1465,7 @@ CREATE TABLE ubicacion(
     codigo_postal    varchar(10),
     latitud          decimal(10, 8),
     longitud         decimal(11, 8),
-    id_ciudad        int8,
+    id_ciudad        int8 NOT NULL,
     CONSTRAINT "PK_ubicacion" PRIMARY KEY (id_ubicacion)
 )
 ;
