@@ -2,6 +2,8 @@ package org.mgroko.backend.perfiles.dto;
 
 import java.util.List;
 
+import org.mgroko.backend.ubicacion.dto.CiudadResponse;
+
 public record PerfilBusquedaResponse(
         Long idPerfil,
         String nombreArtistico,
@@ -15,8 +17,7 @@ public record PerfilBusquedaResponse(
         String nombreUsuario,
         String apellidoUsuario,
         String genero,
-        String localidad,
-        String provincia,
+        CiudadResponse ciudad,
         List<String> habilidades,
         List<CaracteristicaResponse> caracteristicas
 ) {

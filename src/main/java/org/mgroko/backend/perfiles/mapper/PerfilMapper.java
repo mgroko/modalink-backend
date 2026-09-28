@@ -8,6 +8,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.ValorCaracteristica;
 import org.mgroko.backend.perfiles.dto.CaracteristicaResponse;
 import org.mgroko.backend.perfiles.dto.PerfilResponse;
+import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 
 public class PerfilMapper {
 
@@ -65,8 +66,7 @@ public class PerfilMapper {
                 usuario.getNombre(),
                 usuario.getApellido(),
                 genero != null ? genero.getCodigo() : null,
-                ubicacion != null ? ubicacion.getLocalidad() : null,
-                ubicacion != null ? ubicacion.getProvincia() : null,
+                UbicacionMapper.toCiudadResponse(ubicacion != null ? ubicacion.getCiudad() : null),
                 habilidades,
                 caracteristicas
         );
@@ -104,8 +104,7 @@ public class PerfilMapper {
                 usuario.getNombre(),
                 usuario.getApellido(),
                 genero != null ? genero.getCodigo() : null,
-                ubicacion != null ? ubicacion.getLocalidad() : null,
-                ubicacion != null ? ubicacion.getProvincia() : null,
+                UbicacionMapper.toCiudadResponse(ubicacion != null ? ubicacion.getCiudad() : null),
                 habilidades,
                 caracteristicas,
                 esPropietario

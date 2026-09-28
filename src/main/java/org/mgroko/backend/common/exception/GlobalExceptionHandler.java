@@ -48,7 +48,6 @@ import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
 import org.mgroko.backend.ubicacion.exception.PaisNoConfiguradoException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
-import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -218,11 +217,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePerfilAdminNoEncontrado(
             org.mgroko.backend.admin.exception.PerfilNoEncontradoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(UbicacionNoEncontradaException.class)
-    public ResponseEntity<Map<String, Object>> handleUbicacionNoEncontrada(UbicacionNoEncontradaException ex) {
-        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(LocalidadNoEncontradaException.class)

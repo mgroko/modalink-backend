@@ -29,23 +29,4 @@ public class Ubicacion {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_ciudad", nullable = false)
     private Ciudad ciudad;
-
-    // Métodos helper para compatibilidad con código existente (DTOs, Mappers, etc.)
-    public String getLocalidad() {
-        return ciudad != null ? ciudad.getNombre() : null;
-    }
-
-    public String getProvincia() {
-        return (ciudad != null && ciudad.getProvincia() != null) ? ciudad.getProvincia().getNombre() : null;
-    }
-
-    public String getPais() {
-        return (ciudad != null && ciudad.getProvincia() != null && ciudad.getProvincia().getPais() != null)
-                ? ciudad.getProvincia().getPais().getNombre()
-                : null;
-    }
-
-    public String getIdGeoref() {
-        return ciudad != null ? ciudad.getIdExterno() : null;
-    }
 }

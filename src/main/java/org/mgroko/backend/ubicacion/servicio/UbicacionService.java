@@ -21,10 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
  * El código es agnóstico a la fuente API (GEOREF, GEONAMES, GOOGLEMAPS, etc).
  *
  * <p>Las altas se idempotentan por la clave natural del catálogo
- * ({@code fuente_api} + {@code id_externo}), no por nombre: el nombre de una
- * provincia o de una ciudad se repite entre países. El país no se busca en el
- * camino caliente porque solo hace falta para dar de alta una provincia, y eso
- * lo resuelve {@link PaisCatalogoService}.</p>
+ * ({@code fuente_api} + {@code id_externo}), nunca por nombre: el nombre de una
+ * provincia o de una ciudad se repite entre países y entre catálogos. Por eso
+ * no existe una búsqueda previa por {@code (nombre ciudad, nombre provincia)}:
+ * esa consulta no filtraba por país ni por fuente, y podía devolver la fila de
+ * otra provincia, de otro país o de otro catálogo.</p>
+ *
+ * <p>El país no se busca en el camino de lectura: solo hace falta para dar de
+ * alta una provincia, y eso lo resuelve {@link PaisCatalogoService}.</p>
  */
 @Service
 public class UbicacionService {
@@ -80,11 +84,14 @@ public class UbicacionService {
 
         // Busca en catálogo interno; la fuente API se determina al momento de crear/sincronizar
         LocalidadCatalogo localidad = catalogoGeoref.obtenerLocalidad(localidadId);
-        return ubicacionRepository
-                .findByLocalidadAndProvincia(localidad.nombre(), localidad.nombreProvincia())
-                .orElseGet(() -> crear(localidad));
+        return crear(localidad);
     }
 
+    /**
+     * Resuelve la ciudad por clave natural y reutiliza su ubicacion si ya tiene
+     * una. Es el unico camino de alta y de reutilizacion: no hay una busqueda
+     * previa por nombre que pueda cortocircuitar con la fila de otra ciudad.
+     */
     private Ubicacion crear(LocalidadCatalogo localidad) {
         validarProvincia(localidad);
 

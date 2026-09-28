@@ -5,7 +5,7 @@ import java.util.List;
 import org.mgroko.backend.ubicacion.catalogo.LocalidadCatalogo;
 import org.mgroko.backend.ubicacion.catalogo.ProvinciaCatalogo;
 import org.mgroko.backend.ubicacion.dto.LocalidadResponse;
-import org.mgroko.backend.ubicacion.dto.ProvinciaResponse;
+import org.mgroko.backend.ubicacion.dto.ProvinciaCatalogoResponse;
 import org.mgroko.backend.ubicacion.servicio.GeorefCatalogoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +24,7 @@ public class UbicacionCatalogoController {
     }
 
     @GetMapping("/provincias")
-    public ResponseEntity<List<ProvinciaResponse>> listarProvincias() {
+    public ResponseEntity<List<ProvinciaCatalogoResponse>> listarProvincias() {
         return ResponseEntity.ok(catalogoGeoref.listarProvincias().stream()
                 .map(this::toResponse)
                 .toList());
@@ -39,8 +39,8 @@ public class UbicacionCatalogoController {
                 .toList());
     }
 
-    private ProvinciaResponse toResponse(ProvinciaCatalogo provincia) {
-        return new ProvinciaResponse(provincia.idExterno(), provincia.nombre());
+    private ProvinciaCatalogoResponse toResponse(ProvinciaCatalogo provincia) {
+        return new ProvinciaCatalogoResponse(provincia.idExterno(), provincia.nombre());
     }
 
     private LocalidadResponse toResponse(LocalidadCatalogo localidad) {

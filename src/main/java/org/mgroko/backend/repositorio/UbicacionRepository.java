@@ -4,23 +4,19 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.Ubicacion;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface UbicacionRepository extends JpaRepository<Ubicacion, Long> {
 
     /**
-     * Busca la ubicación que corresponde a una localidad dentro de una
-     * provincia. Al ser la ubicación una tabla compartida (usuario, y más
-     * adelante proyecto y actividad), se reutiliza la fila existente cuando
-     * ya se creó esa misma localidad en la provincia.
+     * Devuelve la ubicación asociada a una ciudad, si ya existe.
      *
-     * @param localidad nombre de la localidad (nombre de la ciudad)
-     * @param provincia nombre de la provincia
-     * @return un Optional con la Ubicacion si existe, vacío en caso contrario
+     * <p>La ciudad se localiza por su clave natural {@code (id_externo, fuente_api)}
+     * en {@code CiudadRepository}, nunca por nombre: el nombre de una ciudad se
+     * repite entre países y entre catálogos, y buscar por nombre podía devolver
+     * la fila de otra provincia, de otro país o de otra fuente.</p>
+     *
+     * @param idCiudad id de la ciudad
+     * @return la Ubicacion de esa ciudad, o vacío si la ciudad todavía no tiene una
      */
-    @Query("SELECT u FROM Ubicacion u WHERE LOWER(u.ciudad.nombre) = LOWER(:localidad) AND LOWER(u.ciudad.provincia.nombre) = LOWER(:provincia)")
-    Optional<Ubicacion> findByLocalidadAndProvincia(@Param("localidad") String localidad, @Param("provincia") String provincia);
-
     Optional<Ubicacion> findByCiudad_IdCiudad(Long idCiudad);
 }
