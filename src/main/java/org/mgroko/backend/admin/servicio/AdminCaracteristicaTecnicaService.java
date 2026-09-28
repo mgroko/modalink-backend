@@ -3,6 +3,7 @@ package org.mgroko.backend.admin.servicio;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.mgroko.backend.admin.dto.AdminCaracteristicaTecnicaRequest;
@@ -63,7 +64,7 @@ public class AdminCaracteristicaTecnicaService {
     public CaracteristicaTecnicaResponse crear(AdminCaracteristicaTecnicaRequest request) {
         validarTipoDato(request.tipoDato());
 
-        if (caracteristicaTecnicaRepository.existsByCodigo(request.codigo().trim())) {
+        if (caracteristicaTecnicaRepository.existsByCodigo(request.codigo().trim().toUpperCase(Locale.ROOT))) {
             throw new CaracteristicaCodigoDuplicadoException(
                     "Ya existe una característica técnica con el código " + request.codigo() + ".");
         }
@@ -77,7 +78,7 @@ public class AdminCaracteristicaTecnicaService {
         }
 
         CaracteristicaTecnica caracteristica = CaracteristicaTecnica.builder()
-                .codigo(request.codigo().trim())
+                .codigo(request.codigo().trim().toUpperCase(Locale.ROOT))
                 .unidad(request.unidad() != null ? request.unidad().trim() : null)
                 .tipoDato(request.tipoDato())
                 .profesion(profesion)
@@ -99,8 +100,8 @@ public class AdminCaracteristicaTecnicaService {
         CaracteristicaTecnica caracteristica = buscarOFallar(idCaracteristica);
         validarTipoDato(request.tipoDato());
 
-        String codigo = request.codigo().trim();
-        if (!codigo.equalsIgnoreCase(caracteristica.getCodigo())
+        String codigo = request.codigo().trim().toUpperCase(Locale.ROOT);
+        if (!codigo.equals(caracteristica.getCodigo().toUpperCase(Locale.ROOT))
                 && caracteristicaTecnicaRepository.existsByCodigo(codigo)) {
             throw new CaracteristicaCodigoDuplicadoException(
                     "Ya existe una característica técnica con el código " + codigo + ".");
@@ -150,7 +151,7 @@ public class AdminCaracteristicaTecnicaService {
             throw new TipoDatoInvalidoException(
                     "Solo las características de tipo ENUMERADO admiten valores de catálogo.");
         }
-        String codigo = request.codigo().trim();
+        String codigo = request.codigo().trim().toUpperCase(Locale.ROOT);
         if (valorCaracteristicaRepository.existsByCaracteristicaTecnicaIdCaracteristicaAndCodigo(
                 idCaracteristica, codigo)) {
             throw new ValorCodigoDuplicadoException(
