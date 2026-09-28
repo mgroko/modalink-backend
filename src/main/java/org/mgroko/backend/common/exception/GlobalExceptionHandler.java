@@ -44,6 +44,8 @@ import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
 import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
+import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
+import org.mgroko.backend.ubicacion.exception.PaisNoConfiguradoException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
@@ -231,6 +233,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProvinciaSinLocalidadException.class)
     public ResponseEntity<Map<String, Object>> handleProvinciaSinLocalidad(ProvinciaSinLocalidadException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(LocalidadSinProvinciaException.class)
+    public ResponseEntity<Map<String, Object>> handleLocalidadSinProvincia(LocalidadSinProvinciaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de país no resoluble desde la configuración del catálogo.
+     * Es una falla del despliegue, no de la petición del cliente.
+     */
+    @ExceptionHandler(PaisNoConfiguradoException.class)
+    public ResponseEntity<Map<String, Object>> handlePaisNoConfigurado(PaisNoConfiguradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(SolicitudBajaException.class)

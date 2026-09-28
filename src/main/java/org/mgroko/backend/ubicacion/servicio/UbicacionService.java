@@ -3,15 +3,14 @@ package org.mgroko.backend.ubicacion.servicio;
 import java.math.BigDecimal;
 
 import org.mgroko.backend.modelo.Ciudad;
-import org.mgroko.backend.modelo.Pais;
 import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.repositorio.CiudadRepository;
-import org.mgroko.backend.repositorio.PaisRepository;
 import org.mgroko.backend.repositorio.ProvinciaRepository;
 import org.mgroko.backend.repositorio.UbicacionRepository;
+import org.mgroko.backend.ubicacion.catalogo.LocalidadCatalogo;
+import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
-import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
  * Pais -> Provincia -> Ciudad -> Ubicacion normalizada según ModaLinkBD.sql.
  * Si la misma ciudad y ubicación ya existen, se reutilizan.
  * El código es agnóstico a la fuente API (GEOREF, GEONAMES, GOOGLEMAPS, etc).
+ *
+ * <p>Las altas se idempotentan por la clave natural del catálogo
+ * ({@code fuente_api} + {@code id_externo}), no por nombre: el nombre de una
+ * provincia o de una ciudad se repite entre países. El país no se busca en el
+ * camino caliente porque solo hace falta para dar de alta una provincia, y eso
+ * lo resuelve {@link PaisCatalogoService}.</p>
  */
 @Service
 public class UbicacionService {
@@ -27,19 +32,19 @@ public class UbicacionService {
     private final UbicacionRepository ubicacionRepository;
     private final CiudadRepository ciudadRepository;
     private final ProvinciaRepository provinciaRepository;
-    private final PaisRepository paisRepository;
+    private final PaisCatalogoService paisCatalogoService;
     private final GeorefCatalogoService catalogoGeoref;
 
     public UbicacionService(
             UbicacionRepository ubicacionRepository,
             CiudadRepository ciudadRepository,
             ProvinciaRepository provinciaRepository,
-            PaisRepository paisRepository,
+            PaisCatalogoService paisCatalogoService,
             GeorefCatalogoService catalogoGeoref) {
         this.ubicacionRepository = ubicacionRepository;
         this.ciudadRepository = ciudadRepository;
         this.provinciaRepository = provinciaRepository;
-        this.paisRepository = paisRepository;
+        this.paisCatalogoService = paisCatalogoService;
         this.catalogoGeoref = catalogoGeoref;
     }
 
@@ -74,62 +79,61 @@ public class UbicacionService {
         }
 
         // Busca en catálogo interno; la fuente API se determina al momento de crear/sincronizar
-        LocalidadGeoref localidad = catalogoGeoref.obtenerLocalidad(localidadId);
+        LocalidadCatalogo localidad = catalogoGeoref.obtenerLocalidad(localidadId);
         return ubicacionRepository
-                .findByLocalidadAndProvincia(localidad.nombre(), localidad.provincia().nombre())
+                .findByLocalidadAndProvincia(localidad.nombre(), localidad.nombreProvincia())
                 .orElseGet(() -> crear(localidad));
     }
 
-    private Ubicacion crear(LocalidadGeoref localidad) {
-        // Se intenta obtener el país desde la provincia si está disponible;
-        // si no, se busca o crea un país neutral sin valores hardcodeados.
-        Pais pais = paisRepository.findByCodigoIso(localidad.provincia().id() != null ?
-                // Si la provincia tiene id externo, intentar inferir país desde el catálogo
-                // Por ahora se deja la búsqueda por nombre genérico, el admin completará en sincronización
-                null : null)
-                .or(() -> {
-                    // Buscar país por nombre si viene en la provincia (algunos catálogos lo incluyen)
-                    String nombrePais = localidad.provincia().nombre(); // fallback simple
-                    if (nombrePais != null && !nombrePais.isBlank()) {
-                        return paisRepository.findByNombre(nombrePais);
-                    }
-                    return null;
-                })
-                .orElseGet(() -> paisRepository.save(Pais.builder()
-                        .nombre("Sin definir")
-                        .codigoIso(null)
-                        .activo(true)
-                        .build()));
+    private Ubicacion crear(LocalidadCatalogo localidad) {
+        validarProvincia(localidad);
 
-        Provincia provincia = provinciaRepository.findByNombre(localidad.provincia().nombre())
+        String fuenteApi = localidad.fuente().codigo();
+        BigDecimal latitud = localidad.latitud();
+        BigDecimal longitud = localidad.longitud();
+
+        Ciudad ciudad = ciudadRepository
+                .findByFuenteApiAndIdExterno(fuenteApi, localidad.idExterno())
+                .orElseGet(() -> crearCiudad(localidad, fuenteApi, latitud, longitud));
+
+        return ubicacionRepository
+                .findByCiudad_IdCiudad(ciudad.getIdCiudad())
+                .orElseGet(() -> ubicacionRepository.save(Ubicacion.builder()
+                        .ciudad(ciudad)
+                        .latitud(latitud)
+                        .longitud(longitud)
+                        .build()));
+    }
+
+    private Ciudad crearCiudad(LocalidadCatalogo localidad, String fuenteApi, BigDecimal latitud, BigDecimal longitud) {
+        // El pais solo se resuelve al dar de alta la provincia, nunca al buscarla.
+        Provincia provincia = provinciaRepository
+                .findByFuenteApiAndIdExterno(fuenteApi, localidad.idProvincia())
                 .orElseGet(() -> provinciaRepository.save(Provincia.builder()
-                        .nombre(localidad.provincia().nombre())
-                        .idExterno(localidad.provincia().id())
-                        .fuenteApi("GEOREF") // valor por defecto; será sobreescrito si viene de otra API
+                        .nombre(localidad.nombreProvincia())
+                        .idExterno(localidad.idProvincia())
+                        .fuenteApi(fuenteApi)
                         .activo(true)
-                        .pais(pais)
+                        .pais(paisCatalogoService.resolver(localidad.fuente()))
                         .build()));
 
-        BigDecimal lat = BigDecimal.valueOf(localidad.centroide().lat());
-        BigDecimal lon = BigDecimal.valueOf(localidad.centroide().lon());
+        return ciudadRepository.save(Ciudad.builder()
+                .nombre(localidad.nombre())
+                .idExterno(localidad.idExterno())
+                .fuenteApi(fuenteApi)
+                .activo(true)
+                .latitudDefecto(latitud)
+                .longitudDefecto(longitud)
+                .provincia(provincia)
+                .build());
+    }
 
-        Ciudad ciudad = ciudadRepository.findByNombreAndProvincia_IdProvincia(localidad.nombre(), provincia.getIdProvincia())
-                .orElseGet(() -> ciudadRepository.save(Ciudad.builder()
-                        .nombre(localidad.nombre())
-                        .idExterno(localidad.id())
-                        .fuenteApi("GEOREF")
-                        .activo(true)
-                        .latitudDefecto(lat)
-                        .longitudDefecto(lon)
-                        .provincia(provincia)
-                        .build()));
-
-        Ubicacion nueva = Ubicacion.builder()
-                .ciudad(ciudad)
-                .latitud(lat)
-                .longitud(lon)
-                .build();
-
-        return ubicacionRepository.save(nueva);
+    private void validarProvincia(LocalidadCatalogo localidad) {
+        if (localidad.idProvincia() == null || localidad.idProvincia().isBlank()
+                || localidad.nombreProvincia() == null || localidad.nombreProvincia().isBlank()) {
+            throw new LocalidadSinProvinciaException(
+                    "La localidad '" + localidad.nombre() + "' de la fuente " + localidad.fuente().codigo()
+                            + " no tiene provincia, y es obligatoria para darla de alta.");
+        }
     }
 }

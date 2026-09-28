@@ -6,12 +6,14 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 
-import org.mgroko.backend.ubicacion.dto.LocalidadResponse;
-import org.mgroko.backend.ubicacion.dto.ProvinciaResponse;
+import org.mgroko.backend.ubicacion.catalogo.FuenteCatalogo;
+import org.mgroko.backend.ubicacion.catalogo.LocalidadCatalogo;
+import org.mgroko.backend.ubicacion.catalogo.ProvinciaCatalogo;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
 import org.mgroko.backend.ubicacion.georef.LocalidadesGeorefResponse;
 import org.mgroko.backend.ubicacion.georef.ProvinciaGeoref;
+import org.mgroko.backend.ubicacion.georef.ProvinciaGeorefRef;
 import org.mgroko.backend.ubicacion.georef.ProvinciasGeorefResponse;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -20,10 +22,18 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Expone el catálogo oficial de provincias y localidades de Georef que se
- * versiona como recurso estático en {@code resources/georef/}. Los archivos
- * se cargan una única vez al arrancar y se sirven desde memoria; no se vuelve
- * a consultar a la API externa (ver {@code scripts/descargar-georef.sh}).
+ * Adaptador del catálogo de Georef. Es el único punto que conoce la forma del
+ * JSON versionado en {@code resources/georef/}: hacia afuera expone records de
+ * dominio ({@link LocalidadCatalogo}, {@link ProvinciaCatalogo}) y los records
+ * de {@code ubicacion.georef} no escapan de esta clase.
+ *
+ * <p>Los archivos se cargan una única vez al arrancar y se sirven desde memoria;
+ * no se vuelve a consultar a la API externa (ver {@code scripts/descargar-georef.sh}).</p>
+ *
+ * <p>Georef es un catálogo exclusivo de un país y su API no entrega esa
+ * información, así que este adaptador no fabrica el país ni lo agrega a los
+ * records: dejar esa resolución para el consumidor, que usa el valor de la
+ * fuente cuando viene y el país por defecto cuando la fuente no lo entrega.</p>
  */
 @Service
 public class GeorefCatalogoService {
@@ -60,10 +70,10 @@ public class GeorefCatalogoService {
     /**
      * Devuelve todas las provincias ordenadas alfabéticamente por nombre.
      */
-    public List<ProvinciaResponse> listarProvincias() {
+    public List<ProvinciaCatalogo> listarProvincias() {
         return provincias.stream()
                 .sorted(Comparator.comparing(ProvinciaGeoref::nombre))
-                .map(p -> new ProvinciaResponse(p.id(), p.nombre()))
+                .map(this::toCatalogo)
                 .toList();
     }
 
@@ -74,7 +84,7 @@ public class GeorefCatalogoService {
      * @param nombre      texto a buscar dentro del nombre de la localidad
      * @return localidades que coinciden, ordenadas alfabéticamente por nombre
      */
-    public List<LocalidadResponse> buscarLocalidades(String provinciaId, String nombre) {
+    public List<LocalidadCatalogo> buscarLocalidades(String provinciaId, String nombre) {
         String patron = normalizar(nombre);
         String provincia = normalizar(provinciaId);
 
@@ -82,7 +92,7 @@ public class GeorefCatalogoService {
                 .filter(l -> provincia.isBlank() || l.provincia().id().equals(provinciaId))
                 .filter(l -> patron.isBlank() || normalizar(l.nombre()).contains(patron))
                 .sorted(Comparator.comparing(LocalidadGeoref::nombre))
-                .map(this::toResponse)
+                .map(this::toCatalogo)
                 .toList();
     }
 
@@ -91,20 +101,32 @@ public class GeorefCatalogoService {
      *
      * @throws LocalidadNoEncontradaException si el id no existe en el catálogo
      */
-    public LocalidadGeoref obtenerLocalidad(String id) {
+    public LocalidadCatalogo obtenerLocalidad(String id) {
         return localidades.stream()
                 .filter(l -> l.id().equals(id))
                 .findFirst()
+                .map(this::toCatalogo)
                 .orElseThrow(() -> new LocalidadNoEncontradaException(
                         "Localidad no encontrada con id: " + id));
     }
 
-    private LocalidadResponse toResponse(LocalidadGeoref localidad) {
-        return new LocalidadResponse(
+    private ProvinciaCatalogo toCatalogo(ProvinciaGeoref provincia) {
+        return new ProvinciaCatalogo(
+                provincia.id(),
+                provincia.nombre(),
+                FuenteCatalogo.GEOREF,
+                BigDecimal.valueOf(provincia.centroide().lat()),
+                BigDecimal.valueOf(provincia.centroide().lon()));
+    }
+
+    private LocalidadCatalogo toCatalogo(LocalidadGeoref localidad) {
+        ProvinciaGeorefRef provincia = localidad.provincia();
+        return new LocalidadCatalogo(
                 localidad.id(),
                 localidad.nombre(),
-                localidad.provincia().id(),
-                localidad.provincia().nombre(),
+                provincia != null ? provincia.id() : null,
+                provincia != null ? provincia.nombre() : null,
+                FuenteCatalogo.GEOREF,
                 BigDecimal.valueOf(localidad.centroide().lat()),
                 BigDecimal.valueOf(localidad.centroide().lon()));
     }

@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "ubicacion")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Ubicacion {
 
     @Id
@@ -47,97 +47,5 @@ public class Ubicacion {
 
     public String getIdGeoref() {
         return ciudad != null ? ciudad.getIdExterno() : null;
-    }
-
-    public static UbicacionBuilder builder() {
-        return new UbicacionBuilder();
-    }
-
-    public static class UbicacionBuilder {
-        private Long idUbicacion;
-        private String direccion;
-        private String codigoPostal;
-        private BigDecimal latitud;
-        private BigDecimal longitud;
-        private Ciudad ciudad;
-
-        public UbicacionBuilder idUbicacion(Long idUbicacion) {
-            this.idUbicacion = idUbicacion;
-            return this;
-        }
-
-        public UbicacionBuilder direccion(String direccion) {
-            this.direccion = direccion;
-            return this;
-        }
-
-        public UbicacionBuilder codigoPostal(String codigoPostal) {
-            this.codigoPostal = codigoPostal;
-            return this;
-        }
-
-        public UbicacionBuilder latitud(BigDecimal latitud) {
-            this.latitud = latitud;
-            return this;
-        }
-
-        public UbicacionBuilder longitud(BigDecimal longitud) {
-            this.longitud = longitud;
-            return this;
-        }
-
-        public UbicacionBuilder ciudad(Ciudad ciudad) {
-            this.ciudad = ciudad;
-            return this;
-        }
-
-        public UbicacionBuilder localidad(String localidad) {
-            this.localidadTemp = localidad;
-            return this;
-        }
-
-        public UbicacionBuilder provincia(String provincia) {
-            this.provinciaTemp = provincia;
-            return this;
-        }
-
-        public UbicacionBuilder pais(String pais) {
-            this.paisTemp = pais;
-            return this;
-        }
-
-        public UbicacionBuilder idGeoref(String idGeoref) {
-            this.idGeorefTemp = idGeoref;
-            return this;
-        }
-
-        public Ubicacion build() {
-            Ciudad c = this.ciudad;
-            if (c == null && (this.localidadTemp != null || this.provinciaTemp != null || this.idGeorefTemp != null)) {
-                // Si no hay ciudad pero se proporcionan datos sueltos, se construye una ciudad mínima
-                // SIN hardcodeo de país: se usa el paisTemp si viene, si no, se deja nombre/código null
-                String paisNombre = this.paisTemp != null ? this.paisTemp : null;
-                String paisCodigo = null; // null para evitar hardcodeo "AR"
-                Pais p = Pais.builder().nombre(paisNombre).codigoIso(paisCodigo).build();
-                String provNombre = this.provinciaTemp != null ? this.provinciaTemp : "Provincia";
-                Provincia prov = Provincia.builder().nombre(provNombre).pais(p).build();
-                c = Ciudad.builder()
-                        .nombre(this.localidadTemp != null ? this.localidadTemp : "Localidad")
-                        .idExterno(this.idGeorefTemp)
-                        .latitudDefecto(this.latitud)
-                        .longitudDefecto(this.longitud)
-                        .provincia(prov)
-                        .build();
-            }
-
-            return new Ubicacion(
-                    this.idUbicacion,
-                    this.direccion,
-                    this.codigoPostal,
-                    this.latitud,
-                    this.longitud,
-                    c
-            );
-        }
     }
 }
