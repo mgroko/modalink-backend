@@ -465,8 +465,8 @@ resolución del país:
 - **R8** — ~~Métodos de repositorio declarados y nunca invocados. **Parcialmente resuelto**: `findByCiudad_IdCiudad`y `findByFuenteApiAndIdExterno` (nuevos) están en uso; `findByNombre` y `findByNombreAndProvincia_IdProvincia`siguen sin uso.~~ **[RESUELTO]**
 - **B4** — ~~Doble escritura de lat/long: `UbicacionService` las escribe a mano y además existe el trigger`fn_heredar_coordenadas_ciudad`, que ya las hereda. Dos fuentes de verdad.~~ **[RESUELTO]**
 - **B8** — ~~El campo `activo` existe en `pais`, `provincia` y `ciudad` pero las búsquedas no lo filtran.~~ **[RESUELTO]**
-- **M1** — No existe el puerto `CatalogoGeografico`: `UbicacionService` y `UbicacionCatalogoController` dependen
-  de la clase concreta `GeorefCatalogoService`. Cambiar de API implica cambiar firmas.
+- **M1** — ~~No existe el puerto `CatalogoGeografico`: `UbicacionService` y `UbicacionCatalogoController` dependen
+  de la clase concreta `GeorefCatalogoService`. Cambiar de API implica cambiar firmas.~~ **[RESUELTO]**
 - **M10** — ~~Los índices únicos `(id_externo, fuente_api)` ya existen, pero son uniques sobre columnas **nullable**:
   en PostgreSQL los `NULL` se consideran distintos entre sí, así que no restringen las filas con `id_externo` nulo.
   Invariante a documentar: el código nunca debe escribir `null` en esas columnas.~~ **[RESUELTO]**
