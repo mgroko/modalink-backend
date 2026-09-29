@@ -1864,7 +1864,19 @@ CREATE UNIQUE INDEX "UQ_ciudad_id_externo_y_api" ON ciudad(id_externo, fuente_ap
 
 CREATE UNIQUE INDEX "UQ_provincia_id_externo_y_api" ON provincia(id_externo, fuente_api)
 ;
+-- 
+-- INDEX: "UQ_agenda_usuario" 
+--
 
+CREATE UNIQUE INDEX "UQ_agenda_usuario" ON agenda(id_usuario)
+;
+
+-- 
+-- INDEX: "UQ_jornada_agenda_dia_semana" 
+--
+
+CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, dia_semana)
+;
 -- 
 -- TABLE: actividad 
 --
@@ -1888,6 +1900,7 @@ ALTER TABLE agenda ADD CONSTRAINT "Refusuario1461"
     FOREIGN KEY (id_usuario)
     REFERENCES usuario(id_usuario)
 ;
+
 
 
 -- 
