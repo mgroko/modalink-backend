@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.calendario.dto.BloqueoActividadResponse;
@@ -127,5 +128,29 @@ class CalendarioMapperTest {
         assertEquals("Sesión de fotos", response.nombre());
         assertEquals(LocalDateTime.of(2026, 9, 10, 9, 0), response.fechaHoraInicio());
         assertEquals(LocalDateTime.of(2026, 9, 10, 13, 0), response.fechaHoraFin());
+    }
+
+    @Test
+    void toBloqueoActividadResponse_sinInicio_lanzaExcepcion() {
+        Actividad actividad = Actividad.builder()
+                .idActividad(12L)
+                .nombre("Sin inicio")
+                .duracionMinutos(60)
+                .build();
+
+        assertThrows(NullPointerException.class,
+                () -> CalendarioMapper.toBloqueoActividadResponse(actividad, 30));
+    }
+
+    @Test
+    void toBloqueoActividadResponse_sinDuracion_lanzaExcepcion() {
+        Actividad actividad = Actividad.builder()
+                .idActividad(13L)
+                .nombre("Sin duracion")
+                .fechaHoraInicio(LocalDateTime.of(2026, 9, 10, 10, 0))
+                .build();
+
+        assertThrows(NullPointerException.class,
+                () -> CalendarioMapper.toBloqueoActividadResponse(actividad, 30));
     }
 }

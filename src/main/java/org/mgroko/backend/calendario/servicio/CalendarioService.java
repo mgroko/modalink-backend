@@ -223,10 +223,13 @@ public class CalendarioService {
 
     /**
      * Indica si el rango [inicio, fin] solapa algún bloqueo calculado por
-     * actividad de un proyecto activo (considerando el margen).
+     * actividad de un proyecto activo (considerando el margen). Las
+     * actividades sin inicio o fin se ignoran (no deberían existir: son
+     * NOT NULL en BD).
      */
     private boolean solapaActividad(Long idUsuario, LocalDateTime inicio, LocalDateTime fin, int margen) {
         return actividadesDe(idUsuario).stream()
+                .filter(a -> a.getFechaHoraInicio() != null && a.getFechaHoraFin() != null)
                 .anyMatch(a -> a.getFechaHoraInicio().minusMinutes(margen).isBefore(fin)
                         && a.getFechaHoraFin().plusMinutes(margen).isAfter(inicio));
     }

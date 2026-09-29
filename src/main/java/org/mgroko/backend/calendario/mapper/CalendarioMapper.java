@@ -1,6 +1,7 @@
 package org.mgroko.backend.calendario.mapper;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.mgroko.backend.calendario.dto.BloqueoActividadResponse;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
@@ -53,8 +54,14 @@ public class CalendarioMapper {
     /**
      * Convierte una actividad en el bloqueo calculado correspondiente,
      * extendiendo el rango con el margen por actividad (buffer) a cada lado.
+     * Falla rápido si la actividad no trae inicio o fin (columnas NOT NULL
+     * en BD; solo posible en objetos transient o mal construidos).
      */
     public static BloqueoActividadResponse toBloqueoActividadResponse(Actividad actividad, int margenMinutos) {
+        Objects.requireNonNull(actividad.getFechaHoraInicio(),
+                "La actividad (id=" + actividad.getIdActividad() + ") no tiene fechaHoraInicio");
+        Objects.requireNonNull(actividad.getFechaHoraFin(),
+                "La actividad (id=" + actividad.getIdActividad() + ") no tiene fechaHoraFin");
         return new BloqueoActividadResponse(
                 actividad.getIdActividad(),
                 actividad.getNombre(),

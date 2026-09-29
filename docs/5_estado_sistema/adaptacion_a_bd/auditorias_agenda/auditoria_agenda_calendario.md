@@ -34,6 +34,10 @@
 > **Rev. 6:** **H-06 queda RESUELTO** (`@Min(0)` en `ConfigJornadaRequest`; 400 vía `@Valid` existente).
 >
 > **Rev. 7:** **H-08 queda RESUELTO** (renombre `horario*` → `hora*` en entidad, DTOs, servicio, mapper y tests).
+>
+> **Rev. 8:** **H-09, H-10 y H-11 quedan RESUELTOS**. H-09: constraint renombrado en BD por el usuario.
+> H-10: `requireNonNull` en `CalendarioMapper.toBloqueoActividadResponse` + filtro null-safe en
+> `solapaActividad`. H-11: `@Query` usa `per.usuario.idUsuario` (propiedad real).
 
 ---
 
@@ -65,9 +69,9 @@ de corrido al insertar usuario).
 | H-06 | **MEDIO** | ~~Validación faltante~~ **RESUELTO (rev. 6)** | `@NotNull` + `@Min(0)` en `margenActividadMinutos`; el `@Valid` ya existente en `PUT /calendario/jornada` devuelve 400 ante negativo (antes 500 contra el CHECK). Tests: `margenNegativo_generaViolacion`, `margenCero_esValido`, `configurarJornada_margenNegativo_devuelve400` | `calendario/dto/ConfigJornadaRequest.java:16-18` | Ninguno |
 | H-07 | **MEDIO** | ~~NPE potencial / inconsistencia~~ **RESUELTO (rev. 5)** | Helper `margenDe(agenda)` centraliza el fallback (valor propio o config, nunca null) en las 4 rutas: `obtener`, `obtenerPublico`, `marcarNoDisponible`, `marcarDisponible` | `calendario/servicio/CalendarioService.java` (`margenDe`) | Ninguno |
 | H-08 | **MEDIO** | ~~Vocabulario divergente~~ **RESUELTO (rev. 7)** | Propiedades renombradas a `horaInicioManana`, `horaFinManana`, `horaInicioTarde`, `horaFinTarde` en entidad, `JornadaDiaRequest/Response`, servicio, mapper y tests. El `@Column` ya apuntaba bien; ahora también el nombre Java. Nota: cambian las claves JSON del API (`horaInicioManana`, etc.) — actualizar clientes | Entidad + DTOs + servicio + mapper + tests de calendario | Ninguno |
-| H-09 | **BAJO** | Nombre legacy | PK de `jornada_agenda` se llama `PK_jornada_laboral` | `ModaLinkBD.sql:696` (lado BD, informativo) | Cosmético; evidencia renombre de tabla no propagado al nombre del constraint |
-| H-10 | **BAJO** | Sin guardas null | `toBloqueoActividadResponse` opera sobre `getFechaHoraInicio()/getFechaHoraFin()` sin null-check | `calendario/mapper/CalendarioMapper.java:58-63` | La BD garantiza `NOT NULL`, pero objetos transient/tests con inicio null producen NPE en `minusMinutes/plusMinutes` |
-| H-11 | **BAJO** | JPQL frágil | `per.usuario.id` en vez de `per.usuario.idUsuario` | `repositorio/ActividadRepository.java:30` | Funciona por el shortcut `.id` de Hibernate al identificador, pero acopla a un atajo implícito; preferir la propiedad real `idUsuario` |
+| H-09 | **BAJO** | ~~Nombre legacy~~ **RESUELTO (rev. 8)** | Constraint renombrado en BD por el usuario. Sin cambios Java (JPA nunca referencia nombres de constraints) | `ModaLinkBD.sql` | Ninguno |
+| H-10 | **BAJO** | ~~Sin guardas null~~ **RESUELTO (rev. 8)** | `toBloqueoActividadResponse` exige inicio/fin con `requireNonNull` (falla rápido con mensaje en vez de NPE críptico); `solapaActividad` ignora actividades sin rango | `calendario/mapper/CalendarioMapper.java`, `calendario/servicio/CalendarioService.java` (`solapaActividad`) | Ninguno. Tests: `toBloqueoActividadResponse_sinInicio/sinDuracion_lanzaExcepcion` |
+| H-11 | **BAJO** | ~~JPQL frágil~~ **RESUELTO (rev. 8)** | `@Query` usa `per.usuario.idUsuario` (propiedad real de `Usuario`) en vez del atajo `.id` | `repositorio/ActividadRepository.java:30` | Ninguno |
 | H-12 | INFO | Nuevo check consistente (rev. 2) | La BD agregó `chk_bloqueo_rango CHECK (fecha_hora_fin > fecha_hora_inicio)` (`ModaLinkBD.sql:207`) | `calendario/servicio/CalendarioService.java:289-293` (`validarRango`) | Ninguno. El servicio ya valida lo mismo antes de persistir; defensa en profundidad correcta. Sin acción |
 
 ---
@@ -111,10 +115,10 @@ de corrido al insertar usuario).
 
 1. ~~**Decidir nulabilidad de `motivo`** (H-01)~~ **Hecho rev. 4** (H-01 resuelto: `@NotBlank` + `nullable = false`).
 2. ~~**Unificar default del margen a 30** (H-02)~~ **Hecho rev. 5** (margen configurable, default 30).
-3. ~~**Completar constraints en BD** (H-03/H-05)~~ **Hecho en BD rev. 3** (H-03/H-05 resueltos). Resta solo renombrar `PK_jornada_laboral` (H-09, cosmético).
+3. ~~**Completar constraints en BD** (H-03/H-05)~~ **Hecho en BD rev. 3** (H-03/H-05 resueltos). ~~Resta solo renombrar `PK_jornada_laboral` (H-09, cosmético).~~ **Hecho por el usuario rev. 8** (H-09 resuelto).
 4. ~~**Agregar `@Min(0)`**~~ **Hecho rev. 6** (H-06 resuelto: `@Min(0)` + 400 vía `@Valid`).
 5. ~~**Unificar fallback de margen**~~ **Hecho rev. 5** vía `margenDe()` (H-07 resuelto).
-6. ~~**Limpieza menor:** renombrar `horario*` → `hora*`~~ **Hecho rev. 7** (H-08 resuelto). Resta: `per.usuario.idUsuario` en el `@Query` (H-11); guardas null en el mapper (H-10).
+6. ~~**Limpieza menor:** renombrar `horario*` → `hora*`~~ **Hecho rev. 7** (H-08 resuelto). ~~Resta: `per.usuario.idUsuario` en el `@Query` (H-11); guardas null en el mapper (H-10).~~ **Hechos rev. 8** (H-10/H-11 resueltos).
 7. **Revalidar arranque** con `ddl-auto=validate` tras los cambios y agregar test de integración que inserte bloqueo sin motivo (según la decisión de H-01) y jornada duplicada (según H-03).
 
 ---
