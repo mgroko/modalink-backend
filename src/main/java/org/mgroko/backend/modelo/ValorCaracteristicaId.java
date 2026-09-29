@@ -11,7 +11,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Embeddable
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class ValorCaracteristicaId implements Serializable {
 
     @Column(name = "id_valor")
@@ -22,8 +25,10 @@ public class ValorCaracteristicaId implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ValorCaracteristicaId that)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof ValorCaracteristicaId that))
+            return false;
         return Objects.equals(idValor, that.idValor)
                 && Objects.equals(idCaracteristica, that.idCaracteristica);
     }
