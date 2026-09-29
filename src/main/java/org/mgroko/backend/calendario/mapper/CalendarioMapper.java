@@ -18,10 +18,10 @@ public class CalendarioMapper {
     public static JornadaDiaResponse toJornadaDiaResponse(JornadaAgenda jornada) {
         return new JornadaDiaResponse(
                 jornada.getDiaSemana(),
-                jornada.getHorarioInicioManiana(),
-                jornada.getHorarioFinManiana(),
-                jornada.getHorarioInicioTarde(),
-                jornada.getHorarioFinTarde());
+                jornada.getHoraInicioManana(),
+                jornada.getHoraFinManana(),
+                jornada.getHoraInicioTarde(),
+                jornada.getHoraFinTarde());
     }
 
     public static ConfigJornadaResponse toConfigJornadaResponse(Agenda agenda, List<JornadaAgenda> dias) {

@@ -106,11 +106,11 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         List<JornadaAgenda> dias = jornadaAgendaRepository
                 .findByAgenda_IdAgendaOrderByDiaSemana(agenda.getIdAgenda());
         assertEquals(5, dias.size());
-        assertTrue(dias.stream().allMatch(d -> d.getHorarioInicioManiana().equals(LocalTime.of(9, 0))));
-        assertTrue(dias.stream().allMatch(d -> d.getHorarioFinTarde().equals(LocalTime.of(18, 0))));
+        assertTrue(dias.stream().allMatch(d -> d.getHoraInicioManana().equals(LocalTime.of(9, 0))));
+        assertTrue(dias.stream().allMatch(d -> d.getHoraFinTarde().equals(LocalTime.of(18, 0))));
         // La jornada por defecto es de corrido (par del mediodía ausente).
-        assertTrue(dias.stream().allMatch(d -> d.getHorarioFinManiana() == null));
-        assertTrue(dias.stream().allMatch(d -> d.getHorarioInicioTarde() == null));
+        assertTrue(dias.stream().allMatch(d -> d.getHoraFinManana() == null));
+        assertTrue(dias.stream().allMatch(d -> d.getHoraInicioTarde() == null));
         assertTrue(dias.stream().noneMatch(JornadaAgenda::esPartida));
     }
 
@@ -249,7 +249,7 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
                         new JornadaDiaRequest(5, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)),
                         new JornadaDiaRequest(6, LocalTime.of(10, 0), null, null, LocalTime.of(16, 0)))));
         assertEquals(6, tercera.dias().size());
-        assertEquals(LocalTime.of(8, 0), tercera.dias().get(0).horarioInicioManiana());
+        assertEquals(LocalTime.of(8, 0), tercera.dias().get(0).horaInicioManana());
 
         // Y una que quita días: vuelve a eliminar el sábado.
         ConfigJornadaResponse cuarta = calendarioService.configurarJornada(
@@ -278,18 +278,18 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
                                 LocalTime.of(15, 0), LocalTime.of(19, 0)))));
 
         assertEquals(1, response.dias().size());
-        assertEquals(LocalTime.of(9, 0), response.dias().get(0).horarioInicioManiana());
-        assertEquals(LocalTime.of(13, 0), response.dias().get(0).horarioFinManiana());
-        assertEquals(LocalTime.of(15, 0), response.dias().get(0).horarioInicioTarde());
-        assertEquals(LocalTime.of(19, 0), response.dias().get(0).horarioFinTarde());
+        assertEquals(LocalTime.of(9, 0), response.dias().get(0).horaInicioManana());
+        assertEquals(LocalTime.of(13, 0), response.dias().get(0).horaFinManana());
+        assertEquals(LocalTime.of(15, 0), response.dias().get(0).horaInicioTarde());
+        assertEquals(LocalTime.of(19, 0), response.dias().get(0).horaFinTarde());
 
         // Y puede volver a corrido (el par del mediodía queda en NULL).
         ConfigJornadaResponse corrido = calendarioService.configurarJornada(
                 usuario.getIdUsuario(),
                 new ConfigJornadaRequest(45, List.of(
                         new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
-        assertNull(corrido.dias().get(0).horarioFinManiana());
-        assertNull(corrido.dias().get(0).horarioInicioTarde());
+        assertNull(corrido.dias().get(0).horaFinManana());
+        assertNull(corrido.dias().get(0).horaInicioTarde());
     }
 
     @Test
@@ -300,9 +300,9 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         assertExcepcionConMensaje(
                 () -> jornadaAgendaRepository.saveAndFlush(JornadaAgenda.builder()
                         .agenda(agenda).diaSemana(6)
-                        .horarioInicioManiana(LocalTime.of(9, 0))
-                        .horarioFinManiana(LocalTime.of(13, 0))
-                        .horarioFinTarde(LocalTime.of(18, 0))
+                        .horaInicioManana(LocalTime.of(9, 0))
+                        .horaFinManana(LocalTime.of(13, 0))
+                        .horaFinTarde(LocalTime.of(18, 0))
                         .build()),
                 "chk_jornada_mediodia_completo");
     }
@@ -315,10 +315,10 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         assertExcepcionConMensaje(
                 () -> jornadaAgendaRepository.saveAndFlush(JornadaAgenda.builder()
                         .agenda(agenda).diaSemana(6)
-                        .horarioInicioManiana(LocalTime.of(9, 0))
-                        .horarioFinManiana(LocalTime.of(13, 0))
-                        .horarioInicioTarde(LocalTime.of(13, 0))
-                        .horarioFinTarde(LocalTime.of(18, 0))
+                        .horaInicioManana(LocalTime.of(9, 0))
+                        .horaFinManana(LocalTime.of(13, 0))
+                        .horaInicioTarde(LocalTime.of(13, 0))
+                        .horaFinTarde(LocalTime.of(18, 0))
                         .build()),
                 "chk_jornada_orden_bloques");
     }
@@ -331,8 +331,8 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         assertExcepcionConMensaje(
                 () -> jornadaAgendaRepository.saveAndFlush(JornadaAgenda.builder()
                         .agenda(agenda).diaSemana(6)
-                        .horarioInicioManiana(LocalTime.of(18, 0))
-                        .horarioFinTarde(LocalTime.of(9, 0))
+                        .horaInicioManana(LocalTime.of(18, 0))
+                        .horaFinTarde(LocalTime.of(9, 0))
                         .build()),
                 "chk_jornada_rango_total");
     }

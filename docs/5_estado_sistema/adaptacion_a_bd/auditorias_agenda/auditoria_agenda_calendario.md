@@ -30,6 +30,10 @@
 > (clave `AGENDA_MARGEN_ACTIVIDAD_MIN`, seed 30, trigger `fn_crear_agenda` la lee con fallback 30);
 > Java: `ConfiguracionSistemaService.obtenerMargenActividadDefecto()`, `Agenda` default 30,
 > `CalendarioService.margenDe()` centraliza el fallback (cubre las 4 rutas). Tests adaptados a 30 + 5 nuevos.
+>
+> **Rev. 6:** **H-06 queda RESUELTO** (`@Min(0)` en `ConfigJornadaRequest`; 400 vía `@Valid` existente).
+>
+> **Rev. 7:** **H-08 queda RESUELTO** (renombre `horario*` → `hora*` en entidad, DTOs, servicio, mapper y tests).
 
 ---
 
@@ -58,9 +62,9 @@ de corrido al insertar usuario).
 | H-03 | **ALTO** | ~~Constraint faltante en BD~~ **RESUELTO (rev. 3)** | ~~`UNIQUE (id_agenda, dia_semana)` existe solo en JPA~~ La BD ahora declara `CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, dia_semana)` (`ModaLinkBD.sql:1875-1878`). Cubre la `@UniqueConstraint uq_jornada_agenda_dia` de JPA y respalda el sync por diff del servicio. Sin acción | `modelo/JornadaAgenda.java:34-35`, `calendario/servicio/CalendarioService.java:122-131` | Ninguno |
 | H-04 | **ALTO** | ~~Checks inexistentes en BD~~ **RESUELTO (rev. 2)** | ~~Comentarios refieren a `chk_jornada_*` de "migración V19" que no existen en el SQL~~ La BD ahora define `chk_jornada_mediodia_completo`, `chk_jornada_orden_bloques`, `chk_jornada_rango_maniana`, `chk_jornada_rango_tarde`, `chk_jornada_rango_total`, `chk_jornada_dia_semana` (`ModaLinkBD.sql:746-751`), con semántica idéntica a `validarHorarios`. Sin acción | `modelo/JornadaAgenda.java:30-31`, `calendario/servicio/CalendarioService.java:251-253` | Ninguno. Defensa en profundidad BD + Java ahora efectiva |
 | H-05 | **ALTO** | ~~Unicidad asumida, no garantizada~~ **RESUELTO (rev. 3)** | ~~`@JoinColumn unique = true` en `id_usuario` sin `UNIQUE` en BD~~ La BD ahora declara `CREATE UNIQUE INDEX "UQ_agenda_usuario" ON agenda(id_usuario)` (`ModaLinkBD.sql:1871`). La relación 1:1 queda impuesta en ambas capas. Sin acción | `modelo/Agenda.java:39-41`, `repositorio/AgendaRepository.java:17`, `calendario/servicio/CalendarioService.java:295-299` | Ninguno |
-| H-06 | **MEDIO** | Validación faltante | `margenActividadMinutos` solo `@NotNull`, sin `@Min(0)`; el servicio no lo valida | `calendario/dto/ConfigJornadaRequest.java:16`, `calendario/servicio/CalendarioService.java:163-164` | Un margen negativo pasa la validación 400 y revienta contra el `CHECK (>= 0)` (500); además corrompe la matemática de solape |
+| H-06 | **MEDIO** | ~~Validación faltante~~ **RESUELTO (rev. 6)** | `@NotNull` + `@Min(0)` en `margenActividadMinutos`; el `@Valid` ya existente en `PUT /calendario/jornada` devuelve 400 ante negativo (antes 500 contra el CHECK). Tests: `margenNegativo_generaViolacion`, `margenCero_esValido`, `configurarJornada_margenNegativo_devuelve400` | `calendario/dto/ConfigJornadaRequest.java:16-18` | Ninguno |
 | H-07 | **MEDIO** | ~~NPE potencial / inconsistencia~~ **RESUELTO (rev. 5)** | Helper `margenDe(agenda)` centraliza el fallback (valor propio o config, nunca null) en las 4 rutas: `obtener`, `obtenerPublico`, `marcarNoDisponible`, `marcarDisponible` | `calendario/servicio/CalendarioService.java` (`margenDe`) | Ninguno |
-| H-08 | **MEDIO** | Vocabulario divergente | Propiedades `horario*` vs columnas BD `hora_*` (`hora_inicio_manana` con una "n") | `modelo/JornadaAgenda.java:47-57`, DTOs `JornadaDiaRequest/Response` | El `@Column` explícito lo salva en JPA, pero cualquier query nativa/Criteria con el nombre equivocado falla. Confusión en mantenimiento |
+| H-08 | **MEDIO** | ~~Vocabulario divergente~~ **RESUELTO (rev. 7)** | Propiedades renombradas a `horaInicioManana`, `horaFinManana`, `horaInicioTarde`, `horaFinTarde` en entidad, `JornadaDiaRequest/Response`, servicio, mapper y tests. El `@Column` ya apuntaba bien; ahora también el nombre Java. Nota: cambian las claves JSON del API (`horaInicioManana`, etc.) — actualizar clientes | Entidad + DTOs + servicio + mapper + tests de calendario | Ninguno |
 | H-09 | **BAJO** | Nombre legacy | PK de `jornada_agenda` se llama `PK_jornada_laboral` | `ModaLinkBD.sql:696` (lado BD, informativo) | Cosmético; evidencia renombre de tabla no propagado al nombre del constraint |
 | H-10 | **BAJO** | Sin guardas null | `toBloqueoActividadResponse` opera sobre `getFechaHoraInicio()/getFechaHoraFin()` sin null-check | `calendario/mapper/CalendarioMapper.java:58-63` | La BD garantiza `NOT NULL`, pero objetos transient/tests con inicio null producen NPE en `minusMinutes/plusMinutes` |
 | H-11 | **BAJO** | JPQL frágil | `per.usuario.id` en vez de `per.usuario.idUsuario` | `repositorio/ActividadRepository.java:30` | Funciona por el shortcut `.id` de Hibernate al identificador, pero acopla a un atajo implícito; preferir la propiedad real `idUsuario` |
@@ -108,9 +112,9 @@ de corrido al insertar usuario).
 1. ~~**Decidir nulabilidad de `motivo`** (H-01)~~ **Hecho rev. 4** (H-01 resuelto: `@NotBlank` + `nullable = false`).
 2. ~~**Unificar default del margen a 30** (H-02)~~ **Hecho rev. 5** (margen configurable, default 30).
 3. ~~**Completar constraints en BD** (H-03/H-05)~~ **Hecho en BD rev. 3** (H-03/H-05 resueltos). Resta solo renombrar `PK_jornada_laboral` (H-09, cosmético).
-4. **Agregar `@Min(0)`** a `ConfigJornadaRequest.margenActividadMinutos` + validación explícita en `configurarJornada` (H-06) para devolver 400 en vez de 500.
+4. ~~**Agregar `@Min(0)`**~~ **Hecho rev. 6** (H-06 resuelto: `@Min(0)` + 400 vía `@Valid`).
 5. ~~**Unificar fallback de margen**~~ **Hecho rev. 5** vía `margenDe()` (H-07 resuelto).
-6. **Limpieza menor:** renombrar `horario*` → `hora*` o documentar la equivalencia (H-08); usar `per.usuario.idUsuario` en el `@Query` (H-11); guardas null en el mapper (H-10).
+6. ~~**Limpieza menor:** renombrar `horario*` → `hora*`~~ **Hecho rev. 7** (H-08 resuelto). Resta: `per.usuario.idUsuario` en el `@Query` (H-11); guardas null en el mapper (H-10).
 7. **Revalidar arranque** con `ddl-auto=validate` tras los cambios y agregar test de integración que inserte bloqueo sin motivo (según la decisión de H-01) y jornada duplicada (según H-03).
 
 ---

@@ -24,8 +24,8 @@ import java.time.LocalTime;
  * ausente significa que no es laborable. Permite jornadas personalizadas
  * por día o una misma jornada para varios días (filas con igual horario).
  *
- * <p>La jornada puede ser "de corrido" (se usan {@code horarioInicioManiana}
- * y {@code horarioFinTarde}, con el par del mediodía en {@code null}) o
+ * <p>La jornada puede ser "de corrido" (se usan {@code horaInicioManana}
+ * y {@code horaFinTarde}, con el par del mediodía en {@code null}) o
  * "partida" (bloques de mañana y tarde, con las cuatro horas en orden
  * estricto). La base de datos lo garantiza con los checks chk_jornada_*
  * de la migración V19.
@@ -45,16 +45,16 @@ public class JornadaAgenda {
     private Integer diaSemana;
 
     @Column(name = "hora_inicio_manana", nullable = false)
-    private LocalTime horarioInicioManiana;
+    private LocalTime horaInicioManana;
 
     @Column(name = "hora_fin_manana")
-    private LocalTime horarioFinManiana;
+    private LocalTime horaFinManana;
 
     @Column(name = "hora_inicio_tarde")
-    private LocalTime horarioInicioTarde;
+    private LocalTime horaInicioTarde;
 
     @Column(name = "hora_fin_tarde", nullable = false)
-    private LocalTime horarioFinTarde;
+    private LocalTime horaFinTarde;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_agenda", nullable = false)
@@ -65,6 +65,6 @@ public class JornadaAgenda {
      * {@code false}, la jornada es de corrido.
      */
     public boolean esPartida() {
-        return horarioFinManiana != null && horarioInicioTarde != null;
+        return horaFinManana != null && horaInicioTarde != null;
     }
 }

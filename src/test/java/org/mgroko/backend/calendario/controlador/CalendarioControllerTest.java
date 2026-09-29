@@ -119,8 +119,8 @@ class CalendarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dias[0].horarioInicioManiana").value("09:00:00"))
-                .andExpect(jsonPath("$.dias[0].horarioFinTarde").value("18:00:00"));
+                .andExpect(jsonPath("$.dias[0].horaInicioManana").value("09:00:00"))
+                .andExpect(jsonPath("$.dias[0].horaFinTarde").value("18:00:00"));
 
         verify(calendarioService).configurarJornada(anyLong(), any(ConfigJornadaRequest.class));
     }
@@ -140,8 +140,8 @@ class CalendarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dias[0].horarioFinManiana").value("13:00:00"))
-                .andExpect(jsonPath("$.dias[0].horarioInicioTarde").value("15:00:00"));
+                .andExpect(jsonPath("$.dias[0].horaFinManana").value("13:00:00"))
+                .andExpect(jsonPath("$.dias[0].horaInicioTarde").value("15:00:00"));
     }
 
     @Test
@@ -165,6 +165,20 @@ class CalendarioControllerTest {
     @Test
     void configurarJornada_diasVacio_devuelve400() throws Exception {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of());
+
+        mockMvc.perform(put("/calendario/jornada")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(calendarioService, never()).configurarJornada(anyLong(), any());
+    }
+
+    @Test
+    void configurarJornada_margenNegativo_devuelve400() throws Exception {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(-5, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
 
         mockMvc.perform(put("/calendario/jornada")
                         .principal(auth())

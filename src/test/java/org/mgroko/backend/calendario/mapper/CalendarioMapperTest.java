@@ -24,17 +24,17 @@ class CalendarioMapperTest {
         JornadaAgenda jornada = JornadaAgenda.builder()
                 .idJornada(5L)
                 .diaSemana(3)
-                .horarioInicioManiana(LocalTime.of(10, 0))
-                .horarioFinTarde(LocalTime.of(20, 0))
+                .horaInicioManana(LocalTime.of(10, 0))
+                .horaFinTarde(LocalTime.of(20, 0))
                 .build();
 
         JornadaDiaResponse response = CalendarioMapper.toJornadaDiaResponse(jornada);
 
         assertEquals(3, response.diaSemana());
-        assertEquals(LocalTime.of(10, 0), response.horarioInicioManiana());
-        assertNull(response.horarioFinManiana());
-        assertNull(response.horarioInicioTarde());
-        assertEquals(LocalTime.of(20, 0), response.horarioFinTarde());
+        assertEquals(LocalTime.of(10, 0), response.horaInicioManana());
+        assertNull(response.horaFinManana());
+        assertNull(response.horaInicioTarde());
+        assertEquals(LocalTime.of(20, 0), response.horaFinTarde());
     }
 
     @Test
@@ -42,19 +42,19 @@ class CalendarioMapperTest {
         JornadaAgenda jornada = JornadaAgenda.builder()
                 .idJornada(6L)
                 .diaSemana(2)
-                .horarioInicioManiana(LocalTime.of(9, 0))
-                .horarioFinManiana(LocalTime.of(13, 0))
-                .horarioInicioTarde(LocalTime.of(15, 0))
-                .horarioFinTarde(LocalTime.of(19, 0))
+                .horaInicioManana(LocalTime.of(9, 0))
+                .horaFinManana(LocalTime.of(13, 0))
+                .horaInicioTarde(LocalTime.of(15, 0))
+                .horaFinTarde(LocalTime.of(19, 0))
                 .build();
 
         JornadaDiaResponse response = CalendarioMapper.toJornadaDiaResponse(jornada);
 
         assertEquals(2, response.diaSemana());
-        assertEquals(LocalTime.of(9, 0), response.horarioInicioManiana());
-        assertEquals(LocalTime.of(13, 0), response.horarioFinManiana());
-        assertEquals(LocalTime.of(15, 0), response.horarioInicioTarde());
-        assertEquals(LocalTime.of(19, 0), response.horarioFinTarde());
+        assertEquals(LocalTime.of(9, 0), response.horaInicioManana());
+        assertEquals(LocalTime.of(13, 0), response.horaFinManana());
+        assertEquals(LocalTime.of(15, 0), response.horaInicioTarde());
+        assertEquals(LocalTime.of(19, 0), response.horaFinTarde());
     }
 
     @Test
@@ -62,13 +62,13 @@ class CalendarioMapperTest {
         Agenda agenda = Agenda.builder().idAgenda(1L).margenActividadMinutos(90).build();
         List<JornadaAgenda> dias = List.of(
                 JornadaAgenda.builder().diaSemana(1)
-                        .horarioInicioManiana(LocalTime.of(9, 0))
-                        .horarioFinTarde(LocalTime.of(18, 0)).build(),
+                        .horaInicioManana(LocalTime.of(9, 0))
+                        .horaFinTarde(LocalTime.of(18, 0)).build(),
                 JornadaAgenda.builder().diaSemana(2)
-                        .horarioInicioManiana(LocalTime.of(9, 0))
-                        .horarioFinManiana(LocalTime.of(13, 0))
-                        .horarioInicioTarde(LocalTime.of(15, 0))
-                        .horarioFinTarde(LocalTime.of(19, 0)).build());
+                        .horaInicioManana(LocalTime.of(9, 0))
+                        .horaFinManana(LocalTime.of(13, 0))
+                        .horaInicioTarde(LocalTime.of(15, 0))
+                        .horaFinTarde(LocalTime.of(19, 0)).build());
 
         ConfigJornadaResponse response = CalendarioMapper.toConfigJornadaResponse(agenda, dias);
 
