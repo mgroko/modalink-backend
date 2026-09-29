@@ -88,8 +88,8 @@ class EditarPerfilServiceIntegrationTest extends AbstractPostgresIntegrationTest
 
     private long idValor(Long idCaracteristica, String codigoValor) {
         return valorCaracteristicaRepository
-                .findByCaracteristicaTecnicaIdCaracteristicaOrderByCodigo(idCaracteristica).stream()
-                .filter(v -> v.getCodigo().equals(codigoValor))
+                .findByCaracteristicaTecnica_IdCaracteristicaOrderByEtiqueta(idCaracteristica).stream()
+                .filter(v -> v.getEtiqueta().equals(codigoValor))
                 .findFirst()
                 .orElseThrow()
                 .getIdValor();

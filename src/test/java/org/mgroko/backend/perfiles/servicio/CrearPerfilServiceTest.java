@@ -14,8 +14,10 @@ import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.UnidadMedida;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.ValorCaracteristica;
+import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
@@ -83,7 +85,7 @@ class CrearPerfilServiceTest {
         return CaracteristicaTecnica.builder()
                 .idCaracteristica(11L)
                 .codigo("altura")
-                .unidad("cm")
+                .unidadMedida(UnidadMedida.builder().simbolo("cm").build())
                 .tipoDato(CaracteristicaTecnica.TIPO_TEXTO)
                 .profesion(profesion)
                 .build();
@@ -102,7 +104,7 @@ class CrearPerfilServiceTest {
         return CaracteristicaTecnica.builder()
                 .idCaracteristica(13L)
                 .codigo("medida_pecho")
-                .unidad("cm")
+                .unidadMedida(UnidadMedida.builder().simbolo("cm").build())
                 .tipoDato(CaracteristicaTecnica.TIPO_NUMERICO)
                 .profesion(profesion)
                 .build();
@@ -212,12 +214,12 @@ class CrearPerfilServiceTest {
                 .thenReturn(Optional.of(caracteristicaColorOjos(profesionModelo())));
 
         ValorCaracteristica valorMarron = ValorCaracteristica.builder()
-                .idValor(20L)
-                .codigo("marron")
+                .id(new ValorCaracteristicaId(20L, 12L))
+                .etiqueta("marron")
                 .colorHex("#6B4226")
                 .caracteristicaTecnica(caracteristicaColorOjos(profesionModelo()))
                 .build();
-        when(valorCaracteristicaRepository.findById(20L)).thenReturn(Optional.of(valorMarron));
+        when(valorCaracteristicaRepository.findById(new ValorCaracteristicaId(20L, 12L))).thenReturn(Optional.of(valorMarron));
         when(perfilRepository.save(any(Perfil.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -244,7 +246,7 @@ class CrearPerfilServiceTest {
                 anyLong(), anyLong(), any(EstadoPerfil.class))).thenReturn(false);
         when(caracteristicaTecnicaRepository.findById(12L))
                 .thenReturn(Optional.of(caracteristicaColorOjos(profesionModelo())));
-        when(valorCaracteristicaRepository.findById(99L)).thenReturn(Optional.empty());
+        when(valorCaracteristicaRepository.findById(new ValorCaracteristicaId(99L, 12L))).thenReturn(Optional.empty());
 
         CrearPerfilRequest request = new CrearPerfilRequest(
                 "Luna", 2L, "Modelo profesional.",

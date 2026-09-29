@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
-import org.mgroko.backend.modelo.CaracteristicaPerfilId;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;

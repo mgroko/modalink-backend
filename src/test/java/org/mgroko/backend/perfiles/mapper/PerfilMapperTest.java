@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
-import org.mgroko.backend.modelo.CaracteristicaPerfilId;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -21,17 +20,17 @@ class PerfilMapperTest {
         Profesion profesion = Profesion.builder().idProfesion(2L).nombre("modelo").build();
 
         CaracteristicaTecnica altura = CaracteristicaTecnica.builder()
-                .idCaracteristica(11L).codigo("altura").unidad("cm").profesion(profesion).build();
+                .idCaracteristica(11L).codigo("altura").profesion(profesion).build();
         CaracteristicaTecnica ojos = CaracteristicaTecnica.builder()
-                .idCaracteristica(12L).codigo("color_ojos").unidad("color").profesion(profesion).build();
+                .idCaracteristica(12L).codigo("color_ojos").profesion(profesion).build();
 
         CaracteristicaPerfil cpAltura = CaracteristicaPerfil.builder()
-                .id(new CaracteristicaPerfilId(5L, 11L))
+                .idCaracteristicaPerfil(1L)
                 .caracteristicaTecnica(altura)
                 .valor("175")
                 .build();
         CaracteristicaPerfil cpOjos = CaracteristicaPerfil.builder()
-                .id(new CaracteristicaPerfilId(5L, 12L))
+                .idCaracteristicaPerfil(2L)
                 .caracteristicaTecnica(ojos)
                 .valor("verdes")
                 .build();

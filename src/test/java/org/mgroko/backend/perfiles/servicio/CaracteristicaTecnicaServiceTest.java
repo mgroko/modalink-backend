@@ -4,12 +4,14 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.UnidadMedida;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
@@ -43,7 +45,8 @@ class CaracteristicaTecnicaServiceTest {
         return CaracteristicaTecnica.builder()
                 .idCaracteristica(11L)
                 .codigo("altura")
-                .unidad("cm")
+                .nombre("Altura")
+                .unidadMedida(UnidadMedida.builder().idUnidad(1L).simbolo("cm").build())
                 .profesion(profesionModelo())
                 .build();
     }
@@ -59,7 +62,9 @@ class CaracteristicaTecnicaServiceTest {
 
         assertEquals(1, response.size());
         assertEquals("altura", response.get(0).codigo());
-        assertEquals("cm", response.get(0).unidad());
+        assertEquals("Altura", response.get(0).nombre());
+        assertNotNull(response.get(0).unidad());
+        assertEquals("cm", response.get(0).unidad().simbolo());
         assertEquals(2L, response.get(0).idProfesion());
         assertEquals("modelo", response.get(0).profesion());
         verify(caracteristicaTecnicaRepository).buscar("%alt%", "%", 2L);

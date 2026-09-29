@@ -37,8 +37,7 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
 
     @Test
     void buscar_porProfesion_devuelveLasDeModelo() {
-        List<CaracteristicaTecnica> resultado =
-                caracteristicaTecnicaRepository.buscar("%", "%", idProfesionModelo());
+        List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%", "%", idProfesionModelo());
 
         assertEquals(8, resultado.size());
         assertTrue(resultado.stream().allMatch(c -> c.getProfesion().getIdProfesion().equals(idProfesionModelo())));
@@ -49,7 +48,7 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
         List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%altura%", "%", null);
 
         assertEquals(1, resultado.size());
-        assertEquals("altura", resultado.get(0).getCodigo());
+        assertEquals("ALTURA", resultado.get(0).getCodigo());
     }
 
     @Test
@@ -61,17 +60,17 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
 
     @Test
     void buscar_combinandoFiltros_devuelveCoincidencia() {
-        List<CaracteristicaTecnica> resultado =
-                caracteristicaTecnicaRepository.buscar("%medida_pecho%", "%", idProfesionModelo());
+        List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%medida_pecho%", "%",
+                idProfesionModelo());
 
         assertEquals(1, resultado.size());
-        assertEquals("medida_pecho", resultado.get(0).getCodigo());
+        assertEquals("MEDIDA_PECHO", resultado.get(0).getCodigo());
     }
 
     @Test
     void buscar_sinCoincidencias_devuelveVacio() {
-        List<CaracteristicaTecnica> resultado =
-                caracteristicaTecnicaRepository.buscar("%inexistente%", "%", idProfesionModelo());
+        List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%inexistente%", "%",
+                idProfesionModelo());
 
         assertTrue(resultado.isEmpty());
     }
