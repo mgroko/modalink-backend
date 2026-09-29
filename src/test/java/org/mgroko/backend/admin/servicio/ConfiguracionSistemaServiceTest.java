@@ -80,4 +80,46 @@ class ConfiguracionSistemaServiceTest {
         assertTrue(response.mensaje().contains("5 usuario(s)"));
         verify(expirarDeshabilitacionService).reactivarVencidos();
     }
+
+    @Test
+    @DisplayName("obtenerMargenActividadDefecto - Retorna el valor configurado")
+    void obtenerMargenActividadDefecto_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN)
+                        .valor("45").build()));
+
+        assertEquals(45, configuracionSistemaService.obtenerMargenActividadDefecto());
+    }
+
+    @Test
+    @DisplayName("obtenerMargenActividadDefecto - Retorna 30 si no hay fila configurada")
+    void obtenerMargenActividadDefecto_sinFila_retorna30() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN))
+                .thenReturn(Optional.empty());
+
+        assertEquals(30, configuracionSistemaService.obtenerMargenActividadDefecto());
+    }
+
+    @Test
+    @DisplayName("obtenerMargenActividadDefecto - Retorna 30 si el valor no es numerico")
+    void obtenerMargenActividadDefecto_valorInvalido_retorna30() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN)
+                        .valor("no-numerico").build()));
+
+        assertEquals(30, configuracionSistemaService.obtenerMargenActividadDefecto());
+    }
+
+    @Test
+    @DisplayName("obtenerMargenActividadDefecto - Retorna 30 si el valor es negativo")
+    void obtenerMargenActividadDefecto_valorNegativo_retorna30() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN)
+                        .valor("-5").build()));
+
+        assertEquals(30, configuracionSistemaService.obtenerMargenActividadDefecto());
+    }
 }

@@ -18,10 +18,12 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_DESHABILITACION_HORA = "SCHEDULER_DESHABILITACION_HORA";
     public static final String CLAVE_DESHABILITACION_MINUTO = "SCHEDULER_DESHABILITACION_MINUTO";
     public static final String CLAVE_DESHABILITACION_CRON = "SCHEDULER_DESHABILITACION_CRON";
+    public static final String CLAVE_MARGEN_ACTIVIDAD_MIN = "AGENDA_MARGEN_ACTIVIDAD_MIN";
 
     private static final int DEFAULT_HORA = 2;
     private static final int DEFAULT_MINUTO = 0;
     private static final String DEFAULT_CRON = "0 0 2 * * *";
+    private static final int DEFAULT_MARGEN_ACTIVIDAD_MIN = 30;
 
     private final ConfiguracionSistemaRepository configuracionSistemaRepository;
     private final ExpirarDeshabilitacionService expirarDeshabilitacionService;
@@ -71,6 +73,20 @@ public class ConfiguracionSistemaService {
                 .map(ConfiguracionSistema::getValor)
                 .filter(CronExpression::isValidExpression)
                 .orElse(DEFAULT_CRON);
+    }
+
+    /**
+     * Margen en minutos aplicado a cada lado de las actividades del calendario.
+     * Se lee de {@code configuracion_sistema} (clave {@link #CLAVE_MARGEN_ACTIVIDAD_MIN});
+     * ante fila ausente, valor no numérico o negativo se usa 30 (igual que el
+     * trigger {@code fn_crear_agenda} y el DEFAULT de la columna).
+     *
+     * @return margen por defecto en minutos, siempre >= 0
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMargenActividadDefecto() {
+        int margen = obtenerValorEntero(CLAVE_MARGEN_ACTIVIDAD_MIN, DEFAULT_MARGEN_ACTIVIDAD_MIN);
+        return margen < 0 ? DEFAULT_MARGEN_ACTIVIDAD_MIN : margen;
     }
 
     @Transactional

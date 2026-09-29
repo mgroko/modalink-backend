@@ -25,6 +25,11 @@
 > Siguen VIGENTES: H-01, H-02, H-06–H-11 (todos del lado del código).
 >
 > **Rev. 4:** **H-01 queda RESUELTO** en código (`motivo` obligatorio en entidad + `@NotBlank` en request; tests ajustados).
+>
+> **Rev. 5:** **H-02 y H-07 quedan RESUELTOS**. Margen configurable vía `configuracion_sistema`
+> (clave `AGENDA_MARGEN_ACTIVIDAD_MIN`, seed 30, trigger `fn_crear_agenda` la lee con fallback 30);
+> Java: `ConfiguracionSistemaService.obtenerMargenActividadDefecto()`, `Agenda` default 30,
+> `CalendarioService.margenDe()` centraliza el fallback (cubre las 4 rutas). Tests adaptados a 30 + 5 nuevos.
 
 ---
 
@@ -49,12 +54,12 @@ de corrido al insertar usuario).
 | ID | Severidad | Tipo | Descripción | Ubicación | Impacto |
 |----|-----------|------|-------------|-----------|---------|
 | H-01 | **CRÍTICO** | ~~Nulabilidad invertida~~ **RESUELTO (rev. 4)** | `motivo` ahora obligatorio en ambas capas: `@Column nullable = false` (`BloqueoAgenda.java:37`) + `@NotBlank @Size(max = 200)` (`MarcarNoDisponibleRequest.java:15-17`), validado con `@Valid` en `POST /calendario/bloqueos` (400 sin motivo). Helpers de integración con motivo; test nuevo `marcarNoDisponible_motivoNulo_devuelve400` | `modelo/BloqueoAgenda.java:36-38`, `calendario/dto/MarcarNoDisponibleRequest.java` | Ninguno. Nota: `BloqueoResponse.motivo` sigue nullable solo por la vista pública anonimizada (no se persiste) |
-| H-02 | **CRÍTICO** | Default divergente | `MARGEN_ACTIVIDAD_MINUTOS_DEFECTO = 60` vs BD `DEFAULT 30` + trigger con `30` | `modelo/Agenda.java:28,37`, `calendario/servicio/CalendarioService.java:85-87,111-113` | Agendas creadas por trigger tienen 30; objetos construidos en código/tests, 60. El cálculo de bloqueos (margen a cada lado) diverge según el origen del dato. Tests que esperan 60 (`CalendarioControllerTest:78,100`) están desactualizados respecto a la BD |
+| H-02 | **CRÍTICO** | ~~Default divergente~~ **RESUELTO (rev. 5)** | Margen configurable: seed `AGENDA_MARGEN_ACTIVIDAD_MIN=30` + trigger lee config con fallback 30; Java: `obtenerMargenActividadDefecto()` (ausente/inválido/negativo → 30), `Agenda` default 30, `margenDe()` en las 4 rutas. Tests a 30 (incluye los 3 fallos preexistentes) + 5 nuevos | `admin/servicio/ConfiguracionSistemaService.java`, `modelo/Agenda.java:28`, `calendario/servicio/CalendarioService.java` | Ninguno. Endpoint admin de modificación queda a futuro |
 | H-03 | **ALTO** | ~~Constraint faltante en BD~~ **RESUELTO (rev. 3)** | ~~`UNIQUE (id_agenda, dia_semana)` existe solo en JPA~~ La BD ahora declara `CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, dia_semana)` (`ModaLinkBD.sql:1875-1878`). Cubre la `@UniqueConstraint uq_jornada_agenda_dia` de JPA y respalda el sync por diff del servicio. Sin acción | `modelo/JornadaAgenda.java:34-35`, `calendario/servicio/CalendarioService.java:122-131` | Ninguno |
 | H-04 | **ALTO** | ~~Checks inexistentes en BD~~ **RESUELTO (rev. 2)** | ~~Comentarios refieren a `chk_jornada_*` de "migración V19" que no existen en el SQL~~ La BD ahora define `chk_jornada_mediodia_completo`, `chk_jornada_orden_bloques`, `chk_jornada_rango_maniana`, `chk_jornada_rango_tarde`, `chk_jornada_rango_total`, `chk_jornada_dia_semana` (`ModaLinkBD.sql:746-751`), con semántica idéntica a `validarHorarios`. Sin acción | `modelo/JornadaAgenda.java:30-31`, `calendario/servicio/CalendarioService.java:251-253` | Ninguno. Defensa en profundidad BD + Java ahora efectiva |
 | H-05 | **ALTO** | ~~Unicidad asumida, no garantizada~~ **RESUELTO (rev. 3)** | ~~`@JoinColumn unique = true` en `id_usuario` sin `UNIQUE` en BD~~ La BD ahora declara `CREATE UNIQUE INDEX "UQ_agenda_usuario" ON agenda(id_usuario)` (`ModaLinkBD.sql:1871`). La relación 1:1 queda impuesta en ambas capas. Sin acción | `modelo/Agenda.java:39-41`, `repositorio/AgendaRepository.java:17`, `calendario/servicio/CalendarioService.java:295-299` | Ninguno |
 | H-06 | **MEDIO** | Validación faltante | `margenActividadMinutos` solo `@NotNull`, sin `@Min(0)`; el servicio no lo valida | `calendario/dto/ConfigJornadaRequest.java:16`, `calendario/servicio/CalendarioService.java:163-164` | Un margen negativo pasa la validación 400 y revienta contra el `CHECK (>= 0)` (500); además corrompe la matemática de solape |
-| H-07 | **MEDIO** | NPE potencial / inconsistencia | `marcarNoDisponible` y `marcarDisponible` pasan `Integer` a parámetro `int` sin fallback | `calendario/servicio/CalendarioService.java:182,216,228` | `obtener`/`obtenerPublico` sí aplican fallback al default (líneas 85-87, 111-113); estas dos rutas harían NPE (unboxing) si el margen fuera null. Hoy la BD lo impide (`NOT NULL`), pero el código es inconsistente y frágil |
+| H-07 | **MEDIO** | ~~NPE potencial / inconsistencia~~ **RESUELTO (rev. 5)** | Helper `margenDe(agenda)` centraliza el fallback (valor propio o config, nunca null) en las 4 rutas: `obtener`, `obtenerPublico`, `marcarNoDisponible`, `marcarDisponible` | `calendario/servicio/CalendarioService.java` (`margenDe`) | Ninguno |
 | H-08 | **MEDIO** | Vocabulario divergente | Propiedades `horario*` vs columnas BD `hora_*` (`hora_inicio_manana` con una "n") | `modelo/JornadaAgenda.java:47-57`, DTOs `JornadaDiaRequest/Response` | El `@Column` explícito lo salva en JPA, pero cualquier query nativa/Criteria con el nombre equivocado falla. Confusión en mantenimiento |
 | H-09 | **BAJO** | Nombre legacy | PK de `jornada_agenda` se llama `PK_jornada_laboral` | `ModaLinkBD.sql:696` (lado BD, informativo) | Cosmético; evidencia renombre de tabla no propagado al nombre del constraint |
 | H-10 | **BAJO** | Sin guardas null | `toBloqueoActividadResponse` opera sobre `getFechaHoraInicio()/getFechaHoraFin()` sin null-check | `calendario/mapper/CalendarioMapper.java:58-63` | La BD garantiza `NOT NULL`, pero objetos transient/tests con inicio null producen NPE en `minusMinutes/plusMinutes` |
@@ -70,10 +75,11 @@ de corrido al insertar usuario).
 - La BD exige `motivo varchar(200) NOT NULL`. Marcar "No disponible" sin motivo → `DataIntegrityViolationException` (500) en vez del 201 esperado.
 - Resuelto rev. 4: entidad con `nullable = false`, request con `@NotBlank` (400 vía `@Valid`), comentarios corregidos. Sin acción pendiente.
 
-### H-02. Default del margen: 60 (código) vs 30 (BD + trigger)
+### H-02. Margen configurable — RESUELTO (rev. 5)
 - `Agenda.java:28` fija 60; `agenda.margen_actividad_min DEFAULT 30` y `fn_crear_agenda ... VALUES (30, ...)`.
 - Consecuencia: el ancho de los bloqueos calculados (`±margen`) depende de cómo se creó la agenda.
 - Acción: unificar en 30 (valor de la BD como fuente de verdad), actualizar `MARGEN_ACTIVIDAD_MINUTOS_DEFECTO`, el fallback del servicio y los tests que esperan 60.
+- **Rev. 5:** resuelto con margen configurable (seed + trigger + `obtenerMargenActividadDefecto()` + default 30 + `margenDe()`). Sin acción pendiente.
 
 ### H-03. Unique `(id_agenda, dia_semana)` — RESUELTO (rev. 3)
 - Verificado rev. 3: la BD declara el índice (exportado de ER/Studio). Cubre la `@UniqueConstraint` de JPA y el sync por diff. Sin acción pendiente.
@@ -100,10 +106,10 @@ de corrido al insertar usuario).
 ## 5. Recomendaciones (plan de adaptación)
 
 1. ~~**Decidir nulabilidad de `motivo`** (H-01)~~ **Hecho rev. 4** (H-01 resuelto: `@NotBlank` + `nullable = false`).
-2. **Unificar default del margen a 30** (H-02): constante, fallback del servicio y tests (`CalendarioControllerTest:78,100`).
+2. ~~**Unificar default del margen a 30** (H-02)~~ **Hecho rev. 5** (margen configurable, default 30).
 3. ~~**Completar constraints en BD** (H-03/H-05)~~ **Hecho en BD rev. 3** (H-03/H-05 resueltos). Resta solo renombrar `PK_jornada_laboral` (H-09, cosmético).
 4. **Agregar `@Min(0)`** a `ConfigJornadaRequest.margenActividadMinutos` + validación explícita en `configurarJornada` (H-06) para devolver 400 en vez de 500.
-5. **Unificar fallback de margen** en `marcarNoDisponible`/`marcarDisponible` con el usado en `obtener` (extraer `margenDe(agenda)` helper) (H-07).
+5. ~~**Unificar fallback de margen**~~ **Hecho rev. 5** vía `margenDe()` (H-07 resuelto).
 6. **Limpieza menor:** renombrar `horario*` → `hora*` o documentar la equivalencia (H-08); usar `per.usuario.idUsuario` en el `@Query` (H-11); guardas null en el mapper (H-10).
 7. **Revalidar arranque** con `ddl-auto=validate` tras los cambios y agregar test de integración que inserte bloqueo sin motivo (según la decisión de H-01) y jornada duplicada (según H-03).
 

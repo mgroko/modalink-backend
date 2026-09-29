@@ -35,12 +35,14 @@ import org.mgroko.backend.repositorio.AgendaRepository;
 import org.mgroko.backend.repositorio.BloqueoAgendaRepository;
 import org.mgroko.backend.repositorio.JornadaAgendaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -65,6 +67,9 @@ class CalendarioServiceTest {
     @Mock
     private ActividadRepository actividadRepository;
 
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
     @InjectMocks
     private CalendarioService calendarioService;
 
@@ -77,6 +82,8 @@ class CalendarioServiceTest {
     private void mockAgenda() {
         Agenda agenda = Agenda.builder().idAgenda(10L).margenActividadMinutos(30).build();
         when(agendaRepository.findByUsuario_IdUsuario(1L)).thenReturn(Optional.of(agenda));
+        // Lenient: solo se usa cuando la agenda no trae margen propio (fallback a config).
+        lenient().when(configuracionSistemaService.obtenerMargenActividadDefecto()).thenReturn(30);
     }
 
     private void mockSinActividades() {
@@ -116,8 +123,8 @@ class CalendarioServiceTest {
         assertEquals(1, response.jornada().dias().size());
         assertEquals(1, response.bloqueosManuales().size());
         assertEquals(1, response.actividades().size());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 0), response.actividades().get(0).fechaHoraInicio());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 13, 0), response.actividades().get(0).fechaHoraFin());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 30), response.actividades().get(0).fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 30), response.actividades().get(0).fechaHoraFin());
     }
 
     @Test
@@ -126,6 +133,25 @@ class CalendarioServiceTest {
         when(agendaRepository.findByUsuario_IdUsuario(1L)).thenReturn(Optional.empty());
 
         assertThrows(AgendaNoEncontradaException.class, () -> calendarioService.obtener(1L));
+    }
+
+    @Test
+    void obtener_agendaSinMargenUsaDefectoConfigurado() {
+        mockUsuarioActivo();
+        Agenda agenda = Agenda.builder().idAgenda(10L).margenActividadMinutos(null).build();
+        when(agendaRepository.findByUsuario_IdUsuario(1L)).thenReturn(Optional.of(agenda));
+        when(configuracionSistemaService.obtenerMargenActividadDefecto()).thenReturn(45);
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L)).thenReturn(List.of());
+        when(bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(10L)).thenReturn(List.of());
+        when(actividadRepository.findActividadesDeUsuario(anyLong(), anyCollection()))
+                .thenReturn(List.of(actividad(
+                        LocalDateTime.of(2026, 9, 10, 10, 0),
+                        LocalDateTime.of(2026, 9, 10, 12, 0))));
+
+        CalendarioResponse response = calendarioService.obtener(1L);
+
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 15), response.actividades().get(0).fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 45), response.actividades().get(0).fechaHoraFin());
     }
 
     // ------------------------------------------------------------------
@@ -158,8 +184,8 @@ class CalendarioServiceTest {
         assertEquals(1L, response.bloqueosManuales().get(0).idBloqueo());
         assertNull(response.bloqueosManuales().get(0).motivo());
         assertEquals(1, response.actividades().size());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 0), response.actividades().get(0).fechaHoraInicio());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 13, 0), response.actividades().get(0).fechaHoraFin());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 30), response.actividades().get(0).fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 30), response.actividades().get(0).fechaHoraFin());
     }
 
     @Test
@@ -485,7 +511,7 @@ class CalendarioServiceTest {
         assertThrows(HorarioComprometidoException.class,
                 () -> calendarioService.marcarNoDisponible(1L, new MarcarNoDisponibleRequest(
                         LocalDateTime.of(2026, 9, 15, 8, 30),
-                        LocalDateTime.of(2026, 9, 15, 9, 30), null)));
+                        LocalDateTime.of(2026, 9, 15, 9, 31), null)));
 
         verify(bloqueoAgendaRepository, never()).save(any());
     }

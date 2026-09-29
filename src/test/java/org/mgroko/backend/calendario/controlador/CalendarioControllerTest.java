@@ -56,7 +56,7 @@ class CalendarioControllerTest {
     private CalendarioService calendarioService;
 
     private static final CalendarioResponse CALENDARIO = new CalendarioResponse(
-            new ConfigJornadaResponse(60, List.of(
+            new ConfigJornadaResponse(30, List.of(
                     new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))),
             List.of(new BloqueoResponse(1L,
                     LocalDateTime.of(2026, 9, 15, 10, 0),
@@ -75,7 +75,7 @@ class CalendarioControllerTest {
 
         mockMvc.perform(get("/calendario").principal(auth()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(60))
+                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(30))
                 .andExpect(jsonPath("$.jornada.dias[0].diaSemana").value(1))
                 .andExpect(jsonPath("$.bloqueosManuales[0].idBloqueo").value(1))
                 .andExpect(jsonPath("$.actividades[0].nombre").value("Sesión"));
@@ -84,7 +84,7 @@ class CalendarioControllerTest {
     @Test
     void obtenerPorPerfil_devuelve200ConCuerpo() throws Exception {
         CalendarioResponse calendarioPublico = new CalendarioResponse(
-                new ConfigJornadaResponse(60, List.of(
+                new ConfigJornadaResponse(30, List.of(
                         new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))),
                 List.of(new BloqueoResponse(1L,
                         LocalDateTime.of(2026, 9, 15, 10, 0),
@@ -97,7 +97,7 @@ class CalendarioControllerTest {
 
         mockMvc.perform(get("/calendario/perfil/2").principal(auth()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(60))
+                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(30))
                 .andExpect(jsonPath("$.jornada.dias[0].diaSemana").value(1))
                 .andExpect(jsonPath("$.bloqueosManuales[0].idBloqueo").value(1))
                 .andExpect(jsonPath("$.bloqueosManuales[0].motivo").doesNotExist())
@@ -111,7 +111,7 @@ class CalendarioControllerTest {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
-                .thenReturn(new ConfigJornadaResponse(60, List.of(
+                .thenReturn(new ConfigJornadaResponse(30, List.of(
                         new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
 
         mockMvc.perform(put("/calendario/jornada")
@@ -131,7 +131,7 @@ class CalendarioControllerTest {
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
                         LocalTime.of(15, 0), LocalTime.of(19, 0))));
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
-                .thenReturn(new ConfigJornadaResponse(60, List.of(
+                .thenReturn(new ConfigJornadaResponse(30, List.of(
                         new JornadaDiaResponse(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
                                 LocalTime.of(15, 0), LocalTime.of(19, 0)))));
 

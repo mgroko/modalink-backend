@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
 import org.mgroko.backend.calendario.dto.CalendarioResponse;
 import org.mgroko.backend.calendario.dto.ConfigJornadaRequest;
@@ -55,18 +56,21 @@ public class CalendarioService {
     private final JornadaAgendaRepository jornadaAgendaRepository;
     private final BloqueoAgendaRepository bloqueoAgendaRepository;
     private final ActividadRepository actividadRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     public CalendarioService(
             UsuarioRepository usuarioRepository,
             AgendaRepository agendaRepository,
             JornadaAgendaRepository jornadaAgendaRepository,
             BloqueoAgendaRepository bloqueoAgendaRepository,
-            ActividadRepository actividadRepository) {
+            ActividadRepository actividadRepository,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.agendaRepository = agendaRepository;
         this.jornadaAgendaRepository = jornadaAgendaRepository;
         this.bloqueoAgendaRepository = bloqueoAgendaRepository;
         this.actividadRepository = actividadRepository;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     /**
@@ -82,9 +86,7 @@ public class CalendarioService {
         List<BloqueoAgenda> bloqueos =
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
-        int margen = agenda.getMargenActividadMinutos() != null
-        ? agenda.getMargenActividadMinutos()
-        : Agenda.MARGEN_ACTIVIDAD_MINUTOS_DEFECTO;
+        int margen = margenDe(agenda);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
@@ -108,9 +110,7 @@ public class CalendarioService {
         List<BloqueoAgenda> bloqueos =
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
-        int margen = agenda.getMargenActividadMinutos() != null
-                ? agenda.getMargenActividadMinutos()
-                : Agenda.MARGEN_ACTIVIDAD_MINUTOS_DEFECTO;
+        int margen = margenDe(agenda);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
@@ -179,7 +179,7 @@ public class CalendarioService {
         validarRango(request.fechaHoraInicio(), request.fechaHoraFin());
         Agenda agenda = agendaDe(idUsuario);
 
-        if (solapaActividad(idUsuario, request.fechaHoraInicio(), request.fechaHoraFin(), agenda.getMargenActividadMinutos())) {
+        if (solapaActividad(idUsuario, request.fechaHoraInicio(), request.fechaHoraFin(), margenDe(agenda))) {
             throw new HorarioComprometidoException(
                     "El periodo ya se encuentra bloqueado automáticamente por una actividad de un proyecto activo.");
         }
@@ -213,7 +213,7 @@ public class CalendarioService {
                 .orElseThrow(() -> new BloqueoNoEncontradoException(
                         "El bloqueo no existe o no pertenece a tu calendario."));
 
-        if (solapaActividad(idUsuario, bloqueo.getFechaHoraInicio(), bloqueo.getFechaHoraFin(), agenda.getMargenActividadMinutos())) {
+        if (solapaActividad(idUsuario, bloqueo.getFechaHoraInicio(), bloqueo.getFechaHoraFin(), margenDe(agenda))) {
             throw new HorarioComprometidoException(
                     "No se puede marcar como disponible un horario comprometido con una actividad de un proyecto activo.");
         }
@@ -296,6 +296,19 @@ public class CalendarioService {
         return agendaRepository.findByUsuario_IdUsuario(idUsuario)
                 .orElseThrow(() -> new AgendaNoEncontradaException(
                         "No se encontró la agenda del usuario."));
+    }
+
+    /**
+     * Margen efectivo de la agenda en minutos: el valor propio si está
+     * informado, o el default configurable de
+     * {@code configuracion_sistema} (clave {@code AGENDA_MARGEN_ACTIVIDAD_MIN}).
+     * Nunca retorna null (resuelve también el unboxing de H-07).
+     */
+    private int margenDe(Agenda agenda) {
+        if (agenda.getMargenActividadMinutos() != null) {
+            return agenda.getMargenActividadMinutos();
+        }
+        return configuracionSistemaService.obtenerMargenActividadDefecto();
     }
 
     private Usuario usuarioActivo(Long idUsuario) {
