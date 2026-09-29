@@ -1625,10 +1625,29 @@ CREATE TRIGGER trg_usuario_dni_no_negativo
 
 CREATE OR REPLACE FUNCTION fn_crear_agenda() RETURNS trigger AS $$
 DECLARE
-    v_id_agenda BIGINT;
+     v_id_agenda BIGINT;
+    v_margen INT := 30;
+    v_valor VARCHAR;
 BEGIN
+    -- Margen en config del sistema. Si no es valido, se utiliza por defecto 30
+    SELECT valor INTO v_valor
+    FROM configuracion_sistema
+    WHERE clave = 'AGENDA_MARGEN_ACTIVIDAD_MIN';
+
+
+    IF v_valor IS NOT NULL THEN
+        BEGIN
+            v_margen := v_valor::INT;
+        EXCEPTION WHEN invalid_text_representation THEN
+            v_margen := 30;
+        END;
+        IF v_margen < 0 THEN
+            v_margen := 30;
+        END IF;
+    END IF;
+
     INSERT INTO agenda (margen_actividad_min, id_usuario)
-    VALUES (30, NEW.id_usuario)
+    VALUES (v_margen, NEW.id_usuario)
     RETURNING id_agenda INTO v_id_agenda;
 
     -- Lunes (1) a Viernes (5), jornada corrida estandar 09:00 a 18:00
@@ -2567,7 +2586,8 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('SCHEDULER_DESHABILITACION_HORA',   '2',           'Hora del dia (0-23) en la que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios'),
-    ('CATALOGO_GEOREF_PAIS_ISO',        'AR',          'Codigo ISO del pais para georeferenciacion de ubicaciones con API Georef')
+    ('CATALOGO_GEOREF_PAIS_ISO',        'AR',          'Codigo ISO del pais para georeferenciacion de ubicaciones con API Georef'),
+    ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen en minutos aplicado a cada lado de las actividades del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen')
 
 ON CONFLICT (clave) DO UPDATE 
     SET valor       = EXCLUDED.valor,
