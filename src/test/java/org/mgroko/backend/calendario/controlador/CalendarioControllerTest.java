@@ -206,6 +206,21 @@ class CalendarioControllerTest {
     }
 
     @Test
+    void marcarNoDisponible_motivoNulo_devuelve400() throws Exception {
+        MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
+                LocalDateTime.of(2026, 9, 15, 10, 0),
+                LocalDateTime.of(2026, 9, 15, 14, 0), null);
+
+        mockMvc.perform(post("/calendario/bloqueos")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(calendarioService, never()).marcarNoDisponible(anyLong(), any());
+    }
+
+    @Test
     void marcarNoDisponible_solapaActividad_devuelve409() throws Exception {
         MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
                 LocalDateTime.of(2026, 9, 15, 10, 0),

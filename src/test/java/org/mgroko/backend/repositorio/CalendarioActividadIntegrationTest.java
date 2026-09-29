@@ -165,7 +165,8 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
 
     private BloqueoAgenda guardarBloqueo(Agenda agenda, LocalDateTime inicio, LocalDateTime fin) {
         return bloqueoAgendaRepository.saveAndFlush(BloqueoAgenda.builder()
-                .agenda(agenda).fechaHoraInicio(inicio).fechaHoraFin(fin).build());
+                .agenda(agenda).fechaHoraInicio(inicio).fechaHoraFin(fin)
+                .motivo("Bloqueo de prueba").build());
     }
 
     // ------------------------------------------------------------------

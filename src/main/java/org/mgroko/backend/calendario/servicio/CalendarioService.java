@@ -170,7 +170,7 @@ public class CalendarioService {
 
     /**
      * Marca un bloque de tiempo como "No disponible" (UC-18). El motivo es
-     * opcional. No permite superponerse con otro bloqueo manual ni con un
+     * obligatorio (NOT NULL en BD). No permite superponerse con otro bloqueo manual ni con un
      * horario comprometido por una actividad de un proyecto activo.
      */
     @Transactional
