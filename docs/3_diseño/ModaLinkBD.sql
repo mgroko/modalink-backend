@@ -749,7 +749,7 @@ CREATE TABLE jornada_agenda(
     CONSTRAINT chk_jornada_rango_tarde CHECK (hora_inicio_tarde IS NULL OR hora_fin_tarde > hora_inicio_tarde),
     CONSTRAINT chk_jornada_rango_total CHECK (hora_fin_tarde > hora_inicio_manana),
     CONSTRAINT chk_jornada_dia_semana CHECK (dia_semana BETWEEN 1 AND 7),
-    CONSTRAINT "PK_jornada_laboral" PRIMARY KEY (id_jornada)
+    CONSTRAINT "PK_jornada_agenda" PRIMARY KEY (id_jornada)
 )
 ;
 
