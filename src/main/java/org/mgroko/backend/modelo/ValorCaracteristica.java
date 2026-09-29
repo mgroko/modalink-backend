@@ -8,12 +8,11 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ValorCaracteristica {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_valor")
-    private Long idValor;
+    @EmbeddedId
+    private ValorCaracteristicaId id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("idCaracteristica")
     @JoinColumn(name = "id_caracteristica", nullable = false)
     private CaracteristicaTecnica caracteristicaTecnica;
 
@@ -23,18 +22,10 @@ public class ValorCaracteristica {
     @Column(name = "color_hex", length = 7)
     private String colorHex;
 
-    public String getCodigo() {
-        return etiqueta;
-    }
-
-    public void setCodigo(String codigo) {
-        this.etiqueta = codigo;
-    }
-
-    public static class ValorCaracteristicaBuilder {
-        public ValorCaracteristicaBuilder codigo(String codigo) {
-            this.etiqueta = codigo;
-            return this;
-        }
+    /**
+     * Accessor de conveniencia para obtener idValor sin navegar por el EmbeddedId.
+     */
+    public Long getIdValor() {
+        return id != null ? id.getIdValor() : null;
     }
 }

@@ -12,12 +12,15 @@ import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException
 import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
+import org.mgroko.backend.admin.exception.UnidadMedidaNoEncontradaException;
 import org.mgroko.backend.admin.exception.ValorCaracteristicaAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.ValorCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.ValorEnUsoException;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.UnidadMedida;
 import org.mgroko.backend.modelo.ValorCaracteristica;
+import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.mapper.CaracteristicaTecnicaMapper;
@@ -26,6 +29,7 @@ import org.mgroko.backend.perfiles.dto.ValorCaracteristicaResponse;
 import org.mgroko.backend.repositorio.CaracteristicaPerfilRepository;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.ProfesionRepository;
+import org.mgroko.backend.repositorio.UnidadMedidaRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,15 +46,18 @@ public class AdminCaracteristicaTecnicaService {
     private final ValorCaracteristicaRepository valorCaracteristicaRepository;
     private final CaracteristicaPerfilRepository caracteristicaPerfilRepository;
     private final ProfesionRepository profesionRepository;
+    private final UnidadMedidaRepository unidadMedidaRepository;
 
     public AdminCaracteristicaTecnicaService(CaracteristicaTecnicaRepository caracteristicaTecnicaRepository,
             ValorCaracteristicaRepository valorCaracteristicaRepository,
             CaracteristicaPerfilRepository caracteristicaPerfilRepository,
-            ProfesionRepository profesionRepository) {
+            ProfesionRepository profesionRepository,
+            UnidadMedidaRepository unidadMedidaRepository) {
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.valorCaracteristicaRepository = valorCaracteristicaRepository;
         this.caracteristicaPerfilRepository = caracteristicaPerfilRepository;
         this.profesionRepository = profesionRepository;
+        this.unidadMedidaRepository = unidadMedidaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -77,9 +84,14 @@ public class AdminCaracteristicaTecnicaService {
                             + " no admite valores de catálogo (valores).");
         }
 
+        UnidadMedida unidad = resolverYValidarUnidad(request.idUnidad(), request.tipoDato());
+
+        String nombre = request.nombre() != null ? request.nombre().trim() : null;
+
         CaracteristicaTecnica caracteristica = CaracteristicaTecnica.builder()
                 .codigo(request.codigo().trim().toUpperCase(Locale.ROOT))
-                .unidad(request.unidad() != null ? request.unidad().trim() : null)
+                .nombre(nombre)
+                .unidadMedida(unidad)
                 .tipoDato(request.tipoDato())
                 .profesion(profesion)
                 .valores(new ArrayList<>())
@@ -122,8 +134,11 @@ public class AdminCaracteristicaTecnicaService {
                     "La característica " + request.tipoDato() + " no admite valores de catálogo (valores).");
         }
 
+        UnidadMedida unidad = resolverYValidarUnidad(request.idUnidad(), request.tipoDato());
+
         caracteristica.setCodigo(codigo);
-        caracteristica.setUnidad(request.unidad() != null ? request.unidad().trim() : null);
+        caracteristica.setNombre(request.nombre() != null ? request.nombre().trim() : null);
+        caracteristica.setUnidadMedida(unidad);
         caracteristica.setTipoDato(request.tipoDato());
         caracteristica.setProfesion(profesion);
 
@@ -151,65 +166,87 @@ public class AdminCaracteristicaTecnicaService {
             throw new TipoDatoInvalidoException(
                     "Solo las características de tipo ENUMERADO admiten valores de catálogo.");
         }
-        String codigo = request.codigo().trim().toUpperCase(Locale.ROOT);
-        if (valorCaracteristicaRepository.existsByCaracteristicaTecnicaIdCaracteristicaAndCodigo(
-                idCaracteristica, codigo)) {
+        String etiqueta = request.codigo().trim().toUpperCase(Locale.ROOT);
+        if (valorCaracteristicaRepository.existsByCaracteristicaTecnica_IdCaracteristicaAndEtiqueta(
+                idCaracteristica, etiqueta)) {
             throw new ValorCodigoDuplicadoException(
-                    "La característica ya posee un valor con el código " + codigo + ".");
+                    "La característica ya posee un valor con el código " + etiqueta + ".");
         }
 
         ValorCaracteristica valor = ValorCaracteristica.builder()
+                .id(new ValorCaracteristicaId(null, idCaracteristica))
                 .caracteristicaTecnica(caracteristica)
-                .codigo(codigo)
+                .etiqueta(etiqueta)
                 .colorHex(request.colorHex())
                 .build();
         return ValorCaracteristicaMapper.toResponse(valorCaracteristicaRepository.save(valor));
     }
 
     @Transactional
-    public ValorCaracteristicaResponse actualizarValor(Long idValor,
+    public ValorCaracteristicaResponse actualizarValor(Long idCaracteristica,
+                                                       Long idValor,
                                                        AdminValorCaracteristicaRequest request) {
-        ValorCaracteristica valor = valorCaracteristicaRepository.findById(idValor)
+        ValorCaracteristicaId id = new ValorCaracteristicaId(idValor, idCaracteristica);
+        ValorCaracteristica valor = valorCaracteristicaRepository.findById(id)
                 .orElseThrow(() -> new ValorCaracteristicaAdminNoEncontradoException(
                         "Valor de característica no encontrado: " + idValor));
-        Long idCaracteristica = valor.getCaracteristicaTecnica().getIdCaracteristica();
-        String codigo = request.codigo().trim();
-        if (!codigo.equals(valor.getCodigo())
-                && valorCaracteristicaRepository.existsByCaracteristicaTecnicaIdCaracteristicaAndCodigo(
-                        idCaracteristica, codigo)) {
+        String etiqueta = request.codigo().trim();
+        if (!etiqueta.equals(valor.getEtiqueta())
+                && valorCaracteristicaRepository.existsByCaracteristicaTecnica_IdCaracteristicaAndEtiqueta(
+                        idCaracteristica, etiqueta)) {
             throw new ValorCodigoDuplicadoException(
-                    "La característica ya posee un valor con el código " + codigo + ".");
+                    "La característica ya posee un valor con el código " + etiqueta + ".");
         }
 
-        valor.setCodigo(codigo);
+        valor.setEtiqueta(etiqueta);
         valor.setColorHex(request.colorHex());
         return ValorCaracteristicaMapper.toResponse(valorCaracteristicaRepository.save(valor));
     }
 
     @Transactional
-    public void eliminarValor(Long idValor) {
-        ValorCaracteristica valor = valorCaracteristicaRepository.findById(idValor)
+    public void eliminarValor(Long idCaracteristica, Long idValor) {
+        ValorCaracteristicaId id = new ValorCaracteristicaId(idValor, idCaracteristica);
+        ValorCaracteristica valor = valorCaracteristicaRepository.findById(id)
                 .orElseThrow(() -> new ValorCaracteristicaAdminNoEncontradoException(
                         "Valor de característica no encontrado: " + idValor));
-        if (caracteristicaPerfilRepository.existsByValorCaracteristicaIdValor(idValor)) {
+        if (caracteristicaPerfilRepository.existsByValorCaracteristica_Id_IdValor(idValor)) {
             throw new ValorEnUsoException(
                     "El valor está en uso por perfiles y no puede eliminarse.");
         }
         valorCaracteristicaRepository.delete(valor);
     }
 
+    private UnidadMedida resolverYValidarUnidad(Long idUnidad, String tipoDato) {
+        if (idUnidad == null) {
+            return null;
+        }
+        UnidadMedida unidad = unidadMedidaRepository.findById(idUnidad)
+                .orElseThrow(() -> new UnidadMedidaNoEncontradaException(
+                        "Unidad de medida no encontrada: " + idUnidad));
+
+        if (unidad.getTipoDatoPermitido() != null
+                && !unidad.getTipoDatoPermitido().equalsIgnoreCase(tipoDato)) {
+            throw new TipoDatoInvalidoException(
+                    "La unidad de medida " + unidad.getSimbolo()
+                            + " solo está permitida para características de tipo "
+                            + unidad.getTipoDatoPermitido() + ".");
+        }
+        return unidad;
+    }
+
     private void agregarValoresIniciales(CaracteristicaTecnica caracteristica,
                                          List<AdminValorCaracteristicaRequest> valores) {
         Set<String> vistos = new HashSet<>();
         for (AdminValorCaracteristicaRequest v : valores) {
-            String codigo = v.codigo().trim();
-            if (!vistos.add(codigo)) {
+            String etiqueta = v.codigo().trim();
+            if (!vistos.add(etiqueta)) {
                 throw new ValorCodigoDuplicadoException(
-                        "Valor de catálogo duplicado en la solicitud: " + codigo + ".");
+                        "Valor de catálogo duplicado en la solicitud: " + etiqueta + ".");
             }
             valorCaracteristicaRepository.save(ValorCaracteristica.builder()
+                    .id(new ValorCaracteristicaId(null, caracteristica.getIdCaracteristica()))
                     .caracteristicaTecnica(caracteristica)
-                    .codigo(codigo)
+                    .etiqueta(etiqueta)
                     .colorHex(v.colorHex())
                     .build());
         }

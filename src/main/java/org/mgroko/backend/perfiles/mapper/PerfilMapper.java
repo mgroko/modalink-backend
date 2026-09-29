@@ -118,7 +118,7 @@ public class PerfilMapper {
                 cp.getCaracteristicaTecnica().getCodigo(),
                 cp.getValor(),
                 valor != null ? valor.getIdValor() : null,
-                valor != null ? valor.getCodigo() : null,
+                valor != null ? valor.getEtiqueta() : null,
                 valor != null ? valor.getColorHex() : null);
     }
 }

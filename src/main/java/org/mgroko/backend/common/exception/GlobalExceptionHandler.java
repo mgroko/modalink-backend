@@ -11,6 +11,7 @@ import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaExcep
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
+import org.mgroko.backend.admin.exception.UnidadMedidaNoEncontradaException;
 import org.mgroko.backend.admin.exception.ValorCaracteristicaAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.ValorCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.ValorEnUsoException;
@@ -334,6 +335,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CaracteristicaTecnicaNoEncontradaException.class)
     public ResponseEntity<Map<String, Object>> handleCaracteristicaTecnicaNoEncontrada(
             CaracteristicaTecnicaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(UnidadMedidaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleUnidadMedidaNoEncontrada(
+            UnidadMedidaNoEncontradaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 

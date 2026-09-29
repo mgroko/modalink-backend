@@ -40,45 +40,4 @@ public class CaracteristicaTecnica {
     @Builder.Default
     @OneToMany(mappedBy = "caracteristicaTecnica", fetch = FetchType.LAZY)
     private List<ValorCaracteristica> valores = new ArrayList<>();
-
-    public String getUnidad() {
-        return unidadMedida != null ? unidadMedida.getSimbolo() : null;
-    }
-
-    public void setUnidad(String unidad) {
-        if (unidad == null) {
-            this.unidadMedida = null;
-        } else {
-            if (this.unidadMedida == null) {
-                this.unidadMedida = UnidadMedida.builder().simbolo(unidad).build();
-            } else {
-                this.unidadMedida.setSimbolo(unidad);
-            }
-        }
-    }
-
-    public static class CaracteristicaTecnicaBuilder {
-        private String unidadTemp;
-
-        public CaracteristicaTecnicaBuilder unidad(String unidad) {
-            this.unidadTemp = unidad;
-            if (unidad != null) {
-                this.unidadMedida = UnidadMedida.builder().simbolo(unidad).build();
-            }
-            return this;
-        }
-
-        public CaracteristicaTecnica build() {
-            CaracteristicaTecnica c = new CaracteristicaTecnica(
-                    this.idCaracteristica,
-                    this.codigo,
-                    this.nombre,
-                    this.tipoDato,
-                    this.profesion,
-                    this.unidadMedida != null ? this.unidadMedida : (this.unidadTemp != null ? UnidadMedida.builder().simbolo(this.unidadTemp).build() : null),
-                    this.valores$value != null ? this.valores$value : new ArrayList<>()
-            );
-            return c;
-        }
-    }
 }

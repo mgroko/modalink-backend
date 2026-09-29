@@ -8,12 +8,12 @@ import java.util.Set;
 
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
-import org.mgroko.backend.modelo.CaracteristicaPerfilId;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.ValorCaracteristica;
+import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
@@ -124,7 +124,6 @@ public class CrearPerfilService {
             }
 
             CaracteristicaPerfil.CaracteristicaPerfilBuilder builder = CaracteristicaPerfil.builder()
-                    .id(new CaracteristicaPerfilId(null, ct.getIdCaracteristica()))
                     .perfil(perfil)
                     .caracteristicaTecnica(ct)
                     .fechaRegistro(LocalDateTime.now());
@@ -135,7 +134,8 @@ public class CrearPerfilService {
                             "Para la característica " + ct.getCodigo()
                                     + " (ENUMERADO) debe enviarse idValor.");
                 }
-                ValorCaracteristica vc = valorCaracteristicaRepository.findById(car.idValor())
+                ValorCaracteristicaId valorId = new ValorCaracteristicaId(car.idValor(), ct.getIdCaracteristica());
+                ValorCaracteristica vc = valorCaracteristicaRepository.findById(valorId)
                         .orElseThrow(() -> new ValorCaracteristicaNoEncontradoException(
                                 "Valor de característica no encontrado: " + car.idValor()));
                 if (!vc.getCaracteristicaTecnica().getIdCaracteristica().equals(ct.getIdCaracteristica())) {
