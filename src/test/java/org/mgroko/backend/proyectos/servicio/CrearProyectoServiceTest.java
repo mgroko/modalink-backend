@@ -109,7 +109,7 @@ class CrearProyectoServiceTest {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
         when(proyectoRepository.existeProyectoConNombreParaPerfil("Desfile 2026", 10L, "Director", EstadoParticipacion.Activo))
                 .thenReturn(false);
-        when(rolProyectoRepository.findByNombre("Director")).thenReturn(Optional.of(rolDirector));
+        when(rolProyectoRepository.findByNombre("Director", "Director")).thenReturn(Optional.of(rolDirector));
 
         Ubicacion ubicacion = Ubicacion.builder()
                 .idUbicacion(50L)

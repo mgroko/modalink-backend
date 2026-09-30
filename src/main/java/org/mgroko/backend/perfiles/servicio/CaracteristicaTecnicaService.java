@@ -2,6 +2,7 @@ package org.mgroko.backend.perfiles.servicio;
 
 import java.util.List;
 
+import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.mapper.CaracteristicaTecnicaMapper;
@@ -28,12 +29,9 @@ public class CaracteristicaTecnicaService {
                 .orElseThrow(() -> new ProfesionNoEncontradaException(
                         "Profesión no encontrada: " + idProfesion));
 
-        return caracteristicaTecnicaRepository.buscar(patron(codigo), patron(unidad), idProfesion).stream()
+        return caracteristicaTecnicaRepository.buscar(
+                LikePatrones.contiene(codigo), LikePatrones.contiene(unidad), idProfesion).stream()
                 .map(CaracteristicaTecnicaMapper::toResponse)
                 .toList();
-    }
-
-    private String patron(String valor) {
-        return (valor == null || valor.isBlank()) ? "%" : "%" + valor.trim().toLowerCase() + "%";
     }
 }

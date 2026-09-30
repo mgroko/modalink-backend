@@ -14,7 +14,8 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
      * El filtro por profesión es opcional (null = sin filtro) y se combina con AND.
      * La búsqueda por texto no distingue mayúsculas: {@code patronCodigo} y
      * {@code patronUnidad} deben ser patrones {@code LIKE} ya formados y en
-     * minúsculas (ej. {@code "%altura%"}); usar {@code "%"} para no filtrar.
+     * minúsculas con los caracteres especiales escapados (ver
+     * {@code LikePatrones}); usar {@code "%"} para no filtrar.
      *
      * @param patronCodigo  patrón LIKE en minúsculas para el código (o "%")
      * @param patronUnidad  patrón LIKE en minúsculas para la unidad (o "%")
@@ -23,8 +24,8 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
      */
     @Query("""
             SELECT c FROM CaracteristicaTecnica c
-            WHERE (:patronCodigo = '%' OR c.codigo ILIKE :patronCodigo)
-              AND (:patronUnidad = '%' OR (c.unidadMedida IS NOT NULL AND c.unidadMedida.simbolo ILIKE :patronUnidad))
+            WHERE (:patronCodigo = '%' OR c.codigo ILIKE :patronCodigo ESCAPE '\\')
+              AND (:patronUnidad = '%' OR (c.unidadMedida IS NOT NULL AND c.unidadMedida.simbolo ILIKE :patronUnidad ESCAPE '\\'))
               AND (:idProfesion IS NULL OR c.profesion.idProfesion = :idProfesion)
             ORDER BY c.codigo
             """)

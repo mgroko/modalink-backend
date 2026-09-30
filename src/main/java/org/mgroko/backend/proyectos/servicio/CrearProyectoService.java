@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
@@ -96,7 +97,8 @@ public class CrearProyectoService {
         }
 
         // 4. Buscar rol Director
-        RolProyecto rolDirector = rolProyectoRepository.findByNombre(ROL_DIRECTOR)
+        RolProyecto rolDirector = rolProyectoRepository
+                .findByNombre(LikePatrones.escapar(ROL_DIRECTOR), ROL_DIRECTOR)
                 .orElseThrow(() -> new RolProyectoNoEncontradoException(ROL_DIRECTOR));
 
         // 5. Resolver ubicación opcional
