@@ -69,6 +69,7 @@ class AdminCaracteristicaTecnicaServiceTest {
     void setUp() {
         profesion = Profesion.builder()
                 .idProfesion(1L)
+                .codigo("MODELO")
                 .nombre("modelo")
                 .descripcion("Profesión modelo")
                 .build();

@@ -78,7 +78,7 @@ class CrearPerfilServiceTest {
     }
 
     private Profesion profesionModelo() {
-        return Profesion.builder().idProfesion(2L).nombre("modelo").build();
+        return Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
     }
 
     private CaracteristicaTecnica caracteristicaAltura(Profesion profesion) {
@@ -325,7 +325,7 @@ class CrearPerfilServiceTest {
         when(perfilRepository.existsByUsuarioIdUsuarioAndProfesionIdProfesionAndEstadoNot(
                 anyLong(), anyLong(), any(EstadoPerfil.class))).thenReturn(false);
 
-        Profesion otraProfesion = Profesion.builder().idProfesion(3L).nombre("fotografo").build();
+        Profesion otraProfesion = Profesion.builder().idProfesion(3L).codigo("FOTOGRAFO").nombre("fotografo").build();
         when(caracteristicaTecnicaRepository.findById(11L))
                 .thenReturn(Optional.of(caracteristicaAltura(otraProfesion)));
 

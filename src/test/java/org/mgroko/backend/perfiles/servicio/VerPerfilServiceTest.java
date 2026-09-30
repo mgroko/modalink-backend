@@ -76,6 +76,7 @@ class VerPerfilServiceTest {
 
         profesion = Profesion.builder()
                 .idProfesion(10L)
+                .codigo("MODELO")
                 .nombre("Modelo")
                 .build();
 

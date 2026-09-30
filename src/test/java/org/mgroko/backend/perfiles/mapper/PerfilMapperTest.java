@@ -17,7 +17,7 @@ class PerfilMapperTest {
 
     @Test
     void toResponse_remapeaCamposCompletos() {
-        Profesion profesion = Profesion.builder().idProfesion(2L).nombre("modelo").build();
+        Profesion profesion = Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
 
         CaracteristicaTecnica altura = CaracteristicaTecnica.builder()
                 .idCaracteristica(11L).codigo("altura").profesion(profesion).build();
@@ -65,7 +65,7 @@ class PerfilMapperTest {
 
     @Test
     void toResponse_sinCaracteristicas_devuelveListaVacia() {
-        Profesion profesion = Profesion.builder().idProfesion(2L).nombre("modelo").build();
+        Profesion profesion = Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
 
         Perfil perfil = Perfil.builder()
                 .idPerfil(6L)

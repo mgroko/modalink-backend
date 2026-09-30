@@ -51,7 +51,7 @@ class ReactivarPerfilServiceTest {
                 .biografia("Modelo profesional.")
                 .estado(EstadoPerfil.PendienteBaja)
                 .fechaSolicitudBaja(LocalDateTime.now().minusDays(1))
-                .profesion(Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                .profesion(Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
                 .build();
     }
 

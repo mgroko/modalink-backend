@@ -54,7 +54,7 @@ class EliminarPerfilServiceTest {
                 .nombreArtistico("Luna")
                 .biografia("Modelo profesional.")
                 .estado(EstadoPerfil.Activo)
-                .profesion(Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                .profesion(Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
                 .build();
     }
 

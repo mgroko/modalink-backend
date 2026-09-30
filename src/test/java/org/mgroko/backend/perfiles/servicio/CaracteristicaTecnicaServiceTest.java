@@ -38,7 +38,7 @@ class CaracteristicaTecnicaServiceTest {
     private CaracteristicaTecnicaService caracteristicaTecnicaService;
 
     private Profesion profesionModelo() {
-        return Profesion.builder().idProfesion(2L).nombre("modelo").build();
+        return Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
     }
 
     private CaracteristicaTecnica caracteristicaAltura() {

@@ -13,7 +13,7 @@ class CaracteristicaTecnicaMapperTest {
 
     @Test
     void toResponse_profesionPresente_remapeaCamposConProfesion() {
-        Profesion profesion = Profesion.builder().idProfesion(2L).nombre("modelo").build();
+        Profesion profesion = Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
         UnidadMedida unidad = UnidadMedida.builder()
                 .idUnidad(1L)
                 .nombre("Centímetro")

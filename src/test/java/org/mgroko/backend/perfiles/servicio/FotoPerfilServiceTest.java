@@ -68,6 +68,7 @@ class FotoPerfilServiceTest {
 
         Profesion profesion = Profesion.builder()
                 .idProfesion(10L)
+                .codigo("DISENIADOR_MODA")
                 .nombre("Diseñador")
                 .build();
 

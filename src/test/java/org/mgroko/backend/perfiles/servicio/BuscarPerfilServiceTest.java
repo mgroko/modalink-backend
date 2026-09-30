@@ -61,7 +61,7 @@ class BuscarPerfilServiceTest {
                 .genero(genero)
                 .ubicacion(ubicacion)
                 .build();
-        Profesion profesion = Profesion.builder().idProfesion(1L).nombre("Fotografo").build();
+        Profesion profesion = Profesion.builder().idProfesion(1L).codigo("FOTOGRAFO").nombre("Fotografo").build();
 
         return Perfil.builder()
                 .idPerfil(id)

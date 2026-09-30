@@ -410,7 +410,7 @@ class PerfilControllerTest {
                         .nombreArtistico("Luna")
                         .biografia("Modelo profesional.")
                         .estado(org.mgroko.backend.modelo.enums.EstadoPerfil.Activo)
-                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
                         .build());
 
         mockMvc.perform(post("/perfiles/10/reactivar")
