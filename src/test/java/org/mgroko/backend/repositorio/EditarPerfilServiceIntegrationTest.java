@@ -78,7 +78,7 @@ class EditarPerfilServiceIntegrationTest extends AbstractPostgresIntegrationTest
     }
 
     private Long idProfesionModelo() {
-        return profesionRepository.buscar("%modelo%").get(0).getIdProfesion();
+        return profesionRepository.buscar("%modelo%", "modelo").get(0).getIdProfesion();
     }
 
     private long idCaracteristica(Long idProfesion, String codigo) {

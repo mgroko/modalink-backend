@@ -34,7 +34,7 @@ class GeneroRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
         Optional<Genero> resultado = generoRepository.findByCodigo(codigo);
 
         assertTrue(resultado.isPresent());
-        assertEquals(codigo, resultado.get().getCodigo());
+        assertEquals(codigo.toUpperCase(), resultado.get().getCodigo());
     }
 
     @Test
@@ -45,10 +45,11 @@ class GeneroRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
-    void findByCodigo_esCaseSensitive() {
+    void findByCodigo_esCaseInsensitive() {
 
         Optional<Genero> resultado = generoRepository.findByCodigo("MUJER");
 
-        assertTrue(resultado.isEmpty());
+        assertTrue(resultado.isPresent());
+        assertEquals("MUJER", resultado.get().getCodigo());
     }
 }

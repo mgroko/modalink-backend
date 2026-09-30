@@ -25,7 +25,7 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
     private ProfesionRepository profesionRepository;
 
     private Long idProfesionModelo() {
-        return profesionRepository.buscar("%modelo%").get(0).getIdProfesion();
+        return profesionRepository.buscar("%modelo%", "modelo").get(0).getIdProfesion();
     }
 
     @Test
@@ -52,10 +52,11 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
     }
 
     @Test
-    void buscar_porUnidad_color_devuelveTres() {
+    void buscar_porUnidad_colorSinUnidadSembrada_devuelveVacio() {
+        // Por diseño las ENUMERADO tienen id_unidad NULL: ningún filtro de unidad las matchea.
         List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%", "%color%", null);
 
-        assertEquals(3, resultado.size());
+        assertEquals(0, resultado.size());
     }
 
     @Test

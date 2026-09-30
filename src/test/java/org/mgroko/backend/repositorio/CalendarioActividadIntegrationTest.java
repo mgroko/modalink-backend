@@ -100,7 +100,7 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
      */
     private Actividad crearCadenaActividad(Usuario usuario, EstadoProyecto estado,
                                            LocalDateTime actInicio, int duracionMin) {
-        Profesion profesion = Profesion.builder().nombre("ProfTestCalendario").build();
+        Profesion profesion = Profesion.builder().codigo("PROF_TEST").nombre("ProfTestCalendario").build();
         em.persist(profesion);
 
         Perfil perfil = Perfil.builder()
