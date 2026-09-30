@@ -385,8 +385,10 @@ CREATE TABLE caracteristica_tecnica(
     id_profesion         int8            NOT NULL,
     id_unidad            int8,
     CONSTRAINT chk_codigo_mayus CHECK (codigo = UPPER(codigo)),
+    CONSTRAINT chk_codigo_no_vacio CHECK (btrim(codigo) <> ''),
     CONSTRAINT chk_caracteristica_tecnica_tipo_dato CHECK (tipo_dato IN ('ENUMERADO', 'TEXTO', 'NUMERICO')),
-    CONSTRAINT "PK_caracteristica_tecnica" PRIMARY KEY (id_caracteristica)
+    CONSTRAINT "PK_caracteristica_tecnica" PRIMARY KEY (id_caracteristica),
+    CONSTRAINT chk_caract_tipo_dato_enum_id_unidad CHECK ((tipo_dato = 'ENUMERADO' AND id_unidad IS NULL) OR (tipo_dato <> 'ENUMERADO'))
 )
 ;
 
@@ -1164,7 +1166,8 @@ CREATE TABLE profesion(
     codigo          varchar(50)     NOT NULL,
     nombre          varchar(50)     NOT NULL,
     descripcion     varchar(200),
-    CONSTRAINT "PK_profesion" PRIMARY KEY (id_profesion)
+    CONSTRAINT "PK_profesion" PRIMARY KEY (id_profesion),
+    CONSTRAINT chk_codigo_mayus CHECK (codigo = UPPER(codigo))
 )
 ;
 
@@ -2731,9 +2734,9 @@ FROM (VALUES
     (2, 'MEDIDA_PECHO',   'Medida de Pecho',    'NUMERICO',  'cm'),
     (3, 'MEDIDA_CINTURA', 'Medida de Cintura',  'NUMERICO',  'cm'),
     (4, 'MEDIDA_CADERA',  'Medida de Cadera',   'NUMERICO',  'cm'),
-    (5, 'COLOR_OJOS',     'Color de Ojos',      'ENUMERADO', 'color'),
-    (6, 'COLOR_CABELLO',  'Color de Cabello',   'ENUMERADO', 'color'),
-    (7, 'COLOR_PIEL',     'Tono de Piel',       'ENUMERADO', 'color'),
+    (5, 'COLOR_OJOS',     'Color de Ojos',      'ENUMERADO', NULL),
+    (6, 'COLOR_CABELLO',  'Color de Cabello',   'ENUMERADO', NULL),
+    (7, 'COLOR_PIEL',     'Tono de Piel',       'ENUMERADO', NULL),
     (8, 'TIPO_CABELLO',   'Tipo de Cabello',    'ENUMERADO', NULL)
 ) AS v(id_caracteristica, codigo, nombre, tipo_dato, unidad_simbolo)
 JOIN profesion p ON p.codigo = 'MODELO'
