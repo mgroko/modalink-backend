@@ -101,7 +101,7 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         Agenda agenda = agendaDe(usuario);
 
         assertNotNull(agenda.getIdAgenda());
-        assertEquals(60, agenda.getMargenActividadMinutos());
+        assertEquals(30, agenda.getMargenActividadMinutos());
 
         List<JornadaAgenda> dias = jornadaAgendaRepository
                 .findByAgenda_IdAgendaOrderByDiaSemana(agenda.getIdAgenda());
