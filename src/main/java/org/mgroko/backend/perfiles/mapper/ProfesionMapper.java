@@ -10,6 +10,7 @@ public class ProfesionMapper {
     public static ProfesionResponse toResponse(Profesion profesion) {
         return new ProfesionResponse(
                 profesion.getIdProfesion(),
+                profesion.getCodigo(),
                 profesion.getNombre(),
                 profesion.getDescripcion());
     }
