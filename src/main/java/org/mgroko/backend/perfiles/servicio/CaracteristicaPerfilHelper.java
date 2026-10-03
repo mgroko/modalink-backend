@@ -86,7 +86,9 @@ public class CaracteristicaPerfilHelper {
                             "El valor " + car.idValor()
                                     + " no corresponde a la característica técnica " + ct.getCodigo() + ".");
                 }
-                builder.valorCaracteristica(vc);
+                // id_valor se setea explícitamente: la asociación valorCaracteristica
+                // es solo lectura en el mapeo y no alcanza a escribir la columna.
+                builder.idValor(vc.getIdValor()).valorCaracteristica(vc);
             } else {
                 if (car.valor() == null || car.valor().isBlank()) {
                     throw new ValorObligatorioException(

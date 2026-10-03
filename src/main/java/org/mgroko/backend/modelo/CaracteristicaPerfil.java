@@ -45,6 +45,17 @@ public class CaracteristicaPerfil {
     @Column(name = "valor", length = 50)
     private String valor;
 
+    /**
+     * Columna {@code id_valor} de la fila. Es la única parte escribible del par
+     * {@code (id_valor, id_caracteristica)}: la asociación
+     * {@link #valorCaracteristica} está mapeada como solo lectura
+     * ({@code insertable = false, updatable = false}) porque
+     * {@code id_caracteristica} ya la escribe {@link #caracteristicaTecnica}, y
+     * Hibernate no deriva una de la otra. Por eso, al asociar un
+     * {@link org.mgroko.backend.modelo.ValorCaracteristica} hay que setear
+     * también este campo: omitirlo persiste {@code id_valor = NULL} y el trigger
+     * {@code chk_caracteristica_perfil_valor} rechaza las características ENUMERADO.
+     */
     @Column(name = "id_valor")
     private Long idValor;
 
