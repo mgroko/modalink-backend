@@ -17,6 +17,10 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
      * minúsculas con los caracteres especiales escapados (ver
      * {@code LikePatrones}); usar {@code "%"} para no filtrar.
      *
+     * El join con {@code unidadMedida} debe ser LEFT: por diseño las características
+     * ENUMERADO tienen {@code id_unidad} NULL, y un JOIN implícito se renderiza como
+     * INNER y las excluiría del resultado incluso sin filtro de unidad.
+     *
      * @param patronCodigo  patrón LIKE en minúsculas para el código (o "%")
      * @param patronUnidad  patrón LIKE en minúsculas para la unidad (o "%")
      * @param idProfesion   id de la profesión asociada (o null)
@@ -24,8 +28,9 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
      */
     @Query("""
             SELECT c FROM CaracteristicaTecnica c
+            LEFT JOIN c.unidadMedida um
             WHERE (:patronCodigo = '%' OR c.codigo ILIKE :patronCodigo ESCAPE '\\')
-              AND (:patronUnidad = '%' OR (c.unidadMedida IS NOT NULL AND c.unidadMedida.simbolo ILIKE :patronUnidad ESCAPE '\\'))
+              AND (:patronUnidad = '%' OR (um IS NOT NULL AND um.simbolo ILIKE :patronUnidad ESCAPE '\\'))
               AND (:idProfesion IS NULL OR c.profesion.idProfesion = :idProfesion)
             ORDER BY c.codigo
             """)
