@@ -33,7 +33,6 @@ public class BloqueoAgenda {
     @Column(name = "fecha_hora_fin", nullable = false)
     private LocalDateTime fechaHoraFin;
 
-    // Obligatorio según BD (bloqueo_agenda.motivo NOT NULL)
     @Column(name = "motivo", nullable = false, length = 200)
     private String motivo;
 
