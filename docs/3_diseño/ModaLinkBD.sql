@@ -1904,7 +1904,7 @@ CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, 
 -- INDEX: "IDX_bloqueo_agenda_rango" 
 --
 
-CREATE INDEX "IDX_bloqueo_agenda_rango" ON bloqueo_agenda(id_agenda, fecha_inicio, fecha_fin);
+CREATE INDEX "IDX_bloqueo_agenda_rango" ON bloqueo_agenda(id_agenda, fecha_hora_inicio, fecha_hora_fin);
 
 -- 
 -- TABLE: actividad 
