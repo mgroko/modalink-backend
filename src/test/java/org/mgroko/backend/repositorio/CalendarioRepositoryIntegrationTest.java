@@ -206,7 +206,7 @@ class CalendarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
     @Test
     void indiceRangoExiste() {
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM pg_indexes WHERE indexname = 'idx_bloqueo_agenda_rango'",
+                "SELECT count(*) FROM pg_indexes WHERE indexname = 'IDX_bloqueo_agenda_rango'",
                 Integer.class);
         assertEquals(1, count);
     }
