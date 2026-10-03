@@ -190,7 +190,7 @@ public class AdminCaracteristicaTecnicaService {
         ValorCaracteristica valor = valorCaracteristicaRepository.findById(id)
                 .orElseThrow(() -> new ValorCaracteristicaAdminNoEncontradoException(
                         "Valor de característica no encontrado: " + idValor));
-        String etiqueta = request.codigo().trim();
+        String etiqueta = request.codigo().trim().toUpperCase(Locale.ROOT);
         if (!etiqueta.equals(valor.getEtiqueta())
                 && valorCaracteristicaRepository.existsByCaracteristicaTecnica_IdCaracteristicaAndEtiqueta(
                         idCaracteristica, etiqueta)) {
@@ -238,7 +238,7 @@ public class AdminCaracteristicaTecnicaService {
                                          List<AdminValorCaracteristicaRequest> valores) {
         Set<String> vistos = new HashSet<>();
         for (AdminValorCaracteristicaRequest v : valores) {
-            String etiqueta = v.codigo().trim();
+            String etiqueta = v.codigo().trim().toUpperCase(Locale.ROOT);
             if (!vistos.add(etiqueta)) {
                 throw new ValorCodigoDuplicadoException(
                         "Valor de catálogo duplicado en la solicitud: " + etiqueta + ".");
