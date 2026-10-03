@@ -6,7 +6,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
@@ -87,9 +86,10 @@ class EditarPerfilServiceIntegrationTest extends AbstractPostgresIntegrationTest
     }
 
     private long idValor(Long idCaracteristica, String codigoValor) {
+      
         return valorCaracteristicaRepository
                 .findByCaracteristicaTecnica_IdCaracteristicaOrderByEtiqueta(idCaracteristica).stream()
-                .filter(v -> v.getEtiqueta().equals(codigoValor))
+                .filter(v -> v.getEtiqueta().equalsIgnoreCase(codigoValor))
                 .findFirst()
                 .orElseThrow()
                 .getIdValor();
@@ -110,7 +110,7 @@ class EditarPerfilServiceIntegrationTest extends AbstractPostgresIntegrationTest
                 new CaracteristicaPerfilRequest(medidaPecho, "84", null),
                 new CaracteristicaPerfilRequest(medidaCintura, "60", null),
                 new CaracteristicaPerfilRequest(medidaCadera, "88", null),
-                new CaracteristicaPerfilRequest(colorOjos, null, idValor(colorOjos, "marron")),
+                new CaracteristicaPerfilRequest(colorOjos, null, idValor(colorOjos, "Verde")),
                 new CaracteristicaPerfilRequest(colorCabello, null, idValor(colorCabello, "negro")),
                 new CaracteristicaPerfilRequest(colorPiel, null, idValor(colorPiel, "media")),
                 new CaracteristicaPerfilRequest(tipoCabello, null, idValor(tipoCabello, "lacio")));
