@@ -73,6 +73,12 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
     @Autowired
     private ActividadRepository actividadRepository;
 
+    @Autowired
+    private PaisRepository paisRepository;
+
+    @Autowired
+    private ProvinciaRepository provinciaRepository;
+
     private Usuario guardarUsuario(String correo, String dni) {
         RolGlobal rol = rolGlobalRepository.findByNombre("Usuario").orElseThrow();
         Genero genero = generoRepository.findByCodigo("mujer").orElseThrow();
@@ -117,17 +123,27 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 .build();
         em.persist(tyc);
 
-        Pais pais = em.createQuery("SELECT p FROM Pais p WHERE p.codigoIso = 'AR'", Pais.class)
-                .getResultList().stream().findFirst().orElseGet(() -> {
-                    Pais nuevo = Pais.builder().codigoIso("AR").nombre("Argentina").activo(true).build();
-                    em.persist(nuevo);
-                    return nuevo;
+        Pais pais = paisRepository.findByCodigoIso("AR").orElseGet(() -> {
+            Pais nuevo = Pais.builder().codigoIso("AR").nombre("Argentina").activo(true).build();
+            em.persist(nuevo);
+            return nuevo;
+        });
+
+        // La provincia se resuelve por su clave natural en lugar de insertarse a ciegas:
+        // AdminSeeder corre como CommandLineRunner al levantar el contexto (fuera de la
+        // transacción del test, así que su commit es definitivo) y deja creada
+        // "Buenos Aires" para el país AR, que es justo la fila que esta cadena necesita.
+        // Insertarla de nuevo violaría UQ_provincia_pais_nombre.
+        Provincia prov = provinciaRepository.findByNombreAndPais_IdPais("Buenos Aires", pais.getIdPais())
+                .orElseGet(() -> {
+                    Provincia nueva = Provincia.builder().nombre("Buenos Aires").activo(true)
+                            .pais(pais).idExterno("idPrueba").fuenteApi("fuentePrueba").build();
+                    em.persist(nueva);
+                    return nueva;
                 });
 
-        Provincia prov = Provincia.builder().nombre("Buenos Aires").activo(true).pais(pais).build();
-        em.persist(prov);
-
-        Ciudad ciudad = Ciudad.builder().nombre("CABA").activo(true).provincia(prov).build();
+        Ciudad ciudad = Ciudad.builder().nombre("CABA").activo(true).provincia(prov)
+                .idExterno("idPrueba").fuenteApi("fuentePrueba").build();
         em.persist(ciudad);
 
         Ubicacion ubicacion = Ubicacion.builder().ciudad(ciudad).build();
@@ -193,6 +209,11 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
     void eliminarBloqueoCubiertoSoloPorMargen_lanzaExcepcion() {
         Usuario usuario = guardarUsuario("act.margen@example.com", "88880002");
         Agenda agenda = agendaDe(usuario);
+        // El margen es configurable por agenda (V14c usa agenda.margen_actividad_min,
+        // no una constante): con el default de 30 el bloqueo de más abajo no llegaría
+        // a tocar el margen, así que se sube a 60 para que la premisa del test se cumpla.
+        agenda.setMargenActividadMinutos(60);
+        em.flush();
         // Actividad 10:00-12:00 (margen 60 -> ocupa 09:00-13:00)
         crearCadenaActividad(usuario, EstadoProyecto.Confirmado,
                 LocalDateTime.of(2026, 9, 15, 10, 0), 120);
