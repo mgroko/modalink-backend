@@ -38,8 +38,8 @@ public class Actividad {
     @JoinColumn(name = "id_planificacion", nullable = false)
     private Planificacion planificacion;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_ubicacion", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "id_ubicacion", nullable = true)
     private Ubicacion ubicacion;
 
     @Builder.Default
