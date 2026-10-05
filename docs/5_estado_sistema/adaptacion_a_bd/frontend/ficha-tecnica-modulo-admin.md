@@ -77,8 +77,21 @@ Módulo de backend para gestión administrativa del sistema. El frontend necesit
 
 | Método | Endpoint | Descripción | Autorización |
 |--------|----------|-------------|--------------|
-| GET | `/admin/unidades-medida` | Listar unidades de medida | `VER_CARACTERISTICAS` |
-| GET | `/admin/unidades-medida?tipoDato=` | Filtrar por tipo de dato | `VER_CARACTERISTICAS` |
+| GET | `/admin/unidades-medida` | Listar unidades de medida (ordenadas por nombre) | `VER_CARACTERISTICAS` |
+| GET | `/admin/unidades-medida?tipoDato=` | Filtrar por tipo de dato (`NUMERICO` o `TEXTO`; otro valor → 400) | `VER_CARACTERISTICAS` |
+| GET | `/admin/unidades-medida/{id}` | Obtener una unidad de medida (404 si no existe) | `VER_CARACTERISTICAS` |
+| POST | `/admin/unidades-medida` | Crear unidad de medida (201) | `CREAR_CARACTERISTICA` |
+| PUT | `/admin/unidades-medida/{id}` | Modificar unidad de medida | `MODIFICAR_CARACTERISTICA` |
+| DELETE | `/admin/unidades-medida/{id}` | Eliminar unidad de medida (204; borrado físico) | `ELIMINAR_CARACTERISTICA` |
+
+**UnidadMedidaRequest** (POST/PUT — `nombre`, `simbolo` y `tipoDatoPermitido` obligatorios, máx. 50):
+```json
+{
+  "nombre": "Kilogramos",
+  "simbolo": "kg",
+  "tipoDatoPermitido": "NUMERICO"
+}
+```
 
 **UnidadMedidaResponse:**
 ```json
@@ -89,6 +102,15 @@ Módulo de backend para gestión administrativa del sistema. El frontend necesit
   "tipoDatoPermitido": "NUMERICO"
 }
 ```
+
+**Errores:**
+
+| Caso | HTTP |
+|------|------|
+| Campos vacíos o `tipoDatoPermitido` distinto de `NUMERICO`/`TEXTO` | 400 |
+| Unidad inexistente (`{id}`) | 404 |
+| Nombre o símbolo ya usado por otra unidad (ignorando mayúsculas) | 409 |
+| Unidad asociada a una característica técnica (eliminar, o cambiar su tipo de dato a uno incompatible) | 409 |
 
 ### 2.5 Características Técnicas (`/admin/caracteristicas-tecnicas`)
 
@@ -204,6 +226,10 @@ Módulo de backend para gestión administrativa del sistema. El frontend necesit
 
 ### 5.4 Unidades de Medida
 - **Lista desplegable**: Para selección en formularios de características técnicas
+- **Cuadro de unidades**: Grid con nombre, símbolo y tipo de dato permitido, con acciones "Agregar nueva unidad de medida", "Modificar unidad de medida" y "Eliminar unidad de medida" (UC-74)
+- **Formulario de carga**: Campos obligatorios nombre, símbolo y tipo de dato permitido (selector `NUMERICO`/`TEXTO`)
+- **Confirmación previa a la baja**: muestra los datos de la unidad; si está asociada a una característica técnica el backend responde 409 y se informa el error
+- **Nota**: la baja es física (la unidad desaparece del sistema)
 
 ### 5.5 Características Técnicas
 - **Cuadro de características**: Grid con lista de características
@@ -232,6 +258,7 @@ Considerar usar:
 /admin/usuarios/{id}      → Detalle de usuario
 /admin/usuarios/{id}/perfiles → Perfiles del usuario
 /admin/configuracion      → Configuración del sistema
-/admin/unidades-medida    → Lista de unidades (select)
+/admin/unidades-medida    → Gestión de unidades de medida (ABM, UC-74) y select de unidades
+/admin/unidades-medida/{id} → Detalle/edición de una unidad de medida
 /admin/caracteristicas    → Gestión de características técnicas
 ```

@@ -10,4 +10,12 @@ public interface UnidadMedidaRepository extends JpaRepository<UnidadMedida, Long
     Optional<UnidadMedida> findBySimbolo(String simbolo);
     
     Optional<UnidadMedida> findByNombre(String nombre);
+
+    boolean existsByNombreIgnoreCase(String nombre);
+
+    boolean existsBySimboloIgnoreCase(String simbolo);
+
+    boolean existsByNombreIgnoreCaseAndIdUnidadNot(String nombre, Long idUnidad);
+
+    boolean existsBySimboloIgnoreCaseAndIdUnidadNot(String simbolo, Long idUnidad);
 }

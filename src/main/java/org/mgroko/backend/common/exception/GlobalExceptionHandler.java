@@ -9,6 +9,8 @@ import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException
 import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
+import org.mgroko.backend.admin.exception.UnidadMedidaDuplicadaException;
+import org.mgroko.backend.admin.exception.UnidadMedidaEnUsoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
 import org.mgroko.backend.admin.exception.UnidadMedidaNoEncontradaException;
@@ -342,6 +344,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUnidadMedidaNoEncontrada(
             UnidadMedidaNoEncontradaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Excepción de unidad de medida duplicada (nombre o símbolo ya registrados).
+     */
+    @ExceptionHandler(UnidadMedidaDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> handleUnidadMedidaDuplicada(
+            UnidadMedidaDuplicadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Excepción de unidad de medida asociada a características técnicas en uso.
+     */
+    @ExceptionHandler(UnidadMedidaEnUsoException.class)
+    public ResponseEntity<Map<String, Object>> handleUnidadMedidaEnUso(
+            UnidadMedidaEnUsoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(ValorCaracteristicaAdminNoEncontradoException.class)

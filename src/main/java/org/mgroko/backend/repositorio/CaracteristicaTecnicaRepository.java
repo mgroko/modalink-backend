@@ -42,6 +42,10 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
 
     boolean existsByCodigo(String codigo);
 
+    boolean existsByUnidadMedidaIdUnidad(Long idUnidad);
+
+    List<CaracteristicaTecnica> findAllByUnidadMedidaIdUnidad(Long idUnidad);
+
     @Query("""
             SELECT true FROM CaracteristicaTecnica c
             WHERE UPPER(c.codigo) = UPPER(:codigo)
