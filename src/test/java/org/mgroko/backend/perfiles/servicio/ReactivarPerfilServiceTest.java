@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -31,6 +32,9 @@ class ReactivarPerfilServiceTest {
 
     @Mock
     private PerfilRepository perfilRepository;
+
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
 
     @InjectMocks
     private ReactivarPerfilService reactivarPerfilService;
@@ -57,6 +61,7 @@ class ReactivarPerfilServiceTest {
 
     @Test
     void reactivar_dentroDePlazo_vuelveActivo() {
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfilPendiente()));
         when(perfilRepository.save(org.mockito.ArgumentMatchers.any(Perfil.class)))
@@ -100,10 +105,27 @@ class ReactivarPerfilServiceTest {
     void reactivar_plazoExpirado_lanzaExcepcion() {
         Perfil vencido = perfilPendiente();
         vencido.setFechaSolicitudBaja(LocalDateTime.now().minusDays(31));
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(vencido));
 
         assertThrows(PerfilEnBajaException.class,
                 () -> reactivarPerfilService.reactivar(1L, 10L));
+    }
+
+    @Test
+    void reactivar_plazoConfiguradoUsado_enLugarDe30Dias() {
+        Perfil solicitado = perfilPendiente();
+        solicitado.setFechaSolicitudBaja(LocalDateTime.now().minusDays(31));
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(45);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(solicitado));
+        when(perfilRepository.save(org.mockito.ArgumentMatchers.any(Perfil.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Perfil perfil = reactivarPerfilService.reactivar(1L, 10L);
+
+        assertEquals(EstadoPerfil.Activo, perfil.getEstado());
+        assertNull(perfil.getFechaSolicitudBaja());
     }
 }

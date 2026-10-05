@@ -39,7 +39,7 @@ class ExpirarPerfilServiceTest {
         when(perfilRepository.findByEstadoAndFechaSolicitudBajaBefore(eq(EstadoPerfil.PendienteBaja), any()))
                 .thenReturn(List.of(perfil));
 
-        int cantidad = expirarPerfilService.expirarVencidos();
+        int cantidad = expirarPerfilService.expirarVencidos(30);
 
         assertEquals(1, cantidad);
         ArgumentCaptor<List<Perfil>> captor = ArgumentCaptor.forClass(List.class);
@@ -52,7 +52,7 @@ class ExpirarPerfilServiceTest {
         when(perfilRepository.findByEstadoAndFechaSolicitudBajaBefore(eq(EstadoPerfil.PendienteBaja), any()))
                 .thenReturn(List.of());
 
-        int cantidad = expirarPerfilService.expirarVencidos();
+        int cantidad = expirarPerfilService.expirarVencidos(30);
 
         assertEquals(0, cantidad);
         verify(perfilRepository, never()).saveAll(any());
