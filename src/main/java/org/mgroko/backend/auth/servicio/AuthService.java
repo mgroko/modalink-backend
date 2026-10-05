@@ -1,17 +1,20 @@
 package org.mgroko.backend.auth.servicio;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.dto.AuthResponse;
 import org.mgroko.backend.auth.dto.LoginRequest;
 import org.mgroko.backend.auth.dto.RegistroRequest;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.auth.exception.CuentaPendienteBajaException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.DniInvalidoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
@@ -26,12 +29,15 @@ import org.mgroko.backend.modelo.PermisoGlobal;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.JwtService;
+import org.mgroko.backend.usuario.exception.SolicitudBajaException;
+import org.mgroko.backend.usuario.servicio.ReactivarCuentaService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +51,8 @@ public class AuthService {
     private final PerfilRepository perfilRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final ConfiguracionSistemaService configuracionSistemaService;
+    private final ReactivarCuentaService reactivarCuentaService;
 
     public AuthService(
             UsuarioRepository usuarioRepository,
@@ -52,13 +60,17 @@ public class AuthService {
             GeneroRepository generoRepository,
             BCryptPasswordEncoder passwordEncoder,
             PerfilRepository perfilRepository,
-            JwtService jwtService) {
+            JwtService jwtService,
+            ConfiguracionSistemaService configuracionSistemaService,
+            ReactivarCuentaService reactivarCuentaService) {
         this.usuarioRepository = usuarioRepository;
         this.rolGlobalRepository = rolGlobalRepository;
         this.generoRepository = generoRepository;
         this.passwordEncoder = passwordEncoder;
         this.perfilRepository = perfilRepository;
         this.jwtService = jwtService;
+        this.configuracionSistemaService = configuracionSistemaService;
+        this.reactivarCuentaService = reactivarCuentaService;
     }
 
     @Transactional
@@ -114,6 +126,34 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResultado login(LoginRequest request) {
+        Usuario usuario = autenticar(request);
+
+        if (!usuario.getEstado().permiteAcceso()) {
+            throw new UsuarioDeshabilitadoException("Tu usuario está deshabilitado. Contactá al administrador.");
+        }
+
+        if (usuario.getEstado() == EstadoUsuario.PENDIENTE_BAJA) {
+            bloquearLoginPendienteBaja(usuario);
+        }
+
+        return construirLoginResultado(usuario);
+    }
+
+    /**
+     * Reactiva la cuenta (UC-07) a partir de las credenciales y, en el mismo
+     * paso, emite la sesión: pensado para el modal que aparece cuando el login
+     * es rechazado por una solicitud de baja vigente (no existe sesión previa).
+     */
+    @Transactional
+    public LoginResultado reactivarCuenta(LoginRequest request) {
+        Usuario usuario = autenticar(request);
+
+        reactivarCuentaService.reactivarCuenta(usuario.getIdUsuario());
+
+        return construirLoginResultado(usuario);
+    }
+
+    private Usuario autenticar(LoginRequest request) {
         String correo = request.correo().trim().toLowerCase();
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new CredencialesInvalidasException("Correo o contraseña inválidos."));
@@ -122,11 +162,31 @@ public class AuthService {
                 || !passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
             throw new CredencialesInvalidasException("Correo o contraseña inválidos.");
         }
+        return usuario;
+    }
 
-        if (!usuario.getEstado().permiteAcceso()) {
-            throw new UsuarioDeshabilitadoException("Tu usuario está deshabilitado. Contactá al administrador.");
+    /**
+     * Una cuenta pendiente de baja no puede iniciar sesión (se conserva la
+     * sesión abierta al momento de solicitar la baja, pero no se otorga una
+     * nueva). Dentro del plazo se informa la fecha límite para ofrecer la
+     * reactivación; vencido el plazo se responde como cualquier reactivación
+     * fuera de término (409).
+     */
+    private void bloquearLoginPendienteBaja(Usuario usuario) {
+        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
+        LocalDateTime fechaSolicitudBaja = usuario.getFechaSolicitudBaja();
+        LocalDateTime fechaLimite = fechaSolicitudBaja != null ? fechaSolicitudBaja.plusDays(diasBaja) : null;
+
+        if (fechaLimite == null || !fechaLimite.isBefore(LocalDateTime.now())) {
+            // dentro del plazo: no se emite token, se informa la fecha límite
+            throw new CuentaPendienteBajaException(fechaSolicitudBaja, fechaLimite, diasBaja);
         }
 
+        throw new SolicitudBajaException(
+                "El plazo de " + diasBaja + " días para recuperar la cuenta ha expirado.");
+    }
+
+    private LoginResultado construirLoginResultado(Usuario usuario) {
         Perfil perfilActivoInicial = resolverPerfilActivoPorDefecto(usuario.getIdUsuario());
 
         String token = jwtService.generarToken(

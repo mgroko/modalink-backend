@@ -58,6 +58,22 @@ public class AuthController {
                 .body(resultado.response());
     }
 
+    /**
+     * Reactiva la cuenta pendiente de baja y abre sesión en el mismo paso.
+     * Pensado para el modal de "reactivar cuenta" que interrumpe el login:
+     * al no existir sesión previa, se reenvían las credenciales.
+     */
+    @PostMapping("/reactivar-cuenta")
+    public ResponseEntity<AuthResponse> reactivarCuenta(@Valid @RequestBody LoginRequest request) {
+        AuthService.LoginResultado resultado = authService.reactivarCuenta(request);
+
+        ResponseCookie cookie = jwtCookieFactory.crear(resultado.token());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(resultado.response());
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {

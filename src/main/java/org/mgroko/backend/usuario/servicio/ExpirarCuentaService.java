@@ -13,14 +13,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Expira las cuentas cuyo plazo de 30 días de baja (UC-07) ha vencido:
+ * Expira las cuentas cuyo plazo de baja (UC-07) ha vencido:
  * pasa su estado a {@code Baja}, lo que da de baja la cuenta definitivamente
  * y oculta todos los perfiles asociados a la comunidad.
+ * <p>
+ * El plazo en días lo resuelve el llamador (scheduler o ejecución manual
+ * desde el panel de administración).
  */
 @Service
 public class ExpirarCuentaService {
-
-    private static final int DIAS_PARA_ELIMINACION = 30;
 
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
@@ -31,8 +32,8 @@ public class ExpirarCuentaService {
     }
 
     @Transactional
-    public int expirarVencidos() {
-        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(DIAS_PARA_ELIMINACION);
+    public int expirarVencidos(int diasBaja) {
+        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(diasBaja);
         List<Usuario> vencidos = usuarioRepository
                 .findByEstadoAndFechaSolicitudBajaBefore(EstadoUsuario.PendienteBaja, fechaLimite);
 

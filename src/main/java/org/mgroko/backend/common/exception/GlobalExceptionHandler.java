@@ -1,5 +1,6 @@
 package org.mgroko.backend.common.exception;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -146,7 +147,28 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Excepción de usuario deshabilitado.
+     * Maneja excepción de cuenta pendiente de baja: el login se rechaza sin
+     * emitir sesión y se devuelve la fecha límite de reactivación.
+     */
+    @ExceptionHandler(org.mgroko.backend.auth.exception.CuentaPendienteBajaException.class)
+    public ResponseEntity<Map<String, Object>> handleCuentaPendienteBaja(
+            org.mgroko.backend.auth.exception.CuentaPendienteBajaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CUENTA_PENDIENTE_BAJA");
+        response.put("fechaSolicitudBaja", ex.getFechaSolicitudBaja());
+        response.put("fechaLimite", ex.getFechaLimite());
+        response.put("diasRestantes", ex.getFechaLimite() != null
+                ? Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(
+                        LocalDateTime.now(), ex.getFechaLimite()))
+                : null);
+        response.put("httpStatus", HttpStatus.FORBIDDEN.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Maneja excepción de usuario deshabilitado.
      */
     @ExceptionHandler(UsuarioDeshabilitadoException.class)
     public ResponseEntity<Map<String, Object>> handleUsuarioDeshabilitado(UsuarioDeshabilitadoException ex) {

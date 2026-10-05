@@ -3,6 +3,7 @@ package org.mgroko.backend.perfiles.servicio;
 import java.time.LocalDateTime;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -17,14 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EliminarPerfilService {
 
-    private static final int DIAS_PARA_ELIMINACION = 30;
-
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
-    public EliminarPerfilService(UsuarioRepository usuarioRepository, PerfilRepository perfilRepository) {
+    public EliminarPerfilService(UsuarioRepository usuarioRepository, PerfilRepository perfilRepository,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional
@@ -49,10 +51,11 @@ public class EliminarPerfilService {
 
         // TODO: Ocultar publicaciones independientes del perfil (tabla publicacion aún no implementada).
 
-        LocalDateTime fechaLimite = ahora.plusDays(DIAS_PARA_ELIMINACION);
+        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
+        LocalDateTime fechaLimite = ahora.plusDays(diasBaja);
 
         return new EliminarPerfilResponse(
-                "Solicitud de baja registrada. Tienes " + DIAS_PARA_ELIMINACION
+                "Solicitud de baja registrada. Tienes " + diasBaja
                         + " días para activar el perfil.",
                 fechaLimite);
     }

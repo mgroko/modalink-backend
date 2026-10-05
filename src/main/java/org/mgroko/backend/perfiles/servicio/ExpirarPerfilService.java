@@ -10,13 +10,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Expira los perfiles cuyo plazo de 30 días de baja (UC-12) ha vencido:
+ * Expira los perfiles cuyo plazo de baja (UC-12) ha vencido:
  * pasa su estado a {@code Baja}, lo que los vuelve inaccesibles para la comunidad.
+ * <p>
+ * El plazo en días lo resuelve el llamador (scheduler o ejecución manual
+ * desde el panel de administración).
  */
 @Service
 public class ExpirarPerfilService {
-
-    private static final int DIAS_PARA_ELIMINACION = 30;
 
     private final PerfilRepository perfilRepository;
 
@@ -25,8 +26,8 @@ public class ExpirarPerfilService {
     }
 
     @Transactional
-    public int expirarVencidos() {
-        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(DIAS_PARA_ELIMINACION);
+    public int expirarVencidos(int diasBaja) {
+        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(diasBaja);
         List<Perfil> vencidos = perfilRepository
                 .findByEstadoAndFechaSolicitudBajaBefore(EstadoPerfil.PendienteBaja, fechaLimite);
 

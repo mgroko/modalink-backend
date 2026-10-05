@@ -3,6 +3,7 @@ package org.mgroko.backend.usuario.servicio;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -18,19 +19,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SolicitudBajaService {
 
-    private static final int DIAS_PARA_ELIMINACION = 30; //TODO parametrizable desde panel de admin? 
-
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     public SolicitudBajaService(UsuarioRepository usuarioRepository,
-            PerfilRepository perfilRepository) {
+            PerfilRepository perfilRepository,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional
     public SolicitudBajaResponse solicitarBaja(Long idUsuario) {
+        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
+
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
@@ -57,10 +61,10 @@ public class SolicitudBajaService {
 
         // TODO: Ocultar publicaciones independientes del usuario
 
-        LocalDateTime fechaLimite = ahora.plusDays(DIAS_PARA_ELIMINACION);
+        LocalDateTime fechaLimite = ahora.plusDays(diasBaja);
 
         return new SolicitudBajaResponse(
-                "Solicitud de baja registrada. Tienes " + DIAS_PARA_ELIMINACION
+                "Solicitud de baja registrada. Tienes " + diasBaja
                         + " días para recuperar tus datos.",
                 fechaLimite);
     }
