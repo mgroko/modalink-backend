@@ -1222,6 +1222,7 @@
 | **Estabilidad**  | media |  |
 | **Comentarios** | En la profesión asociada se listan las profesiones base: fotógrafo, modelo, diseñador de moda, productor de moda, maquillador, estilista de cabello o estilista de imágen.  |  |
 
+
 | UC–57 | Gestionar características técnicas por profesión |  |
 | ----- | ----- | ----- |
 | **Actor** | Administrador |  |
@@ -1234,13 +1235,15 @@
 |  | 2 | El actor selecciona “Agregar nueva característica”. |
 |  | 3 | El sistema recupera y despliega todas las profesiones registradas en el sistema (ver caso de uso UC-59 Buscar profesiones) y solicita que se seleccione una o más profesiones para agregar la característica técnica. |
 |  | 4 | El actor selecciona la profesión deseada. |
-|  | 5 | El sistema despliega un formulario de carga solicitando la siguiente información de forma obligatoria: Nombre de la característica Tipo de datos solicitados  Y opcionalmente: Descripción de la característica |
-|  | 6 | El actor completa los campos y confirma la acción. |
-|  | 7 | El sistema registra la nueva característica al sistema. |
+|  | 5 | El sistema recupera y despliega todas las unidades de medida del sistema y solicite que se seleccione una unidad de medida (si corresponde) |
+|  | 6 | El actor selecciona la unidad de medida para la característica técnica. |
+|  | 7 | El sistema despliega un formulario de carga solicitando la siguiente información de forma obligatoria: Nombre de la característica Código de la característica Tipo de dato de la característica  Y opcionalmente: Descripción de la característica |
+|  | 8 | El actor completa los campos y confirma la acción. |
+|  | 9 | El sistema registra la nueva característica al sistema. |
 | **Postcondición** | Se creó una nueva característica en el sistema. Se asoció una característica a una profesión en el sistema. |  |
 | **Flujo alternativo 2.1** | 2.1 | Si el actor selecciona “Modificar característica”: |
 |  | 2.1.1 | El actor selecciona la característica que quiere modificar (ver caso de uso UC-58 Buscar características técnicas). |
-|  | 2.1.2 | El sistema despliega la información de la habilidad: Nombre de la característica Tipo de datos solicitados Profesión asociada Descripción de la característica |
+|  | 2.1.2 | El sistema despliega la información de la característica: Nombre de la característica Tipo de dato de la característica Unidad de medida asociada Profesión asociada Descripción de la característica |
 |  | 2.1.3 | El actor modifica los campos deseados y confirma la acción.  |
 |  | 2.1.4 | El sistema registra los cambios. |
 | **Postcondición 2.1** | Se modificó una característica del sistema. El sistema, por cada perfil de usuario que tenía la característica técnica asociada a su perfil, emite una notificación informando de la modificación. |  |
@@ -1260,6 +1263,7 @@
 | **Frecuencia**  | 10 veces/día |  |
 | **Estabilidad**  | media |  |
 | **Comentarios** | En tipo de datos solicitados, se refiere a datos numéricos (ej. medidas), datos de texto (ej. equipo técnico) u opciones de selección (ej. dispone de estudio propio: si/no)  |  |
+
 
 | UC–58 | Buscar características técnicas |  |
 | ----- | ----- | ----- |
