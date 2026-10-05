@@ -10,11 +10,11 @@ Esta especificación técnica detalla el contrato de la API, el modelo de datos,
 * **URL:** `/perfiles/{idPerfil}`
 * **Parámetros de Ruta (Path Variable):**
   * `idPerfil` (Long, requerido): Identificador único del perfil que se desea visualizar.
-* **Content-Type:** `application/json`
 * **Autenticación requerida:** Sí (Bearer Token JWT o Cookie de sesión activa).
-* **Restricción de Acceso y Reglas de Negocio:**
-  * **Perfil de Terceros (público / comunitario):** Solo se puede visualizar si el perfil se encuentra en estado `Activo` **Y** el usuario propietario del perfil se encuentra en estado `Activo`. Si el perfil o el usuario están en `PendienteBaja`, `Deshabilitado` o `Baja`, la API responderá con `404 Not Found`.
-  * **Perfil Propio:** Si el usuario autenticado consulta su propio perfil, la API permite la visualización tanto en estado `Activo` como en `PendienteBaja` (marcando `esPropietario: true`). Si el perfil fue dado de baja definitivamente (`Baja`), retorna `404 Not Found`.
+* **Restricción de Acceso y Reglas de Negocio** (`VerPerfilService.obtenerDetalle`):
+  * **Usuario autenticado inválido:** Si el usuario autenticado no existe o su estado no permite acceso (`Deshabilitado` o `Baja`), la API responde `401 Unauthorized`.
+  * **Perfil de Terceros (público / comunitario):** Solo se puede visualizar si el perfil se encuentra en estado `Activo` **Y** el usuario propietario del perfil se encuentra en estado `Activo`. Si el perfil está en `PendienteBaja`, `Deshabilitado` o `Baja`, o el propietario no está `Activo`, la API responde `404 Not Found`.
+  * **Perfil Propio:** El dueño puede visualizar su perfil en estado `Activo`, `PendienteBaja` **o** `Deshabilitado` (la respuesta incluye `esPropietario: true`). Solo si el perfil está en estado `Baja` (baja definitiva) responde `404 Not Found`.
 
 ---
 
@@ -32,13 +32,29 @@ Esta especificación técnica detalla el contrato de la API, el modelo de datos,
   "idProfesion": 1,
   "profesion": "Modelo",
   "idImagen": 42,
-  "fotoUrl": "https://res.cloudinary.com/modalink/image/upload/v123456789/perfiles/foto-elena.jpg",
+  "fotoUrl": "/uploads/perfiles/foto-elena.jpg",
   "idUsuario": 18,
   "nombreUsuario": "Elena",
   "apellidoUsuario": "Gómez",
   "genero": "FEM",
-  "localidad": "Rosario",
-  "provincia": "Santa Fe",
+  "ciudad": {
+    "idCiudad": 12,
+    "idExterno": "030077",
+    "fuenteApi": "GEOREF",
+    "nombre": "Rosario",
+    "provincia": {
+      "idProvincia": 3,
+      "idExterno": "03",
+      "fuenteApi": "GEOREF",
+      "nombre": "Santa Fe",
+      "pais": {
+        "idPais": 1,
+        "idExterno": "AR",
+        "fuenteApi": "GEOREF",
+        "nombre": "Argentina"
+      }
+    }
+  },
   "habilidades": [
     "Pasarela",
     "Fotogenia",
@@ -48,7 +64,7 @@ Esta especificación técnica detalla el contrato de la API, el modelo de datos,
   "caracteristicas": [
     {
       "idCaracteristica": 2,
-      "codigo": "altura",
+      "codigo": "ALTURA",
       "valor": "178",
       "idValor": null,
       "codigoValor": null,
@@ -56,10 +72,10 @@ Esta especificación técnica detalla el contrato de la API, el modelo de datos,
     },
     {
       "idCaracteristica": 5,
-      "codigo": "color_ojos",
-      "valor": "Verde",
+      "codigo": "COLOR_OJOS",
+      "valor": null,
       "idValor": 14,
-      "codigoValor": "VERDE",
+      "codigoValor": "Verde",
       "colorHex": "#2e7d32"
     }
   ],
@@ -67,25 +83,60 @@ Esta especificación técnica detalla el contrato de la API, el modelo de datos,
 }
 ```
 
+### Campos notables
+
+| Campo | Comportamiento |
+| :--- | :--- |
+| `estado` | Siempre uno de: `"Activo"`, `"PendienteBaja"`, `"Deshabilitado"`, `"Baja"`. Solo `"Baja"` es inaccesible. |
+| `fechaSolicitudBaja` | ISO 8601 si el perfil está en `PendienteBaja`; `null` en caso contrario. |
+| `ciudad` | Objeto anidado o `null` si el usuario no tiene ubicación registrada. **No existen campos planos `localidad`/`provincia`.** |
+| `codigoValor` | Es la **etiqueta visible** del valor predefinido (campo `etiqueta` de BD), no un código corto. `null` si la característica es de texto libre. |
+| `esPropietario` | `true` solo cuando el perfil consultado pertenece al usuario autenticado. |
+
 ---
 
 ## 3. Definición de Tipos TypeScript
 
 ```typescript
+export interface PaisResponse {
+  idPais: number;
+  idExterno: string;
+  fuenteApi: string;
+  nombre: string;
+}
+
+export interface ProvinciaResponse {
+  idProvincia: number;
+  idExterno: string;
+  fuenteApi: string;
+  nombre: string;
+  pais: PaisResponse;
+}
+
+export interface CiudadResponse {
+  idCiudad: number;
+  idExterno: string;
+  fuenteApi: string;
+  nombre: string;
+  provincia: ProvinciaResponse;
+}
+
 export interface CaracteristicaResponse {
   idCaracteristica: number;
   codigo: string;
   valor: string | null;
   idValor: number | null;
-  codigoValor: string | null;
-  colorHex: string | null;
+  codigoValor: string | null; // etiqueta visible del valor predefinido
+  colorHex: string | null;    // formato #RRGGBB
 }
+
+export type EstadoPerfil = 'Activo' | 'PendienteBaja' | 'Deshabilitado' | 'Baja';
 
 export interface PerfilDetalleResponse {
   idPerfil: number;
   nombreArtistico: string;
   biografia: string;
-  estado: 'Activo' | 'PendienteBaja' | 'Baja';
+  estado: EstadoPerfil;
   fechaSolicitudBaja: string | null; // Formato ISO 8601 si aplica
   idProfesion: number;
   profesion: string;
@@ -95,8 +146,7 @@ export interface PerfilDetalleResponse {
   nombreUsuario: string;
   apellidoUsuario: string;
   genero: string | null;
-  localidad: string | null;
-  provincia: string | null;
+  ciudad: CiudadResponse | null;
   habilidades: string[];
   caracteristicas: CaracteristicaResponse[];
   esPropietario: boolean;
@@ -136,7 +186,13 @@ export async function fetchPerfilDetalle(idPerfil: number): Promise<PerfilDetall
   });
 
   if (response.status === 404) {
-    throw new Error('El perfil solicitado no existe o no se encuentra disponible.');
+    // El backend incluye un mensaje descriptivo en el cuerpo
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message ?? 'El perfil solicitado no existe o no se encuentra disponible.');
+  }
+
+  if (response.status === 401) {
+    throw new Error('Tu sesión ha expirado. Inicia sesión nuevamente.');
   }
 
   if (!response.ok) {
@@ -146,6 +202,22 @@ export async function fetchPerfilDetalle(idPerfil: number): Promise<PerfilDetall
   return response.json();
 }
 ```
+
+### 4.3. Formato del Cuerpo de Error (Backend)
+
+Todas las respuestas de error siguen esta estructura (`GlobalExceptionHandler.buildErrorResponse`):
+
+```json
+{
+  "message": "Perfil no encontrado.",
+  "httpStatus": 404,
+  "timestamp": 1696800000000
+}
+```
+
+- `message`: texto listo para mostrar al usuario.
+- `httpStatus`: código HTTP numérico.
+- `timestamp`: milisegundos desde epoch.
 
 ---
 
@@ -162,15 +234,17 @@ El campo booleano `esPropietario` permite a la vista adaptar sus llamadas a la a
 | **Botón "Reportar perfil" (UC-15)** | Oculto | **Visible** (abre modal de reporte) |
 | **Visualización de disponibilidad en calendario** | Muestra vista de administración y bloqueos propios | Muestra vista de solo lectura de días/horarios libres |
 
+> **Nota de estado:** Si `esPropietario === true` y `estado === 'Deshabilitado'`, considerar mostrar un banner informativo (el perfil está deshabilitado pero el dueño aún puede verlo y editarlo).
+
 ---
 
 ## 6. Manejo de Errores y Estados de Respuesta
 
 | Código HTTP | Causa | Acción recomendada en Frontend |
 | :---: | :--- | :--- |
-| `200 OK` | Perfil encontrado y activo / accesible. | Renderizar el componente de detalle completo. |
-| `401 Unauthorized` | Sesión expirada o token no enviado. | Redirigir a `/login?redirect=/perfiles/{idPerfil}`. |
-| `404 Not Found` | Perfil inexistente, perfil ajeno en `PendienteBaja`/`Baja`, o dueño del perfil ajeno en estado inactivo. | Mostrar pantalla de error amigable: *"El perfil que buscas no está disponible o ha sido dado de baja."* con botón para volver a `/perfiles/buscar`. |
+| `200 OK` | Perfil encontrado y accesible. | Renderizar el componente de detalle completo. |
+| `401 Unauthorized` | Sesión expirada, token no enviado, o usuario autenticado con estado `Deshabilitado`/`Baja`. | Redirigir a `/login?redirect=/perfiles/{idPerfil}`. |
+| `404 Not Found` | Perfil inexistente; perfil ajeno en `PendienteBaja`/`Deshabilitado`/`Baja`; propietario del perfil ajeno no `Activo`; o perfil propio en `Baja`. | Mostrar pantalla de error amigable usando el `message` del cuerpo de respuesta (ej: *"Perfil no encontrado."*) con botón para volver a `/perfiles/buscar`. |
 | `500 Internal Error` | Error no controlado en servidor. | Mostrar mensaje de alerta y opción de reintentar. |
 
 ---
@@ -178,8 +252,24 @@ El campo booleano `esPropietario` permite a la vista adaptar sus llamadas a la a
 ## 7. Recomendaciones de UX y Rendimiento (Cota de 2 segundos)
 
 1. **Skeleton Screen:** Mostrar un esqueleto animado para foto de perfil, badges de habilidades y lista de características técnicas mientras la promesa se resuelve.
-2. **Badge de Estado / Especialidad:** Destacar la profesión (`profesion`) y ubicación (`localidad, provincia`) en el encabezado principal del perfil.
+2. **Badge de Estado / Especialidad:** Destacar la profesión (`profesion`) y ubicación (`ciudad.nombre`, `ciudad.provincia.nombre`) en el encabezado principal del perfil. Ocultar la sección de ubicación si `ciudad === null`.
 3. **Mapeo de Características Técnicas:**
    - Si la característica tiene `colorHex`, renderizar un círculo de color (ej. color de ojos o tono de cabello).
+   - Para características con `idValor`/`codigoValor`, mostrar la **etiqueta** (`codigoValor`) como valor visible.
+   - Para características con `valor` (texto libre), mostrar el texto directamente.
    - Renderizar las características en formato de cuadrícula o chips estructurados.
 4. **Habilidades en Chips/Tags:** Mostrar la lista de `habilidades` ordenadas alfabéticamente como chips visuales.
+5. **Fecha de Solicitud de Baja:** Si `fechaSolicitudBaja !== null`, mostrar cuenta regresiva de reactivación (UC-12) solo para el propietario.
+
+---
+
+## 8. Referencias de Implementación Backend
+
+| Aspecto | Archivo |
+| :--- | :--- |
+| Endpoint y parámetros | `perfiles/controlador/PerfilController.java` (`obtener`) |
+| Reglas de acceso y negocio | `perfiles/servicio/VerPerfilService.java` |
+| DTO de respuesta | `perfiles/dto/PerfilDetalleResponse.java` |
+| Mapeo de respuesta | `perfiles/mapper/PerfilMapper.java` (`toDetalleResponse`) |
+| Manejo de errores (404/401/500) | `common/exception/GlobalExceptionHandler.java` |
+| Seguridad | `security/SecurityConfig.java` |
