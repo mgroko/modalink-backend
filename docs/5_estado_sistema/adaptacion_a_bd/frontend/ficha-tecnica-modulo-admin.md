@@ -137,7 +137,7 @@ Módulo de backend para gestión administrativa del sistema. El frontend necesit
 - `nombre` (String)
 - `apellido` (String)
 - `correo` (String)
-- `estado` (String: ACTIVO/DESHABILITADO)
+- `estado` (String: ACTIVO/DESHABILITADO/PENDIENTE_BAJA/BAJA)
 - `rolGlobal` (String)
 - `fechaNacimiento` (LocalDate)
 - `dni` (String)
