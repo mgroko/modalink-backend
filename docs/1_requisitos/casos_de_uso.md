@@ -1591,3 +1591,43 @@
 | **Estabilidad**  | media |  |
 | **Comentarios** | \- |  |
 
+
+| UC–74 | Gestionar unidades de medida |  |
+| ----- | ----- | ----- |
+| **Actor** | Administrador |  |
+| **Objetivos asociados**  | OBJ-01 OBJ-04 |  |
+| **Requisitos asociados**  | IRQ-02 |  |
+| **Descripción**  | El caso de uso inicia cuando el administrador del sistema quiere gestionar las unidades de medida del sistema. El sistema le permite agregar un nuevo tipo de unidad de medida, modificar o eliminar una ya existente.  |  |
+| **Precondición**  | El usuario inició sesión en el sistema y tiene permisos de Administrador. |  |
+| **Secuencia normal**  | **Paso** | **Acción** |
+|  | 1 | El sistema recupera y despliega todas las unidades de medida registradas en el sistema y expone las siguientes opciones: “Agregar nueva unidad de medida” “Modificar unidad de medida” “Eliminar unidad de medida” |
+|  | 2 | El actor selecciona “Agregar nueva unidad de medida”. |
+|  | 3 | El sistema despliega un formulario de carga solicitando la siguiente información de forma obligatoria: Nombre Símbolo Tipo de dato permitido  |
+|  | 4 | El actor completa los campos y confirma la acción. |
+|  | 5 | El sistema registra la nueva característica al sistema. |
+| **Postcondición** | Se creó una nueva unidad de medida en el sistema. |  |
+| **Flujo alternativo 2.1** | 2.1 | Si el actor selecciona “Modificar unidad de medida”: |
+|  | 2.1.1 | El actor selecciona la unidad de medida que quiere modificar |
+|  | 2.1.2 | El sistema despliega la información de la habilidad: Nombre de la unidad Símbolo de la unidad Tipo de dato permitido |
+|  | 2.1.3 | El actor modifica los campos deseados y confirma la acción.  |
+|  | 2.1.4 | El sistema registra los cambios. |
+| **Postcondición 2.1** | Se modificó una unidad de medida del sistema. El sistema, por cada perfil de usuario que tenía una característica técnica con esta unidad de medida asociada a su perfil, emite una notificación informando de la modificación. |  |
+| **Flujo alternativo 2.2** | 2.2 | Si el actor selecciona “Eliminar unidad de medida”: |
+|  | 2.2.1 | El actor selecciona la característica que quiere eliminar |
+|  | 2.2.2 | El sistema despliega los datos de la unidad de medida y solicita confirmación. |
+|  | 2.2.3 | El actor confirma la acción.  |
+|  | 2.2.4 | El sistema registra la baja.  |
+| **Postcondición 2.2** | Se dió de baja una característica en el sistema.   |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 4 | Si el actor deja campos obligatorios vacíos o introduce un nombre de característica igual al de otra ya existente en el sistema, el sistema notifica la excepción y vuelve al paso 3 o el caso de uso finaliza.   |
+|  | 2.1.3 | Si el actor deja campos obligatorios vacíos o introduce un nombre o símbolo de unidad igual al de otra ya existente en el sistema, el sistema notifica la excepción y vuelve al paso 2.1.2 o el caso de uso finaliza.   |
+|  | 2.2.3 | Si el usuario intenta eliminar una unidad de medida asociada a una característica técnica, el sistema informa el error y el caso de uso finaliza. |
+| **Rendimiento**  | **Paso** | **Cota de tiempo**  |
+|  | 5 | 2 segundos |
+|  | 2.1.4 | 2 segundos |
+|  | 2.2.4 | 2 segundos |
+| **Frecuencia**  | 10 veces/día |  |
+| **Estabilidad**  | media |  |
+| **Comentarios** | \- |  |
+
+
