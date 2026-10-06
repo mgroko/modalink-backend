@@ -12,7 +12,8 @@ public record PerfilResponse(
         LocalDateTime fechaSolicitudBaja,
         Long idImagen,
         String fotoUrl,
-        List<CaracteristicaResponse> caracteristicas
+        List<CaracteristicaResponse> caracteristicas,
+        LocalDateTime fechaLimite
 ) {
     public PerfilResponse(
             Long idPerfil,
@@ -22,6 +23,7 @@ public record PerfilResponse(
             String profesion,
             LocalDateTime fechaSolicitudBaja,
             List<CaracteristicaResponse> caracteristicas) {
-        this(idPerfil, nombreArtistico, biografia, estado, profesion, fechaSolicitudBaja, null, null, caracteristicas);
+        this(idPerfil, nombreArtistico, biografia, estado, profesion, fechaSolicitudBaja, null, null,
+                caracteristicas, null);
     }
 }

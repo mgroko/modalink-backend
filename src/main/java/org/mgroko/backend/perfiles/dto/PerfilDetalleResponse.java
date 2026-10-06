@@ -22,6 +22,7 @@ public record PerfilDetalleResponse(
         CiudadResponse ciudad,
         List<String> habilidades,
         List<CaracteristicaResponse> caracteristicas,
-        boolean esPropietario
+        boolean esPropietario,
+        LocalDateTime fechaLimite
 ) {
 }
