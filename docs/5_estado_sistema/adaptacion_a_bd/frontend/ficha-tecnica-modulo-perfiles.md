@@ -14,9 +14,29 @@ Módulo de gestión de perfiles de usuario en la plataforma. Proporciona funcion
 | GET | `/usuarios/me/perfiles` | Listar perfiles del usuario autenticado | Requiere auth |
 | GET | `/perfiles/{idPerfil}` | Obtener perfil completo (propio o tercero activo) | Requiere auth |
 | PUT | `/perfiles/{idPerfil}` | Editar perfil existente | Requiere auth |
-| DELETE | `/perfiles/{idPerfil}` | Solicitar baja del perfil (cuenta regresiva 30 días) | Requiere auth |
-| POST | `/perfiles/{idPerfil}/reactivar` | Reactivar perfil dentro de los 30 días | Requiere auth |
+| DELETE | `/perfiles/{idPerfil}` | Solicitar baja del perfil (cuenta regresiva de `diasBaja` días, por defecto 30) | Requiere auth |
+| POST | `/perfiles/{idPerfil}/reactivar` | Reactivar perfil dentro del plazo de `diasBaja` (por defecto 30) | Requiere auth |
 | PATCH | `/perfiles/{idPerfil}/activar` | Cambiar perfil activo (sesión) | Requiere auth |
+
+> El plazo `diasBaja` lo define el administrador en `/admin/configuracion/schedulers/baja` y es el
+> mismo para cuentas (UC-07) y perfiles (UC-12): solicitud, reactivación y expiración automática.
+
+**Respuesta de `DELETE /perfiles/{idPerfil}` (200 OK)** — misma estructura que
+`POST /usuario/solicitar-baja`:
+
+```json
+{
+  "mensaje": "Solicitud de baja registrada. Tienes 30 días para activar el perfil.",
+  "fechaLimite": "2026-11-04T12:00:00"
+}
+```
+
+- `fechaLimite`: fecha exacta calculada por el backend con el `diasBaja` vigente (no hace falta
+  pedir la configuración de admin para conocerla).
+- Mismo contrato en `fechaLimite` de `PerfilResponse`/`PerfilDetalleResponse` cuando el perfil está
+  en `PendienteBaja` (sirve para repintar el contador tras recargar la página).
+- `POST /perfiles/{idPerfil}/reactivar` devuelve un `PerfilResponse` con `estado: "Activo"` y
+  `fechaLimite: null`.
 
 ### 2.2 Gestión de Fotos (`/perfiles/{idPerfil}/foto`)
 
@@ -43,12 +63,13 @@ Módulo de gestión de perfiles de usuario en la plataforma. Proporciona funcion
 - `idPerfil` (Long)
 - `nombreArtistico` (String)
 - `biografia` (String)
-- `estado` (String: ACTIVO/BAJA/PENDIENTE_BAJA/DESHABILITADO)
+- `estado` (String: `Activo`/`Baja`/`PendienteBaja`/`Deshabilitado`)
 - `profesion` (String - nombre de la profesión)
 - `fechaSolicitudBaja` (LocalDateTime, opcional - nulo si activo)
 - `idImagen` (Long, opcional)
 - `fotoUrl` (String, URL de la foto, opcional)
 - `caracteristicas` (List<CaracteristicaResponse>)
+- `fechaLimite` (LocalDateTime, opcional - solo cuando `estado == "PendienteBaja"`)
 
 **CrearPerfilRequest:**
 - `nombreArtistico` (String, 2-50 chars, obligatorio)
@@ -80,6 +101,7 @@ Módulo de gestión de perfiles de usuario en la plataforma. Proporciona funcion
 - `habilidades` (List<String>)
 - `caracteristicas` (List<CaracteristicaResponse>)
 - `esPropietario` (boolean)
+- `fechaLimite` (LocalDateTime, opcional - solo cuando `estado == "PendienteBaja"`)
 
 ### 3.3 PerfilBusquedaResponse (Resultados de búsqueda)
 Igual estructura a PerfilDetalleResponse pero para listados paginados.
@@ -127,9 +149,10 @@ Igual estructura a PerfilDetalleResponse pero para listados paginados.
 - `provincia` (ProvinciaResponse - objeto provincia)
 
 ### 3.9 Bloqueo de Estado
-- Perfil tiene estados: ACTIVO, BAJA, PENDIENTE_BAJA, DESHABILITADO (por el admin)
-- Cuenta regresiva de 30 días desde solicitud de baja
-- Una vez vencidos los 30 días, el perfil se elimina permanentemente
+- Perfil tiene estados: ACTIVO, BAJA, PENDIENTE_BAJA, DESHABILITADO (por el admin); en JSON se
+  serializan como `Activo`, `Baja`, `PendienteBaja`, `Deshabilitado`
+- Cuenta regresiva de `diasBaja` días desde la solicitud de baja (configurable, por defecto 30)
+- Una vez vencido el plazo, el scheduler diario (o la ejecución manual del admin) marca el perfil en estado `Baja`, quedando inaccesible para la comunidad
 
 ## 4. Consideraciones de UI/UX
 
@@ -170,14 +193,15 @@ Igual estructura a PerfilDetalleResponse pero para listados paginados.
 
 ### 4.4 Gestión de Baja y Reactivación
 - **Solicitar baja:**
-  - Confirmación modal explicando cuenta regresiva 30 días
-  - Mostrar fecha de expiración
-  - Estado visual: perfil BAJA con tiempo restante
+  - Confirmación modal explicando la cuenta regresiva de `diasBaja` días (por defecto 30)
+  - Mostrar `fechaLimite`: la devuelve el `DELETE` y también `PerfilResponse`/`PerfilDetalleResponse`
+  - Estado visual: perfil `PendienteBaja` con tiempo restante
   
-- **Reactivar ( dentro de 30 días):**
-  - Botón "Reactivar perfil" en perfil BAJA
+- **Reactivar (dentro del plazo):**
+  - Botón "Reactivar perfil" mientras el perfil está en `PendienteBaja`
   - Formulario rápido sin necesidad de reingresar datos principales
-  - Confirmación y actualización de estado a ACTIVO
+  - Confirmación y actualización de estado a `Activo`
+  - Si el plazo venció: el backend responde 409 (y el scheduler ya marcó el perfil en `Baja`)
 
 ### 4.5 Cambiar Perfil Activo (Sesión)
 - **Selector de perfil:** Cuando usuario tiene múltiples perfiles
@@ -242,16 +266,16 @@ Igual estructura a PerfilDetalleResponse pero para listados paginados.
 
 **Flujo 3: Solicitar Baja Temporal**
 1. En perfil detail, clic en "Solicitar Baja"
-2. Modal de confirmación con advertencia de 30 días
-3. Si confirma, estado cambia a BAJA
-4. Mostrar contador regresivo de días restantes
-5. Durante los 30 días, botón "Reactivar" disponible
+2. Modal de confirmación con advertencia de `diasBaja` días (por defecto 30) usando `fechaLimite`
+3. Si confirma, estado cambia a `PendienteBaja`
+4. Mostrar contador regresivo de días restantes calculado con `fechaLimite`
+5. Durante el plazo, botón "Reactivar" disponible
 
 **Flujo 4: Reactivar Perfil**
-1. En perfil EN_BAJA dentro del período de 30 días
+1. En perfil `PendienteBaja` dentro del plazo de `diasBaja`
 2. Clic en "Reactivar"
 3. Confirmación rápida
-4. Estado vuelve a ACTIVO
+4. Estado vuelve a `Activo`
 5. Cookie de sesión actualizada si era el perfil activo
 
 **Flujo 5: Buscar y Descubrir Perfiles**
@@ -275,8 +299,8 @@ Igual estructura a PerfilDetalleResponse pero para listados paginados.
 /perfiles                 → Crear nuevo perfil (POST)
 /usuarios/me/perfiles     → Mis perfiles (usuario autenticado)
 /perfiles/{id}            → Ver detalle de perfil (propio o tercero activo)
-/perfiles/{id}/editar     → Editar perfil (PUT)
-/perfiles/{id}/reactivar  → Reactivar perfil BAJA (POST)
+/perfiles/{id}            → Editar perfil (PUT)
+/perfiles/{id}/reactivar  → Reactivar perfil PendienteBaja (POST)
 /perfiles/{id}/activar    → Cambiar perfil activo en sesión (PATCH)
 /perfiles/{id}/foto       → Subir/eliminar foto (POST/DELETE)
 /profesiones              → Listado de profesiones (GET con filtro nombre opcional)

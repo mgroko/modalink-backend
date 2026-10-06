@@ -73,6 +73,61 @@ Módulo de backend para gestión administrativa del sistema. El frontend necesit
 **ConfiguracionSchedulerResponse:**
 - Configuración relacionada con el scheduler de deshabilitación automática de usuarios
 
+### 2.3.1 Configuración del scheduler de bajas (`/admin/configuracion/schedulers/baja`)
+
+| Método | Endpoint | Descripción | Autorización |
+|--------|----------|-------------|--------------|
+| GET | `/admin/configuracion/schedulers/baja` | Obtener hora, minuto, cron, próxima ejecución y días de plazo de baja | `ADMINISTRAR_CONFIGURACION` |
+| POST | `/admin/configuracion/schedulers/baja` | Actualizar hora/minuto y días de baja (recalcula el cron en caliente) | `ADMINISTRAR_CONFIGURACION` |
+| POST | `/admin/configuracion/schedulers/baja/ejecutar-ahora` | Ejecutar manualmente la expiración de bajas vencidas (cuentas y perfiles) | `ADMINISTRAR_CONFIGURACION` |
+
+Scheduler de expiración de bajas (UC-07): cada día a la hora configurada marca como `BAJA` las
+cuentas y perfiles `PENDIENTE_BAJA` cuyo plazo (`diasBaja`, por defecto 30) se venció. Los cambios
+de configuración afectan a la siguiente ejecución sin reinicio; la misma lógica corre una vez al
+arrancar la aplicación y desde `ejecutar-ahora`.
+
+**ConfiguracionSchedulerBajaResponse:**
+```json
+{
+  "hora": 3,
+  "minuto": 0,
+  "cron": "0 0 3 * * *",
+  "proximaEjecucion": "2026-10-06T03:00:00",
+  "diasBaja": 30
+}
+```
+
+**ConfigurarSchedulerBajaRequest** (POST — todos los campos obligatorios):
+```json
+{
+  "hora": 3,
+  "minuto": 30,
+  "diasBaja": 45
+}
+```
+
+| Campo | Restricción |
+|-------|-------------|
+| `hora` | 0–23 |
+| `minuto` | 0–59 |
+| `diasBaja` | 1–365 (mismo valor usado por la solicitud de baja para calcular `fechaLimite`) |
+
+**EjecutarSchedulerResponse** (POST `/ejecutar-ahora`):
+```json
+{
+  "registrosAfectados": 3,
+  "ejecutadoEn": "2026-10-05T12:15:00",
+  "mensaje": "Se dieron de baja 2 cuenta(s) y 1 perfil(es)."
+}
+```
+
+**Errores:**
+
+| Caso | HTTP |
+|------|------|
+| Campo ausente o fuera de rango (`hora`, `minuto`, `diasBaja`) | 400 |
+| Sin autorización `ADMINISTRAR_CONFIGURACION` | 403 |
+
 ### 2.4 Unidades de Medida (`/admin/unidades-medida`)
 
 | Método | Endpoint | Descripción | Autorización |

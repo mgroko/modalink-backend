@@ -71,6 +71,9 @@ Módulo de gestión de datos personales y estado de cuenta de usuario. Proporcio
 - **Proceso:** Usuario solicita baja → cuenta pasa a estado PENDIENTE_BAJA → cuenta regresiva de 30 días
 - **fechaLimite:** Fecha exacta cuando la cuenta se eliminará permanentemente si no se reactiva
 - **Mensaje:** Informa al usuario sobre el período de 30 días
+- **Plazo configurable:** 30 días es el valor por defecto; el administrador lo cambia en
+  `/admin/configuracion/schedulers/baja` (`diasBaja`, 1–365) y el nuevo valor se aplica a la
+  solicitud, a la reactivación y a la expiración automática (mismo plazo para cuentas y perfiles).
 
 ### 3. Reactivar Cuenta (`/usuario/reactivar-cuenta`)
 
@@ -99,7 +102,7 @@ Cuando las credenciales son válidas pero la cuenta está en estado `PENDIENTE_B
 | Código | Causa |
 |--------|-------|
 | `403` | Dentro del plazo: se ofrece la reactivación (payload abajo) |
-| `409` | Plazo vencido: `"El plazo de 30 días para recuperar la cuenta ha expirado."` |
+| `409` | Plazo vencido: `"El plazo de 30 días para recuperar la cuenta ha expirado."` (30 = `diasBaja` configurado) |
 | `401` | Credenciales inválidas |
 | `403` | Usuario `DESHABILITADO` |
 

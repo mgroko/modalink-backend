@@ -48,7 +48,7 @@ Este documento describe la especificación técnica, endpoints y flujo de intera
     "biografia": "Biografía...",
     "fotoPerfil": "https://...",
     "banner": "https://...",
-    "estado": "Activo", // "Activo" o "EnBaja"
+    "estado": "Activo", // "Activo" | "Deshabilitado" | "PendienteBaja" | "Baja"
     "esPrincipal": true,
     "profesiones": [
       {
@@ -86,7 +86,7 @@ Este documento describe la especificación técnica, endpoints y flujo de intera
 ```
 - **Errores Posibles:**
   - `404 Not Found`: Si el perfil no existe o no pertenece al usuario autenticado.
-  - `400 Bad Request` (`PerfilEnBajaException`): Si el perfil está en proceso de baja o dado de baja (`estado != 'Activo'`).
+  - `409 Conflict` (`PerfilEnBajaException`): Si el perfil está en proceso de baja o dado de baja (`estado != 'Activo'`).
 
 ---
 
