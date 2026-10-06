@@ -285,7 +285,7 @@ class PerfilControllerTest {
                         new org.mgroko.backend.ubicacion.dto.ProvinciaResponse(
                                 10L, "24", "GEOREF", "Santa Fe",
                                 new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
-                List.of("Pasarela", "Fotogenia"), List.of(), true);
+                List.of("Pasarela", "Fotogenia"), List.of(), true, null);
 
         when(verPerfilService.obtenerDetalle(10L, 1L)).thenReturn(perfil);
 
@@ -382,7 +382,8 @@ class PerfilControllerTest {
         mockMvc.perform(delete("/perfiles/10")
                         .principal(authentication))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mensaje").value("Solicitud de baja registrada."));
+                .andExpect(jsonPath("$.mensaje").value("Solicitud de baja registrada."))
+                .andExpect(jsonPath("$.fechaLimite").isNotEmpty());
     }
 
     @Test
@@ -524,7 +525,8 @@ class PerfilControllerTest {
                 null,
                 100L,
                 "/uploads/perfiles/perfil_100.jpg",
-                List.of()
+                List.of(),
+                null
         );
 
         org.mockito.Mockito.when(fotoPerfilService.subirFoto(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.any()))
@@ -550,7 +552,8 @@ class PerfilControllerTest {
                 null,
                 null,
                 null,
-                List.of()
+                List.of(),
+                null
         );
 
         org.mockito.Mockito.when(fotoPerfilService.eliminarFoto(1L, 10L)).thenReturn(response);

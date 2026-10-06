@@ -1,15 +1,19 @@
 package org.mgroko.backend.perfiles.servicio;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Usuario;
@@ -33,6 +37,9 @@ class UsuarioPerfilServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
 
     @InjectMocks
     private UsuarioPerfilService usuarioPerfilService;
@@ -67,6 +74,24 @@ class UsuarioPerfilServiceTest {
         assertEquals("Luna", response.get(0).nombreArtistico());
         assertEquals("modelo", response.get(0).profesion());
         assertEquals("Activo", response.get(0).estado());
+        assertNull(response.get(0).fechaLimite());
+    }
+
+    @Test
+    void listarPerfilesPropios_perfilPendienteBaja_incluyeFechaLimiteCalculada() {
+        Perfil pendiente = perfilModelo();
+        pendiente.setEstado(EstadoPerfil.PendienteBaja);
+        pendiente.setFechaSolicitudBaja(LocalDateTime.now().minusDays(10));
+
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
+        when(perfilRepository.findByUsuarioIdUsuario(1L)).thenReturn(List.of(pendiente));
+
+        List<PerfilResponse> response = usuarioPerfilService.listarPerfilesPropios(1L);
+
+        assertEquals("PendienteBaja", response.get(0).estado());
+        assertNotNull(response.get(0).fechaLimite());
+        assertEquals(pendiente.getFechaSolicitudBaja().plusDays(30), response.get(0).fechaLimite());
     }
 
     @Test

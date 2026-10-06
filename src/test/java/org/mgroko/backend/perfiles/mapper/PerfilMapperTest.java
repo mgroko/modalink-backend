@@ -1,9 +1,11 @@
 package org.mgroko.backend.perfiles.mapper;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
@@ -78,5 +80,60 @@ class PerfilMapperTest {
         PerfilResponse response = PerfilMapper.toResponse(perfil);
 
         assertTrue(response.caracteristicas().isEmpty());
+        assertNull(response.fechaLimite());
+    }
+
+    @Test
+    void toResponse_perfilPendienteBaja_calculaFechaLimiteConDiasBaja() {
+        Profesion profesion = Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
+        LocalDateTime fechaSolicitud = LocalDateTime.of(2026, 9, 20, 10, 0);
+
+        Perfil perfil = Perfil.builder()
+                .idPerfil(7L)
+                .nombreArtistico("Luna")
+                .biografia("Modelo profesional.")
+                .estado(EstadoPerfil.PendienteBaja)
+                .fechaSolicitudBaja(fechaSolicitud)
+                .profesion(profesion)
+                .build();
+
+        PerfilResponse response = PerfilMapper.toResponse(perfil, 45);
+
+        assertEquals("PendienteBaja", response.estado());
+        assertEquals(fechaSolicitud, response.fechaSolicitudBaja());
+        assertEquals(fechaSolicitud.plusDays(45), response.fechaLimite());
+    }
+
+    @Test
+    void toResponse_perfilActivo_noTieneFechaLimiteAunqueSePaseDiasBaja() {
+        Profesion profesion = Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
+
+        Perfil perfil = Perfil.builder()
+                .idPerfil(8L)
+                .nombreArtistico("Luna")
+                .biografia("Modelo profesional.")
+                .estado(EstadoPerfil.Activo)
+                .profesion(profesion)
+                .build();
+
+        PerfilResponse response = PerfilMapper.toResponse(perfil, 30);
+
+        assertNull(response.fechaLimite());
+    }
+
+    @Test
+    void toResponse_sinDiasBaja_noCalculaFechaLimite() {
+        Profesion profesion = Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
+
+        Perfil perfil = Perfil.builder()
+                .idPerfil(9L)
+                .nombreArtistico("Luna")
+                .biografia("Modelo profesional.")
+                .estado(EstadoPerfil.PendienteBaja)
+                .fechaSolicitudBaja(LocalDateTime.of(2026, 9, 20, 10, 0))
+                .profesion(profesion)
+                .build();
+
+        assertNull(PerfilMapper.toResponse(perfil).fechaLimite());
     }
 }

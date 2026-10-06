@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
@@ -39,6 +40,9 @@ class VerPerfilServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
 
     @InjectMocks
     private VerPerfilService verPerfilService;
@@ -122,6 +126,7 @@ class VerPerfilServiceTest {
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioAutenticado));
         when(perfilRepository.findById(100L)).thenReturn(Optional.of(perfil));
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
 
         PerfilDetalleResponse response = verPerfilService.obtenerDetalle(100L, 1L);
 
@@ -129,7 +134,23 @@ class VerPerfilServiceTest {
         assertThat(response.idPerfil()).isEqualTo(100L);
         assertThat(response.estado()).isEqualTo("PendienteBaja");
         assertThat(response.fechaSolicitudBaja()).isNotNull();
+        assertThat(response.fechaLimite()).isEqualTo(perfil.getFechaSolicitudBaja().plusDays(30));
         assertThat(response.esPropietario()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Perfil propio en estado Activo no expone fecha límite de baja")
+    void obtenerDetalle_perfilPropioActivo_noTieneFechaLimite() {
+        perfil.setUsuario(usuarioAutenticado);
+
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioAutenticado));
+        when(perfilRepository.findById(100L)).thenReturn(Optional.of(perfil));
+
+        PerfilDetalleResponse response = verPerfilService.obtenerDetalle(100L, 1L);
+
+        assertThat(response.estado()).isEqualTo("Activo");
+        assertThat(response.fechaSolicitudBaja()).isNull();
+        assertThat(response.fechaLimite()).isNull();
     }
 
     @Test
