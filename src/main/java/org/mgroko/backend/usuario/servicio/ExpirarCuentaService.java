@@ -7,6 +7,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.perfiles.servicio.EliminarImagenesPerfilService;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -25,10 +26,13 @@ public class ExpirarCuentaService {
 
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
+    private final EliminarImagenesPerfilService eliminarImagenesPerfilService;
 
-    public ExpirarCuentaService(UsuarioRepository usuarioRepository, PerfilRepository perfilRepository) {
+    public ExpirarCuentaService(UsuarioRepository usuarioRepository, PerfilRepository perfilRepository,
+            EliminarImagenesPerfilService eliminarImagenesPerfilService) {
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
+        this.eliminarImagenesPerfilService = eliminarImagenesPerfilService;
     }
 
     @Transactional
@@ -44,6 +48,9 @@ public class ExpirarCuentaService {
             for (Perfil perfil : perfiles) {
                 if (perfil.getEstado() != EstadoPerfil.Baja) {
                     perfil.setEstado(EstadoPerfil.Baja);
+                    // La imagen del perfil se elimina en el metodo dedicado: ahi
+                    // se sumaran las publicaciones independientes cuando existan.
+                    eliminarImagenesPerfilService.eliminarImagenesDePerfil(perfil);
                 }
                 // TODO: Eliminar publicaciones independientes del perfil (tabla publicacion aún no implementada).
             }

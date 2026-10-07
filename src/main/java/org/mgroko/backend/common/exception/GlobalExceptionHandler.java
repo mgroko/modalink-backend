@@ -45,6 +45,7 @@ import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoExce
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
+import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
 import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
@@ -455,6 +456,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FormatoImagenInvalidoException.class)
     public ResponseEntity<Map<String, Object>> handleFormatoImagenInvalido(FormatoImagenInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DimensionesImagenExcedidasException.class)
+    public ResponseEntity<Map<String, Object>> handleDimensionesImagenExcedidas(DimensionesImagenExcedidasException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 

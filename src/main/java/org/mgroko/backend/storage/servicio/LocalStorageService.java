@@ -1,50 +1,60 @@
 package org.mgroko.backend.storage.servicio;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import javax.imageio.ImageIO;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
 import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import net.coobird.thumbnailator.Thumbnails;
-
+/**
+ * Persiste en disco local las fotos de perfil ya convertidas por
+ * {@link ProcesadorImagen}: este servicio solo valida el content type de entrada,
+ * escribe los bytes resultantes y borra archivos.
+ */
 @Service
 public class LocalStorageService implements StorageService {
 
-    public static final int TARGET_WIDTH = 600;
-    public static final int TARGET_HEIGHT = 600;
-    public static final double TARGET_OUTPUT_QUALITY = 0.85;
+    private static final Logger LOG = LoggerFactory.getLogger(LocalStorageService.class);
 
     private static final Set<String> CONTENT_TYPES_PERMITIDOS = Set.of(
             "image/jpeg",
-            "image/jpg",
             "image/png",
-            "image/webp"
+            ProcesadorImagen.MIME_SALIDA
     );
+
+    private static final String PREFIJO_CONTENT_TYPE = "image/";
+    private static final String PREFIJO_NOMBRE_PERFIL = "perfil_";
 
     private final Path perfilesPath;
     private final String uploadDir;
     private final String perfilesSubdir;
+    private final ProcesadorImagen procesadorImagen;
 
     public LocalStorageService(
             @Value("${app.storage.upload-dir:uploads}") String uploadDir,
-            @Value("${app.storage.perfiles-dir:perfiles}") String perfilesSubdir) {
+            @Value("${app.storage.perfiles-dir:perfiles}") String perfilesSubdir,
+            ProcesadorImagen procesadorImagen) {
         this.uploadDir = uploadDir;
         this.perfilesSubdir = perfilesSubdir;
+        this.procesadorImagen = procesadorImagen;
         this.perfilesPath = Paths.get(uploadDir, perfilesSubdir).toAbsolutePath().normalize();
 
         try {
@@ -61,8 +71,9 @@ public class LocalStorageService implements StorageService {
         }
 
         String contentType = archivo.getContentType();
-        if (contentType == null || !CONTENT_TYPES_PERMITIDOS.contains(contentType.toLowerCase())) {
-            throw new FormatoImagenInvalidoException("El formato de archivo no está permitido. Formatos admitidos: JPEG, PNG, WEBP.");
+        if (contentType == null || !CONTENT_TYPES_PERMITIDOS.contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw new FormatoImagenInvalidoException(
+                    "El formato de archivo no está permitido. Formatos admitidos: " + formatosAdmitidos() + ".");
         }
 
         byte[] bytes;
@@ -72,34 +83,14 @@ public class LocalStorageService implements StorageService {
             throw new ErrorAlmacenamientoException("Error al leer los bytes del archivo.", e);
         }
 
-        // Validación de magic bytes / lectura con ImageIO para descartar binarios corruptos o falsos
-        try {
-            if (ImageIO.read(new ByteArrayInputStream(bytes)) == null) {
-                throw new FormatoImagenInvalidoException("El archivo subido no es una imagen válida.");
-            }
-        } catch (IOException e) {
-            throw new FormatoImagenInvalidoException("No se pudo interpretar el archivo como una imagen válida.");
-        }
+        byte[] bytesConvertidos = procesadorImagen.procesar(bytes);
 
-        // Redimensionamiento y optimización a 600x600 px
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try {
-            Thumbnails.of(new ByteArrayInputStream(bytes))
-                    .size(TARGET_WIDTH, TARGET_HEIGHT)
-                    .crop(net.coobird.thumbnailator.geometry.Positions.CENTER)
-                    .outputFormat("jpg")
-                    .outputQuality(TARGET_OUTPUT_QUALITY)
-                    .toOutputStream(outputStream);
-        } catch (IOException e) {
-            throw new ErrorAlmacenamientoException("Error al procesar y redimensionar la imagen.", e);
-        }
-
-        byte[] optimizedBytes = outputStream.toByteArray();
-        String nombreArchivoGenerado = "perfil_" + UUID.randomUUID() + ".jpg";
+        String nombreArchivoGenerado = PREFIJO_NOMBRE_PERFIL + UUID.randomUUID()
+                + "." + ProcesadorImagen.EXTENSION_SALIDA;
         Path destino = this.perfilesPath.resolve(nombreArchivoGenerado);
 
         try {
-            Files.write(destino, optimizedBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.write(destino, bytesConvertidos, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             throw new ErrorAlmacenamientoException("Error al escribir la imagen optimizada en disco.", e);
         }
@@ -109,8 +100,8 @@ public class LocalStorageService implements StorageService {
         return new ArchivoAlmacenado(
                 nombreArchivoGenerado,
                 urlRelativa,
-                "image/jpeg",
-                optimizedBytes.length
+                ProcesadorImagen.MIME_SALIDA,
+                bytesConvertidos.length
         );
     }
 
@@ -126,8 +117,46 @@ public class LocalStorageService implements StorageService {
         try {
             Files.deleteIfExists(archivoPath);
         } catch (IOException e) {
-            // Se loguea pero no debe frenar la transacción principal si el archivo ya no estaba
-            System.err.println("No se pudo eliminar el archivo físico: " + archivoPath + " - " + e.getMessage());
+            // No se traga el error: se registra con la ruta y se propaga; los borrados
+            // programados por la transacción lo capturan y lo dejan para el job de
+            // limpieza (Fase 5).
+            LOG.warn("No se pudo eliminar el archivo físico: {}", archivoPath, e);
+            throw new ErrorAlmacenamientoException("No se pudo eliminar el archivo físico: " + archivoPath, e);
         }
+    }
+
+    @Override
+    public Map<String, Instant> listarFotografiasDePerfil() {
+        if (!Files.isDirectory(this.perfilesPath)) {
+            return Map.of();
+        }
+
+        Map<String, Instant> fotos = new LinkedHashMap<>();
+        try (Stream<Path> entradas = Files.list(this.perfilesPath)) {
+            for (Path ruta : entradas.filter(Files::isRegularFile).toList()) {
+                // Mismo criterio que getFileName() de eliminarFotoPerfil: solo el
+                // nombre simple del archivo, nunca rutas con separadores ni "..".
+                String nombre = Paths.get(ruta.getFileName().toString()).getFileName().toString();
+                if (!this.perfilesPath.resolve(nombre).normalize().equals(ruta.normalize())) {
+                    continue;
+                }
+                try {
+                    fotos.put(nombre, Files.getLastModifiedTime(ruta).toInstant());
+                } catch (IOException e) {
+                    LOG.warn("No se pudo leer la fecha de modificación de '{}'; no entra en la limpieza.", nombre, e);
+                }
+            }
+        } catch (IOException e) {
+            throw new ErrorAlmacenamientoException(
+                    "No se pudo listar el directorio de fotos de perfil: " + this.perfilesPath, e);
+        }
+        return fotos;
+    }
+
+    private static String formatosAdmitidos() {
+        return CONTENT_TYPES_PERMITIDOS.stream()
+                .sorted()
+                .map(tipo -> tipo.substring(PREFIJO_CONTENT_TYPE.length()).toUpperCase(Locale.ROOT))
+                .collect(Collectors.joining(", "));
     }
 }

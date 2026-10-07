@@ -8,6 +8,8 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecificationExecutor<Perfil> {
 
@@ -59,4 +61,15 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * @return lista de perfiles del usuario en el estado especificado
      */
     List<Perfil> findByUsuario_IdUsuarioAndEstado(Long idUsuario, EstadoPerfil estado);
+
+    /**
+     * Identificadores de los perfiles en el estado indicado que todavía tienen
+     * imagen asociada. Lo usa el job de limpieza para reintentar el borrado de
+     * imágenes de perfiles en baja cuyo borrado anterior falló.
+     *
+     * @param estado estado a buscar (por ejemplo {@code EstadoPerfil.Baja})
+     * @return identificadores de los perfiles con imagen
+     */
+    @Query("select p.idPerfil from Perfil p where p.estado = :estado and p.imagen is not null")
+    List<Long> buscarIdsConFoto(@Param("estado") EstadoPerfil estado);
 }
