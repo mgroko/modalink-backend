@@ -10,6 +10,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.perfiles.servicio.EliminarImagenesPerfilService;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mockito.ArgumentCaptor;
@@ -30,6 +31,9 @@ class ExpirarCuentaServiceTest {
 
     @Mock
     private PerfilRepository perfilRepository;
+
+    @Mock
+    private EliminarImagenesPerfilService eliminarImagenesPerfilService;
 
     @InjectMocks
     private ExpirarCuentaService expirarCuentaService;
@@ -74,6 +78,7 @@ class ExpirarCuentaServiceTest {
         ArgumentCaptor<List<Usuario>> captorUsuario = ArgumentCaptor.forClass(List.class);
         verify(usuarioRepository).saveAll(captorUsuario.capture());
         assertEquals(EstadoUsuario.Baja, captorUsuario.getValue().get(0).getEstado());
+        verify(eliminarImagenesPerfilService).eliminarImagenesDePerfil(perfil);
     }
 
     @Test
@@ -91,6 +96,7 @@ class ExpirarCuentaServiceTest {
         ArgumentCaptor<List<Perfil>> captor = ArgumentCaptor.forClass(List.class);
         verify(perfilRepository).saveAll(captor.capture());
         assertEquals(EstadoPerfil.Baja, captor.getValue().get(0).getEstado());
+        verify(eliminarImagenesPerfilService, never()).eliminarImagenesDePerfil(any(Perfil.class));
     }
 
     @Test
@@ -103,5 +109,6 @@ class ExpirarCuentaServiceTest {
         assertEquals(0, cantidad);
         verify(usuarioRepository, never()).saveAll(any());
         verify(perfilRepository, never()).saveAll(any());
+        verify(eliminarImagenesPerfilService, never()).eliminarImagenesDePerfil(any(Perfil.class));
     }
 }

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +29,7 @@ import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
+import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.mgroko.backend.storage.servicio.StorageService;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -62,7 +65,8 @@ class FotoPerfilServiceTest {
                 perfilRepository,
                 imagenRepository,
                 storageService,
-                configuracionSistemaService
+                configuracionSistemaService,
+                new BorradoArchivosDiferido(storageService)
         );
 
         usuario = Usuario.builder()
@@ -170,5 +174,39 @@ class FotoPerfilServiceTest {
 
         verify(imagenRepository).delete(imagenActual);
         verify(storageService).eliminarFotoPerfil("foto_actual.jpg");
+    }
+
+    @Test
+    void eliminarFoto_perfilSinFoto_noBorraNada() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(2L, 1L)).thenReturn(Optional.of(perfil));
+
+        PerfilResponse response = fotoPerfilService.eliminarFoto(1L, 2L);
+
+        assertNotNull(response);
+        assertNull(response.idImagen());
+        verify(storageService, never()).eliminarFotoPerfil(anyString());
+    }
+
+    @Test
+    void subirFoto_primeraFotoSinTransaccion_noIntentaBorrarArchivoPrevio() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(2L, 1L)).thenReturn(Optional.of(perfil));
+        when(storageService.almacenarFotoPerfil(any())).thenReturn(new ArchivoAlmacenado(
+                "nuevo.webp", "/uploads/perfiles/nuevo.webp", "image/webp", 128L));
+        when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
+            Imagen imagen = invocation.getArgument(0);
+            imagen.setIdImagen(9L);
+            return imagen;
+        });
+        when(perfilRepository.save(any(Perfil.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MockMultipartFile file = new MockMultipartFile("archivo", "foto.jpg", "image/jpeg", new byte[5]);
+
+        PerfilResponse response = fotoPerfilService.subirFoto(1L, 2L, file);
+
+        assertNotNull(response);
+        assertEquals(9L, response.idImagen());
+        verify(storageService, never()).eliminarFotoPerfil(anyString());
     }
 }

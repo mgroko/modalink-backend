@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
@@ -21,9 +22,7 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
 import org.mgroko.backend.perfiles.dto.EditarPerfilRequest;
 import org.mgroko.backend.perfiles.dto.PerfilResponse;
-import org.mgroko.backend.perfiles.exception.ImagenNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
-import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mockito.ArgumentCaptor;
@@ -44,9 +43,6 @@ class EditarPerfilServiceTest {
 
     @Mock
     private PerfilRepository perfilRepository;
-
-    @Mock
-    private ImagenRepository imagenRepository;
 
     @Mock
     private CaracteristicaPerfilHelper caracteristicaPerfilHelper;
@@ -78,7 +74,7 @@ class EditarPerfilServiceTest {
 
     private EditarPerfilRequest requestValido() {
         return new EditarPerfilRequest(
-                "Luna Nova", "Modelo profesional renovada.", null,
+                "Luna Nova", "Modelo profesional renovada.",
                 List.of(new CaracteristicaPerfilRequest(11L, "176", null)));
     }
 
@@ -106,25 +102,24 @@ class EditarPerfilServiceTest {
     }
 
     @Test
-    void editar_conImagen_asignaImagen() {
-        Imagen imagen = Imagen.builder().idImagen(7L).url("http://img").build();
+    void editar_conFotoAsociada_laConserva() {
+        Imagen imagen = Imagen.builder().idImagen(7L).url("/uploads/perfiles/perfil_7.webp").build();
         Perfil perfil = perfilModelo();
+        perfil.setImagen(imagen);
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
-        when(imagenRepository.findById(7L)).thenReturn(Optional.of(imagen));
         when(caracteristicaPerfilHelper.construir(eq(perfil), eq(perfil.getProfesion()), any())).thenReturn(List.of());
         when(perfilRepository.save(any(Perfil.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        EditarPerfilRequest request = new EditarPerfilRequest(
-                "Luna Nova", "Modelo profesional renovada.", 7L, List.of());
-
-        editarPerfilService.editar(1L, 10L, request);
+        editarPerfilService.editar(1L, 10L, requestValido());
 
         ArgumentCaptor<Perfil> captor = ArgumentCaptor.forClass(Perfil.class);
         verify(perfilRepository).save(captor.capture());
+        assertNotNull(captor.getValue().getImagen(), "La foto no debe desvincularse al editar");
         assertEquals(7L, captor.getValue().getImagen().getIdImagen());
+        assertEquals("/uploads/perfiles/perfil_7.webp", captor.getValue().getImagen().getUrl());
     }
 
     @Test
@@ -173,19 +168,6 @@ class EditarPerfilServiceTest {
                 () -> editarPerfilService.editar(1L, 10L, requestValido()));
 
         verify(perfilRepository, never()).save(any());
-    }
-
-    @Test
-    void editar_imagenInexistente_lanzaExcepcion() {
-        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
-        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfilModelo()));
-        when(imagenRepository.findById(99L)).thenReturn(Optional.empty());
-
-        EditarPerfilRequest request = new EditarPerfilRequest(
-                "Luna Nova", "Modelo profesional renovada.", 99L, List.of());
-
-        assertThrows(ImagenNoEncontradaException.class,
-                () -> editarPerfilService.editar(1L, 10L, request));
     }
 
     @Test
