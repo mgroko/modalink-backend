@@ -22,6 +22,9 @@ public class Genero {
     @Column(name = "id_genero")
     private Long idGenero;
 
+    @Column(name = "nombre", nullable = false, length = 50)
+    private String nombre;
+
 
     @Column(name = "codigo", nullable = false, length = 20, unique = true)
     private String codigo;

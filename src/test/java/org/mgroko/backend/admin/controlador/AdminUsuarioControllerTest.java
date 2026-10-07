@@ -53,7 +53,7 @@ class AdminUsuarioControllerTest {
         var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
 
         when(adminUsuarioService.habilitar(2L))
-                .thenReturn(response(new Genero(1L, "mujer"), "Activo"));
+                .thenReturn(response(new Genero(1L, "Mujer", "MUJER"), "Activo"));
 
         mockMvc.perform(patch("/admin/usuarios/2/habilitar")
                         .principal(authentication))
@@ -67,7 +67,7 @@ class AdminUsuarioControllerTest {
         var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
 
         when(adminUsuarioService.deshabilitar(anyLong(), anyLong(), any(DeshabilitarUsuarioRequest.class)))
-                .thenReturn(response(new Genero(2L, "hombre"), "Deshabilitado"));
+                .thenReturn(response(new Genero(2L, "Hombre", "HOMBRE"), "Deshabilitado"));
 
         mockMvc.perform(patch("/admin/usuarios/2/deshabilitar")
                         .principal(authentication)
@@ -168,7 +168,7 @@ class AdminUsuarioControllerTest {
     @Test
     void buscar_conFiltrosYPaginacion_devuelve200ConPaginaResponse() throws Exception {
         var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
-        var userDto = response(new Genero(1L, "mujer"), "Activo");
+        var userDto = response(new Genero(1L, "Mujer", "MUJER"), "Activo");
         var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
                 List.of(userDto),
                 0,
