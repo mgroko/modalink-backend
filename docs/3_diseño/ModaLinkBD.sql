@@ -2657,7 +2657,15 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios'),
     ('CATALOGO_GEOREF_PAIS_ISO',        'AR',          'Codigo ISO del pais para georeferenciacion de ubicaciones con API Georef'),
-    ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen en minutos aplicado a cada lado de las actividades del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen')
+    ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen en minutos aplicado a cada lado de las actividades del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen'),
+    ('IMAGEN_MAX_LADO_PX',   '8000',           'Tamaño máximo en píxeles del lado más largo de una imagen'),
+    ('IMAGEN_MAX_MEGAPIXELES', '24',             'Tamaño máximo en megapíxeles de una imagen'),
+    ('IMAGEN_CALIDAD_WEBP', '80',             'Calidad de compresión de imágenes WebP (0-100)'),
+    ('IMAGEN_LADO_SALIDA_PX', '600',             'Lado de salida de las imágenes en píxeles'),
+    ('IMAGEN_MAX_TAMANO_BYTES',  '10485760',              'Tamaño máximo en bytes de una imagen'),
+    ('IMAGEN_LIMPIEZA_INTERVALO_HORAS', '24',             'Intervalo en horas para limpieza de imágenes huerfanas'),
+    ('IMAGEN_LIMPIEZA_GRACIA_MINUTOS', '60',             'Periodo de gracia en minutos para limpieza de imágenes huerfanas')
+
 
 ON CONFLICT (clave) DO UPDATE 
     SET valor       = EXCLUDED.valor,
