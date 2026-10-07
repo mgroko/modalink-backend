@@ -13,6 +13,9 @@ public class Profesion {
     @Column(name = "id_profesion")
     private Long idProfesion;
 
+    @Column(name = "codigo", nullable = false, length = 50, unique = true)
+    private String codigo;
+
     @Column(name = "nombre", nullable = false, length = 50, unique = true)
     private String nombre;
 

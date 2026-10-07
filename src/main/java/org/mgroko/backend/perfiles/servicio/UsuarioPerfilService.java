@@ -6,6 +6,7 @@ import org.mgroko.backend.admin.dto.AdminPerfilResponse;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.mapper.AdminPerfilMapper;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -21,10 +22,13 @@ public class UsuarioPerfilService {
 
     private final PerfilRepository perfilRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
-    public UsuarioPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository) {
+    public UsuarioPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.perfilRepository = perfilRepository;
         this.usuarioRepository = usuarioRepository;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional(readOnly = true)
@@ -43,8 +47,9 @@ public class UsuarioPerfilService {
         if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
+        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
         return perfilRepository.findByUsuarioIdUsuario(idUsuario).stream()
-                .map(PerfilMapper::toResponse)
+                .map(perfil -> PerfilMapper.toResponse(perfil, diasBaja))
                 .toList();
     }
 
@@ -57,7 +62,7 @@ public class UsuarioPerfilService {
         }
         Perfil perfil = perfilRepository.findByIdPerfilAndUsuarioIdUsuario(idPerfil, idUsuario)
                 .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));
-        return PerfilMapper.toResponse(perfil);
+        return PerfilMapper.toResponse(perfil, configuracionSistemaService.obtenerDiasBaja());
     }
 
     private Usuario buscarUsuario(Long idUsuario) {

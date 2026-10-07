@@ -1,6 +1,7 @@
 package org.mgroko.backend.perfiles.servicio;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
@@ -25,16 +26,19 @@ public class FotoPerfilService {
     private final PerfilRepository perfilRepository;
     private final ImagenRepository imagenRepository;
     private final StorageService storageService;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     public FotoPerfilService(
             UsuarioRepository usuarioRepository,
             PerfilRepository perfilRepository,
             ImagenRepository imagenRepository,
-            StorageService storageService) {
+            StorageService storageService,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
         this.imagenRepository = imagenRepository;
         this.storageService = storageService;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional
@@ -68,7 +72,7 @@ public class FotoPerfilService {
             storageService.eliminarFotoPerfil(imagenAnterior.getNombreArchivo());
         }
 
-        return PerfilMapper.toResponse(perfilGuardado);
+        return PerfilMapper.toResponse(perfilGuardado, configuracionSistemaService.obtenerDiasBaja());
     }
 
     @Transactional
@@ -84,7 +88,7 @@ public class FotoPerfilService {
             storageService.eliminarFotoPerfil(imagenActual.getNombreArchivo());
         }
 
-        return PerfilMapper.toResponse(perfil);
+        return PerfilMapper.toResponse(perfil, configuracionSistemaService.obtenerDiasBaja());
     }
 
     private Perfil obtenerPerfilValido(Long idUsuario, Long idPerfil) {

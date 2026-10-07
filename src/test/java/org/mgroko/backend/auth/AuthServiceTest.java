@@ -1,23 +1,27 @@
 package org.mgroko.backend.auth;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.dto.AuthResponse;
 import org.mgroko.backend.auth.dto.LoginRequest;
 import org.mgroko.backend.auth.dto.RegistroRequest;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.auth.exception.CuentaPendienteBajaException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
@@ -36,6 +40,8 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.JwtService;
+import org.mgroko.backend.usuario.exception.SolicitudBajaException;
+import org.mgroko.backend.usuario.servicio.ReactivarCuentaService;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -79,6 +85,12 @@ class AuthServiceTest {
 
     @Mock
     private JwtService jwtService;
+
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
+    @Mock
+    private ReactivarCuentaService reactivarCuentaService;
 
     @InjectMocks
     private AuthService authService;
@@ -330,7 +342,58 @@ class AuthServiceTest {
     }
 
     @Test
-    void login_usuarioPendienteBaja_permiteLogin() {
+    void login_usuarioPendienteBaja_noEmiteToken_eInformaFechaLimite() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
+        LocalDateTime fechaSolicitudBaja = LocalDateTime.now().minusDays(5);
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .estado(EstadoUsuario.PendienteBaja)
+                .fechaSolicitudBaja(fechaSolicitudBaja)
+                .build();
+
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
+
+        CuentaPendienteBajaException excepcion = assertThrows(CuentaPendienteBajaException.class,
+                () -> authService.login(request));
+
+        assertEquals(30, excepcion.getDiasBaja());
+        assertNotNull(excepcion.getFechaLimite());
+        assertEquals(fechaSolicitudBaja.plusDays(30), excepcion.getFechaLimite());
+        verify(jwtService, never()).generarToken(anyString(), anyMap());
+        verify(perfilRepository, never()).findByUsuario_IdUsuarioAndEstado(anyLong(), any());
+    }
+
+    @Test
+    void login_usuarioPendienteBajaPlazoVencido_lanzaSolicitudBajaException() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .nombre("Maria")
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .estado(EstadoUsuario.PendienteBaja)
+                .fechaSolicitudBaja(LocalDateTime.now().minusDays(31))
+                .build();
+
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
+
+        assertThrows(SolicitudBajaException.class, () -> authService.login(request));
+        verify(jwtService, never()).generarToken(anyString(), anyMap());
+    }
+
+    // ---------------------------------------------------------------
+    // reactivarCuenta()
+    // ---------------------------------------------------------------
+
+    @Test
+    void reactivarCuenta_credencialesValidas_reactivaYEmiteToken() {
         LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
         Usuario usuario = Usuario.builder()
                 .idUsuario(1L)
@@ -344,10 +407,46 @@ class AuthServiceTest {
         when(perfilRepository.findByUsuario_IdUsuarioAndEstado(anyLong(), any(EstadoPerfil.class)))
                 .thenReturn(List.of());
 
-        AuthService.LoginResultado resultado = authService.login(request);
+        AuthService.LoginResultado resultado = authService.reactivarCuenta(request);
 
+        assertEquals("token-simulado", resultado.token());
         assertEquals("maria.flores@test.com", resultado.response().usuario().correo());
-        assertEquals("Usuario", resultado.response().usuario().rolGlobal());
+        verify(reactivarCuentaService).reactivarCuenta(1L);
+    }
+
+    @Test
+    void reactivarCuenta_passwordInvalida_noLlamaAlServicioDeReactivacion() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "passwordMala");
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .estado(EstadoUsuario.PendienteBaja)
+                .build();
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("passwordMala", "hash-guardado")).thenReturn(false);
+
+        assertThrows(CredencialesInvalidasException.class, () -> authService.reactivarCuenta(request));
+        verify(reactivarCuentaService, never()).reactivarCuenta(anyLong());
+        verify(jwtService, never()).generarToken(anyString(), anyMap());
+    }
+
+    @Test
+    void reactivarCuenta_sinSolicitudActiva_lanzaSolicitudBajaException() {
+        LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .correo("maria.flores@test.com")
+                .passwordHash("hash-guardado")
+                .estado(EstadoUsuario.PendienteBaja)
+                .build();
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+        when(reactivarCuentaService.reactivarCuenta(1L))
+                .thenThrow(new SolicitudBajaException("No hay una solicitud de baja activa para esta cuenta."));
+
+        assertThrows(SolicitudBajaException.class, () -> authService.reactivarCuenta(request));
+        verify(jwtService, never()).generarToken(anyString(), anyMap());
     }
 
     @Test

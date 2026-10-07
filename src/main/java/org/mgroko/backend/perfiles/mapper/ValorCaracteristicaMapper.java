@@ -10,7 +10,7 @@ public class ValorCaracteristicaMapper {
     public static ValorCaracteristicaResponse toResponse(ValorCaracteristica valor) {
         return new ValorCaracteristicaResponse(
                 valor.getIdValor(),
-                valor.getCodigo(),
+                valor.getEtiqueta(),
                 valor.getColorHex());
     }
 }

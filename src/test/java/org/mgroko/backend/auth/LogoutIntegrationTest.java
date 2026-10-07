@@ -57,7 +57,7 @@ class LogoutIntegrationTest {
         @interface WithMockJwtUser {
                 String subject() default "1";
 
-                EstadoUsuario estado() default EstadoUsuario.Activo;
+                EstadoUsuario estado() default EstadoUsuario.ACTIVO;
         }
 
         static class WithMockJwtUserSecurityContextFactory implements WithSecurityContextFactory<WithMockJwtUser> {

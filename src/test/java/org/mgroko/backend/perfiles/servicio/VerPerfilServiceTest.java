@@ -17,10 +17,13 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -37,6 +40,9 @@ class VerPerfilServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
 
     @InjectMocks
     private VerPerfilService verPerfilService;
@@ -63,11 +69,18 @@ class VerPerfilServiceTest {
                 .correo("maria@test.com")
                 .estado(EstadoUsuario.Activo)
                 .genero(Genero.builder().idGenero(1L).codigo("FEM").build())
-                .ubicacion(Ubicacion.builder().idUbicacion(1L).localidad("Rosario").provincia("Santa Fe").build())
+                .ubicacion(Ubicacion.builder()
+                        .idUbicacion(1L)
+                        .ciudad(Ciudad.builder()
+                                .nombre("Rosario")
+                                .provincia(Provincia.builder().nombre("Santa Fe").build())
+                                .build())
+                        .build())
                 .build();
 
         profesion = Profesion.builder()
                 .idProfesion(10L)
+                .codigo("MODELO")
                 .nombre("Modelo")
                 .build();
 
@@ -98,8 +111,8 @@ class VerPerfilServiceTest {
         assertThat(response.idUsuario()).isEqualTo(2L);
         assertThat(response.nombreUsuario()).isEqualTo("Maria");
         assertThat(response.apellidoUsuario()).isEqualTo("Gomez");
-        assertThat(response.localidad()).isEqualTo("Rosario");
-        assertThat(response.provincia()).isEqualTo("Santa Fe");
+        assertThat(response.ciudad().nombre()).isEqualTo("Rosario");
+        assertThat(response.ciudad().provincia().nombre()).isEqualTo("Santa Fe");
         assertThat(response.genero()).isEqualTo("FEM");
         assertThat(response.esPropietario()).isFalse();
     }
@@ -113,6 +126,7 @@ class VerPerfilServiceTest {
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioAutenticado));
         when(perfilRepository.findById(100L)).thenReturn(Optional.of(perfil));
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
 
         PerfilDetalleResponse response = verPerfilService.obtenerDetalle(100L, 1L);
 
@@ -120,7 +134,23 @@ class VerPerfilServiceTest {
         assertThat(response.idPerfil()).isEqualTo(100L);
         assertThat(response.estado()).isEqualTo("PendienteBaja");
         assertThat(response.fechaSolicitudBaja()).isNotNull();
+        assertThat(response.fechaLimite()).isEqualTo(perfil.getFechaSolicitudBaja().plusDays(30));
         assertThat(response.esPropietario()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Perfil propio en estado Activo no expone fecha límite de baja")
+    void obtenerDetalle_perfilPropioActivo_noTieneFechaLimite() {
+        perfil.setUsuario(usuarioAutenticado);
+
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioAutenticado));
+        when(perfilRepository.findById(100L)).thenReturn(Optional.of(perfil));
+
+        PerfilDetalleResponse response = verPerfilService.obtenerDetalle(100L, 1L);
+
+        assertThat(response.estado()).isEqualTo("Activo");
+        assertThat(response.fechaSolicitudBaja()).isNull();
+        assertThat(response.fechaLimite()).isNull();
     }
 
     @Test

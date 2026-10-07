@@ -28,6 +28,7 @@ class ProfesionServiceTest {
     private Profesion profesionModelo() {
         return Profesion.builder()
                 .idProfesion(2L)
+                .codigo("MODELO")
                 .nombre("modelo")
                 .descripcion("Profesional que posa para producciones.")
                 .build();
@@ -35,38 +36,39 @@ class ProfesionServiceTest {
 
     @Test
     void buscar_conNombre_devuelveCoincidenciasMapeadas() {
-        when(profesionRepository.buscar("%mo%")).thenReturn(List.of(profesionModelo()));
+        when(profesionRepository.buscar("%mo%", "mo")).thenReturn(List.of(profesionModelo()));
 
         List<ProfesionResponse> response = profesionService.buscar("mo");
 
         assertEquals(1, response.size());
+        assertEquals("MODELO", response.get(0).codigo());
         assertEquals("modelo", response.get(0).nombre());
         assertEquals(2L, response.get(0).idProfesion());
-        verify(profesionRepository).buscar("%mo%");
+        verify(profesionRepository).buscar("%mo%", "mo");
     }
 
     @Test
     void buscar_mayusculas_normalizaPatronMinusculas() {
-        when(profesionRepository.buscar("%modelo%")).thenReturn(List.of(profesionModelo()));
+        when(profesionRepository.buscar("%modelo%", "MODELO")).thenReturn(List.of(profesionModelo()));
 
         List<ProfesionResponse> response = profesionService.buscar("MODELO");
 
         assertEquals(1, response.size());
-        verify(profesionRepository).buscar("%modelo%");
+        verify(profesionRepository).buscar("%modelo%", "MODELO");
     }
 
     @Test
     void buscar_nombreEnBlanco_consultaTodo() {
-        when(profesionRepository.buscar("%")).thenReturn(List.of());
+        when(profesionRepository.buscar("%", "")).thenReturn(List.of());
 
         assertTrue(profesionService.buscar("   ").isEmpty());
 
-        verify(profesionRepository).buscar("%");
+        verify(profesionRepository).buscar("%", "");
     }
 
     @Test
     void buscar_sinCoincidencias_devuelveListaVacia() {
-        when(profesionRepository.buscar(anyString())).thenReturn(List.of());
+        when(profesionRepository.buscar(anyString(), anyString())).thenReturn(List.of());
 
         assertTrue(profesionService.buscar("profesion_inexistente").isEmpty());
     }

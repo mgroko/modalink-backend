@@ -237,7 +237,7 @@ Tras contrastar los controladores, servicios, DTOs y repositorios presentes en `
 2. **Servicios sin test unitario**:
    - `SolicitudBajaService`: Lógica de pasaje a `PendienteBaja` de usuario y perfiles asociados, cálculo de fecha límite (30 días) y excepciones cuando la cuenta ya está en baja o pendiente.
    - `ReactivarCuentaService`: Reactivación de cuenta y perfiles asociados dentro del plazo de 30 días, y rechazo si el plazo ha expirado.
-   - `BajaCuentaScheduler`: Tarea programada de ejecución de expiración.
+
 
 ### 5.3. Módulo `proyectos`
 1. **Pruebas de Integración con BD (`repositorio`)**:

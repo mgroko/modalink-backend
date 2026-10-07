@@ -11,7 +11,9 @@ import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.UnidadMedida;
 import org.mgroko.backend.modelo.ValorCaracteristica;
+import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
@@ -34,14 +36,14 @@ class CaracteristicaPerfilHelperTest {
     private CaracteristicaPerfilHelper helper;
 
     private Profesion profesionModelo() {
-        return Profesion.builder().idProfesion(2L).nombre("modelo").build();
+        return Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
     }
 
     private CaracteristicaTecnica caracteristicaNumerico() {
         return CaracteristicaTecnica.builder()
                 .idCaracteristica(13L)
                 .codigo("medida_pecho")
-                .unidad("cm")
+                .unidadMedida(UnidadMedida.builder().simbolo("cm").build())
                 .tipoDato(CaracteristicaTecnica.TIPO_NUMERICO)
                 .profesion(profesionModelo())
                 .build();
@@ -119,11 +121,12 @@ class CaracteristicaPerfilHelperTest {
         configurarCaso(caracteristicaEnumerado());
         CaracteristicaTecnica enumerado = caracteristicaEnumerado();
         ValorCaracteristica valorMarron = ValorCaracteristica.builder()
-                .idValor(20L)
-                .codigo("marron")
+                .id(new ValorCaracteristicaId(20L, enumerado.getIdCaracteristica()))
+                .etiqueta("marron")
                 .caracteristicaTecnica(enumerado)
                 .build();
-        when(valorCaracteristicaRepository.findById(20L)).thenReturn(Optional.of(valorMarron));
+        when(valorCaracteristicaRepository.findById(new ValorCaracteristicaId(20L, enumerado.getIdCaracteristica())))
+                .thenReturn(Optional.of(valorMarron));
         Perfil perfil = Perfil.builder().build();
 
         List<CaracteristicaPerfil> resultado = helper.construir(perfil, profesionModelo(),

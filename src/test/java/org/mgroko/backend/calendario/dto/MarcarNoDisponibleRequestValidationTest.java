@@ -29,7 +29,7 @@ class MarcarNoDisponibleRequestValidationTest {
     }
 
     @Test
-    void valido_sinMotivo_sinViolaciones() {
+    void motivoNulo_generaViolacion() {
         MarcarNoDisponibleRequest request = request(
                 LocalDateTime.of(2026, 9, 15, 10, 0),
                 LocalDateTime.of(2026, 9, 15, 14, 0),
@@ -37,7 +37,19 @@ class MarcarNoDisponibleRequestValidationTest {
 
         Set<ConstraintViolation<MarcarNoDisponibleRequest>> violaciones = validator.validate(request);
 
-        assertTrue(violaciones.isEmpty());
+        assertTrue(violaciones.stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("motivo")));
+    }
+
+    @Test
+    void motivoVacio_generaViolacion() {
+        MarcarNoDisponibleRequest request = request(
+                LocalDateTime.of(2026, 9, 15, 10, 0),
+                LocalDateTime.of(2026, 9, 15, 14, 0),
+                "  ");
+
+        assertTrue(validator.validate(request).stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("motivo")));
     }
 
     @Test

@@ -8,12 +8,12 @@ Esta especificación técnica detalla la integración con la API, parámetros de
 
 * **Método:** `GET`
 * **URL:** `/admin/usuarios/buscar`
-* **Content-Type:** `application/json`
 * **Autenticación requerida:** Sí (Bearer Token JWT o Cookie de sesión autenticada).
 * **Autorización Requerida:** Permiso `VER_USUARIOS` (Rol Administrador). Peticiones de usuarios sin este permiso recibirán `403 Forbidden`.
 * **Regla de Negocio sobre Estados:**
   * El Administrador tiene visibilidad de usuarios en **cualquier estado**: `Activo`, `Deshabilitado`, `PendienteBaja` y `Baja`.
   * Si no se envía el filtro de estado, se listan todos.
+* **Ordenamiento fijo:** Los resultados siempre se devuelven ordenados por `apellido` ascendente y luego `nombre` ascendente. El frontend no puede modificar el orden.
 
 ---
 
@@ -25,9 +25,9 @@ Todos los parámetros se envían mediante query string en la URL (`GET /admin/us
 
 | Parámetro | Tipo | Default | Opciones / Descripción |
 | :--- | :---: | :---: | :--- |
-| `page` | `integer` | `0` | Número de página (0-indexed: `0` para la primera, `1` para la segunda, etc.). |
+| `page` | `integer` | `0` | Número de página (0-indexed: `0` para la primera, `1` para la segunda, etc.). Valores negativos se ajustan a `0`. |
 | `size` | `integer` | `20` | Cantidad de resultados por página seleccionada: `20`, `50`, etc. |
-| `todos` | `boolean` | `false` | Si se envía `true` (o `size=0`), la API desactiva la paginación y retorna la totalidad de usuarios sin truncar. |
+| `todos` | `boolean` | `false` | Si se envía `true` (o `size<=0`), la API desactiva la paginación y retorna la totalidad de usuarios sin truncar. |
 
 > **Selector en la UI:**
 > Proveer selector de visualización:
@@ -44,10 +44,15 @@ Todos los parámetros se envían mediante query string en la URL (`GET /admin/us
 | `nombre` | `string` | Búsqueda parcial e insensible a mayúsculas sobre el nombre de pila. |
 | `apellido` | `string` | Búsqueda parcial e insensible a mayúsculas sobre el apellido. |
 | `correo` | `string` | Búsqueda parcial e insensible a mayúsculas sobre el correo electrónico. |
-| `estado` | `string` | Estado exacto del usuario: `"Activo"`, `"Deshabilitado"`, `"PendienteBaja"`, `"Baja"`. |
-| `idProfesion` | `integer` (Long) | ID de profesión de al menos uno de los perfiles asociados al usuario. |
+| `estado` | `string` (enum) | **Valor exacto del enum** (case-sensitive): `ACTIVO`, `DESHABILITADO`, `PENDIENTE_BAJA`, `BAJA`. Un valor distinto ⇒ `400 Bad Request`. Ver nota abajo. |
+| `idProfesion` | `integer` (Long) | ID de profesión de al menos uno de los perfiles asociados al usuario (comparación exacta). |
 | `nombreProfesion` | `string` | Búsqueda parcial sobre el nombre de la profesión de sus perfiles asociados. |
 | `nombreArtisticoPerfil` | `string` | Búsqueda parcial sobre el nombre artístico de cualquiera de los perfiles del usuario. |
+
+> **⚠️ Asimetría de `estado` (importante):**
+> - **Para filtrar** (query param) se envía el **nombre del enum**: `ACTIVO`, `DESHABILITADO`, `PENDIENTE_BAJA`, `BAJA`.
+> - **En la respuesta** (`contenido[].estado`) viene el **nombre display**: `"Activo"`, `"Deshabilitado"`, `"PendienteBaja"`, `"Baja"`.
+> - El selector de filtros debe mapear label visual → valor enum al armar la query. No enviar el valor de la respuesta tal cual.
 
 ---
 
@@ -104,6 +109,16 @@ La API devuelve un objeto estructurado `PaginaResponse<AdminUsuarioResponse>`:
 }
 ```
 
+### Notas sobre campos de la respuesta
+
+| Campo | Detalle |
+| :--- | :--- |
+| `estado` | Nombre display: `"Activo"`, `"Deshabilitado"`, `"PendienteBaja"`, `"Baja"`. |
+| `rolGlobal` | Nombre del rol (`"USUARIO"`, `"ADMINISTRADOR"`, etc.). |
+| `genero` | Objeto `{ idGenero, codigo }` (entidad, no string plano). |
+| `fechaSolicitudBaja` | ISO 8601 si el usuario está en `PendienteBaja`; `null` en caso contrario. |
+| `fechaHastaDeshabilitacion` | ISO 8601 (`"2026-10-15T00:00:00"`) si la deshabilitación tiene duración; `null` si es indefinida. |
+
 ---
 
 ## 4. Códigos de Respuesta HTTP
@@ -111,9 +126,19 @@ La API devuelve un objeto estructurado `PaginaResponse<AdminUsuarioResponse>`:
 | Código HTTP | Escenario | Comportamiento Frontend |
 | :---: | :--- | :--- |
 | `200 OK` | Búsqueda procesada con éxito (con o sin resultados coincidentes). | Renderizar tabla/grilla de usuarios o estado vacío si `totalElementos === 0`. |
+| `400 Bad Request` | Parámetro inválido: valor de `estado` fuera del enum (`MethodArgumentTypeMismatchException`), `page`/`size` no numéricos. | Corregir los parámetros de la query; no reintentar tal cual. |
 | `401 Unauthorized` | Sesión caducada o sin token de autenticación. | Redirigir al login administrativo. |
 | `403 Forbidden` | Usuario autenticado pero sin rol/permiso de administrador (`VER_USUARIOS`). | Mostrar pantalla de acceso denegado. |
 | `500 Internal Server Error` | Excepción no controlada en el servidor. | Mostrar notificación Toast de error y permitir reintentar. |
+
+### Errores de las acciones rápidas (§5.2)
+
+| Endpoint | Código | Causa |
+| :--- | :---: | :--- |
+| `PATCH /admin/usuarios/{id}/habilitar` · `deshabilitar` | `403` | El usuario objetivo está en estado `Baja` (no se gestiona desde el panel). |
+| `PATCH /admin/usuarios/{id}/deshabilitar` | `403` | Auto-deshabilitación: *"No podés deshabilitar tu propia cuenta."* |
+| `PATCH /admin/usuarios/{id}/deshabilitar` | `400` | `motivo` vacío o >200 caracteres; `duracionDias` ≤ 0 (Bean Validation). |
+| `GET /admin/usuarios/{id}` · `GET /admin/usuarios/{id}/perfiles` | `404` | Usuario inexistente. |
 
 ---
 
@@ -130,9 +155,36 @@ Por cada fila de usuario, proveer acceso directo a las operaciones del administr
 * **Ver Perfiles Asociados**: Navegar a o desplegar modal con `GET /admin/usuarios/{id}/perfiles`.
 * **Ver Detalle Completo**: `GET /admin/usuarios/{id}`.
 * **Habilitar**: Si el usuario está `Deshabilitado`, botón de acción rápida `PATCH /admin/usuarios/{id}/habilitar`.
-* **Deshabilitar**: Si el usuario está `Activo`, botón que abre modal solicitando motivo y duración opcional (`PATCH /admin/usuarios/{id}/deshabilitar`).
+* **Deshabilitar**: Si el usuario está `Activo`, botón que abre modal solicitando **motivo (obligatorio, máx. 200 chars)** y duración en días opcional (`PATCH /admin/usuarios/{id}/deshabilitar`). Si no se indica duración, la deshabilitación es indefinida hasta `/habilitar`.
 
 ### 5.3. Filtros y Debounce
 * Aplicar debounce de 300ms en los campos de texto (`nombre`, `apellido`, `correo`, `nombreArtisticoPerfil`).
-* Selector desplegable para el filtro `estado`: *"Todos los estados"*, *"Activo"*, *"Deshabilitado"*, *"Pendiente de baja"*, *"Baja"*.
+* Selector desplegable para el filtro `estado` con mapeo label → valor de query:
+
+| Label en la UI | Valor a enviar (`estado=`) |
+| :--- | :--- |
+| Todos los estados | *(omitir el parámetro)* |
+| Activo | `ACTIVO` |
+| Deshabilitado | `DESHABILITADO` |
+| Pendiente de baja | `PENDIENTE_BAJA` |
+| Baja | `BAJA` |
+
 * Botón para limpiar todos los filtros aplicados.
+* Enviar solo filtros activos (evitar parámetros vacíos) para URLs limpias.
+
+---
+
+## 6. Referencias de Implementación Backend
+
+| Aspecto | Archivo |
+| :--- | :--- |
+| Endpoint y parámetros | `admin/controlador/AdminUsuarioController.java` (`buscar`) |
+| Servicio, paginación y orden | `admin/servicio/AdminUsuarioService.java` (`buscar`) |
+| Filtros | `admin/especificacion/UsuarioSpecifications.java` |
+| DTO de filtro (enum `estado`) | `admin/dto/BuscarUsuariosAdminFiltro.java` |
+| DTO de respuesta | `admin/dto/AdminUsuarioResponse.java` |
+| Mapeo de respuesta | `admin/mapper/AdminUsuarioMapper.java` |
+| Request de deshabilitar | `admin/dto/DeshabilitarUsuarioRequest.java` |
+| Paginación | `common/dto/PaginaResponse.java` |
+| Errores (400/403/404/500) | `common/exception/GlobalExceptionHandler.java` + `@PreAuthorize` |
+| Seguridad | `security/SecurityConfig.java` |

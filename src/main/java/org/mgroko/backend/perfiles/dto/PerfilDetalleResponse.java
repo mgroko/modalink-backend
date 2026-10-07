@@ -3,6 +3,8 @@ package org.mgroko.backend.perfiles.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.mgroko.backend.ubicacion.dto.CiudadResponse;
+
 public record PerfilDetalleResponse(
         Long idPerfil,
         String nombreArtistico,
@@ -17,10 +19,10 @@ public record PerfilDetalleResponse(
         String nombreUsuario,
         String apellidoUsuario,
         String genero,
-        String localidad,
-        String provincia,
+        CiudadResponse ciudad,
         List<String> habilidades,
         List<CaracteristicaResponse> caracteristicas,
-        boolean esPropietario
+        boolean esPropietario,
+        LocalDateTime fechaLimite
 ) {
 }

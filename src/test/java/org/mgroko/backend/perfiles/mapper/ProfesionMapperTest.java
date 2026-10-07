@@ -12,6 +12,7 @@ class ProfesionMapperTest {
     void toResponse_remapeaCampos() {
         Profesion profesion = Profesion.builder()
                 .idProfesion(2L)
+                .codigo("MODELO")
                 .nombre("modelo")
                 .descripcion("Profesional que posa para producciones.")
                 .build();
@@ -19,6 +20,7 @@ class ProfesionMapperTest {
         ProfesionResponse response = ProfesionMapper.toResponse(profesion);
 
         assertEquals(2L, response.idProfesion());
+        assertEquals("MODELO", response.codigo());
         assertEquals("modelo", response.nombre());
         assertEquals("Profesional que posa para producciones.", response.descripcion());
     }
@@ -27,11 +29,13 @@ class ProfesionMapperTest {
     void toResponse_descripcionAusente_devuelveNull() {
         Profesion profesion = Profesion.builder()
                 .idProfesion(3L)
+                .codigo("FOTOGRAFO")
                 .nombre("fotografo")
                 .build();
 
         ProfesionResponse response = ProfesionMapper.toResponse(profesion);
 
+        assertEquals("FOTOGRAFO", response.codigo());
         assertNull(response.descripcion());
     }
 }

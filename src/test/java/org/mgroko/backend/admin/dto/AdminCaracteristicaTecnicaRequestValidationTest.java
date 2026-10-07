@@ -27,7 +27,8 @@ class AdminCaracteristicaTecnicaRequestValidationTest {
     private AdminCaracteristicaTecnicaRequest requestValido() {
         return new AdminCaracteristicaTecnicaRequest(
                 "altura",
-                "cm",
+                "Altura",
+                1L,
                 1L,
                 "NUMERICO",
                 Collections.emptyList()
@@ -44,7 +45,7 @@ class AdminCaracteristicaTecnicaRequestValidationTest {
     @Test
     void codigoNulo_generaViolacion() {
         AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
-                null, "cm", 1L, "NUMERICO", Collections.emptyList());
+                null, "Altura", 1L, 1L, "NUMERICO", Collections.emptyList());
 
         Set<ConstraintViolation<AdminCaracteristicaTecnicaRequest>> violaciones =
                 validator.validate(request);
@@ -57,7 +58,7 @@ class AdminCaracteristicaTecnicaRequestValidationTest {
     @Test
     void codigoBlanco_generaViolacion() {
         AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
-                "   ", "cm", 1L, "NUMERICO", Collections.emptyList());
+                "   ", "Altura", 1L, 1L, "NUMERICO", Collections.emptyList());
 
         Set<ConstraintViolation<AdminCaracteristicaTecnicaRequest>> violaciones =
                 validator.validate(request);
@@ -71,7 +72,7 @@ class AdminCaracteristicaTecnicaRequestValidationTest {
     void codigoMayorA50_generaViolacion() {
         String codigoLargo = "a".repeat(51);
         AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
-                codigoLargo, "cm", 1L, "NUMERICO", Collections.emptyList());
+                codigoLargo, "Altura", 1L, 1L, "NUMERICO", Collections.emptyList());
 
         Set<ConstraintViolation<AdminCaracteristicaTecnicaRequest>> violaciones =
                 validator.validate(request);
@@ -82,9 +83,23 @@ class AdminCaracteristicaTecnicaRequestValidationTest {
     }
 
     @Test
+    void nombreMayorA100_generaViolacion() {
+        String nombreLargo = "a".repeat(101);
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "altura", nombreLargo, 1L, 1L, "NUMERICO", Collections.emptyList());
+
+        Set<ConstraintViolation<AdminCaracteristicaTecnicaRequest>> violaciones =
+                validator.validate(request);
+
+        assertFalse(violaciones.isEmpty());
+        assertTrue(violaciones.stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("nombre")));
+    }
+
+    @Test
     void idProfesionNulo_generaViolacion() {
         AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
-                "altura", "cm", null, "NUMERICO", Collections.emptyList());
+                "altura", "Altura", 1L, null, "NUMERICO", Collections.emptyList());
 
         Set<ConstraintViolation<AdminCaracteristicaTecnicaRequest>> violaciones =
                 validator.validate(request);
@@ -97,7 +112,7 @@ class AdminCaracteristicaTecnicaRequestValidationTest {
     @Test
     void tipoDatoBlanco_generaViolacion() {
         AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
-                "altura", "cm", 1L, "  ", Collections.emptyList());
+                "altura", "Altura", 1L, 1L, "  ", Collections.emptyList());
 
         Set<ConstraintViolation<AdminCaracteristicaTecnicaRequest>> violaciones =
                 validator.validate(request);
@@ -112,7 +127,7 @@ class AdminCaracteristicaTecnicaRequestValidationTest {
         AdminValorCaracteristicaRequest valorInvalido = new AdminValorCaracteristicaRequest(
                 null, "   ", "#FFFFFF");
         AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
-                "ojos", null, 1L, "ENUMERADO", List.of(valorInvalido));
+                "ojos", "Color de ojos", null, 1L, "ENUMERADO", List.of(valorInvalido));
 
         Set<ConstraintViolation<AdminCaracteristicaTecnicaRequest>> violaciones =
                 validator.validate(request);

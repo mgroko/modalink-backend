@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -46,6 +47,9 @@ class FotoPerfilServiceTest {
     @Mock
     private StorageService storageService;
 
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
     private FotoPerfilService fotoPerfilService;
 
     private Usuario usuario;
@@ -57,7 +61,8 @@ class FotoPerfilServiceTest {
                 usuarioRepository,
                 perfilRepository,
                 imagenRepository,
-                storageService
+                storageService,
+                configuracionSistemaService
         );
 
         usuario = Usuario.builder()
@@ -68,6 +73,7 @@ class FotoPerfilServiceTest {
 
         Profesion profesion = Profesion.builder()
                 .idProfesion(10L)
+                .codigo("DISENIADOR_MODA")
                 .nombre("Diseñador")
                 .build();
 

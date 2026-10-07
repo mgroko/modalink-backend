@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro;
+import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.springframework.data.jpa.domain.Specification;
@@ -31,19 +32,19 @@ public class UsuarioSpecifications {
             // Filtrado por nombre de pila del usuario
             if (filtro.nombre() != null && !filtro.nombre().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("nombre")),
-                        "%" + filtro.nombre().trim().toLowerCase() + "%"));
+                        LikePatrones.contiene(filtro.nombre()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por apellido
             if (filtro.apellido() != null && !filtro.apellido().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("apellido")),
-                        "%" + filtro.apellido().trim().toLowerCase() + "%"));
+                        LikePatrones.contiene(filtro.apellido()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por correo electrónico
             if (filtro.correo() != null && !filtro.correo().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("correo")),
-                        "%" + filtro.correo().trim().toLowerCase() + "%"));
+                        LikePatrones.contiene(filtro.correo()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por estado de usuario (Activo, Deshabilitado, PendienteBaja, Baja)
@@ -69,11 +70,11 @@ public class UsuarioSpecifications {
                 }
                 if (filtro.nombreProfesion() != null && !filtro.nombreProfesion().isBlank()) {
                     subqueryPredicates.add(cb.like(cb.lower(perfilRoot.get("profesion").get("nombre")),
-                            "%" + filtro.nombreProfesion().trim().toLowerCase() + "%"));
+                            LikePatrones.contiene(filtro.nombreProfesion()), LikePatrones.CARACTER_ESCAPE));
                 }
                 if (filtro.nombreArtisticoPerfil() != null && !filtro.nombreArtisticoPerfil().isBlank()) {
                     subqueryPredicates.add(cb.like(cb.lower(perfilRoot.get("nombreArtistico")),
-                            "%" + filtro.nombreArtisticoPerfil().trim().toLowerCase() + "%"));
+                            LikePatrones.contiene(filtro.nombreArtisticoPerfil()), LikePatrones.CARACTER_ESCAPE));
                 }
 
                 subquery.where(subqueryPredicates.toArray(new Predicate[0]));

@@ -8,9 +8,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -44,7 +46,13 @@ class BuscarPerfilServiceTest {
 
     private Perfil crearPerfilMock(Long id, String nombreArtistico) {
         Genero genero = Genero.builder().idGenero(1L).codigo("MASC").build();
-        Ubicacion ubicacion = Ubicacion.builder().idUbicacion(1L).localidad("Rosario").provincia("Santa Fe").build();
+        Ubicacion ubicacion = Ubicacion.builder()
+                .idUbicacion(1L)
+                .ciudad(Ciudad.builder()
+                        .nombre("Rosario")
+                        .provincia(Provincia.builder().nombre("Santa Fe").build())
+                        .build())
+                .build();
         Usuario usuario = Usuario.builder()
                 .idUsuario(10L)
                 .nombre("Juan")
@@ -53,7 +61,7 @@ class BuscarPerfilServiceTest {
                 .genero(genero)
                 .ubicacion(ubicacion)
                 .build();
-        Profesion profesion = Profesion.builder().idProfesion(1L).nombre("Fotografo").build();
+        Profesion profesion = Profesion.builder().idProfesion(1L).codigo("FOTOGRAFO").nombre("Fotografo").build();
 
         return Perfil.builder()
                 .idPerfil(id)

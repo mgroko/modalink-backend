@@ -4,13 +4,21 @@ import java.time.LocalDate;
 
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
+import org.mgroko.backend.modelo.Pais;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.RolGlobal;
+import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
+import org.mgroko.backend.repositorio.CiudadRepository;
 import org.mgroko.backend.repositorio.GeneroRepository;
+import org.mgroko.backend.repositorio.PaisRepository;
+import org.mgroko.backend.repositorio.ProvinciaRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
+import org.mgroko.backend.repositorio.UbicacionRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -26,6 +34,10 @@ public class AdminSeeder implements CommandLineRunner {
     private final UsuarioRepository usuarioRepository;
     private final RolGlobalRepository rolGlobalRepository;
     private final GeneroRepository generoRepository;
+    private final UbicacionRepository ubicacionRepository;
+    private final CiudadRepository ciudadRepository;
+    private final ProvinciaRepository provinciaRepository;
+    private final PaisRepository paisRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     @Value("${app.admin.correo}")
@@ -53,6 +65,8 @@ public class AdminSeeder implements CommandLineRunner {
                 .orElseThrow(() -> new GeneroNoEncontradoException(
                         "El género 'no_decirlo' no existe."));
 
+        Ubicacion ubicacionDefault = obtenerOCrearUbicacionDefault();
+
         Usuario admin = Usuario.builder()
                 .nombre("Admin")
                 .apellido("ModaLink")
@@ -64,8 +78,43 @@ public class AdminSeeder implements CommandLineRunner {
                 .estado(EstadoUsuario.Activo)
                 .rolGlobal(rolAdministrador)
                 .genero(genero)
+                .ubicacion(ubicacionDefault)
                 .build();
 
         usuarioRepository.save(admin);
+    }
+
+    private Ubicacion obtenerOCrearUbicacionDefault() {
+        return ubicacionRepository.findAll().stream().findFirst().orElseGet(() -> {
+            Pais pais = paisRepository.findByCodigoIso("AR").orElseGet(() ->
+                    paisRepository.save(Pais.builder()
+                            .codigoIso("AR")
+                            .nombre("Argentina")
+                            .activo(true)
+                            .build()));
+
+            Provincia provincia = provinciaRepository.findByNombreAndPais_IdPais("Buenos Aires", pais.getIdPais()).orElseGet(() ->
+                    provinciaRepository.save(Provincia.builder()
+                            .nombre("Buenos Aires")
+                            .idExterno("02")
+                            .fuenteApi("GEOREF")
+                            .pais(pais)
+                            .activo(true)
+                            .build()));
+
+            Ciudad ciudad = ciudadRepository.findByFuenteApiAndIdExterno("GEOREF", "LA_PLATA").orElseGet(() ->
+                    ciudadRepository.save(Ciudad.builder()
+                            .nombre("La Plata")
+                            .idExterno("LA_PLATA")
+                            .fuenteApi("GEOREF")
+                            .provincia(provincia)
+                            .activo(true)
+                            .build()));
+
+            return ubicacionRepository.save(Ubicacion.builder()
+                    .ciudad(ciudad)
+                    .direccion("Sede Central")
+                    .build());
+        });
     }
 }

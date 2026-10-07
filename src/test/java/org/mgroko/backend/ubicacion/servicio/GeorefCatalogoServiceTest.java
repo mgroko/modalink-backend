@@ -1,5 +1,6 @@
 package org.mgroko.backend.ubicacion.servicio;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -8,10 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mgroko.backend.ubicacion.dto.LocalidadResponse;
-import org.mgroko.backend.ubicacion.dto.ProvinciaResponse;
+import org.mgroko.backend.ubicacion.catalogo.FuenteCatalogo;
+import org.mgroko.backend.ubicacion.catalogo.LocalidadCatalogo;
+import org.mgroko.backend.ubicacion.catalogo.ProvinciaCatalogo;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
-import org.mgroko.backend.ubicacion.georef.LocalidadGeoref;
 import org.springframework.core.io.DefaultResourceLoader;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +35,7 @@ class GeorefCatalogoServiceTest {
 
     @Test
     void listarProvincias_devuelveLas24Ordenadas() {
-        List<ProvinciaResponse> provincias = servicio.listarProvincias();
+        List<ProvinciaCatalogo> provincias = servicio.listarProvincias();
 
         assertEquals(24, provincias.size());
         assertTrue(provincias.stream().anyMatch(p -> p.nombre().equals("Ciudad Autónoma de Buenos Aires")));
@@ -45,25 +46,36 @@ class GeorefCatalogoServiceTest {
     }
 
     @Test
+    void listarProvincias_exponeIdYFuenteDelDominio() {
+        ProvinciaCatalogo caba = servicio.listarProvincias().stream()
+                .filter(p -> p.nombre().equals("Ciudad Autónoma de Buenos Aires"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("02", caba.idExterno());
+        assertEquals(FuenteCatalogo.GEOREF, caba.fuente());
+    }
+
+    @Test
     void buscarLocalidades_sinFiltros_devuelveTodas() {
-        List<LocalidadResponse> localidades = servicio.buscarLocalidades(null, null);
+        List<LocalidadCatalogo> localidades = servicio.buscarLocalidades(null, null);
 
         assertEquals(4037, localidades.size());
     }
 
     @Test
     void buscarLocalidades_porProvincia_filtra() {
-        List<LocalidadResponse> localidades = servicio.buscarLocalidades("02", null);
+        List<LocalidadCatalogo> localidades = servicio.buscarLocalidades("02", null);
 
-        assertTrue(localidades.stream().allMatch(l -> l.provinciaId().equals("02")));
+        assertTrue(localidades.stream().allMatch(l -> l.idProvincia().equals("02")));
         assertEquals("Ciudad Autónoma de Buenos Aires",
-                localidades.get(0).provinciaNombre());
+                localidades.get(0).nombreProvincia());
         assertTrue(localidades.stream().anyMatch(l -> l.nombre().equals("Saavedra")));
     }
 
     @Test
     void buscarLocalidades_porNombre_filtraSinDistinguirMayusculas() {
-        List<LocalidadResponse> localidades = servicio.buscarLocalidades(null, "LA PLATA");
+        List<LocalidadCatalogo> localidades = servicio.buscarLocalidades(null, "LA PLATA");
 
         assertTrue(localidades.stream().allMatch(l -> l.nombre().toLowerCase().contains("la plata")));
         assertTrue(localidades.stream().anyMatch(l -> l.nombre().equals("La Plata")));
@@ -71,11 +83,11 @@ class GeorefCatalogoServiceTest {
 
     @Test
     void buscarLocalidades_combinandoFiltros_devuelveCoincidencia() {
-        List<LocalidadResponse> localidades = servicio.buscarLocalidades("82", "constituci");
+        List<LocalidadCatalogo> localidades = servicio.buscarLocalidades("82", "constituci");
 
         assertEquals(2, localidades.size());
         assertTrue(localidades.stream()
-                .allMatch(l -> l.provinciaId().equals("82")
+                .allMatch(l -> l.idProvincia().equals("82")
                         && l.nombre().toLowerCase().contains("constituci")));
     }
 
@@ -86,9 +98,9 @@ class GeorefCatalogoServiceTest {
 
     @Test
     void localidadesIncluyenCentroide() {
-        List<LocalidadResponse> localidades = servicio.buscarLocalidades("02", null);
+        List<LocalidadCatalogo> localidades = servicio.buscarLocalidades("02", null);
 
-        LocalidadResponse saavedra = localidades.stream()
+        LocalidadCatalogo saavedra = localidades.stream()
                 .filter(l -> l.nombre().equals("Saavedra"))
                 .findFirst()
                 .orElseThrow();
@@ -99,11 +111,13 @@ class GeorefCatalogoServiceTest {
 
     @Test
     void obtenerLocalidad_existente_devuelveDatos() {
-        LocalidadGeoref localidad = servicio.obtenerLocalidad("0208401002");
+        LocalidadCatalogo localidad = servicio.obtenerLocalidad("0208401002");
 
         assertEquals("Saavedra", localidad.nombre());
-        assertEquals("02", localidad.provincia().id());
-        assertTrue(localidad.centroide().lat() < 0);
+        assertEquals("02", localidad.idProvincia());
+        assertEquals("Ciudad Autónoma de Buenos Aires", localidad.nombreProvincia());
+        assertEquals(FuenteCatalogo.GEOREF, localidad.fuente());
+        assertTrue(localidad.latitud().compareTo(BigDecimal.ZERO) < 0);
     }
 
     @Test

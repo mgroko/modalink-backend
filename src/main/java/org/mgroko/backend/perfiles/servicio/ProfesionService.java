@@ -2,6 +2,7 @@ package org.mgroko.backend.perfiles.servicio;
 
 import java.util.List;
 
+import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.perfiles.dto.ProfesionResponse;
 import org.mgroko.backend.perfiles.mapper.ProfesionMapper;
 import org.mgroko.backend.repositorio.ProfesionRepository;
@@ -19,12 +20,9 @@ public class ProfesionService {
 
     @Transactional(readOnly = true)
     public List<ProfesionResponse> buscar(String nombre) {
-        return profesionRepository.buscar(patron(nombre)).stream()
+        String valor = (nombre == null) ? "" : nombre.trim();
+        return profesionRepository.buscar(LikePatrones.contiene(valor), valor).stream()
                 .map(ProfesionMapper::toResponse)
                 .toList();
-    }
-
-    private String patron(String valor) {
-        return (valor == null || valor.isBlank()) ? "%" : "%" + valor.trim().toLowerCase() + "%";
     }
 }

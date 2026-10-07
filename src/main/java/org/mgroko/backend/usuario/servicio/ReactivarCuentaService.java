@@ -3,6 +3,7 @@ package org.mgroko.backend.usuario.servicio;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -18,19 +19,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReactivarCuentaService {
 
-    private static final int DIAS_PARA_ELIMINACION = 30;
-
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     public ReactivarCuentaService(UsuarioRepository usuarioRepository,
-            PerfilRepository perfilRepository) {
+            PerfilRepository perfilRepository,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional
     public ReactivarCuentaResponse reactivarCuenta(Long idUsuario) {
+        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
+
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
@@ -39,9 +43,9 @@ public class ReactivarCuentaService {
         }
 
         if (usuario.getFechaSolicitudBaja() != null
-                && usuario.getFechaSolicitudBaja().plusDays(DIAS_PARA_ELIMINACION).isBefore(LocalDateTime.now())) {
+                && usuario.getFechaSolicitudBaja().plusDays(diasBaja).isBefore(LocalDateTime.now())) {
             throw new SolicitudBajaException(
-                    "El plazo de " + DIAS_PARA_ELIMINACION
+                    "El plazo de " + diasBaja
                             + " días para recuperar la cuenta ha expirado.");
         }
 

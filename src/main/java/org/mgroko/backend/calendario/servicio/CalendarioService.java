@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
 import org.mgroko.backend.calendario.dto.CalendarioResponse;
 import org.mgroko.backend.calendario.dto.ConfigJornadaRequest;
@@ -55,18 +56,21 @@ public class CalendarioService {
     private final JornadaAgendaRepository jornadaAgendaRepository;
     private final BloqueoAgendaRepository bloqueoAgendaRepository;
     private final ActividadRepository actividadRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     public CalendarioService(
             UsuarioRepository usuarioRepository,
             AgendaRepository agendaRepository,
             JornadaAgendaRepository jornadaAgendaRepository,
             BloqueoAgendaRepository bloqueoAgendaRepository,
-            ActividadRepository actividadRepository) {
+            ActividadRepository actividadRepository,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.agendaRepository = agendaRepository;
         this.jornadaAgendaRepository = jornadaAgendaRepository;
         this.bloqueoAgendaRepository = bloqueoAgendaRepository;
         this.actividadRepository = actividadRepository;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     /**
@@ -82,9 +86,7 @@ public class CalendarioService {
         List<BloqueoAgenda> bloqueos =
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
-        int margen = agenda.getMargenActividadMinutos() != null
-        ? agenda.getMargenActividadMinutos()
-        : Agenda.MARGEN_ACTIVIDAD_MINUTOS_DEFECTO;
+        int margen = margenDe(agenda);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
@@ -97,7 +99,8 @@ public class CalendarioService {
     /**
      * Devuelve la agenda pública de un usuario (para visualización de disponibilidad
      * en su perfil). Incluye la jornada laboral, los bloqueos por actividades y los
-     * bloqueos manuales con el motivo oculto para proteger la privacidad.
+     * bloqueos manuales con el motivo siempre visible: el motivo del bloqueo es
+     * público para cualquier usuario autenticado que consulta el perfil.
      */
     @Transactional(readOnly = true)
     public CalendarioResponse obtenerPublico(Long idUsuario) {
@@ -108,13 +111,11 @@ public class CalendarioService {
         List<BloqueoAgenda> bloqueos =
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
-        int margen = agenda.getMargenActividadMinutos() != null
-                ? agenda.getMargenActividadMinutos()
-                : Agenda.MARGEN_ACTIVIDAD_MINUTOS_DEFECTO;
+        int margen = margenDe(agenda);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
-                bloqueos.stream().map(CalendarioMapper::toBloqueoResponseAnonimizado).toList(),
+                bloqueos.stream().map(CalendarioMapper::toBloqueoResponse).toList(),
                 actividades.stream()
                         .map(a -> CalendarioMapper.toBloqueoActividadResponse(a, margen))
                         .toList());
@@ -146,16 +147,16 @@ public class CalendarioService {
                 jornadaAgendaRepository.save(JornadaAgenda.builder()
                         .agenda(agenda)
                         .diaSemana(dia.diaSemana())
-                        .horarioInicioManiana(dia.horarioInicioManiana())
-                        .horarioFinManiana(dia.horarioFinManiana())
-                        .horarioInicioTarde(dia.horarioInicioTarde())
-                        .horarioFinTarde(dia.horarioFinTarde())
+                        .horaInicioManana(dia.horaInicioManana())
+                        .horaFinManana(dia.horaFinManana())
+                        .horaInicioTarde(dia.horaInicioTarde())
+                        .horaFinTarde(dia.horaFinTarde())
                         .build());
             } else if (cambioHorario(existente, dia)) {
-                existente.setHorarioInicioManiana(dia.horarioInicioManiana());
-                existente.setHorarioFinManiana(dia.horarioFinManiana());
-                existente.setHorarioInicioTarde(dia.horarioInicioTarde());
-                existente.setHorarioFinTarde(dia.horarioFinTarde());
+                existente.setHoraInicioManana(dia.horaInicioManana());
+                existente.setHoraFinManana(dia.horaFinManana());
+                existente.setHoraInicioTarde(dia.horaInicioTarde());
+                existente.setHoraFinTarde(dia.horaFinTarde());
             }
         }
         jornadaAgendaRepository.deleteAll(porDia.values());
@@ -170,7 +171,7 @@ public class CalendarioService {
 
     /**
      * Marca un bloque de tiempo como "No disponible" (UC-18). El motivo es
-     * opcional. No permite superponerse con otro bloqueo manual ni con un
+     * obligatorio (NOT NULL en BD). No permite superponerse con otro bloqueo manual ni con un
      * horario comprometido por una actividad de un proyecto activo.
      */
     @Transactional
@@ -179,7 +180,7 @@ public class CalendarioService {
         validarRango(request.fechaHoraInicio(), request.fechaHoraFin());
         Agenda agenda = agendaDe(idUsuario);
 
-        if (solapaActividad(idUsuario, request.fechaHoraInicio(), request.fechaHoraFin(), agenda.getMargenActividadMinutos())) {
+        if (solapaActividad(idUsuario, request.fechaHoraInicio(), request.fechaHoraFin(), margenDe(agenda))) {
             throw new HorarioComprometidoException(
                     "El periodo ya se encuentra bloqueado automáticamente por una actividad de un proyecto activo.");
         }
@@ -213,7 +214,7 @@ public class CalendarioService {
                 .orElseThrow(() -> new BloqueoNoEncontradoException(
                         "El bloqueo no existe o no pertenece a tu calendario."));
 
-        if (solapaActividad(idUsuario, bloqueo.getFechaHoraInicio(), bloqueo.getFechaHoraFin(), agenda.getMargenActividadMinutos())) {
+        if (solapaActividad(idUsuario, bloqueo.getFechaHoraInicio(), bloqueo.getFechaHoraFin(), margenDe(agenda))) {
             throw new HorarioComprometidoException(
                     "No se puede marcar como disponible un horario comprometido con una actividad de un proyecto activo.");
         }
@@ -223,10 +224,13 @@ public class CalendarioService {
 
     /**
      * Indica si el rango [inicio, fin] solapa algún bloqueo calculado por
-     * actividad de un proyecto activo (considerando el margen).
+     * actividad de un proyecto activo (considerando el margen). Las
+     * actividades sin inicio o fin se ignoran (no deberían existir: son
+     * NOT NULL en BD).
      */
     private boolean solapaActividad(Long idUsuario, LocalDateTime inicio, LocalDateTime fin, int margen) {
         return actividadesDe(idUsuario).stream()
+                .filter(a -> a.getFechaHoraInicio() != null && a.getFechaHoraFin() != null)
                 .anyMatch(a -> a.getFechaHoraInicio().minusMinutes(margen).isBefore(fin)
                         && a.getFechaHoraFin().plusMinutes(margen).isAfter(inicio));
     }
@@ -255,24 +259,24 @@ public class CalendarioService {
      * mediodía. Refleja los checks chk_jornada_* de la migración V19.
      */
     private void validarHorarios(JornadaDiaRequest dia) {
-        boolean tieneFinManiana = dia.horarioFinManiana() != null;
-        boolean tieneInicioTarde = dia.horarioInicioTarde() != null;
+        boolean tieneFinManiana = dia.horaFinManana() != null;
+        boolean tieneInicioTarde = dia.horaInicioTarde() != null;
 
         if (tieneFinManiana != tieneInicioTarde) {
             throw new JornadaInvalidaException(
                     "Para una jornada partida se deben informar el fin del bloque de la mañana y el inicio del bloque de la tarde; para una jornada de corrido, ninguno de los dos.");
         }
-        if (!dia.horarioFinTarde().isAfter(dia.horarioInicioManiana())) {
+        if (!dia.horaFinTarde().isAfter(dia.horaInicioManana())) {
             throw new JornadaInvalidaException("El horario de fin debe ser posterior al horario de inicio.");
         }
         if (tieneFinManiana) {
-            if (!dia.horarioFinManiana().isAfter(dia.horarioInicioManiana())) {
+            if (!dia.horaFinManana().isAfter(dia.horaInicioManana())) {
                 throw new JornadaInvalidaException("El fin del bloque de la mañana debe ser posterior a su inicio.");
             }
-            if (!dia.horarioInicioTarde().isAfter(dia.horarioFinManiana())) {
+            if (!dia.horaInicioTarde().isAfter(dia.horaFinManana())) {
                 throw new JornadaInvalidaException("El bloque de la tarde debe comenzar después del fin del bloque de la mañana.");
             }
-            if (!dia.horarioFinTarde().isAfter(dia.horarioInicioTarde())) {
+            if (!dia.horaFinTarde().isAfter(dia.horaInicioTarde())) {
                 throw new JornadaInvalidaException("El fin del bloque de la tarde debe ser posterior a su inicio.");
             }
         }
@@ -280,10 +284,10 @@ public class CalendarioService {
 
     /** Indica si el horario persistido del día difiere del enviado. */
     private boolean cambioHorario(JornadaAgenda existente, JornadaDiaRequest dia) {
-        return !Objects.equals(existente.getHorarioInicioManiana(), dia.horarioInicioManiana())
-                || !Objects.equals(existente.getHorarioFinManiana(), dia.horarioFinManiana())
-                || !Objects.equals(existente.getHorarioInicioTarde(), dia.horarioInicioTarde())
-                || !Objects.equals(existente.getHorarioFinTarde(), dia.horarioFinTarde());
+        return !Objects.equals(existente.getHoraInicioManana(), dia.horaInicioManana())
+                || !Objects.equals(existente.getHoraFinManana(), dia.horaFinManana())
+                || !Objects.equals(existente.getHoraInicioTarde(), dia.horaInicioTarde())
+                || !Objects.equals(existente.getHoraFinTarde(), dia.horaFinTarde());
     }
 
     private void validarRango(LocalDateTime inicio, LocalDateTime fin) {
@@ -296,6 +300,19 @@ public class CalendarioService {
         return agendaRepository.findByUsuario_IdUsuario(idUsuario)
                 .orElseThrow(() -> new AgendaNoEncontradaException(
                         "No se encontró la agenda del usuario."));
+    }
+
+    /**
+     * Margen efectivo de la agenda en minutos: el valor propio si está
+     * informado, o el default configurable de
+     * {@code configuracion_sistema} (clave {@code AGENDA_MARGEN_ACTIVIDAD_MIN}).
+     * Nunca retorna null (resuelve también el unboxing de H-07).
+     */
+    private int margenDe(Agenda agenda) {
+        if (agenda.getMargenActividadMinutos() != null) {
+            return agenda.getMargenActividadMinutos();
+        }
+        return configuracionSistemaService.obtenerMargenActividadDefecto();
     }
 
     private Usuario usuarioActivo(Long idUsuario) {

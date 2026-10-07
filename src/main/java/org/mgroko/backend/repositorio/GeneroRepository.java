@@ -7,11 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GeneroRepository extends JpaRepository<Genero, Long> {
 
-    /**
-     * Busca un género por su código.
-     *
-     * @param codigo el código del género (ej: "mujer", "hombre", "no_binario", "no_decirlo")
-     * @return un Optional con el Genero si existe, vacío en caso contrario
-     */
-    Optional<Genero> findByCodigo(String codigo);
+    @org.springframework.data.jpa.repository.Query("SELECT g FROM Genero g WHERE UPPER(g.codigo) = UPPER(:codigo)")
+    Optional<Genero> findByCodigo(@org.springframework.data.repository.query.Param("codigo") String codigo);
+
+    Optional<Genero> findByCodigoIgnoreCase(String codigo);
 }

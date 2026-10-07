@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.dto.AdminCaracteristicaTecnicaRequest;
 import org.mgroko.backend.admin.dto.AdminValorCaracteristicaRequest;
+import org.mgroko.backend.admin.dto.UnidadMedidaResponse;
 import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
@@ -56,11 +57,15 @@ class AdminCaracteristicaTecnicaControllerTest {
     }
 
     private AdminCaracteristicaTecnicaRequest requestCaracteristica(String codigo, String tipoDato) {
-        return new AdminCaracteristicaTecnicaRequest(codigo, "cm", 1L, tipoDato, List.of());
+        return new AdminCaracteristicaTecnicaRequest(codigo, "Nombre " + codigo, 1L, 1L, tipoDato, List.of());
     }
 
     private AdminValorCaracteristicaRequest requestValor(String codigo, String colorHex) {
         return new AdminValorCaracteristicaRequest(null, codigo, colorHex);
+    }
+
+    private UnidadMedidaResponse unidadCm() {
+        return new UnidadMedidaResponse(1L, "Centímetro", "cm", "NUMERICO");
     }
 
     // --- GET /admin/caracteristicas-tecnicas ---
@@ -68,7 +73,7 @@ class AdminCaracteristicaTecnicaControllerTest {
     @Test
     void listar_retorna200YLista() throws Exception {
         CaracteristicaTecnicaResponse c = new CaracteristicaTecnicaResponse(
-                1L, "altura", "cm", 1L, "modelo", "NUMERICO", List.of());
+                1L, "altura", "Altura", unidadCm(), 1L, "modelo", "NUMERICO", List.of());
 
         when(adminCaracteristicaTecnicaService.listar()).thenReturn(List.of(c));
 
@@ -76,7 +81,9 @@ class AdminCaracteristicaTecnicaControllerTest {
                         .principal(autenticacionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].codigo").value("altura"));
+                .andExpect(jsonPath("$[0].codigo").value("altura"))
+                .andExpect(jsonPath("$[0].nombre").value("Altura"))
+                .andExpect(jsonPath("$[0].unidad.simbolo").value("cm"));
     }
 
     // --- POST /admin/caracteristicas-tecnicas ---
@@ -85,7 +92,7 @@ class AdminCaracteristicaTecnicaControllerTest {
     void crear_valido_retorna201() throws Exception {
         AdminCaracteristicaTecnicaRequest req = requestCaracteristica("altura", "NUMERICO");
         CaracteristicaTecnicaResponse res = new CaracteristicaTecnicaResponse(
-                10L, "altura", "cm", 1L, "modelo", "NUMERICO", List.of());
+                10L, "altura", "Altura", unidadCm(), 1L, "modelo", "NUMERICO", List.of());
 
         when(adminCaracteristicaTecnicaService.crear(any())).thenReturn(res);
 
@@ -95,7 +102,9 @@ class AdminCaracteristicaTecnicaControllerTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.idCaracteristica").value(10))
-                .andExpect(jsonPath("$.codigo").value("altura"));
+                .andExpect(jsonPath("$.codigo").value("altura"))
+                .andExpect(jsonPath("$.nombre").value("Altura"))
+                .andExpect(jsonPath("$.unidad.simbolo").value("cm"));
     }
 
     @Test
@@ -149,7 +158,7 @@ class AdminCaracteristicaTecnicaControllerTest {
     void actualizar_valido_retorna200() throws Exception {
         AdminCaracteristicaTecnicaRequest req = requestCaracteristica("altura_nueva", "NUMERICO");
         CaracteristicaTecnicaResponse res = new CaracteristicaTecnicaResponse(
-                5L, "altura_nueva", "cm", 1L, "modelo", "NUMERICO", List.of());
+                5L, "altura_nueva", "Altura Nueva", unidadCm(), 1L, "modelo", "NUMERICO", List.of());
 
         when(adminCaracteristicaTecnicaService.actualizar(eq(5L), any())).thenReturn(res);
 
@@ -158,7 +167,9 @@ class AdminCaracteristicaTecnicaControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.codigo").value("altura_nueva"));
+                .andExpect(jsonPath("$.codigo").value("altura_nueva"))
+                .andExpect(jsonPath("$.nombre").value("Altura Nueva"))
+                .andExpect(jsonPath("$.unidad.simbolo").value("cm"));
     }
 
     @Test
@@ -248,16 +259,16 @@ class AdminCaracteristicaTecnicaControllerTest {
                 .andExpect(jsonPath("$.message").value("Valor duplicado"));
     }
 
-    // --- PUT /admin/caracteristicas-tecnicas/valores/{idValor} ---
+    // --- PUT /admin/caracteristicas-tecnicas/{id}/valores/{idValor} ---
 
     @Test
     void actualizarValor_valido_retorna200() throws Exception {
         AdminValorCaracteristicaRequest req = requestValor("CELESTE", "#00FFFF");
         ValorCaracteristicaResponse res = new ValorCaracteristicaResponse(20L, "CELESTE", "#00FFFF");
 
-        when(adminCaracteristicaTecnicaService.actualizarValor(eq(20L), any())).thenReturn(res);
+        when(adminCaracteristicaTecnicaService.actualizarValor(eq(10L), eq(20L), any())).thenReturn(res);
 
-        mockMvc.perform(put("/admin/caracteristicas-tecnicas/valores/20")
+        mockMvc.perform(put("/admin/caracteristicas-tecnicas/10/valores/20")
                         .principal(autenticacionAdmin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -269,10 +280,10 @@ class AdminCaracteristicaTecnicaControllerTest {
     void actualizarValor_noEncontrado_retorna404() throws Exception {
         AdminValorCaracteristicaRequest req = requestValor("CELESTE", "#00FFFF");
 
-        when(adminCaracteristicaTecnicaService.actualizarValor(eq(99L), any()))
+        when(adminCaracteristicaTecnicaService.actualizarValor(eq(10L), eq(99L), any()))
                 .thenThrow(new ValorCaracteristicaAdminNoEncontradoException("Valor no encontrado"));
 
-        mockMvc.perform(put("/admin/caracteristicas-tecnicas/valores/99")
+        mockMvc.perform(put("/admin/caracteristicas-tecnicas/10/valores/99")
                         .principal(autenticacionAdmin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -280,25 +291,25 @@ class AdminCaracteristicaTecnicaControllerTest {
                 .andExpect(jsonPath("$.message").value("Valor no encontrado"));
     }
 
-    // --- DELETE /admin/caracteristicas-tecnicas/valores/{idValor} ---
+    // --- DELETE /admin/caracteristicas-tecnicas/{id}/valores/{idValor} ---
 
     @Test
     void eliminarValor_valido_retorna204() throws Exception {
-        doNothing().when(adminCaracteristicaTecnicaService).eliminarValor(20L);
+        doNothing().when(adminCaracteristicaTecnicaService).eliminarValor(10L, 20L);
 
-        mockMvc.perform(delete("/admin/caracteristicas-tecnicas/valores/20")
+        mockMvc.perform(delete("/admin/caracteristicas-tecnicas/10/valores/20")
                         .principal(autenticacionAdmin()))
                 .andExpect(status().isNoContent());
 
-        verify(adminCaracteristicaTecnicaService).eliminarValor(20L);
+        verify(adminCaracteristicaTecnicaService).eliminarValor(10L, 20L);
     }
 
     @Test
     void eliminarValor_enUso_retorna409() throws Exception {
         doThrow(new ValorEnUsoException("El valor está en uso por perfiles"))
-                .when(adminCaracteristicaTecnicaService).eliminarValor(20L);
+                .when(adminCaracteristicaTecnicaService).eliminarValor(10L, 20L);
 
-        mockMvc.perform(delete("/admin/caracteristicas-tecnicas/valores/20")
+        mockMvc.perform(delete("/admin/caracteristicas-tecnicas/10/valores/20")
                         .principal(autenticacionAdmin()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("El valor está en uso por perfiles"));

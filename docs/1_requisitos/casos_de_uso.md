@@ -1222,6 +1222,7 @@
 | **Estabilidad**  | media |  |
 | **Comentarios** | En la profesión asociada se listan las profesiones base: fotógrafo, modelo, diseñador de moda, productor de moda, maquillador, estilista de cabello o estilista de imágen.  |  |
 
+
 | UC–57 | Gestionar características técnicas por profesión |  |
 | ----- | ----- | ----- |
 | **Actor** | Administrador |  |
@@ -1234,13 +1235,15 @@
 |  | 2 | El actor selecciona “Agregar nueva característica”. |
 |  | 3 | El sistema recupera y despliega todas las profesiones registradas en el sistema (ver caso de uso UC-59 Buscar profesiones) y solicita que se seleccione una o más profesiones para agregar la característica técnica. |
 |  | 4 | El actor selecciona la profesión deseada. |
-|  | 5 | El sistema despliega un formulario de carga solicitando la siguiente información de forma obligatoria: Nombre de la característica Tipo de datos solicitados  Y opcionalmente: Descripción de la característica |
-|  | 6 | El actor completa los campos y confirma la acción. |
-|  | 7 | El sistema registra la nueva característica al sistema. |
+|  | 5 | El sistema recupera y despliega todas las unidades de medida del sistema y solicite que se seleccione una unidad de medida (si corresponde) |
+|  | 6 | El actor selecciona la unidad de medida para la característica técnica. |
+|  | 7 | El sistema despliega un formulario de carga solicitando la siguiente información de forma obligatoria: Nombre de la característica Código de la característica Tipo de dato de la característica  Y opcionalmente: Descripción de la característica |
+|  | 8 | El actor completa los campos y confirma la acción. |
+|  | 9 | El sistema registra la nueva característica al sistema. |
 | **Postcondición** | Se creó una nueva característica en el sistema. Se asoció una característica a una profesión en el sistema. |  |
 | **Flujo alternativo 2.1** | 2.1 | Si el actor selecciona “Modificar característica”: |
 |  | 2.1.1 | El actor selecciona la característica que quiere modificar (ver caso de uso UC-58 Buscar características técnicas). |
-|  | 2.1.2 | El sistema despliega la información de la habilidad: Nombre de la característica Tipo de datos solicitados Profesión asociada Descripción de la característica |
+|  | 2.1.2 | El sistema despliega la información de la característica: Nombre de la característica Tipo de dato de la característica Unidad de medida asociada Profesión asociada Descripción de la característica |
 |  | 2.1.3 | El actor modifica los campos deseados y confirma la acción.  |
 |  | 2.1.4 | El sistema registra los cambios. |
 | **Postcondición 2.1** | Se modificó una característica del sistema. El sistema, por cada perfil de usuario que tenía la característica técnica asociada a su perfil, emite una notificación informando de la modificación. |  |
@@ -1260,6 +1263,7 @@
 | **Frecuencia**  | 10 veces/día |  |
 | **Estabilidad**  | media |  |
 | **Comentarios** | En tipo de datos solicitados, se refiere a datos numéricos (ej. medidas), datos de texto (ej. equipo técnico) u opciones de selección (ej. dispone de estudio propio: si/no)  |  |
+
 
 | UC–58 | Buscar características técnicas |  |
 | ----- | ----- | ----- |
@@ -1590,4 +1594,44 @@
 | **Frecuencia**  | 70 veces/día |  |
 | **Estabilidad**  | media |  |
 | **Comentarios** | \- |  |
+
+
+| UC–74 | Gestionar unidades de medida |  |
+| ----- | ----- | ----- |
+| **Actor** | Administrador |  |
+| **Objetivos asociados**  | OBJ-01 OBJ-04 |  |
+| **Requisitos asociados**  | IRQ-02 |  |
+| **Descripción**  | El caso de uso inicia cuando el administrador del sistema quiere gestionar las unidades de medida del sistema. El sistema le permite agregar un nuevo tipo de unidad de medida, modificar o eliminar una ya existente.  |  |
+| **Precondición**  | El usuario inició sesión en el sistema y tiene permisos de Administrador. |  |
+| **Secuencia normal**  | **Paso** | **Acción** |
+|  | 1 | El sistema recupera y despliega todas las unidades de medida registradas en el sistema y expone las siguientes opciones: “Agregar nueva unidad de medida” “Modificar unidad de medida” “Eliminar unidad de medida” |
+|  | 2 | El actor selecciona “Agregar nueva unidad de medida”. |
+|  | 3 | El sistema despliega un formulario de carga solicitando la siguiente información de forma obligatoria: Nombre Símbolo Tipo de dato permitido  |
+|  | 4 | El actor completa los campos y confirma la acción. |
+|  | 5 | El sistema registra la nueva característica al sistema. |
+| **Postcondición** | Se creó una nueva unidad de medida en el sistema. |  |
+| **Flujo alternativo 2.1** | 2.1 | Si el actor selecciona “Modificar unidad de medida”: |
+|  | 2.1.1 | El actor selecciona la unidad de medida que quiere modificar |
+|  | 2.1.2 | El sistema despliega la información de la habilidad: Nombre de la unidad Símbolo de la unidad Tipo de dato permitido |
+|  | 2.1.3 | El actor modifica los campos deseados y confirma la acción.  |
+|  | 2.1.4 | El sistema registra los cambios. |
+| **Postcondición 2.1** | Se modificó una unidad de medida del sistema. El sistema, por cada perfil de usuario que tenía una característica técnica con esta unidad de medida asociada a su perfil, emite una notificación informando de la modificación. |  |
+| **Flujo alternativo 2.2** | 2.2 | Si el actor selecciona “Eliminar unidad de medida”: |
+|  | 2.2.1 | El actor selecciona la característica que quiere eliminar |
+|  | 2.2.2 | El sistema despliega los datos de la unidad de medida y solicita confirmación. |
+|  | 2.2.3 | El actor confirma la acción.  |
+|  | 2.2.4 | El sistema registra la baja.  |
+| **Postcondición 2.2** | Se dió de baja una característica en el sistema.   |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 4 | Si el actor deja campos obligatorios vacíos o introduce un nombre de característica igual al de otra ya existente en el sistema, el sistema notifica la excepción y vuelve al paso 3 o el caso de uso finaliza.   |
+|  | 2.1.3 | Si el actor deja campos obligatorios vacíos o introduce un nombre o símbolo de unidad igual al de otra ya existente en el sistema, el sistema notifica la excepción y vuelve al paso 2.1.2 o el caso de uso finaliza.   |
+|  | 2.2.3 | Si el usuario intenta eliminar una unidad de medida asociada a una característica técnica, el sistema informa el error y el caso de uso finaliza. |
+| **Rendimiento**  | **Paso** | **Cota de tiempo**  |
+|  | 5 | 2 segundos |
+|  | 2.1.4 | 2 segundos |
+|  | 2.2.4 | 2 segundos |
+| **Frecuencia**  | 10 veces/día |  |
+| **Estabilidad**  | media |  |
+| **Comentarios** | \- |  |
+
 

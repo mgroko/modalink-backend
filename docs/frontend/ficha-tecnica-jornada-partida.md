@@ -1,8 +1,10 @@
 # Ficha técnica — Jornada laboral corrida y partida (breaking change)
 
 **Audiencia:** agente/equipo de frontend (modalink-frontend).
-**Origen del cambio:** migración Flyway `V19__jornada_partida` + refactor del módulo calendario.
-**Estado:** implementado y testeado en backend (394 tests verdes).
+**Origen del cambio:** refactor del módulo calendario (jornada partida/corrido) con validación soportada por los checks `chk_jornada_*` de `docs/3_diseño/ModaLinkBD.sql`.
+**Estado:** implementado y testeado en backend.
+
+> **Nota de nombres (H-08):** los atributos fueron renombrados de `horario…`/`maniana` a `hora…`/`manana` para corresponder a las columnas de la BD. Los nombres válidos en el contrato son **`horaInicioManana`, `horaFinManana`, `horaInicioTarde`, `horaFinTarde`**.
 
 ## 1. Qué cambió
 
@@ -13,10 +15,10 @@ sin compatibilidad hacia atrás. Todo cliente que use `horaInicio`/`horaFin` deb
 
 | Antes (eliminar) | Ahora |
 |---|---|
-| `horaInicio` (obligatorio) | `horarioInicioManiana` (obligatorio) |
-| `horaFin` (obligatorio) | `horarioFinTarde` (obligatorio) |
-| — | `horarioFinManiana` (opcional, ver §3) |
-| — | `horarioInicioTarde` (opcional, ver §3) |
+| `horaInicio` (obligatorio) | `horaInicioManana` (obligatorio) |
+| `horaFin` (obligatorio) | `horaFinTarde` (obligatorio) |
+| — | `horaFinManana` (opcional, ver §3) |
+| — | `horaInicioTarde` (opcional, ver §3) |
 
 ## 2. Endpoints afectados
 
@@ -33,10 +35,10 @@ los días presentes son los días laborables; un día ausente = no laborable).
   "dias": [
     {
       "diaSemana": 1,
-      "horarioInicioManiana": "09:00",
-      "horarioFinManiana": null,
-      "horarioInicioTarde": null,
-      "horarioFinTarde": "18:00"
+      "horaInicioManana": "09:00",
+      "horaFinManana": null,
+      "horaInicioTarde": null,
+      "horaFinTarde": "18:00"
     }
   ]
 }
@@ -44,16 +46,17 @@ los días presentes son los días laborables; un día ausente = no laborable).
 
 | Campo | Tipo | Obligatorio | Reglas |
 |---|---|---|---|
-| `margenActividadMinutos` | number (int) | Sí | Minutos de buffer a cada lado de una actividad. |
-| `dias` | array | Sí, **no vacío** | Máx. 7 elementos, `diaSemana` sin repetir. |
+| `margenActividadMinutos` | number (int) | Sí | Minutos de buffer a cada lado de una actividad. `@Min(0)` — no puede ser negativo. |
+| `dias` | array | Sí, **no vacío** (`@NotEmpty`) | Máx. 7 elementos, `diaSemana` sin repetir. |
 | `dias[].diaSemana` | number (int) | Sí | ISO 8601: `1` = Lunes … `7` = Domingo. |
-| `dias[].horarioInicioManiana` | string hora | Sí | Inicio de la jornada (corrida o partida). |
-| `dias[].horarioFinManiana` | string hora o `null` | Solo si partida | Fin del bloque de la mañana. |
-| `dias[].horarioInicioTarde` | string hora o `null` | Solo si partida | Inicio del bloque de la tarde. |
-| `dias[].horarioFinTarde` | string hora | Sí | Fin de la jornada (corrida o partida). |
+| `dias[].horaInicioManana` | string hora | Sí | Inicio de la jornada (corrida o partida). |
+| `dias[].horaFinManana` | string hora o `null` | Solo si partida | Fin del bloque de la mañana. |
+| `dias[].horaInicioTarde` | string hora o `null` | Solo si partida | Inicio del bloque de la tarde. |
+| `dias[].horaFinTarde` | string hora | Sí | Fin de la jornada (corrida o partida). |
 
-**Formato de horas:** el backend acepta `"HH:mm"` y `"HH:mm:ss"`, y **devuelve siempre
-`"HH:mm:ss"`** (p.ej. `"09:00:00"`). Tenerlo en cuenta al parsear/comparar.
+**Formato de horas:** el backend acepta `"HH:mm"` y `"HH:mm:ss"` (deserialización ISO-8601),
+y **devuelve siempre `"HH:mm:ss"`** (p.ej. `"09:00:00"`). Tenerlo en cuenta al
+parsear/comparar.
 
 **Respuesta 200 — `ConfigJornadaResponse`:** mismo objeto que el request
 (`{ margenActividadMinutos, dias[] }`) con las horas en formato `"HH:mm:ss"`.
@@ -76,37 +79,37 @@ La sección `jornada` de la respuesta usa los mismos campos nuevos:
 
 | Tipo | Cómo se representa | Ejemplo |
 |---|---|---|
-| **Corrido** | Solo `horarioInicioManiana` + `horarioFinTarde`; el par del mediodía en `null` (u omitido al enviar) | 09:00–18:00 |
+| **Corrido** | Solo `horaInicioManana` + `horaFinTarde`; el par del mediodía en `null` (u omitido al enviar) | 09:00–18:00 |
 | **Partido** | Las 4 horas, en orden estricto | 09:00–13:00 y 15:00–19:00 |
 | **Solo mañana / solo tarde / pocas horas** | Se modela como **corrido** con ese rango | 14:00–18:00 |
 
-Reglas de negocio (validadas en backend y base de datos; no re-implementar en el front,
+Reglas de negocio (validadas en backend y en base de datos; no re-implementar en el front,
 solo espejarlas en la UI para buena UX):
 
-1. `horarioFinTarde` > `horarioInicioManiana`, siempre.
-2. **El par del mediodía va completo o no va**: enviar solo `horarioFinManiana` o solo
-   `horarioInicioTarde` es rechazado.
-3. Si es partida: `horarioInicioManiana` < `horarioFinManiana` < `horarioInicioTarde`
-   < `horarioFinTarde` (estricto; no valen empates).
+1. `horaFinTarde` > `horaInicioManana`, siempre.
+2. **El par del mediodía va completo o no va**: enviar solo `horaFinManana` o solo
+   `horaInicioTarde` es rechazado.
+3. Si es partida: `horaInicioManana` < `horaFinManana` < `horaInicioTarde`
+   < `horaFinTarde` (estricto; no valen empates).
 4. Un día puede pasar de corrido a partido y viceversa editándolo; el backend lo persiste
-   sin recrear la fila.
+   por diff (sin recrear la fila).
 
 **Patrón de UI sugerido:** toggle "¿Jornada partida?" por día (o global). Si está apagado,
 mostrar 2 inputs (inicio/fin) y enviar el par del mediodía en `null`. Si está prendido,
 mostrar 4 inputs. Después de un `GET`, inferir el estado del toggle con
-`horarioFinManiana != null && horarioInicioTarde != null`.
+`horaFinManana != null && horaInicioTarde != null`.
 
 ## 4. Errores
 
 ### 400 — validación de campos (Bean Validation)
 
-Disparadores: `dias` vacío, `diaSemana`/`horarioInicioManiana`/`horarioFinTarde` nulos.
+Disparadores: `dias` vacío, `diaSemana`/`horaInicioManana`/`horaFinTarde` nulos.
 Observación: nulos por campo (el JSON con campos ausentes también cuenta como nulo).
 
 ```json
 {
   "message": "Validación fallida",
-  "errores": { "dias[0].horarioInicioManiana": "must not be null" },
+  "errores": { "dias[0].horaInicioManana": "must not be null" },
   "httpStatus": 400,
   "timestamp": 1788000000000
 }
@@ -136,8 +139,10 @@ Mensajes posibles (mostrar tal cual al usuario):
 
 ## 5. Checklist de migración para el front
 
-- [ ] Reemplazar todo uso de `horaInicio`/`horaFin` por `horarioInicioManiana`/`horarioFinTarde`.
-- [ ] Manejar `horarioFinManiana`/`horarioInicioTarde` potencialmente `null` al renderizar
+- [ ] Reemplazar todo uso de `horaInicio`/`horaFin` (y los nombres intermedios
+      `horarioInicioManiana`/`horarioFinManiana`/etc.) por `horaInicioManana`/
+      `horaFinManana`/`horaInicioTarde`/`horaFinTarde`.
+- [ ] Manejar `horaFinManana`/`horaInicioTarde` potencialmente `null` al renderizar
       (no asumir 4 horas siempre presentes).
 - [ ] Agregar UI para jornada partida (toggle + 2 inputs extra por día).
 - [ ] Al armar el PUT, limpiar/normalizar: corrido ⇒ mediodía en `null`; nunca enviar solo
@@ -152,10 +157,23 @@ Mensajes posibles (mostrar tal cual al usuario):
 {
   "margenActividadMinutos": 45,
   "dias": [
-    { "diaSemana": 1, "horarioInicioManiana": "09:00", "horarioFinManiana": null,
-      "horarioInicioTarde": null, "horarioFinTarde": "18:00" },
-    { "diaSemana": 2, "horarioInicioManiana": "09:00", "horarioFinManiana": "13:00",
-      "horarioInicioTarde": "15:00", "horarioFinTarde": "19:00" }
+    { "diaSemana": 1, "horaInicioManana": "09:00", "horaFinManana": null,
+      "horaInicioTarde": null, "horaFinTarde": "18:00" },
+    { "diaSemana": 2, "horaInicioManana": "09:00", "horaFinManana": "13:00",
+      "horaInicioTarde": "15:00", "horaFinTarde": "19:00" }
   ]
 }
 ```
+
+---
+
+## 7. Referencias de implementación Backend
+
+| Aspecto | Archivo |
+| :--- | :--- |
+| Endpoint y DTOs | `calendario/controlador/CalendarioController.java` |
+| Request/Response de jornada | `calendario/dto/ConfigJornadaRequest.java`, `ConfigJornadaResponse.java`, `JornadaDiaRequest.java`, `JornadaDiaResponse.java` |
+| Validaciones y mensajes de error | `calendario/servicio/CalendarioService.java` (`validarJornada`, `validarHorarios`) |
+| Mapeo de respuesta | `calendario/mapper/CalendarioMapper.java` |
+| Checks de BD (`chk_jornada_*`) | `docs/3_diseño/ModaLinkBD.sql` (tabla `jornada_agenda`) |
+| Manejo de errores (400/401/403) | `common/exception/GlobalExceptionHandler.java` |

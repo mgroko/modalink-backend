@@ -3,6 +3,7 @@ package org.mgroko.backend.perfiles.especificacion;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.Perfil;
@@ -39,19 +40,19 @@ public class PerfilSpecifications {
             // Filtrado por nombre artístico (parcial, insensible a mayúsculas)
             if (filtro.nombreArtistico() != null && !filtro.nombreArtistico().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("nombreArtistico")),
-                        "%" + filtro.nombreArtistico().trim().toLowerCase() + "%"));
+                        LikePatrones.contiene(filtro.nombreArtistico()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por nombre de pila del usuario
             if (filtro.nombre() != null && !filtro.nombre().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("usuario").get("nombre")),
-                        "%" + filtro.nombre().trim().toLowerCase() + "%"));
+                        LikePatrones.contiene(filtro.nombre()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por apellido del usuario
             if (filtro.apellido() != null && !filtro.apellido().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("usuario").get("apellido")),
-                        "%" + filtro.apellido().trim().toLowerCase() + "%"));
+                        LikePatrones.contiene(filtro.apellido()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por profesión
@@ -59,7 +60,7 @@ public class PerfilSpecifications {
                 predicates.add(cb.equal(root.get("profesion").get("idProfesion"), filtro.idProfesion()));
             } else if (filtro.profesion() != null && !filtro.profesion().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("profesion").get("nombre")),
-                        "%" + filtro.profesion().trim().toLowerCase() + "%"));
+                        LikePatrones.contiene(filtro.profesion()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por género
@@ -70,17 +71,17 @@ public class PerfilSpecifications {
                         filtro.genero().trim().toLowerCase()));
             }
 
-            // Filtrado por ubicación
+            // Filtrado por ubicación (por ciudad, no por fila de ubicacion surrogate)
             if (filtro.idUbicacion() != null) {
-                predicates.add(cb.equal(root.get("usuario").get("ubicacion").get("idUbicacion"), filtro.idUbicacion()));
+                predicates.add(cb.equal(root.get("usuario").get("ubicacion").get("ciudad").get("idCiudad"), filtro.idUbicacion()));
             }
             if (filtro.localidad() != null && !filtro.localidad().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("localidad")),
-                        "%" + filtro.localidad().trim().toLowerCase() + "%"));
+                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("ciudad").get("nombre")),
+                        LikePatrones.contiene(filtro.localidad()), LikePatrones.CARACTER_ESCAPE));
             }
             if (filtro.provincia() != null && !filtro.provincia().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("provincia")),
-                        "%" + filtro.provincia().trim().toLowerCase() + "%"));
+                predicates.add(cb.like(cb.lower(root.get("usuario").get("ubicacion").get("ciudad").get("provincia").get("nombre")),
+                        LikePatrones.contiene(filtro.provincia()), LikePatrones.CARACTER_ESCAPE));
             }
 
             // Filtrado por habilidades (contiene al menos una de las habilidades especificadas)
@@ -100,7 +101,7 @@ public class PerfilSpecifications {
                             filtro.idValorCaracteristica()));
                 } else if (filtro.valorCaracteristica() != null && !filtro.valorCaracteristica().isBlank()) {
                     predicates.add(cb.like(cb.lower(joinCaracteristicas.get("valor")),
-                            "%" + filtro.valorCaracteristica().trim().toLowerCase() + "%"));
+                            LikePatrones.contiene(filtro.valorCaracteristica()), LikePatrones.CARACTER_ESCAPE));
                 }
             }
 

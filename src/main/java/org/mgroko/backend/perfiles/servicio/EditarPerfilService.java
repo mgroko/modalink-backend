@@ -1,6 +1,7 @@
 package org.mgroko.backend.perfiles.servicio;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
@@ -24,15 +25,18 @@ public class EditarPerfilService {
     private final PerfilRepository perfilRepository;
     private final ImagenRepository imagenRepository;
     private final CaracteristicaPerfilHelper caracteristicaPerfilHelper;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     public EditarPerfilService(UsuarioRepository usuarioRepository,
             PerfilRepository perfilRepository,
             ImagenRepository imagenRepository,
-            CaracteristicaPerfilHelper caracteristicaPerfilHelper) {
+            CaracteristicaPerfilHelper caracteristicaPerfilHelper,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
         this.imagenRepository = imagenRepository;
         this.caracteristicaPerfilHelper = caracteristicaPerfilHelper;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional
@@ -57,7 +61,7 @@ public class EditarPerfilService {
                 caracteristicaPerfilHelper.construir(perfil, perfil.getProfesion(), request.caracteristicas()));
 
         Perfil guardado = perfilRepository.save(perfil);
-        return PerfilMapper.toResponse(guardado);
+        return PerfilMapper.toResponse(guardado, configuracionSistemaService.obtenerDiasBaja());
     }
 
     private Usuario buscarUsuarioActivo(Long idUsuario) {

@@ -25,7 +25,7 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
     private ProfesionRepository profesionRepository;
 
     private Long idProfesionModelo() {
-        return profesionRepository.buscar("%modelo%").get(0).getIdProfesion();
+        return profesionRepository.buscar("%modelo%", "modelo").get(0).getIdProfesion();
     }
 
     @Test
@@ -37,8 +37,7 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
 
     @Test
     void buscar_porProfesion_devuelveLasDeModelo() {
-        List<CaracteristicaTecnica> resultado =
-                caracteristicaTecnicaRepository.buscar("%", "%", idProfesionModelo());
+        List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%", "%", idProfesionModelo());
 
         assertEquals(8, resultado.size());
         assertTrue(resultado.stream().allMatch(c -> c.getProfesion().getIdProfesion().equals(idProfesionModelo())));
@@ -49,29 +48,30 @@ class CaracteristicaTecnicaRepositoryIntegrationTest extends AbstractPostgresInt
         List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%altura%", "%", null);
 
         assertEquals(1, resultado.size());
-        assertEquals("altura", resultado.get(0).getCodigo());
+        assertEquals("ALTURA", resultado.get(0).getCodigo());
     }
 
     @Test
-    void buscar_porUnidad_color_devuelveTres() {
+    void buscar_porUnidad_colorSinUnidadSembrada_devuelveVacio() {
+        // Por diseño las ENUMERADO tienen id_unidad NULL: ningún filtro de unidad las matchea.
         List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%", "%color%", null);
 
-        assertEquals(3, resultado.size());
+        assertEquals(0, resultado.size());
     }
 
     @Test
     void buscar_combinandoFiltros_devuelveCoincidencia() {
-        List<CaracteristicaTecnica> resultado =
-                caracteristicaTecnicaRepository.buscar("%medida_pecho%", "%", idProfesionModelo());
+        List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%medida_pecho%", "%",
+                idProfesionModelo());
 
         assertEquals(1, resultado.size());
-        assertEquals("medida_pecho", resultado.get(0).getCodigo());
+        assertEquals("MEDIDA_PECHO", resultado.get(0).getCodigo());
     }
 
     @Test
     void buscar_sinCoincidencias_devuelveVacio() {
-        List<CaracteristicaTecnica> resultado =
-                caracteristicaTecnicaRepository.buscar("%inexistente%", "%", idProfesionModelo());
+        List<CaracteristicaTecnica> resultado = caracteristicaTecnicaRepository.buscar("%inexistente%", "%",
+                idProfesionModelo());
 
         assertTrue(resultado.isEmpty());
     }

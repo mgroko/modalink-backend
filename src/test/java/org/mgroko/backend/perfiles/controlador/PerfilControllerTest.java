@@ -279,8 +279,13 @@ class PerfilControllerTest {
         org.mgroko.backend.perfiles.dto.PerfilDetalleResponse perfil = new org.mgroko.backend.perfiles.dto.PerfilDetalleResponse(
                 10L, "Luna", "Modelo profesional.", "Activo", null,
                 2L, "modelo", 5L, "https://cloudinary.com/foto.jpg",
-                1L, "Luna", "Perez", "FEM", "Rosario", "Santa Fe",
-                List.of("Pasarela", "Fotogenia"), List.of(), true);
+                1L, "Luna", "Perez", "FEM",
+                new org.mgroko.backend.ubicacion.dto.CiudadResponse(
+                        100L, "0320104", "GEOREF", "Rosario",
+                        new org.mgroko.backend.ubicacion.dto.ProvinciaResponse(
+                                10L, "24", "GEOREF", "Santa Fe",
+                                new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
+                List.of("Pasarela", "Fotogenia"), List.of(), true, null);
 
         when(verPerfilService.obtenerDetalle(10L, 1L)).thenReturn(perfil);
 
@@ -290,7 +295,8 @@ class PerfilControllerTest {
                 .andExpect(jsonPath("$.idPerfil").value(10))
                 .andExpect(jsonPath("$.nombreArtistico").value("Luna"))
                 .andExpect(jsonPath("$.profesion").value("modelo"))
-                .andExpect(jsonPath("$.localidad").value("Rosario"))
+                .andExpect(jsonPath("$.ciudad.nombre").value("Rosario"))
+                .andExpect(jsonPath("$.ciudad.provincia.nombre").value("Santa Fe"))
                 .andExpect(jsonPath("$.esPropietario").value(true));
     }
 
@@ -376,7 +382,8 @@ class PerfilControllerTest {
         mockMvc.perform(delete("/perfiles/10")
                         .principal(authentication))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mensaje").value("Solicitud de baja registrada."));
+                .andExpect(jsonPath("$.mensaje").value("Solicitud de baja registrada."))
+                .andExpect(jsonPath("$.fechaLimite").isNotEmpty());
     }
 
     @Test
@@ -404,7 +411,7 @@ class PerfilControllerTest {
                         .nombreArtistico("Luna")
                         .biografia("Modelo profesional.")
                         .estado(org.mgroko.backend.modelo.enums.EstadoPerfil.Activo)
-                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
                         .build());
 
         mockMvc.perform(post("/perfiles/10/reactivar")
@@ -518,7 +525,8 @@ class PerfilControllerTest {
                 null,
                 100L,
                 "/uploads/perfiles/perfil_100.jpg",
-                List.of()
+                List.of(),
+                null
         );
 
         org.mockito.Mockito.when(fotoPerfilService.subirFoto(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.any()))
@@ -544,7 +552,8 @@ class PerfilControllerTest {
                 null,
                 null,
                 null,
-                List.of()
+                List.of(),
+                null
         );
 
         org.mockito.Mockito.when(fotoPerfilService.eliminarFoto(1L, 10L)).thenReturn(response);
@@ -564,7 +573,11 @@ class PerfilControllerTest {
                 1L, "Luna Sol", "Bio", "Activo",
                 2L, "Modelo", null, null,
                 5L, "Ana", "Gomez", "FEM",
-                "Rosario", "Santa Fe",
+                new org.mgroko.backend.ubicacion.dto.CiudadResponse(
+                        100L, "0320104", "GEOREF", "Rosario",
+                        new org.mgroko.backend.ubicacion.dto.ProvinciaResponse(
+                                10L, "24", "GEOREF", "Santa Fe",
+                                new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
                 List.of("Pasarela", "Fotogenia"),
                 List.of()
         );

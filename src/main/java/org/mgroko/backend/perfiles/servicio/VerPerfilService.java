@@ -1,6 +1,7 @@
 package org.mgroko.backend.perfiles.servicio;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -18,10 +19,13 @@ public class VerPerfilService {
 
     private final PerfilRepository perfilRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
-    public VerPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository) {
+    public VerPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.perfilRepository = perfilRepository;
         this.usuarioRepository = usuarioRepository;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional(readOnly = true)
@@ -37,13 +41,14 @@ public class VerPerfilService {
                 .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));
 
         boolean esPropietario = perfil.getUsuario().getIdUsuario().equals(idUsuarioAutenticado);
+        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
 
         if (esPropietario) {
-            // Si el perfil está en Baja definitiva, no está disponible
+            // Si el perfil est� en Baja definitiva, no est� disponible
             if (perfil.getEstado() == EstadoPerfil.Baja) {
                 throw new PerfilNoEncontradoException("Perfil no encontrado.");
             }
-            return PerfilMapper.toDetalleResponse(perfil, true);
+            return PerfilMapper.toDetalleResponse(perfil, true, diasBaja);
         }
 
         // Si es un tercero viendo el perfil:
@@ -57,6 +62,6 @@ public class VerPerfilService {
             throw new PerfilNoEncontradoException("Perfil no encontrado.");
         }
 
-        return PerfilMapper.toDetalleResponse(perfil, false);
+        return PerfilMapper.toDetalleResponse(perfil, false, diasBaja);
     }
 }
