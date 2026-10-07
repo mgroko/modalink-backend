@@ -88,7 +88,7 @@ class CalendarioControllerTest {
                         new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))),
                 List.of(new BloqueoResponse(1L,
                         LocalDateTime.of(2026, 9, 15, 10, 0),
-                        LocalDateTime.of(2026, 9, 15, 14, 0), null)),
+                        LocalDateTime.of(2026, 9, 15, 14, 0), "Capacitación interna")),
                 List.of(new BloqueoActividadResponse(5L, "Sesión",
                         LocalDateTime.of(2026, 9, 10, 9, 0),
                         LocalDateTime.of(2026, 9, 10, 13, 0))));
@@ -100,7 +100,7 @@ class CalendarioControllerTest {
                 .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(30))
                 .andExpect(jsonPath("$.jornada.dias[0].diaSemana").value(1))
                 .andExpect(jsonPath("$.bloqueosManuales[0].idBloqueo").value(1))
-                .andExpect(jsonPath("$.bloqueosManuales[0].motivo").doesNotExist())
+                .andExpect(jsonPath("$.bloqueosManuales[0].motivo").value("Capacitación interna"))
                 .andExpect(jsonPath("$.actividades[0].nombre").value("Sesión"));
 
         verify(calendarioService).obtenerPublico(2L);

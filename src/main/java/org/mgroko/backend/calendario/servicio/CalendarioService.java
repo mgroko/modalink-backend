@@ -99,7 +99,8 @@ public class CalendarioService {
     /**
      * Devuelve la agenda pública de un usuario (para visualización de disponibilidad
      * en su perfil). Incluye la jornada laboral, los bloqueos por actividades y los
-     * bloqueos manuales con el motivo oculto para proteger la privacidad.
+     * bloqueos manuales con el motivo siempre visible: el motivo del bloqueo es
+     * público para cualquier usuario autenticado que consulta el perfil.
      */
     @Transactional(readOnly = true)
     public CalendarioResponse obtenerPublico(Long idUsuario) {
@@ -114,7 +115,7 @@ public class CalendarioService {
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
-                bloqueos.stream().map(CalendarioMapper::toBloqueoResponseAnonimizado).toList(),
+                bloqueos.stream().map(CalendarioMapper::toBloqueoResponse).toList(),
                 actividades.stream()
                         .map(a -> CalendarioMapper.toBloqueoActividadResponse(a, margen))
                         .toList());

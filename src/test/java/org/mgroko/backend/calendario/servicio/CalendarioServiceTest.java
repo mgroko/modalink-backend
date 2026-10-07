@@ -159,7 +159,7 @@ class CalendarioServiceTest {
     // ------------------------------------------------------------------
 
     @Test
-    void obtenerPublico_devuelveJornadaBloqueosAnonimizadosYActividades() {
+    void obtenerPublico_devuelveJornadaBloqueosConMotivoYActividades() {
         mockUsuarioActivo();
         mockAgenda();
         when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
@@ -182,7 +182,7 @@ class CalendarioServiceTest {
         assertEquals(1, response.jornada().dias().size());
         assertEquals(1, response.bloqueosManuales().size());
         assertEquals(1L, response.bloqueosManuales().get(0).idBloqueo());
-        assertNull(response.bloqueosManuales().get(0).motivo());
+        assertEquals("Motivo personal privado", response.bloqueosManuales().get(0).motivo());
         assertEquals(1, response.actividades().size());
         assertEquals(LocalDateTime.of(2026, 9, 10, 9, 30), response.actividades().get(0).fechaHoraInicio());
         assertEquals(LocalDateTime.of(2026, 9, 10, 12, 30), response.actividades().get(0).fechaHoraFin());
