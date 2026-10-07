@@ -97,7 +97,7 @@ public class PerfilSpecifications {
                         filtro.idCaracteristica()));
 
                 if (filtro.idValorCaracteristica() != null) {
-                    predicates.add(cb.equal(joinCaracteristicas.get("valorCaracteristica").get("idValor"),
+                    predicates.add(cb.equal(joinCaracteristicas.get("idValor"),
                             filtro.idValorCaracteristica()));
                 } else if (filtro.valorCaracteristica() != null && !filtro.valorCaracteristica().isBlank()) {
                     predicates.add(cb.like(cb.lower(joinCaracteristicas.get("valor")),
