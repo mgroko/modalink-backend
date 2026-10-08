@@ -25,7 +25,13 @@ import lombok.Setter;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Agenda {
 
-    public static final int MARGEN_ACTIVIDAD_MINUTOS_DEFECTO = 60; 
+    /**
+     * Margen por defecto en minutos. Alineado con el DEFAULT de la columna
+     * {@code agenda.margen_actividad_min}, el seed y el fallback de la clave
+     * {@code AGENDA_MARGEN_ACTIVIDAD_MIN} en {@code configuracion_sistema}.
+     * El valor efectivo por agenda se resuelve en el servicio de calendario.
+     */
+    public static final int MARGEN_ACTIVIDAD_MINUTOS_DEFECTO = 30;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +39,7 @@ public class Agenda {
     private Long idAgenda;
 
     @Builder.Default
-    @Column(name = "margen_actividad_minutos", nullable = false)
+    @Column(name = "margen_actividad_min", nullable = false)
     private Integer margenActividadMinutos = MARGEN_ACTIVIDAD_MINUTOS_DEFECTO;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)

@@ -7,8 +7,9 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
-import org.mgroko.backend.ubicacion.dto.LocalidadResponse;
-import org.mgroko.backend.ubicacion.dto.ProvinciaResponse;
+import org.mgroko.backend.ubicacion.catalogo.FuenteCatalogo;
+import org.mgroko.backend.ubicacion.catalogo.LocalidadCatalogo;
+import org.mgroko.backend.ubicacion.catalogo.ProvinciaCatalogo;
 import org.mgroko.backend.ubicacion.servicio.GeorefCatalogoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -29,11 +30,22 @@ class UbicacionCatalogoControllerTest {
     @MockitoBean
     private GeorefCatalogoService catalogoGeoref;
 
+    private static ProvinciaCatalogo provincia(String id, String nombre) {
+        return new ProvinciaCatalogo(id, nombre, FuenteCatalogo.GEOREF,
+                new BigDecimal("-34.6144420654301"), new BigDecimal("-58.4458763250916"));
+    }
+
+    private static LocalidadCatalogo localidad() {
+        return new LocalidadCatalogo("0208401002", "Saavedra", "02",
+                "Ciudad Autónoma de Buenos Aires", FuenteCatalogo.GEOREF,
+                new BigDecimal("-34.5548978526608"), new BigDecimal("-58.4863271154338"));
+    }
+
     @Test
     void listarProvincias_devuelve200ConLista() throws Exception {
         when(catalogoGeoref.listarProvincias()).thenReturn(List.of(
-                new ProvinciaResponse("02", "Ciudad Autónoma de Buenos Aires"),
-                new ProvinciaResponse("06", "Buenos Aires")));
+                provincia("02", "Ciudad Autónoma de Buenos Aires"),
+                provincia("06", "Buenos Aires")));
 
         mockMvc.perform(get("/ubicaciones/provincias"))
                 .andExpect(status().isOk())
@@ -44,10 +56,7 @@ class UbicacionCatalogoControllerTest {
 
     @Test
     void buscarLocalidades_sinFiltros_devuelve200() throws Exception {
-        when(catalogoGeoref.buscarLocalidades(isNull(), isNull())).thenReturn(List.of(
-                new LocalidadResponse("0208401002", "Saavedra", "02",
-                        "Ciudad Autónoma de Buenos Aires",
-                        new BigDecimal("-34.5548978526608"), new BigDecimal("-58.4863271154338"))));
+        when(catalogoGeoref.buscarLocalidades(isNull(), isNull())).thenReturn(List.of(localidad()));
 
         mockMvc.perform(get("/ubicaciones/localidades"))
                 .andExpect(status().isOk())
@@ -58,10 +67,7 @@ class UbicacionCatalogoControllerTest {
 
     @Test
     void buscarLocalidades_conFiltros_pasaParametros() throws Exception {
-        when(catalogoGeoref.buscarLocalidades("02", "saavedra")).thenReturn(List.of(
-                new LocalidadResponse("0208401002", "Saavedra", "02",
-                        "Ciudad Autónoma de Buenos Aires",
-                        new BigDecimal("-34.5548978526608"), new BigDecimal("-58.4863271154338"))));
+        when(catalogoGeoref.buscarLocalidades("02", "saavedra")).thenReturn(List.of(localidad()));
 
         mockMvc.perform(get("/ubicaciones/localidades")
                         .param("provinciaId", "02")

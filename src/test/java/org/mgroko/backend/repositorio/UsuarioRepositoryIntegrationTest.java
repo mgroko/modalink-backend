@@ -17,6 +17,7 @@ import org.mgroko.backend.admin.servicio.ExpirarDeshabilitacionService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -53,6 +54,9 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
     private RolGlobalRepository rolGlobalRepository;
 
     @Autowired
+    private UbicacionRepository ubicacionRepository;
+
+    @Autowired
     private ExpirarDeshabilitacionService expirarDeshabilitacionService;
 
     /**
@@ -63,6 +67,7 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
     private Usuario construirUsuario(String correo, String dni) {
         RolGlobal rol = rolGlobalRepository.findByNombre("Usuario").orElseThrow();
         Genero genero = generoRepository.findByCodigo("mujer").orElseThrow();
+        Ubicacion ubicacion = ubicacionRepository.findAll().stream().findFirst().orElse(null);
 
         return Usuario.builder()
                 .nombre("Juan")
@@ -72,6 +77,7 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
                 .correo(correo)
                 .rolGlobal(rol)
                 .genero(genero)
+                .ubicacion(ubicacion)
                 .build();
     }
 

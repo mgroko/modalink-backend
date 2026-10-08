@@ -11,6 +11,7 @@ import org.mgroko.backend.perfiles.servicio.ActivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarPerfilService;
+import org.mgroko.backend.perfiles.servicio.FotoPerfilService;
 import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -41,7 +42,10 @@ public class PerfilController {
     private final EliminarPerfilService eliminarPerfilService;
     private final ReactivarPerfilService reactivarPerfilService;
     private final ActivarPerfilService activarPerfilService;
+    private final FotoPerfilService fotoPerfilService;
     private final JwtCookieFactory jwtCookieFactory;
+    private final org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService;
+    private final org.mgroko.backend.perfiles.servicio.VerPerfilService verPerfilService;
 
     public PerfilController(CrearPerfilService crearPerfilService,
             UsuarioPerfilService usuarioPerfilService,
@@ -49,14 +53,32 @@ public class PerfilController {
             EliminarPerfilService eliminarPerfilService,
             ReactivarPerfilService reactivarPerfilService,
             ActivarPerfilService activarPerfilService,
-            JwtCookieFactory jwtCookieFactory) {
+            FotoPerfilService fotoPerfilService,
+            JwtCookieFactory jwtCookieFactory,
+            org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService,
+            org.mgroko.backend.perfiles.servicio.VerPerfilService verPerfilService) {
         this.crearPerfilService = crearPerfilService;
         this.usuarioPerfilService = usuarioPerfilService;
         this.editarPerfilService = editarPerfilService;
         this.eliminarPerfilService = eliminarPerfilService;
         this.reactivarPerfilService = reactivarPerfilService;
         this.activarPerfilService = activarPerfilService;
+        this.fotoPerfilService = fotoPerfilService;
         this.jwtCookieFactory = jwtCookieFactory;
+        this.buscarPerfilService = buscarPerfilService;
+        this.verPerfilService = verPerfilService;
+    }
+
+    // UC-16 - Buscar perfiles registrados con criterios de filtrado y paginación parametrizable
+    @GetMapping("/perfiles/buscar")
+    public ResponseEntity<org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse>> buscar(
+            @org.springframework.web.bind.annotation.ModelAttribute org.mgroko.backend.perfiles.dto.BuscarPerfilesFiltro filtro,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean todos,
+            Authentication authentication) {
+        var response = buscarPerfilService.buscarPerfiles(filtro, page, size, todos);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/perfiles")
@@ -75,13 +97,13 @@ public class PerfilController {
         return ResponseEntity.ok(response);
     }
 
-    // UC-11 - Paso 2: recuperar los datos actuales del perfil
+    // UC-14 - Ver perfil completo (propio o de terceros activos) / UC-11 Paso 2
     @GetMapping("/perfiles/{idPerfil}")
-    public ResponseEntity<PerfilResponse> obtener(
+    public ResponseEntity<org.mgroko.backend.perfiles.dto.PerfilDetalleResponse> obtener(
             @PathVariable Long idPerfil,
             Authentication authentication) {
         Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
-        PerfilResponse response = usuarioPerfilService.obtenerPerfilPropio(idUsuario, idPerfil);
+        org.mgroko.backend.perfiles.dto.PerfilDetalleResponse response = verPerfilService.obtenerDetalle(idPerfil, idUsuario);
         return ResponseEntity.ok(response);
     }
 
@@ -146,6 +168,25 @@ public class PerfilController {
         }
 
         PerfilResponse response = usuarioPerfilService.obtenerPerfilPropio(idUsuario, idPerfilActivo);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/perfiles/{idPerfil}/foto", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PerfilResponse> subirFoto(
+            @PathVariable Long idPerfil,
+            @org.springframework.web.bind.annotation.RequestParam("archivo") org.springframework.web.multipart.MultipartFile archivo,
+            Authentication authentication) {
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        PerfilResponse response = fotoPerfilService.subirFoto(idUsuario, idPerfil, archivo);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/perfiles/{idPerfil}/foto")
+    public ResponseEntity<PerfilResponse> eliminarFoto(
+            @PathVariable Long idPerfil,
+            Authentication authentication) {
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        PerfilResponse response = fotoPerfilService.eliminarFoto(idUsuario, idPerfil);
         return ResponseEntity.ok(response);
     }
 

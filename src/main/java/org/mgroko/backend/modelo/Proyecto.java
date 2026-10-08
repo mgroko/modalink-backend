@@ -5,6 +5,7 @@ import org.mgroko.backend.modelo.enums.Privacidad;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "proyecto")
@@ -23,7 +24,27 @@ public class Proyecto {
     private String descripcion;
 
     @Column(name = "fecha_inicio", nullable = false)
-    private LocalDate fechaInicio;
+    private LocalDateTime fechaInicio;
+
+    public void setFechaInicio(LocalDate fecha) {
+        this.fechaInicio = fecha != null ? fecha.atStartOfDay() : null;
+    }
+
+    public void setFechaInicio(LocalDateTime fecha) {
+        this.fechaInicio = fecha;
+    }
+
+    public static class ProyectoBuilder {
+        public ProyectoBuilder fechaInicio(LocalDate fecha) {
+            this.fechaInicio = fecha != null ? fecha.atStartOfDay() : null;
+            return this;
+        }
+
+        public ProyectoBuilder fechaInicio(LocalDateTime fecha) {
+            this.fechaInicio = fecha;
+            return this;
+        }
+    }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 20)

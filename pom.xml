@@ -103,15 +103,7 @@
             <scope>runtime</scope>
         </dependency>
         
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-flyway</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-        
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -142,6 +134,12 @@
             <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>0.4.20</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -162,17 +160,6 @@
                             <artifactId>lombok</artifactId>
                         </path>
                     </annotationProcessorPaths>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-maven-plugin</artifactId>
-                <configuration>
-                    <user>postgres</user>
-                    <password>postgres</password>
-                    <schemas>
-                        <schema>modalink</schema>
-                    </schemas>
                 </configuration>
             </plugin>
 

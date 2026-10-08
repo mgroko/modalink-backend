@@ -5,9 +5,11 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -36,6 +38,9 @@ class EliminarPerfilServiceTest {
     @Mock
     private PerfilRepository perfilRepository;
 
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
     @InjectMocks
     private EliminarPerfilService eliminarPerfilService;
 
@@ -54,12 +59,13 @@ class EliminarPerfilServiceTest {
                 .nombreArtistico("Luna")
                 .biografia("Modelo profesional.")
                 .estado(EstadoPerfil.Activo)
-                .profesion(Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                .profesion(Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
                 .build();
     }
 
     @Test
     void eliminar_perfilActivo_registraCuentaRegresiva() {
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(30);
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfilModelo()));
         when(perfilRepository.save(any(Perfil.class)))
@@ -74,6 +80,20 @@ class EliminarPerfilServiceTest {
         verify(perfilRepository).save(captor.capture());
         assertEquals(EstadoPerfil.PendienteBaja, captor.getValue().getEstado());
         assertNotNull(captor.getValue().getFechaSolicitudBaja());
+    }
+
+    @Test
+    void eliminar_plazoConfiguradoUsado_enFechaLimiteYMensaje() {
+        when(configuracionSistemaService.obtenerDiasBaja()).thenReturn(45);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioActivo()));
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfilModelo()));
+        when(perfilRepository.save(any(Perfil.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        EliminarPerfilResponse response = eliminarPerfilService.eliminar(1L, 10L);
+
+        assertEquals(java.time.LocalDate.now().plusDays(45), response.fechaLimite().toLocalDate());
+        assertTrue(response.mensaje().contains("45 días"));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package org.mgroko.backend.common.exception;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,8 +10,11 @@ import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException
 import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
+import org.mgroko.backend.admin.exception.UnidadMedidaDuplicadaException;
+import org.mgroko.backend.admin.exception.UnidadMedidaEnUsoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
+import org.mgroko.backend.admin.exception.UnidadMedidaNoEncontradaException;
 import org.mgroko.backend.admin.exception.ValorCaracteristicaAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.ValorCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.ValorEnUsoException;
@@ -40,10 +44,14 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.storage.exception.ArchivoVacioException;
+import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
+import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
+import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
+import org.mgroko.backend.ubicacion.exception.PaisNoConfiguradoException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
-import org.mgroko.backend.usuario.exception.UbicacionNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -139,7 +147,28 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Excepción de usuario deshabilitado.
+     * Maneja excepción de cuenta pendiente de baja: el login se rechaza sin
+     * emitir sesión y se devuelve la fecha límite de reactivación.
+     */
+    @ExceptionHandler(org.mgroko.backend.auth.exception.CuentaPendienteBajaException.class)
+    public ResponseEntity<Map<String, Object>> handleCuentaPendienteBaja(
+            org.mgroko.backend.auth.exception.CuentaPendienteBajaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CUENTA_PENDIENTE_BAJA");
+        response.put("fechaSolicitudBaja", ex.getFechaSolicitudBaja());
+        response.put("fechaLimite", ex.getFechaLimite());
+        response.put("diasRestantes", ex.getFechaLimite() != null
+                ? Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(
+                        LocalDateTime.now(), ex.getFechaLimite()))
+                : null);
+        response.put("httpStatus", HttpStatus.FORBIDDEN.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Maneja excepción de usuario deshabilitado.
      */
     @ExceptionHandler(UsuarioDeshabilitadoException.class)
     public ResponseEntity<Map<String, Object>> handleUsuarioDeshabilitado(UsuarioDeshabilitadoException ex) {
@@ -182,6 +211,30 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handleNombreProyectoDuplicado(
+            org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasProyectoInvalido(
+            org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleRolProyectoNoEncontrado(
+            org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException.class)
+    public ResponseEntity<Map<String, Object>> handleAccesoDenegadoProyecto(
+            org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
     /**
      * Excepción de perfil no encontrado (contexto: Administrador).
      */
@@ -189,11 +242,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePerfilAdminNoEncontrado(
             org.mgroko.backend.admin.exception.PerfilNoEncontradoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(UbicacionNoEncontradaException.class)
-    public ResponseEntity<Map<String, Object>> handleUbicacionNoEncontrada(UbicacionNoEncontradaException ex) {
-        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(LocalidadNoEncontradaException.class)
@@ -204,6 +252,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProvinciaSinLocalidadException.class)
     public ResponseEntity<Map<String, Object>> handleProvinciaSinLocalidad(ProvinciaSinLocalidadException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(LocalidadSinProvinciaException.class)
+    public ResponseEntity<Map<String, Object>> handleLocalidadSinProvincia(LocalidadSinProvinciaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Excepción de país no resoluble desde la configuración del catálogo.
+     * Es una falla del despliegue, no de la petición del cliente.
+     */
+    @ExceptionHandler(PaisNoConfiguradoException.class)
+    public ResponseEntity<Map<String, Object>> handlePaisNoConfigurado(PaisNoConfiguradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(SolicitudBajaException.class)
@@ -300,6 +362,30 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(UnidadMedidaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleUnidadMedidaNoEncontrada(
+            UnidadMedidaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Excepción de unidad de medida duplicada (nombre o símbolo ya registrados).
+     */
+    @ExceptionHandler(UnidadMedidaDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> handleUnidadMedidaDuplicada(
+            UnidadMedidaDuplicadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Excepción de unidad de medida asociada a características técnicas en uso.
+     */
+    @ExceptionHandler(UnidadMedidaEnUsoException.class)
+    public ResponseEntity<Map<String, Object>> handleUnidadMedidaEnUso(
+            UnidadMedidaEnUsoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(ValorCaracteristicaAdminNoEncontradoException.class)
     public ResponseEntity<Map<String, Object>> handleValorCaracteristicaAdminNoEncontrado(
             ValorCaracteristicaAdminNoEncontradoException ex) {
@@ -360,6 +446,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RangoInvalidoException.class)
     public ResponseEntity<Map<String, Object>> handleRangoInvalido(RangoInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ArchivoVacioException.class)
+    public ResponseEntity<Map<String, Object>> handleArchivoVacio(ArchivoVacioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(FormatoImagenInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleFormatoImagenInvalido(FormatoImagenInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ErrorAlmacenamientoException.class)
+    public ResponseEntity<Map<String, Object>> handleErrorAlmacenamiento(ErrorAlmacenamientoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }

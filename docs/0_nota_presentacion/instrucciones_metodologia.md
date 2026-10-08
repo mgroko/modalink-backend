@@ -11,6 +11,7 @@ El archivo de base de datos (`.sql` o esquema físico/relacional) constituye la 
 1. **Consistencia de Entidades**: Toda entidad o concepto de negocio debe mapear a una tabla del SQL.
 2. **Consistencia de Atributos**: Cada campo citado en formularios, contratos o mensajes debe existir como columna en el SQL con su tipo correspondiente (`VARCHAR`, `INT`, `BOOLEAN`, etc.).
 3. **Reglas de Integridad**: Las restricciones de base de datos (`NOT NULL`, claves foráneas `FK`, unicidad `UNIQUE` y flags de borrado lógico como `baja`) dictan las precondiciones, postcondiciones y validaciones en todas las fases.
+4. **Localización de Controles de Integridad**: Toda validación de negocio, restricción o cálculo derivado debe resolverse en la capa más cercana a los datos posible: `CHECK`, `UNIQUE`, `FK` con `ON DELETE RESTRICT` (un HIJO no puede eliminarse mientras exista un PADRE asociado) para restricciones declarativas; `TRIGGERS` para validaciones complejas y campos calculados; `PROCEDURES` para operaciones transaccionales críticas. El backend debe minimizarse a orquestación y presentación de errores, nunca a reimplementar reglas que ya están garantizadas por la BD — esto es lo que hace al sistema robusto ante fallos de aplicación.
 
 ---
 
@@ -204,6 +205,35 @@ El archivo de base de datos (`.sql` o esquema físico/relacional) constituye la 
 
 ---
 
+## 📌 Fase 3.5: Aseguramiento de Calidad (Controles de BD & Testing) (`/docs/calidad/`)
+
+- **Objetivo**: Garantizar que cada regla de integridad definida en el modelo de datos esté implementada y verificada mediante triggers/procedures, que exista trazabilidad de auditoría a nivel de BD, y que cada módulo cuente con pruebas automatizadas ejecutándose en CI/CD antes de considerarse cerrado.
+- **Entrada**: Modelo SQL canónico, Contratos.md (Fase 2) y Casos de Uso Reales (Fase 3).
+- **Salida**:
+  1. `Controles_BD.md`
+  2. `Plan_de_Pruebas.md`
+  3. Workflow de GitHub Actions (`.github/workflows/tests.yml`)
+
+### Instrucciones para el Agente:
+
+#### 1. En `Controles_BD.md`:
+
+- Por cada tabla, documentar sus `CHECK`, `UNIQUE`, `FK` (indicando `ON DELETE RESTRICT`/`CASCADE` según corresponda) y triggers asociados, con su disparador (`BEFORE`/`AFTER INSERT/UPDATE/DELETE`) y la regla de negocio que cubren.
+- Documentar el esquema de auditoría: tabla de log con usuario de aplicación, usuario de base de datos asociado (creado 1:1 al alta de cada usuario del sistema) y usuario del sistema operativo, de modo que toda operación quede trazada incluso si el acceso se hizo con un usuario API restringido.
+- Marcar qué tablas tienen protección contra `ALTER`/`DROP` no autorizado.
+
+#### 2. En `Plan_de_Pruebas.md`:
+
+- Por cada `UC-xx` y cada operación de `Contratos.md`, listar: prueba unitaria (JUnit u equivalente), prueba de integración, y si aplica, prueba E2E.
+- Priorizar cantidad y profundidad de pruebas según la complejidad del módulo (no todos los módulos requieren el mismo nivel).
+- Registrar el porcentaje de cobertura objetivo (mínimo 80% de líneas) y el resultado real por módulo.
+- Indicar explícitamente qué constraints/triggers de `Controles_BD.md` tienen su prueba de validación correspondiente (ej.: intentar borrar un HIJO con PADRE activo debe fallar y estar cubierto por un test).
+
+#### 3. Pipeline de CI/CD (a describir en el mismo documento):
+
+- Flujo: comentar la intención del test (`TestUnit`) → implementarlo en el framework elegido → configurar GitHub Actions para ejecutar la suite en cada push → monitorear cobertura como gate del pipeline → iterar y actualizar los tests cuando cambien los requisitos.
+- Sugerir uso de IA para detectar tests obsoletos o casos de uso sin cobertura, dejándolo como tarea recurrente y no como paso único.
+
 ## 📌 Fase 4: Pendiente & Auditoría (`/docs/pendiente/`)
 
 - **Objetivo**: Control de calidad continuo, detección de discrepancias entre fases, gaps de trazabilidad y gestión de la deuda técnica.
@@ -267,3 +297,4 @@ Antes de dar por finalizada la generación de documentación en cualquier fase, 
 - [ ] **Exactitud contra el SQL**: ¿Cada campo, tipo de dato y clave foránea coincide exactamente con el script SQL de la base de datos?
 - [ ] **Coincidencia de Firmas**: ¿Las firmas de los métodos `nombreOperacion(params)` son idénticas carácter por carácter en los DSS, Contratos y DSD?
 - [ ] **Control de Cambios**: ¿Cualquier ajuste técnico en el diseño fue reflejado en la última versión de `estado_sistema`?
+- [ ] **Cobertura de Controles**: ¿Cada restricción/trigger documentado en `Controles_BD.md` tiene al menos una prueba en `Plan_de_Pruebas.md`, y el módulo alcanza el % de cobertura mínimo antes de avanzar al siguiente?

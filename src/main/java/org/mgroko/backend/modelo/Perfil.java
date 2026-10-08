@@ -64,7 +64,7 @@ public class Perfil {
 
     // Foto de perfil, opcional
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_imagen")
+    @JoinColumn(name = "foto_perfil")
     private Imagen imagen;
 
     @Builder.Default

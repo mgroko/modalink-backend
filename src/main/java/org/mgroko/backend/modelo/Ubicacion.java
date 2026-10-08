@@ -14,18 +14,8 @@ public class Ubicacion {
     @Column(name = "id_ubicacion")
     private Long idUbicacion;
 
-    // id de la localidad en el catálogo de Georef (para prellenar el selector)
-    @Column(name = "id_georef", length = 20)
-    private String idGeoref;
-
-    @Column(name = "localidad", nullable = false, length = 100)
-    private String localidad;
-
-    @Column(name = "pais", length = 50)
-    private String pais;
-
-    @Column(name = "provincia", nullable = false, length = 100)
-    private String provincia;
+    @Column(name = "direccion", length = 100)
+    private String direccion;
 
     @Column(name = "codigo_postal", length = 10)
     private String codigoPostal;
@@ -35,4 +25,8 @@ public class Ubicacion {
 
     @Column(name = "longitud", precision = 11, scale = 8)
     private BigDecimal longitud;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_ciudad", nullable = false)
+    private Ciudad ciudad;
 }

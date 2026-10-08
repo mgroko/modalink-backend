@@ -12,7 +12,7 @@ public class RequerimientoActividad {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_requerimiento")
+    @Column(name = "id_requerimiento_act")
     private Long idRequerimiento;
 
     @Column(name = "cantidad", nullable = false)
@@ -33,7 +33,7 @@ public class RequerimientoActividad {
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "requerimiento_act_habilidad",
-        joinColumns = @JoinColumn(name = "id_requerimiento"),
+        joinColumns = @JoinColumn(name = "id_requerimiento_act"),
         inverseJoinColumns = @JoinColumn(name = "id_habilidad")
     )
     private Set<Habilidad> habilidades = new HashSet<>();
@@ -42,7 +42,7 @@ public class RequerimientoActividad {
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "requerimiento_act_caract",
-        joinColumns = @JoinColumn(name = "id_requerimiento"),
+        joinColumns = @JoinColumn(name = "id_requerimiento_act"),
         inverseJoinColumns = @JoinColumn(name = "id_caracteristica")
     )
     private Set<CaracteristicaTecnica> caracteristicas = new HashSet<>();

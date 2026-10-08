@@ -23,15 +23,19 @@ public class CaracteristicaTecnica {
     @Column(name = "codigo", nullable = false, length = 50)
     private String codigo;
 
-    @Column(name = "unidad", length = 50)
-    private String unidad;
+    @Column(name = "nombre", length = 100)
+    private String nombre;
 
-    @Column(name = "tipo_dato", nullable = false, length = 20)
+    @Column(name = "tipo_dato", nullable = false, length = 50)
     private String tipoDato;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_profesion")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_profesion", nullable = false)
     private Profesion profesion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_unidad")
+    private UnidadMedida unidadMedida;
 
     @Builder.Default
     @OneToMany(mappedBy = "caracteristicaTecnica", fetch = FetchType.LAZY)

@@ -33,6 +33,17 @@ public class AdminUsuarioController {
         return ResponseEntity.ok(adminUsuarioService.listar());
     }
 
+    // UC-06 - Buscar usuario con criterios de filtrado y paginación parametrizable
+    @GetMapping("/buscar")
+    @PreAuthorize("hasAuthority('VER_USUARIOS')")
+    public ResponseEntity<org.mgroko.backend.common.dto.PaginaResponse<AdminUsuarioResponse>> buscar(
+            @org.springframework.web.bind.annotation.ModelAttribute org.mgroko.backend.admin.dto.BuscarUsuariosAdminFiltro filtro,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean todos) {
+        return ResponseEntity.ok(adminUsuarioService.buscar(filtro, page, size, todos));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('VER_USUARIOS')")
     public ResponseEntity<AdminUsuarioResponse> detalle(@PathVariable Long id) {

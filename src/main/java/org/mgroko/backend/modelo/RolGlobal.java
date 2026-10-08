@@ -15,7 +15,10 @@ public class RolGlobal {
     @Column(name = "id_rol_global")
     private Long idRolGlobal;
 
-    @Column(name = "nombre", nullable = false, length = 20, unique = true)
+    @Column(name = "codigo", length = 50)
+    private String codigo;
+
+    @Column(name = "nombre", nullable = false, length = 50, unique = true)
     private String nombre;
 
     @Builder.Default

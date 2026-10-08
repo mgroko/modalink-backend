@@ -62,7 +62,7 @@ class ExpirarCuentaServiceTest {
                 .thenReturn(List.of(usuario));
         when(perfilRepository.findByUsuarioIdUsuario(1L)).thenReturn(List.of(perfil));
 
-        int cantidad = expirarCuentaService.expirarVencidos();
+        int cantidad = expirarCuentaService.expirarVencidos(30);
 
         assertEquals(1, cantidad);
         assertEquals(EstadoUsuario.Baja, usuario.getEstado());
@@ -86,7 +86,7 @@ class ExpirarCuentaServiceTest {
                 .thenReturn(List.of(usuario));
         when(perfilRepository.findByUsuarioIdUsuario(1L)).thenReturn(List.of(perfil));
 
-        expirarCuentaService.expirarVencidos();
+        expirarCuentaService.expirarVencidos(30);
 
         ArgumentCaptor<List<Perfil>> captor = ArgumentCaptor.forClass(List.class);
         verify(perfilRepository).saveAll(captor.capture());
@@ -98,7 +98,7 @@ class ExpirarCuentaServiceTest {
         when(usuarioRepository.findByEstadoAndFechaSolicitudBajaBefore(eq(EstadoUsuario.PendienteBaja), any()))
                 .thenReturn(List.of());
 
-        int cantidad = expirarCuentaService.expirarVencidos();
+        int cantidad = expirarCuentaService.expirarVencidos(30);
 
         assertEquals(0, cantidad);
         verify(usuarioRepository, never()).saveAll(any());

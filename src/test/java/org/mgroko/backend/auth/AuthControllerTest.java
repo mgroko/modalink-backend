@@ -1,6 +1,7 @@
 package org.mgroko.backend.auth;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
 
@@ -35,6 +36,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -207,6 +209,83 @@ class AuthControllerTest {
                 // El endpoint no debería intentar generar token si las credenciales fallaron
                 verify(jwtService, never())
                                 .generarToken(anyString(), anyMap());
+        }
+
+        // ---------------------------------------------------------------
+        // /auth/login - cuenta pendiente de baja
+        // ---------------------------------------------------------------
+
+        @Test
+        void login_cuentaPendienteBaja_devuelve403SinCookie() throws Exception {
+                when(authService.login(any(LoginRequest.class)))
+                                .thenThrow(new org.mgroko.backend.auth.exception.CuentaPendienteBajaException(
+                                                LocalDateTime.now().minusDays(5),
+                                                LocalDateTime.now().plusDays(25),
+                                                30));
+
+                LoginRequest request = new LoginRequest("juan@test.com", "password123");
+
+                mockMvc.perform(post("/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden())
+                                .andExpect(header().doesNotExist("Set-Cookie"))
+                                .andExpect(jsonPath("$.codigo").value("CUENTA_PENDIENTE_BAJA"))
+                                .andExpect(jsonPath("$.message").isNotEmpty())
+                                .andExpect(jsonPath("$.fechaLimite").isNotEmpty())
+                                .andExpect(jsonPath("$.diasRestantes").isNumber());
+        }
+
+        // ---------------------------------------------------------------
+        // /auth/reactivar-cuenta
+        // ---------------------------------------------------------------
+
+        @Test
+        void reactivarCuenta_credencialesValidas_devuelve200ConCookieJwt() throws Exception {
+                UsuarioResponse usuarioResponse = usuarioResponse(1L, "juan@test.com");
+                when(authService.reactivarCuenta(any(LoginRequest.class)))
+                                .thenReturn(new AuthService.LoginResultado("token-simulado",
+                                                new AuthResponse(usuarioResponse)));
+                when(jwtCookieFactory.crear(anyString()))
+                                .thenReturn(ResponseCookie.from("jwt", "token-simulado").build());
+
+                LoginRequest request = new LoginRequest("juan@test.com", "password123");
+
+                mockMvc.perform(post("/auth/reactivar-cuenta")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("jwt")))
+                                .andExpect(jsonPath("$.usuario.correo").value("juan@test.com"));
+        }
+
+        @Test
+        void reactivarCuenta_credencialesInvalidas_devuelve401() throws Exception {
+                when(authService.reactivarCuenta(any(LoginRequest.class)))
+                                .thenThrow(new CredencialesInvalidasException("Correo o contraseña inválidos."));
+
+                LoginRequest request = new LoginRequest("juan@test.com", "passwordMala");
+
+                mockMvc.perform(post("/auth/reactivar-cuenta")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(header().doesNotExist("Set-Cookie"));
+        }
+
+        @Test
+        void reactivarCuenta_sinSolicitudActiva_devuelve409() throws Exception {
+                when(authService.reactivarCuenta(any(LoginRequest.class)))
+                                .thenThrow(new org.mgroko.backend.usuario.exception.SolicitudBajaException(
+                                                "No hay una solicitud de baja activa para esta cuenta."));
+
+                LoginRequest request = new LoginRequest("juan@test.com", "password123");
+
+                mockMvc.perform(post("/auth/reactivar-cuenta")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isConflict())
+                                .andExpect(header().doesNotExist("Set-Cookie"));
         }
 
         // ---------------------------------------------------------------

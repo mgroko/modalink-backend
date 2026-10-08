@@ -2,8 +2,10 @@ package org.mgroko.backend.perfiles.mapper;
 
 import java.util.List;
 
+import org.mgroko.backend.admin.dto.UnidadMedidaResponse;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.UnidadMedida;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
 import org.mgroko.backend.perfiles.dto.ValorCaracteristicaResponse;
 
@@ -24,10 +26,20 @@ public class CaracteristicaTecnicaMapper {
                 .map(ValorCaracteristicaMapper::toResponse)
                 .toList();
 
+        UnidadMedida unidad = caracteristica.getUnidadMedida();
+        UnidadMedidaResponse unidadResponse = unidad != null
+                ? new UnidadMedidaResponse(
+                        unidad.getIdUnidad(),
+                        unidad.getNombre(),
+                        unidad.getSimbolo(),
+                        unidad.getTipoDatoPermitido())
+                : null;
+
         return new CaracteristicaTecnicaResponse(
                 caracteristica.getIdCaracteristica(),
                 caracteristica.getCodigo(),
-                caracteristica.getUnidad(),
+                caracteristica.getNombre(),
+                unidadResponse,
                 idProfesion,
                 nombreProfesion,
                 caracteristica.getTipoDato(),

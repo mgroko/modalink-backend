@@ -17,6 +17,7 @@ import org.mgroko.backend.perfiles.servicio.ActivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarPerfilService;
+import org.mgroko.backend.perfiles.servicio.FotoPerfilService;
 import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
 import org.mgroko.backend.security.JwtCookieFactory;
@@ -72,7 +73,16 @@ class PerfilControllerTest {
     private ActivarPerfilService activarPerfilService;
 
     @MockitoBean
+    private FotoPerfilService fotoPerfilService;
+
+    @MockitoBean
     private JwtCookieFactory jwtCookieFactory;
+
+    @MockitoBean
+    private org.mgroko.backend.perfiles.servicio.BuscarPerfilService buscarPerfilService;
+
+    @MockitoBean
+    private org.mgroko.backend.perfiles.servicio.VerPerfilService verPerfilService;
 
     private UsernamePasswordAuthenticationToken autenticacion() {
         return new UsernamePasswordAuthenticationToken("1", null, List.of());
@@ -266,23 +276,35 @@ class PerfilControllerTest {
     void obtener_perfilExistente_devuelve200() throws Exception {
         var authentication = autenticacion();
 
-        PerfilResponse perfil = new PerfilResponse(
-                10L, "Luna", "Modelo profesional.", "Activo", "modelo", null, List.of());
+        org.mgroko.backend.perfiles.dto.PerfilDetalleResponse perfil = new org.mgroko.backend.perfiles.dto.PerfilDetalleResponse(
+                10L, "Luna", "Modelo profesional.", "Activo", null,
+                2L, "modelo", 5L, "https://cloudinary.com/foto.jpg",
+                1L, "Luna", "Perez", "FEM",
+                new org.mgroko.backend.ubicacion.dto.CiudadResponse(
+                        100L, "0320104", "GEOREF", "Rosario",
+                        new org.mgroko.backend.ubicacion.dto.ProvinciaResponse(
+                                10L, "24", "GEOREF", "Santa Fe",
+                                new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
+                List.of("Pasarela", "Fotogenia"), List.of(), true, null);
 
-        when(usuarioPerfilService.obtenerPerfilPropio(1L, 10L)).thenReturn(perfil);
+        when(verPerfilService.obtenerDetalle(10L, 1L)).thenReturn(perfil);
 
         mockMvc.perform(get("/perfiles/10")
                         .principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idPerfil").value(10))
-                .andExpect(jsonPath("$.nombreArtistico").value("Luna"));
+                .andExpect(jsonPath("$.nombreArtistico").value("Luna"))
+                .andExpect(jsonPath("$.profesion").value("modelo"))
+                .andExpect(jsonPath("$.ciudad.nombre").value("Rosario"))
+                .andExpect(jsonPath("$.ciudad.provincia.nombre").value("Santa Fe"))
+                .andExpect(jsonPath("$.esPropietario").value(true));
     }
 
     @Test
     void obtener_perfilInexistente_devuelve404() throws Exception {
         var authentication = autenticacion();
 
-        when(usuarioPerfilService.obtenerPerfilPropio(1L, 999L))
+        when(verPerfilService.obtenerDetalle(999L, 1L))
                 .thenThrow(new org.mgroko.backend.admin.exception.PerfilNoEncontradoException("Perfil no encontrado."));
 
         mockMvc.perform(get("/perfiles/999")
@@ -360,7 +382,8 @@ class PerfilControllerTest {
         mockMvc.perform(delete("/perfiles/10")
                         .principal(authentication))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mensaje").value("Solicitud de baja registrada."));
+                .andExpect(jsonPath("$.mensaje").value("Solicitud de baja registrada."))
+                .andExpect(jsonPath("$.fechaLimite").isNotEmpty());
     }
 
     @Test
@@ -388,7 +411,7 @@ class PerfilControllerTest {
                         .nombreArtistico("Luna")
                         .biografia("Modelo profesional.")
                         .estado(org.mgroko.backend.modelo.enums.EstadoPerfil.Activo)
-                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
                         .build());
 
         mockMvc.perform(post("/perfiles/10/reactivar")
@@ -482,5 +505,131 @@ class PerfilControllerTest {
                         .principal(auth))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
+    }
+
+    @Test
+    void subirFoto_archivoValido_retorna200ConPerfilActualizado() throws Exception {
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "archivo",
+                "foto.jpg",
+                "image/jpeg",
+                "contenido".getBytes()
+        );
+
+        PerfilResponse response = new PerfilResponse(
+                10L,
+                "Luna",
+                "Bio",
+                "Activo",
+                "Modelo",
+                null,
+                100L,
+                "/uploads/perfiles/perfil_100.jpg",
+                List.of(),
+                null
+        );
+
+        org.mockito.Mockito.when(fotoPerfilService.subirFoto(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(response);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/perfiles/10/foto")
+                        .file(file)
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPerfil").value(10))
+                .andExpect(jsonPath("$.idImagen").value(100))
+                .andExpect(jsonPath("$.fotoUrl").value("/uploads/perfiles/perfil_100.jpg"));
+    }
+
+    @Test
+    void eliminarFoto_retorna200ConFotoRemovida() throws Exception {
+        PerfilResponse response = new PerfilResponse(
+                10L,
+                "Luna",
+                "Bio",
+                "Activo",
+                "Modelo",
+                null,
+                null,
+                null,
+                List.of(),
+                null
+        );
+
+        org.mockito.Mockito.when(fotoPerfilService.eliminarFoto(1L, 10L)).thenReturn(response);
+
+        mockMvc.perform(delete("/perfiles/10/foto")
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPerfil").value(10))
+                .andExpect(jsonPath("$.idImagen").doesNotExist())
+                .andExpect(jsonPath("$.fotoUrl").doesNotExist());
+    }
+
+    // UC-16 - Buscar perfil
+    @Test
+    void buscar_conFiltrosYPaginacion_retorna200ConPaginaResponse() throws Exception {
+        var perfilDto = new org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse(
+                1L, "Luna Sol", "Bio", "Activo",
+                2L, "Modelo", null, null,
+                5L, "Ana", "Gomez", "FEM",
+                new org.mgroko.backend.ubicacion.dto.CiudadResponse(
+                        100L, "0320104", "GEOREF", "Rosario",
+                        new org.mgroko.backend.ubicacion.dto.ProvinciaResponse(
+                                10L, "24", "GEOREF", "Santa Fe",
+                                new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
+                List.of("Pasarela", "Fotogenia"),
+                List.of()
+        );
+
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
+                List.of(perfilDto),
+                0,
+                20,
+                1L,
+                1,
+                true,
+                true
+        );
+
+        when(buscarPerfilService.buscarPerfiles(any(), org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(20), org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/perfiles/buscar")
+                        .principal(autenticacion())
+                        .param("nombreArtistico", "Luna")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .param("todos", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].idPerfil").value(1))
+                .andExpect(jsonPath("$.contenido[0].nombreArtistico").value("Luna Sol"))
+                .andExpect(jsonPath("$.contenido[0].profesion").value("Modelo"))
+                .andExpect(jsonPath("$.contenido[0].nombreUsuario").value("Ana"))
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.tamanoPagina").value(20));
+    }
+
+    @Test
+    void buscar_sinResultados_retorna200ConContenidoVacio() throws Exception {
+        var paginaVacia = new org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse>(
+                List.of(),
+                0,
+                50,
+                0L,
+                0,
+                true,
+                true
+        );
+
+        when(buscarPerfilService.buscarPerfiles(any(), org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(50), org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(paginaVacia);
+
+        mockMvc.perform(get("/perfiles/buscar")
+                        .principal(autenticacion())
+                        .param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido").isEmpty())
+                .andExpect(jsonPath("$.totalElementos").value(0));
     }
 }

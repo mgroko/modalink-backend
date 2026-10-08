@@ -70,18 +70,21 @@ public class AdminCaracteristicaTecnicaController {
                 .body(adminCaracteristicaTecnicaService.agregarValor(id, request));
     }
 
-    @PutMapping("/valores/{idValor}")
+    @PutMapping("/{id}/valores/{idValor}")
     @PreAuthorize("hasAuthority('MODIFICAR_CARACTERISTICA')")
     public ResponseEntity<ValorCaracteristicaResponse> actualizarValor(
+            @PathVariable Long id,
             @PathVariable Long idValor,
             @Valid @RequestBody AdminValorCaracteristicaRequest request) {
-        return ResponseEntity.ok(adminCaracteristicaTecnicaService.actualizarValor(idValor, request));
+        return ResponseEntity.ok(adminCaracteristicaTecnicaService.actualizarValor(id, idValor, request));
     }
 
-    @DeleteMapping("/valores/{idValor}")
+    @DeleteMapping("/{id}/valores/{idValor}")
     @PreAuthorize("hasAuthority('ELIMINAR_CARACTERISTICA')")
-    public ResponseEntity<Void> eliminarValor(@PathVariable Long idValor) {
-        adminCaracteristicaTecnicaService.eliminarValor(idValor);
+    public ResponseEntity<Void> eliminarValor(
+            @PathVariable Long id,
+            @PathVariable Long idValor) {
+        adminCaracteristicaTecnicaService.eliminarValor(id, idValor);
         return ResponseEntity.noContent().build();
     }
 }

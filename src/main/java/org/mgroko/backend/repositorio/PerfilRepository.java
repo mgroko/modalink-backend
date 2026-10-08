@@ -7,8 +7,9 @@ import java.util.Optional;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface PerfilRepository extends JpaRepository<Perfil, Long> {
+public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecificationExecutor<Perfil> {
 
     /**
      * Busca todos los perfiles asociados a un usuario por su ID.

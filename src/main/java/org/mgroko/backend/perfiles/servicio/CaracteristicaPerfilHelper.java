@@ -1,16 +1,16 @@
 package org.mgroko.backend.perfiles.servicio;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
-import org.mgroko.backend.modelo.CaracteristicaPerfilId;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.ValorCaracteristica;
+import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
 import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
@@ -67,10 +67,9 @@ public class CaracteristicaPerfilHelper {
             }
 
             CaracteristicaPerfil.CaracteristicaPerfilBuilder builder = CaracteristicaPerfil.builder()
-                    .id(new CaracteristicaPerfilId(null, ct.getIdCaracteristica()))
                     .perfil(perfil)
                     .caracteristicaTecnica(ct)
-                    .fechaRegistro(LocalDate.now());
+                    .fechaRegistro(LocalDateTime.now());
 
             if (CaracteristicaTecnica.TIPO_ENUMERADO.equals(ct.getTipoDato())) {
                 if (car.idValor() == null) {
@@ -78,7 +77,8 @@ public class CaracteristicaPerfilHelper {
                             "Para la característica " + ct.getCodigo()
                                     + " (ENUMERADO) debe enviarse idValor.");
                 }
-                ValorCaracteristica vc = valorCaracteristicaRepository.findById(car.idValor())
+                ValorCaracteristicaId valorId = new ValorCaracteristicaId(car.idValor(), ct.getIdCaracteristica());
+                ValorCaracteristica vc = valorCaracteristicaRepository.findById(valorId)
                         .orElseThrow(() -> new ValorCaracteristicaNoEncontradoException(
                                 "Valor de característica no encontrado: " + car.idValor()));
                 if (!vc.getCaracteristicaTecnica().getIdCaracteristica().equals(ct.getIdCaracteristica())) {
@@ -86,7 +86,9 @@ public class CaracteristicaPerfilHelper {
                             "El valor " + car.idValor()
                                     + " no corresponde a la característica técnica " + ct.getCodigo() + ".");
                 }
-                builder.valorCaracteristica(vc);
+                // id_valor se setea explícitamente: la asociación valorCaracteristica
+                // es solo lectura en el mapeo y no alcanza a escribir la columna.
+                builder.idValor(vc.getIdValor()).valorCaracteristica(vc);
             } else {
                 if (car.valor() == null || car.valor().isBlank()) {
                     throw new ValorObligatorioException(

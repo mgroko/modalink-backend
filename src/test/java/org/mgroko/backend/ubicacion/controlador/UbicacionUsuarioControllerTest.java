@@ -6,6 +6,9 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.ubicacion.dto.CiudadResponse;
+import org.mgroko.backend.ubicacion.dto.PaisResponse;
+import org.mgroko.backend.ubicacion.dto.ProvinciaResponse;
 import org.mgroko.backend.ubicacion.dto.UbicacionRequest;
 import org.mgroko.backend.ubicacion.dto.UbicacionResponse;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
@@ -43,15 +46,25 @@ class UbicacionUsuarioControllerTest {
     @MockitoBean
     private UbicacionUsuarioService ubicacionUsuarioService;
 
+    private static final CiudadResponse CIUDAD = new CiudadResponse(
+            100L,
+            "0208401002",
+            "GEOREF",
+            "Saavedra",
+            new ProvinciaResponse(
+                    10L,
+                    "02",
+                    "GEOREF",
+                    "Ciudad Autónoma de Buenos Aires",
+                    new PaisResponse(1L, "AR", "Argentina")));
+
     private static final UbicacionResponse UBICACION = new UbicacionResponse(
             10L,
-            "0208401002",
-            "Saavedra",
-            "Ciudad Autónoma de Buenos Aires",
-            "Argentina",
+            null,
             null,
             new BigDecimal("-34.5548978526608"),
-            new BigDecimal("-58.4863271154338"));
+            new BigDecimal("-58.4863271154338"),
+            CIUDAD);
 
     @Test
     void obtener_conUbicacion_devuelve200ConDatos() throws Exception {
@@ -62,9 +75,12 @@ class UbicacionUsuarioControllerTest {
         mockMvc.perform(get("/usuario/ubicacion").principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idUbicacion").value(10))
-                .andExpect(jsonPath("$.localidadId").value("0208401002"))
-                .andExpect(jsonPath("$.localidad").value("Saavedra"))
-                .andExpect(jsonPath("$.provincia").value("Ciudad Autónoma de Buenos Aires"));
+                .andExpect(jsonPath("$.ciudad.nombre").value("Saavedra"))
+                .andExpect(jsonPath("$.ciudad.idExterno").value("0208401002"))
+                .andExpect(jsonPath("$.ciudad.fuenteApi").value("GEOREF"))
+                .andExpect(jsonPath("$.ciudad.provincia.nombre").value("Ciudad Autónoma de Buenos Aires"))
+                .andExpect(jsonPath("$.ciudad.provincia.pais.nombre").value("Argentina"))
+                .andExpect(jsonPath("$.ciudad.provincia.pais.codigoIso").value("AR"));
     }
 
     @Test
@@ -89,7 +105,7 @@ class UbicacionUsuarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UbicacionRequest("0208401002"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.localidad").value("Saavedra"));
+                .andExpect(jsonPath("$.ciudad.nombre").value("Saavedra"));
     }
 
     @Test

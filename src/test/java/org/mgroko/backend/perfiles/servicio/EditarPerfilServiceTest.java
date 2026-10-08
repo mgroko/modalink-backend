@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
-import org.mgroko.backend.modelo.CaracteristicaPerfilId;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -51,6 +51,9 @@ class EditarPerfilServiceTest {
     @Mock
     private CaracteristicaPerfilHelper caracteristicaPerfilHelper;
 
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
     @InjectMocks
     private EditarPerfilService editarPerfilService;
 
@@ -69,7 +72,7 @@ class EditarPerfilServiceTest {
                 .nombreArtistico("Luna")
                 .biografia("Modelo profesional.")
                 .estado(EstadoPerfil.Activo)
-                .profesion(Profesion.builder().idProfesion(2L).nombre("modelo").build())
+                .profesion(Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
                 .build();
     }
 

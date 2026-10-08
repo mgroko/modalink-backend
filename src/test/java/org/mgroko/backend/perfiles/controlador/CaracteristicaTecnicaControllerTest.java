@@ -3,6 +3,7 @@ package org.mgroko.backend.perfiles.controlador;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.admin.dto.UnidadMedidaResponse;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.servicio.CaracteristicaTecnicaService;
@@ -31,15 +32,17 @@ class CaracteristicaTecnicaControllerTest {
 
     @Test
     void buscar_conFiltros_devuelve200() throws Exception {
+        UnidadMedidaResponse unidad = new UnidadMedidaResponse(1L, "Centímetro", "cm", "NUMERICO");
         when(caracteristicaTecnicaService.buscar(2L, "alt", null))
-                .thenReturn(List.of(new CaracteristicaTecnicaResponse(11L, "altura", "cm", 2L, "modelo", "TEXTO", List.of())));
+                .thenReturn(List.of(new CaracteristicaTecnicaResponse(11L, "altura", "Altura", unidad, 2L, "modelo", "TEXTO", List.of())));
 
         mockMvc.perform(get("/profesiones/2/caracteristicas-tecnicas")
                         .param("codigo", "alt"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].codigo").value("altura"))
-                .andExpect(jsonPath("$[0].unidad").value("cm"))
+                .andExpect(jsonPath("$[0].nombre").value("Altura"))
+                .andExpect(jsonPath("$[0].unidad.simbolo").value("cm"))
                 .andExpect(jsonPath("$[0].profesion").value("modelo"));
     }
 

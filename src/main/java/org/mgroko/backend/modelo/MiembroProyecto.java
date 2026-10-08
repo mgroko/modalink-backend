@@ -15,9 +15,12 @@ public class MiembroProyecto {
     private Long idMiembro;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_participacion", nullable = false, length = 30)
+    @Column(name = "estado_participacion", nullable = false, length = 50)
     @Builder.Default
-    private EstadoParticipacion estadoParticipacion = EstadoParticipacion.Activo;
+    private EstadoParticipacion estadoParticipacion = EstadoParticipacion.ACTIVO;
+
+    @Column(name = "\"motivoBaja\"", length = 100)
+    private String motivoBaja;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_proyecto", nullable = false)
@@ -31,4 +34,14 @@ public class MiembroProyecto {
     @JoinColumn(name = "id_rol_proyecto", nullable = false)
     private RolProyecto rolProyecto;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumns({
+        @JoinColumn(name = "id_perfil", referencedColumnName = "id_perfil", insertable = false, updatable = false),
+        @JoinColumn(name = "id_tyc_aceptado", referencedColumnName = "id_tyc", insertable = false, updatable = false)
+    })
+    private PerfilTyc tycAceptado;
+
+    @Column(name = "id_tyc_aceptado")
+    @Builder.Default
+    private Long idTycAceptado = 1L;
 }

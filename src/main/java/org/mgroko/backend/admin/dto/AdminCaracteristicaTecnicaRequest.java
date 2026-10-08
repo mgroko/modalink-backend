@@ -9,7 +9,8 @@ import jakarta.validation.constraints.Size;
 
 public record AdminCaracteristicaTecnicaRequest(
         @NotBlank @Size(max = 50) String codigo,
-        @Size(max = 50) String unidad,
+        @Size(max = 100) String nombre,
+        Long idUnidad,
         @NotNull Long idProfesion,
         @NotBlank @Size(max = 20) String tipoDato,
         List<@Valid AdminValorCaracteristicaRequest> valores

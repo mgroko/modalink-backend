@@ -57,6 +57,23 @@ class ConfigJornadaRequestValidationTest {
     }
 
     @Test
+    void margenNegativo_generaViolacion() {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(-5, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+
+        assertTrue(validator.validate(request).stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("margenActividadMinutos")));
+    }
+
+    @Test
+    void margenCero_esValido() {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(0, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+
+        assertTrue(validator.validate(request).isEmpty());
+    }
+
+    @Test
     void diaSinDiaSemana_generaViolacion() {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
                 new JornadaDiaRequest(null, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
@@ -71,8 +88,8 @@ class ConfigJornadaRequestValidationTest {
                 new JornadaDiaRequest(1, null, null, null, null)));
 
         assertTrue(validator.validate(request).stream()
-                .anyMatch(v -> v.getPropertyPath().toString().contains("horarioInicioManiana")));
+                .anyMatch(v -> v.getPropertyPath().toString().contains("horaInicioManana")));
         assertTrue(validator.validate(request).stream()
-                .anyMatch(v -> v.getPropertyPath().toString().contains("horarioFinTarde")));
+                .anyMatch(v -> v.getPropertyPath().toString().contains("horaFinTarde")));
     }
 }

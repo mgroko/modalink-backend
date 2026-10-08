@@ -3,25 +3,28 @@ package org.mgroko.backend.ubicacion.dto;
 import java.math.BigDecimal;
 
 /**
- * Ubicación del usuario expuesta a la API.
+ * Ubicacion del usuario, reflejo de la tabla {@code ubicacion}.
  *
- * @param idUbicacion  id de la fila en la tabla {@code ubicacion}
- * @param localidadId  id de la localidad en el catálogo de Georef (para prellenar el selector)
- * @param localidad    nombre de la localidad
- * @param provincia    nombre de la provincia
- * @param pais         país de la ubicación
- * @param codigoPostal código postal (opcional)
- * @param latitud      latitud del centroide
- * @param longitud     longitud del centroide
+ * La tabla solo guarda la direccion y las coordenadas: la localidad, la
+ * provincia y el pais se alcanzan por la cadena de claves foraneas
+ * {@code ubicacion.id_ciudad -> ciudad.id_provincia -> provincia.id_pais}.
+ * Por eso la respuesta anida la ciudad en vez de exponer locality/provincia/pais
+ * como cadenas planas, que era lo que hacia la entidad {@code Ubicacion} con sus
+ * getters helper.
+ *
+ * @param idUbicacion  id de la fila
+ * @param direccion    direccion en texto libre
+ * @param codigoPostal codigo postal
+ * @param latitud      latitud
+ * @param longitud     longitud
+ * @param ciudad       ciudad de la ubicacion
  */
 public record UbicacionResponse(
         Long idUbicacion,
-        String localidadId,
-        String localidad,
-        String provincia,
-        String pais,
+        String direccion,
         String codigoPostal,
         BigDecimal latitud,
-        BigDecimal longitud
+        BigDecimal longitud,
+        CiudadResponse ciudad
 ) {
 }

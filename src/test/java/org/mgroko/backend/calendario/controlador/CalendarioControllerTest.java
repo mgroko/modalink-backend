@@ -56,7 +56,7 @@ class CalendarioControllerTest {
     private CalendarioService calendarioService;
 
     private static final CalendarioResponse CALENDARIO = new CalendarioResponse(
-            new ConfigJornadaResponse(60, List.of(
+            new ConfigJornadaResponse(30, List.of(
                     new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))),
             List.of(new BloqueoResponse(1L,
                     LocalDateTime.of(2026, 9, 15, 10, 0),
@@ -75,10 +75,35 @@ class CalendarioControllerTest {
 
         mockMvc.perform(get("/calendario").principal(auth()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(60))
+                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(30))
                 .andExpect(jsonPath("$.jornada.dias[0].diaSemana").value(1))
                 .andExpect(jsonPath("$.bloqueosManuales[0].idBloqueo").value(1))
                 .andExpect(jsonPath("$.actividades[0].nombre").value("Sesión"));
+    }
+
+    @Test
+    void obtenerPorPerfil_devuelve200ConCuerpo() throws Exception {
+        CalendarioResponse calendarioPublico = new CalendarioResponse(
+                new ConfigJornadaResponse(30, List.of(
+                        new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))),
+                List.of(new BloqueoResponse(1L,
+                        LocalDateTime.of(2026, 9, 15, 10, 0),
+                        LocalDateTime.of(2026, 9, 15, 14, 0), "Capacitación interna")),
+                List.of(new BloqueoActividadResponse(5L, "Sesión",
+                        LocalDateTime.of(2026, 9, 10, 9, 0),
+                        LocalDateTime.of(2026, 9, 10, 13, 0))));
+
+        when(calendarioService.obtenerPublico(2L)).thenReturn(calendarioPublico);
+
+        mockMvc.perform(get("/calendario/perfil/2").principal(auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jornada.margenActividadMinutos").value(30))
+                .andExpect(jsonPath("$.jornada.dias[0].diaSemana").value(1))
+                .andExpect(jsonPath("$.bloqueosManuales[0].idBloqueo").value(1))
+                .andExpect(jsonPath("$.bloqueosManuales[0].motivo").value("Capacitación interna"))
+                .andExpect(jsonPath("$.actividades[0].nombre").value("Sesión"));
+
+        verify(calendarioService).obtenerPublico(2L);
     }
 
     @Test
@@ -86,7 +111,7 @@ class CalendarioControllerTest {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
-                .thenReturn(new ConfigJornadaResponse(60, List.of(
+                .thenReturn(new ConfigJornadaResponse(30, List.of(
                         new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
 
         mockMvc.perform(put("/calendario/jornada")
@@ -94,8 +119,8 @@ class CalendarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dias[0].horarioInicioManiana").value("09:00:00"))
-                .andExpect(jsonPath("$.dias[0].horarioFinTarde").value("18:00:00"));
+                .andExpect(jsonPath("$.dias[0].horaInicioManana").value("09:00:00"))
+                .andExpect(jsonPath("$.dias[0].horaFinTarde").value("18:00:00"));
 
         verify(calendarioService).configurarJornada(anyLong(), any(ConfigJornadaRequest.class));
     }
@@ -106,7 +131,7 @@ class CalendarioControllerTest {
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
                         LocalTime.of(15, 0), LocalTime.of(19, 0))));
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
-                .thenReturn(new ConfigJornadaResponse(60, List.of(
+                .thenReturn(new ConfigJornadaResponse(30, List.of(
                         new JornadaDiaResponse(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
                                 LocalTime.of(15, 0), LocalTime.of(19, 0)))));
 
@@ -115,8 +140,8 @@ class CalendarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dias[0].horarioFinManiana").value("13:00:00"))
-                .andExpect(jsonPath("$.dias[0].horarioInicioTarde").value("15:00:00"));
+                .andExpect(jsonPath("$.dias[0].horaFinManana").value("13:00:00"))
+                .andExpect(jsonPath("$.dias[0].horaInicioTarde").value("15:00:00"));
     }
 
     @Test
@@ -151,6 +176,20 @@ class CalendarioControllerTest {
     }
 
     @Test
+    void configurarJornada_margenNegativo_devuelve400() throws Exception {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(-5, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+
+        mockMvc.perform(put("/calendario/jornada")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(calendarioService, never()).configurarJornada(anyLong(), any());
+    }
+
+    @Test
     void marcarNoDisponible_valido_devuelve200() throws Exception {
         MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
                 LocalDateTime.of(2026, 9, 15, 10, 0),
@@ -170,6 +209,21 @@ class CalendarioControllerTest {
     void marcarNoDisponible_finNulo_devuelve400() throws Exception {
         MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
                 LocalDateTime.of(2026, 9, 15, 10, 0), null, "X");
+
+        mockMvc.perform(post("/calendario/bloqueos")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(calendarioService, never()).marcarNoDisponible(anyLong(), any());
+    }
+
+    @Test
+    void marcarNoDisponible_motivoNulo_devuelve400() throws Exception {
+        MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
+                LocalDateTime.of(2026, 9, 15, 10, 0),
+                LocalDateTime.of(2026, 9, 15, 14, 0), null);
 
         mockMvc.perform(post("/calendario/bloqueos")
                         .principal(auth())
