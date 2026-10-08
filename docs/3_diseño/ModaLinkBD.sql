@@ -816,7 +816,7 @@ CREATE TABLE miembros_proyecto(
     estado_participacion    varchar(50)     NOT NULL,
     id_proyecto             int8            NOT NULL,
     id_perfil               int8            NOT NULL,
-    id_tyc_aceptado         int8            NOT NULL,
+    id_tyc_aceptado         int8,
     CONSTRAINT chk_estado_participacion CHECK (estado_participacion IN ('ACTIVO', 'BAJA_VOLUNTARIA', 'ELIMINADO')),
     CONSTRAINT "PK_miembro_proyecto" PRIMARY KEY (id_miembro)
 )
