@@ -390,10 +390,42 @@ CREATE TABLE caracteristica_tecnica(
     CONSTRAINT chk_codigo_no_vacio CHECK (btrim(codigo) <> ''),
     CONSTRAINT chk_caracteristica_tecnica_tipo_dato CHECK (tipo_dato IN ('ENUMERADO', 'TEXTO', 'NUMERICO')),
     CONSTRAINT "PK_caracteristica_tecnica" PRIMARY KEY (id_caracteristica),
-    CONSTRAINT chk_caract_tipo_dato_enum_id_unidad CHECK ((tipo_dato = 'ENUMERADO' AND id_unidad IS NULL) OR (tipo_dato <> 'ENUMERADO'))
+    CONSTRAINT chk_caract_tipo_dato_enum_id_unidad CHECK ((tipo_dato = 'ENUMERADO' AND id_unidad IS NULL) OR (tipo_dato <> 'ENUMERADO')),
+    CONSTRAINT chk_unidad_solo_numerico CHECK (id_unidad IS NULL OR tipo_dato = 'NUMERICO')
 )
 ;
 
+-- Regla de negocio: si la caracteristica esta en uso, solo puede modificarse el nombre
+CREATE OR REPLACE FUNCTION fn_caracteristica_en_uso_solo_nombre() RETURNS trigger AS $$
+DECLARE
+    v_en_uso BOOLEAN;
+BEGIN
+    -- Si fuera de 'nombre' no cambio nada, no hay nada que validar
+    IF NEW.codigo = OLD.codigo
+       AND NEW.tipo_dato = OLD.tipo_dato
+       AND NEW.id_profesion = OLD.id_profesion
+       AND NEW.id_unidad IS NOT DISTINCT FROM OLD.id_unidad THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT (
+           EXISTS (SELECT 1 FROM caracteristica_perfil   WHERE id_caracteristica = NEW.id_caracteristica)
+        OR EXISTS (SELECT 1 FROM requerimiento_act_caract WHERE id_caracteristica = NEW.id_caracteristica)
+        OR EXISTS (SELECT 1 FROM requerimiento_gral_caract WHERE id_caracteristica = NEW.id_caracteristica)
+    ) INTO v_en_uso;
+
+    IF v_en_uso THEN
+        RAISE EXCEPTION 'La caracteristica % esta en uso por perfiles o requerimientos; solo puede modificarse su nombre.',
+            OLD.codigo
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_caracteristica_en_uso_solo_nombre ON caracteristica_tecnica;
+CREATE TRIGGER trg_caracteristica_en_uso_solo_nombre
+    BEFORE UPDATE ON caracteristica_tecnica
+    FOR EACH ROW EXECUTE FUNCTION fn_caracteristica_en_uso_solo_nombre();
 
 -- 
 -- TABLE: ciudad 
@@ -1950,6 +1982,15 @@ CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, 
 --
 
 CREATE INDEX "IDX_bloqueo_agenda_rango" ON bloqueo_agenda(id_agenda, fecha_hora_inicio, fecha_hora_fin);
+
+-- INDEXES PARA MEJORAR EL RENDIMIENTO DE CONSULTAS SOBRE CARACTERISTICAS Y REQUERIMIENTOS
+
+CREATE INDEX "IDX_caracteristica_perfil_caract"       ON caracteristica_perfil(id_caracteristica);
+CREATE INDEX "IDX_req_act_caract_caract"              ON requerimiento_act_caract(id_caracteristica);
+CREATE INDEX "IDX_req_gral_caract_caract"             ON requerimiento_gral_caract(id_caracteristica);
+
+
+
 
 -- 
 -- TABLE: actividad 
