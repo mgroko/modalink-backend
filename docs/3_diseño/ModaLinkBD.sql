@@ -1395,10 +1395,41 @@ CREATE TABLE requerimiento_act_caract(
     id_caracteristica       int8              NOT NULL,
     valor_min               numeric(10, 2),
     valor_max               numeric(10, 2),
-    CONSTRAINT "PK_requerimiento_act_caracteristica" PRIMARY KEY (id_req_act_caract)
+    CONSTRAINT "PK_requerimiento_act_caracteristica" PRIMARY KEY (id_req_act_caract),
+    CONSTRAINT "chk_valor_max_no_neg" CHECK (valor_max >= 0),
+    CONSTRAINT "chk_valor_min_no_neg" CHECK (valor_min >= 0),
+    CONSTRAINT "chk_req_act_caract_rango_positivo" CHECK (COALESCE(valor_min,0) >= 0 AND COALESCE(valor_max,0) >= 0),
+    CONSTRAINT "chk_req_act_caract_rango" CHECK (valor_min IS NULL OR valor_max IS NULL OR valor_min <= valor_max)
 )
 ;
 
+CREATE OR REPLACE FUNCTION fn_req_caract_rango_solo_numerico() RETURNS trigger AS $$
+DECLARE
+    v_tipo_dato VARCHAR(50);
+BEGIN
+    SELECT tipo_dato INTO v_tipo_dato
+    FROM caracteristica_tecnica
+    WHERE id_caracteristica = NEW.id_caracteristica;
+
+    IF v_tipo_dato IS NULL THEN
+        RAISE EXCEPTION 'La caracteristica % no existe.', NEW.id_caracteristica
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    IF v_tipo_dato <> 'NUMERICO'
+       AND (NEW.valor_min IS NOT NULL OR NEW.valor_max IS NOT NULL) THEN
+        RAISE EXCEPTION 'valor_min/valor_max solo aplican a caracteristicas NUMERICAS (caracteristica %, tipo %).',
+            NEW.id_caracteristica, v_tipo_dato
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_req_act_caract_rango ON requerimiento_act_caract;
+CREATE TRIGGER trg_req_act_caract_rango
+    BEFORE INSERT OR UPDATE ON requerimiento_act_caract
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_rango_solo_numerico();
 
 
 -- 
@@ -1412,6 +1443,44 @@ CREATE TABLE requerimiento_act_caract_valor(
     CONSTRAINT "PK_requerimiento_act_caract_valor" PRIMARY KEY (id_req_act_caract, id_caracteristica, id_valor)
 )
 ;
+
+CREATE OR REPLACE FUNCTION fn_req_caract_valor_solo_enumerado() RETURNS trigger AS $$
+DECLARE
+    v_id_caract_padre BIGINT;
+    v_tipo_dato VARCHAR(50);
+BEGIN
+    IF TG_TABLE_NAME = 'requerimiento_act_caract_valor' THEN
+        SELECT id_caracteristica INTO v_id_caract_padre
+        FROM requerimiento_act_caract
+        WHERE id_req_act_caract = NEW.id_req_act_caract;
+    ELSE
+        SELECT id_caracteristica INTO v_id_caract_padre
+        FROM requerimiento_gral_caract
+        WHERE id_req_gral_caract = NEW.id_req_gral_caract;
+    END IF;
+
+    IF v_id_caract_padre IS DISTINCT FROM NEW.id_caracteristica THEN
+        RAISE EXCEPTION 'id_caracteristica no coincide con la caracteristica del requerimiento padre.'
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    SELECT tipo_dato INTO v_tipo_dato
+    FROM caracteristica_tecnica
+    WHERE id_caracteristica = v_id_caract_padre;
+
+    IF v_tipo_dato <> 'ENUMERADO' THEN
+        RAISE EXCEPTION 'Solo caracteristicas ENUMERADAS admiten valores de catalogo en requerimientos (caracteristica %, tipo %).',
+            v_id_caract_padre, v_tipo_dato
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_req_act_caract_valor ON requerimiento_act_caract_valor;
+CREATE TRIGGER trg_req_act_caract_valor
+    BEFORE INSERT OR UPDATE ON requerimiento_act_caract_valor
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_valor_solo_enumerado();
 
 
 
@@ -1455,9 +1524,43 @@ CREATE TABLE requerimiento_gral_caract(
     valor_max                numeric(10, 2),
     id_requerimiento_gral    int8              NOT NULL,
     id_caracteristica        int8              NOT NULL,
-    CONSTRAINT "PK_requerimiento_gral_caracteristica" PRIMARY KEY (id_req_gral_caract)
+    CONSTRAINT "PK_requerimiento_gral_caracteristica" PRIMARY KEY (id_req_gral_caract),
+    CONSTRAINT "chk_valor_max_no_neg" CHECK (valor_max >= 0),
+    CONSTRAINT "chk_valor_min_no_neg" CHECK (valor_min >= 0),
+    CONSTRAINT "chk_req_gral_caract_rango_positivo" CHECK (COALESCE(valor_min,0) >= 0 AND COALESCE(valor_max,0) >= 0),
+    CONSTRAINT "chk_req_gral_caract_rango" CHECK (valor_min IS NULL OR valor_max IS NULL OR valor_min <= valor_max)
 )
 ;
+
+
+CREATE OR REPLACE FUNCTION fn_req_caract_rango_solo_numerico() RETURNS trigger AS $$
+DECLARE
+    v_tipo_dato VARCHAR(50);
+BEGIN
+    SELECT tipo_dato INTO v_tipo_dato
+    FROM caracteristica_tecnica
+    WHERE id_caracteristica = NEW.id_caracteristica;
+
+    IF v_tipo_dato IS NULL THEN
+        RAISE EXCEPTION 'La caracteristica % no existe.', NEW.id_caracteristica
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    IF v_tipo_dato <> 'NUMERICO'
+       AND (NEW.valor_min IS NOT NULL OR NEW.valor_max IS NOT NULL) THEN
+        RAISE EXCEPTION 'valor_min/valor_max solo aplican a caracteristicas NUMERICAS (caracteristica %, tipo %).',
+            NEW.id_caracteristica, v_tipo_dato
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_req_gral_caract_rango ON requerimiento_gral_caract;
+CREATE TRIGGER trg_req_gral_caract_rango
+    BEFORE INSERT OR UPDATE ON requerimiento_gral_caract
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_rango_solo_numerico();
+
 
 
 
@@ -1473,7 +1576,43 @@ CREATE TABLE requerimiento_gral_caract_valor(
 )
 ;
 
+CREATE OR REPLACE FUNCTION fn_req_caract_valor_solo_enumerado() RETURNS trigger AS $$
+DECLARE
+    v_id_caract_padre BIGINT;
+    v_tipo_dato VARCHAR(50);
+BEGIN
+    IF TG_TABLE_NAME = 'requerimiento_act_caract_valor' THEN
+        SELECT id_caracteristica INTO v_id_caract_padre
+        FROM requerimiento_act_caract
+        WHERE id_req_act_caract = NEW.id_req_act_caract;
+    ELSE
+        SELECT id_caracteristica INTO v_id_caract_padre
+        FROM requerimiento_gral_caract
+        WHERE id_req_gral_caract = NEW.id_req_gral_caract;
+    END IF;
 
+    IF v_id_caract_padre IS DISTINCT FROM NEW.id_caracteristica THEN
+        RAISE EXCEPTION 'id_caracteristica no coincide con la caracteristica del requerimiento padre.'
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    SELECT tipo_dato INTO v_tipo_dato
+    FROM caracteristica_tecnica
+    WHERE id_caracteristica = v_id_caract_padre;
+
+    IF v_tipo_dato <> 'ENUMERADO' THEN
+        RAISE EXCEPTION 'Solo caracteristicas ENUMERADAS admiten valores de catalogo en requerimientos (caracteristica %, tipo %).',
+            v_id_caract_padre, v_tipo_dato
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_req_gral_caract_valor ON requerimiento_gral_caract_valor;
+CREATE TRIGGER trg_req_gral_caract_valor
+    BEFORE INSERT OR UPDATE ON requerimiento_gral_caract_valor
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_valor_solo_enumerado();
 
 -- 
 -- TABLE: requerimiento_gral_habilidad 
@@ -1989,6 +2128,29 @@ CREATE INDEX "IDX_caracteristica_perfil_caract"       ON caracteristica_perfil(i
 CREATE INDEX "IDX_req_act_caract_caract"              ON requerimiento_act_caract(id_caracteristica);
 CREATE INDEX "IDX_req_gral_caract_caract"             ON requerimiento_gral_caract(id_caracteristica);
 
+-- 
+-- INDEX: "UQ_req_act_caract_req_caract" 
+--
+
+CREATE UNIQUE INDEX "UQ_req_act_caract_req_caract" ON requerimiento_act_caract(id_requerimiento_act, id_caracteristica);
+
+-- 
+-- INDEX: "UQ_req_gral_caract_req_caract" 
+--
+
+CREATE UNIQUE INDEX "UQ_req_gral_caract_req_caract" ON requerimiento_gral_caract(id_requerimiento_gral, id_caracteristica);
+
+--
+-- INDEX: "UQ_req_act_caract_id_car"
+--
+
+CREATE UNIQUE INDEX "UQ_req_act_caract_id_car" ON requerimiento_act_caract(id_req_act_caract, id_caracteristica);
+
+--
+-- INDEX: "UQ_req_gral_caract_id_car"
+--
+
+CREATE UNIQUE INDEX "UQ_req_gral_caract_id_car" ON requerimiento_gral_caract(id_req_gral_caract, id_caracteristica);
 
 
 
@@ -2482,7 +2644,6 @@ ALTER TABLE requerimiento_act_caract ADD CONSTRAINT "Refcaracteristica_tecnica17
     REFERENCES caracteristica_tecnica(id_caracteristica)
 ;
 
-
 -- 
 -- TABLE: requerimiento_act_caract_valor 
 --
@@ -2496,6 +2657,11 @@ ALTER TABLE requerimiento_act_caract_valor ADD CONSTRAINT "Refvalor_caracteristi
     FOREIGN KEY (id_valor, id_caracteristica)
     REFERENCES valor_caracteristica(id_valor, id_caracteristica)
 ;
+
+ALTER TABLE requerimiento_act_caract_valor ADD CONSTRAINT "FK_req_act_caract_valor_padre" 
+    FOREIGN KEY (id_req_act_caract, id_caracteristica) 
+    REFERENCES requerimiento_act_caract(id_req_act_caract, id_caracteristica);
+
 
 
 -- 
@@ -2556,6 +2722,10 @@ ALTER TABLE requerimiento_gral_caract_valor ADD CONSTRAINT "Refrequerimiento_gra
     FOREIGN KEY (id_req_gral_caract)
     REFERENCES requerimiento_gral_caract(id_req_gral_caract)
 ;
+
+ALTER TABLE requerimiento_gral_caract_valor ADD CONSTRAINT "FK_req_gral_caract_valor_padre" 
+    FOREIGN KEY (id_req_gral_caract, id_caracteristica) 
+    REFERENCES requerimiento_gral_caract(id_req_gral_caract, id_caracteristica);
 
 
 -- 
