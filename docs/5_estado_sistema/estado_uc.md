@@ -75,7 +75,7 @@ el historial de git sirva de bitácora adicional.
 
 | UC    | Nombre                               | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | ------------------------------------ | ----------- | ---------------- | ----- | ----------------- |
-| UC-24 | Crear proyecto                       | Implementado y testeado | `POST /proyectos` | Sí    | Primera iteracion. Proyecto en estado Borrador, director asignado y planificación inicializada |
+| UC-24 | Crear proyecto                       | Implementado y testeado | `POST /proyectos` | Sí    | Contrato completo: proyecto en Borrador, director asignado, planificación inicializada, requerimientosGral (cantidad/profesión/características/habilidades) y moodboard opcionales |
 | UC-25 | Publicar proyecto                    | No iniciado |                  |       | Primera iteracion |
 | UC-26 | Dar de alta postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
 | UC-27 | Dar de baja postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
