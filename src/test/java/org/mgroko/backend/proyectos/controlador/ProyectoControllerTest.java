@@ -40,6 +40,9 @@ class ProyectoControllerTest {
     @MockitoBean
     private CrearProyectoService crearProyectoService;
 
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.ObtenerProyectoService obtenerProyectoService;
+
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
@@ -52,6 +55,8 @@ class ProyectoControllerTest {
                 LocalDate.now().plusDays(10),
                 LocalDate.now().plusDays(20),
                 true,
+                null,
+                null,
                 null,
                 null
         );
@@ -68,7 +73,9 @@ class ProyectoControllerTest {
                 null,
                 10L,
                 "Luna Diseños",
-                List.of()
+                List.of(),
+                List.of(),
+                null
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -98,6 +105,8 @@ class ProyectoControllerTest {
                 null,
                 false,
                 null,
+                null,
+                null,
                 null
         );
 
@@ -121,6 +130,8 @@ class ProyectoControllerTest {
                 LocalDate.now().plusDays(10),
                 null,
                 false,
+                null,
+                null,
                 null,
                 null
         );
@@ -149,6 +160,8 @@ class ProyectoControllerTest {
                 LocalDate.of(2026, 6, 5),
                 false,
                 null,
+                null,
+                null,
                 null
         );
 
@@ -161,5 +174,189 @@ class ProyectoControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("La fecha de finalización o entrega no puede ser anterior a la fecha de inicio."));
+    }
+
+    @Test
+    void crear_conRequerimientosYMoodboard_devuelve201ConCampos() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        String payload = """
+                {
+                  "nombre": "Desfile Requerimientos",
+                  "descripcion": "Producción con equipo técnico",
+                  "privacidad": "PUBLICO",
+                  "fechaInicio": "2026-06-01",
+                  "requerimientosGral": [
+                    {
+                      "cantidad": 2,
+                      "idProfesion": 2,
+                      "descripcion": "Dos modelos",
+                      "caracteristicas": [
+                        {
+                          "idCaracteristica": 5,
+                          "valores": [1]
+                        }
+                      ],
+                      "habilidades": [1, 4]
+                    }
+                  ],
+                  "moodboard": {
+                    "descripcion": "Paleta fría"
+                  }
+                }
+                """;
+
+        var requeriaResp = new org.mgroko.backend.proyectos.dto.RequerimientoGralResponse(
+                10L, 2, "Dos modelos", 2L, "Modelo",
+                List.of(new org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse(
+                        5L, "COLOR_OJOS", "ENUMERADO", null, null, List.of(1L))),
+                List.of(1L, 4L));
+        var moodboardResp = new org.mgroko.backend.proyectos.dto.MoodboardResponse(
+                77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0));
+
+        ProyectoResponse response = new ProyectoResponse(
+                101L,
+                "Desfile Requerimientos",
+                "Producción con equipo técnico",
+                LocalDate.of(2026, 6, 1),
+                null,
+                "Borrador",
+                "Publico",
+                false,
+                null,
+                10L,
+                "Luna Diseños",
+                List.of(),
+                List.of(requeriaResp),
+                moodboardResp
+        );
+
+        when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/proyectos")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idProyecto").value(101L))
+                .andExpect(jsonPath("$.requerimientosGral[0].idRequerimientoGral").value(10L))
+                .andExpect(jsonPath("$.requerimientosGral[0].cantidad").value(2))
+                .andExpect(jsonPath("$.requerimientosGral[0].idProfesion").value(2))
+                .andExpect(jsonPath("$.requerimientosGral[0].caracteristicas[0].idCaracteristica").value(5))
+                .andExpect(jsonPath("$.requerimientosGral[0].caracteristicas[0].valores[0]").value(1))
+                .andExpect(jsonPath("$.requerimientosGral[0].habilidades[0]").value(1))
+                .andExpect(jsonPath("$.moodboard.idMoodboard").value(77L))
+                .andExpect(jsonPath("$.moodboard.descripcion").value("Paleta fría"));
+    }
+
+    @Test
+    void crear_conRequerimientoInvalido_devuelve400() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        String payload = """
+                {
+                  "nombre": "Desfile Invalido",
+                  "descripcion": "Producción",
+                  "privacidad": "PUBLICO",
+                  "fechaInicio": "2026-06-01",
+                  "requerimientosGral": [
+                    {
+                      "cantidad": 0,
+                      "idProfesion": 2
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/proyectos")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores['requerimientosGral[0].cantidad']").exists());
+    }
+
+    // ---------------------------------------------------------------------
+    // GET /proyectos/{id} — dashboard
+    // ---------------------------------------------------------------------
+
+    @Test
+    void obtener_proyectoExistente_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        ProyectoResponse response = new ProyectoResponse(
+                100L,
+                "Desfile Primavera",
+                "Colección",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 15),
+                "Borrador",
+                "PUBLICO",
+                false,
+                null,
+                10L,
+                "Luna Diseños",
+                List.of(),
+                List.of(),
+                null
+        );
+
+        when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/100")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idProyecto").value(100L))
+                .andExpect(jsonPath("$.nombre").value("Desfile Primavera"))
+                .andExpect(jsonPath("$.estado").value("Borrador"))
+                .andExpect(jsonPath("$.idDirector").value(10L));
+    }
+
+    @Test
+    void obtener_sinPerfilActivo_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, null, null));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/100")
+                        .principal(auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
+    }
+
+    @Test
+    void obtener_proyectoInexistente_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(999L)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException(999L));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/999")
+                        .principal(auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("El proyecto con id 999 no existe."));
+    }
+
+    @Test
+    void obtener_accesoDenegado_devuelve403() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(200L)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException(
+                        "No tienes acceso a este proyecto."));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/200")
+                        .principal(auth))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("No tienes acceso a este proyecto."));
     }
 }
