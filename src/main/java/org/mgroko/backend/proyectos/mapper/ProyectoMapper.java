@@ -7,8 +7,10 @@ import java.util.List;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ObjetivoResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
+import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
 import org.mgroko.backend.ubicacion.dto.UbicacionResponse;
 import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 
@@ -20,7 +22,9 @@ public final class ProyectoMapper {
             Proyecto proyecto,
             Perfil director,
             LocalDate fechaFinEstipulada,
-            List<Objetivo> objetivos) {
+            List<Objetivo> objetivos,
+            List<RequerimientoGralResponse> requerimientosGral,
+            MoodboardResponse moodboard) {
 
         UbicacionResponse ubicacionResponse = proyecto.getUbicacion() != null
                 ? UbicacionMapper.toResponse(proyecto.getUbicacion())
@@ -44,7 +48,9 @@ public final class ProyectoMapper {
                 ubicacionResponse,
                 director != null ? director.getIdPerfil() : null,
                 director != null ? director.getNombreArtistico() : null,
-                objetivosResponse
+                objetivosResponse,
+                requerimientosGral != null ? requerimientosGral : Collections.emptyList(),
+                moodboard
         );
     }
 }

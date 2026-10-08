@@ -20,7 +20,7 @@ public class Moodboard {
     @Builder.Default
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 
-    @Column(name = "descripcion", length = 300)
+    @Column(name = "descripcion", length = 200)
     private String descripcion;
 
     // 1 a 1 con proyecto (UNIQUE en la bd)

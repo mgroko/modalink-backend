@@ -33,5 +33,10 @@ public record CrearProyectoRequest(
         @Valid
         UbicacionRequest ubicacion,
 
-        List<@Valid CrearObjetivoRequest> objetivos
+        List<@Valid CrearObjetivoRequest> objetivos,
+
+        List<@Valid CrearRequerimientoGralRequest> requerimientosGral,
+
+        @Valid
+        CrearMoodboardRequest moodboard
 ) {}

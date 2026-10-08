@@ -17,5 +17,7 @@ public record ProyectoResponse(
         UbicacionResponse ubicacion,
         Long idDirector,
         String nombreDirector,
-        List<ObjetivoResponse> objetivos
+        List<ObjetivoResponse> objetivos,
+        List<RequerimientoGralResponse> requerimientosGral,
+        MoodboardResponse moodboard
 ) {}

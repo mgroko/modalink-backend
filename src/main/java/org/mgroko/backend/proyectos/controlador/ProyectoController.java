@@ -4,10 +4,13 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
+import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,9 +21,12 @@ import jakarta.validation.Valid;
 public class ProyectoController {
 
     private final CrearProyectoService crearProyectoService;
+    private final ObtenerProyectoService obtenerProyectoService;
 
-    public ProyectoController(CrearProyectoService crearProyectoService) {
+    public ProyectoController(CrearProyectoService crearProyectoService,
+            ObtenerProyectoService obtenerProyectoService) {
         this.crearProyectoService = crearProyectoService;
+        this.obtenerProyectoService = obtenerProyectoService;
     }
 
     // UC-24: Crear proyecto
@@ -42,5 +48,26 @@ public class ProyectoController {
 
         ProyectoResponse response = crearProyectoService.crear(idUsuario, idPerfilActivo, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // Dashboard de proyecto: detalle para la vista /proyectos/{id}
+    @GetMapping("/proyectos/{idProyecto}")
+    public ResponseEntity<ProyectoResponse> obtener(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        ProyectoResponse response = obtenerProyectoService.obtener(idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
     }
 }

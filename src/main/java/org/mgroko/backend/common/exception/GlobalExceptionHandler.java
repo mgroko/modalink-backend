@@ -236,6 +236,32 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadNoEncontrada(
+            org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoInvalido(
+            org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoEncontrado(
+            org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        return buildErrorResponse(
+                "Los datos enviados violan una restricción de integridad de la base de datos.",
+                HttpStatus.BAD_REQUEST);
+    }
+
     /**
      * Excepción de perfil no encontrado (contexto: Administrador).
      */
