@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 import org.mgroko.backend.admin.dto.AdminCaracteristicaTecnicaRequest;
@@ -62,8 +63,10 @@ public class AdminCaracteristicaTecnicaService {
 
     @Transactional(readOnly = true)
     public List<CaracteristicaTecnicaResponse> listar() {
+        Set<Long> idsEnUso = caracteristicaTecnicaRepository.findIdsEnUso();
         return caracteristicaTecnicaRepository.findAllByOrderByCodigo().stream()
-                .map(CaracteristicaTecnicaMapper::toResponse)
+                .map(c -> CaracteristicaTecnicaMapper.toResponse(
+                        c, idsEnUso.contains(c.getIdCaracteristica())))
                 .toList();
     }
 
@@ -103,7 +106,7 @@ public class AdminCaracteristicaTecnicaService {
             agregarValoresIniciales(caracteristica, request.valores());
         }
 
-        return CaracteristicaTecnicaMapper.toResponse(caracteristica);
+        return CaracteristicaTecnicaMapper.toResponse(caracteristica, false);
     }
 
     @Transactional
@@ -113,6 +116,14 @@ public class AdminCaracteristicaTecnicaService {
         validarTipoDato(request.tipoDato());
 
         String codigo = request.codigo().trim().toUpperCase(Locale.ROOT);
+
+        // Regla de negocio: si esta en uso por perfiles o requerimientos,
+        // solo el nombre puede modificarse (mismo criterio del trigger de BD).
+        boolean enUso = caracteristicaTecnicaRepository.existeEnUso(idCaracteristica);
+        if (enUso) {
+            validarSoloNombreModificado(caracteristica, request, codigo);
+        }
+
         if (!codigo.equals(caracteristica.getCodigo().toUpperCase(Locale.ROOT))
                 && caracteristicaTecnicaRepository.existsByCodigo(codigo)) {
             throw new CaracteristicaCodigoDuplicadoException(
@@ -142,15 +153,15 @@ public class AdminCaracteristicaTecnicaService {
         caracteristica.setTipoDato(request.tipoDato());
         caracteristica.setProfesion(profesion);
 
-        return CaracteristicaTecnicaMapper.toResponse(caracteristicaTecnicaRepository.save(caracteristica));
+        return CaracteristicaTecnicaMapper.toResponse(caracteristicaTecnicaRepository.save(caracteristica), enUso);
     }
 
     @Transactional
     public void eliminar(Long idCaracteristica) {
         CaracteristicaTecnica caracteristica = buscarOFallar(idCaracteristica);
-        if (caracteristicaPerfilRepository.existsByCaracteristicaTecnicaIdCaracteristica(idCaracteristica)) {
+        if (caracteristicaTecnicaRepository.existeEnUso(idCaracteristica)) {
             throw new CaracteristicaEnUsoException(
-                    "La característica técnica está en uso por perfiles y no puede eliminarse.");
+                    "La característica técnica está en uso por perfiles o requerimientos y no puede eliminarse.");
         }
         if (!caracteristica.getValores().isEmpty()) {
             valorCaracteristicaRepository.deleteAll(caracteristica.getValores());
@@ -262,6 +273,31 @@ public class AdminCaracteristicaTecnicaService {
         return profesionRepository.findById(idProfesion)
                 .orElseThrow(() -> new ProfesionNoEncontradaException(
                         "Profesión no encontrada: " + idProfesion));
+    }
+
+    /**
+     * Cuando la característica está en uso por perfiles o requerimientos,
+     * los campos codigo, tipoDato, profesión y unidad son inmutables:
+     * sólo puede modificarse el nombre. Compara la solicitud contra los
+     * valores actuales de la entidad (el PUT es completo) y lanza
+     * {@link CaracteristicaEnUsoException} si algo distinto del nombre cambió.
+     */
+    private void validarSoloNombreModificado(CaracteristicaTecnica caracteristica,
+            AdminCaracteristicaTecnicaRequest request, String codigo) {
+        boolean cambioCodigo = !codigo.equals(caracteristica.getCodigo().toUpperCase(Locale.ROOT));
+        boolean cambioTipoDato = !request.tipoDato().equals(caracteristica.getTipoDato());
+        Profesion profesionActual = caracteristica.getProfesion();
+        boolean cambioProfesion = profesionActual == null
+                || !request.idProfesion().equals(profesionActual.getIdProfesion());
+        Long idUnidadActual = caracteristica.getUnidadMedida() != null
+                ? caracteristica.getUnidadMedida().getIdUnidad()
+                : null;
+        boolean cambioUnidad = !Objects.equals(request.idUnidad(), idUnidadActual);
+
+        if (cambioCodigo || cambioTipoDato || cambioProfesion || cambioUnidad) {
+            throw new CaracteristicaEnUsoException(
+                    "La característica técnica está en uso por perfiles o requerimientos; sólo puede modificarse el nombre.");
+        }
     }
 
     private void validarTipoDato(String tipoDato) {

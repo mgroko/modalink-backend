@@ -1,6 +1,7 @@
 package org.mgroko.backend.repositorio;
 
 import java.util.List;
+import java.util.Set;
 
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -51,4 +52,42 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
             WHERE UPPER(c.codigo) = UPPER(:codigo)
             """)
     boolean existsByCodigoIgnoreCase(@Param("codigo") String codigo);
+
+    /**
+     * Indica si la característica está "en uso": tiene valores cargados en
+     * perfiles o está referenciada por requerimientos de actividad/proyecto.
+     *
+     * Es la misma regla que aplica el trigger
+     * {@code trg_caracteristica_en_uso_solo_nombre} en la base de datos:
+     * cuando está en uso, sólo puede modificarse el nombre.
+     *
+     * Se consulta nativamente porque {@code requerimiento_act_caract} y
+     * {@code requerimiento_gral_caract} están mapeadas como tablas de unión
+     * {@code @ManyToMany} sin sus columnas de rango.
+     *
+     * @param idCaracteristica id de la característica técnica
+     * @return true si alguna fila la referencia
+     */
+    @Query(value = """
+            SELECT EXISTS (SELECT 1 FROM caracteristica_perfil WHERE id_caracteristica = :id)
+                OR EXISTS (SELECT 1 FROM requerimiento_act_caract WHERE id_caracteristica = :id)
+                OR EXISTS (SELECT 1 FROM requerimiento_gral_caract WHERE id_caracteristica = :id)
+            """, nativeQuery = true)
+    boolean existeEnUso(@Param("id") Long idCaracteristica);
+
+    /**
+     * Devuelve el conjunto de ids de características que están en uso
+     * (ver {@link #existeEnUso(Long)}), para poblar el flag {@code enUso}
+     * de la respuesta de listado con una sola consulta por tabla.
+     *
+     * @return ids de características en uso (vacío si ninguna lo está)
+     */
+    @Query(value = """
+            SELECT id_caracteristica FROM caracteristica_perfil
+            UNION
+            SELECT id_caracteristica FROM requerimiento_act_caract
+            UNION
+            SELECT id_caracteristica FROM requerimiento_gral_caract
+            """, nativeQuery = true)
+    Set<Long> findIdsEnUso();
 }

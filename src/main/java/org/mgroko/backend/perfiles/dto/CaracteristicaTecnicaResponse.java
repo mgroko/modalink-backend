@@ -12,6 +12,7 @@ public record CaracteristicaTecnicaResponse(
         Long idProfesion,
         String profesion,
         String tipoDato,
-        List<ValorCaracteristicaResponse> valores
+        List<ValorCaracteristicaResponse> valores,
+        Boolean enUso
 ) {
 }
