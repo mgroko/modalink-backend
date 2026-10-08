@@ -34,7 +34,7 @@ class CaracteristicaTecnicaControllerTest {
     void buscar_conFiltros_devuelve200() throws Exception {
         UnidadMedidaResponse unidad = new UnidadMedidaResponse(1L, "Centímetro", "cm", "NUMERICO");
         when(caracteristicaTecnicaService.buscar(2L, "alt", null))
-                .thenReturn(List.of(new CaracteristicaTecnicaResponse(11L, "altura", "Altura", unidad, 2L, "modelo", "TEXTO", List.of())));
+                .thenReturn(List.of(new CaracteristicaTecnicaResponse(11L, "altura", "Altura", unidad, 2L, "modelo", "TEXTO", List.of(), null)));
 
         mockMvc.perform(get("/profesiones/2/caracteristicas-tecnicas")
                         .param("codigo", "alt"))

@@ -3,9 +3,11 @@ package org.mgroko.backend.admin.servicio;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -97,6 +99,7 @@ class AdminCaracteristicaTecnicaServiceTest {
                 .build();
 
         when(caracteristicaTecnicaRepository.findAllByOrderByCodigo()).thenReturn(List.of(c));
+        when(caracteristicaTecnicaRepository.findIdsEnUso()).thenReturn(Set.of());
 
         List<CaracteristicaTecnicaResponse> resultado = service.listar();
 
@@ -105,6 +108,28 @@ class AdminCaracteristicaTecnicaServiceTest {
         assertEquals("Altura", resultado.get(0).nombre());
         assertNotNull(resultado.get(0).unidad());
         assertEquals("cm", resultado.get(0).unidad().simbolo());
+        assertEquals(Boolean.FALSE, resultado.get(0).enUso());
+    }
+
+    @Test
+    void listar_caracteristicaEnUso_reflejaFlagEnUso() {
+        CaracteristicaTecnica c = CaracteristicaTecnica.builder()
+                .idCaracteristica(1L)
+                .codigo("altura")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(List.of())
+                .build();
+
+        when(caracteristicaTecnicaRepository.findAllByOrderByCodigo()).thenReturn(List.of(c));
+        when(caracteristicaTecnicaRepository.findIdsEnUso()).thenReturn(Set.of(1L));
+
+        List<CaracteristicaTecnicaResponse> resultado = service.listar();
+
+        assertEquals(1, resultado.size());
+        assertEquals(Boolean.TRUE, resultado.get(0).enUso());
     }
 
     // --- CREAR ---
@@ -267,6 +292,7 @@ class AdminCaracteristicaTecnicaServiceTest {
                 "altura_cm", "Altura en cm", 1L, 1L, "NUMERICO", null);
 
         when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(false);
         when(caracteristicaTecnicaRepository.existsByCodigo("ALTURA_CM")).thenReturn(false);
         when(profesionRepository.findById(1L)).thenReturn(Optional.of(profesion));
         when(unidadMedidaRepository.findById(1L)).thenReturn(Optional.of(unidadCm));
@@ -278,6 +304,154 @@ class AdminCaracteristicaTecnicaServiceTest {
         assertEquals("Altura en cm", response.nombre());
         assertNotNull(response.unidad());
         assertEquals("cm", response.unidad().simbolo());
+        assertEquals(Boolean.FALSE, response.enUso());
+    }
+
+    @Test
+    void actualizar_enUso_soloCambiaNombre_permiteYRespondeEnUso() {
+        CaracteristicaTecnica existente = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .codigo("ALTURA")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(new ArrayList<>())
+                .build();
+
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "ALTURA", "Altura total", 1L, 1L, "NUMERICO", null);
+
+        when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(true);
+        when(profesionRepository.findById(1L)).thenReturn(Optional.of(profesion));
+        when(unidadMedidaRepository.findById(1L)).thenReturn(Optional.of(unidadCm));
+        when(caracteristicaTecnicaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CaracteristicaTecnicaResponse response = service.actualizar(10L, request);
+
+        assertEquals("Altura total", response.nombre());
+        assertEquals("ALTURA", response.codigo());
+        assertEquals(Boolean.TRUE, response.enUso());
+        verify(caracteristicaTecnicaRepository).save(any());
+    }
+
+    @Test
+    void actualizar_enUso_cambiaCodigo_lanzaCaracteristicaEnUsoException() {
+        CaracteristicaTecnica existente = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .codigo("ALTURA")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(new ArrayList<>())
+                .build();
+
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "altura_cm", "Altura", 1L, 1L, "NUMERICO", null);
+
+        when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(true);
+
+        assertThrows(CaracteristicaEnUsoException.class, () -> service.actualizar(10L, request));
+        verify(caracteristicaTecnicaRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizar_enUso_cambiaTipoDato_lanzaCaracteristicaEnUsoException() {
+        CaracteristicaTecnica existente = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .codigo("ALTURA")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(new ArrayList<>())
+                .build();
+
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "ALTURA", "Altura", 1L, 1L, "TEXTO", null);
+
+        when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(true);
+
+        assertThrows(CaracteristicaEnUsoException.class, () -> service.actualizar(10L, request));
+        verify(caracteristicaTecnicaRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizar_enUso_cambiaProfesion_lanzaCaracteristicaEnUsoException() {
+        CaracteristicaTecnica existente = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .codigo("ALTURA")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(new ArrayList<>())
+                .build();
+
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "ALTURA", "Altura", 1L, 2L, "NUMERICO", null);
+
+        when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(true);
+
+        assertThrows(CaracteristicaEnUsoException.class, () -> service.actualizar(10L, request));
+        verify(caracteristicaTecnicaRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizar_enUso_cambiaUnidad_lanzaCaracteristicaEnUsoException() {
+        CaracteristicaTecnica existente = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .codigo("ALTURA")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(new ArrayList<>())
+                .build();
+
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "ALTURA", "Altura", null, 1L, "NUMERICO", null);
+
+        when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(true);
+
+        assertThrows(CaracteristicaEnUsoException.class, () -> service.actualizar(10L, request));
+        verify(caracteristicaTecnicaRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizar_sinUso_modificaCodigoYUnidad_permite() {
+        CaracteristicaTecnica existente = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .codigo("ALTURA")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(new ArrayList<>())
+                .build();
+
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "altura_v2", "Altura v2", null, 1L, "NUMERICO", null);
+
+        when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(false);
+        when(caracteristicaTecnicaRepository.existsByCodigo("ALTURA_V2")).thenReturn(false);
+        when(profesionRepository.findById(1L)).thenReturn(Optional.of(profesion));
+        when(caracteristicaTecnicaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CaracteristicaTecnicaResponse response = service.actualizar(10L, request);
+
+        assertEquals("ALTURA_V2", response.codigo());
+        assertEquals("Altura v2", response.nombre());
+        assertNull(response.unidad());
+        assertEquals(Boolean.FALSE, response.enUso());
+        verify(caracteristicaTecnicaRepository).save(any());
     }
 
     @Test
@@ -323,7 +497,7 @@ class AdminCaracteristicaTecnicaServiceTest {
                 .build();
 
         when(caracteristicaTecnicaRepository.findById(5L)).thenReturn(Optional.of(c));
-        when(caracteristicaPerfilRepository.existsByCaracteristicaTecnicaIdCaracteristica(5L)).thenReturn(false);
+        when(caracteristicaTecnicaRepository.existeEnUso(5L)).thenReturn(false);
 
         service.eliminar(5L);
 
@@ -339,7 +513,7 @@ class AdminCaracteristicaTecnicaServiceTest {
                 .build();
 
         when(caracteristicaTecnicaRepository.findById(5L)).thenReturn(Optional.of(c));
-        when(caracteristicaPerfilRepository.existsByCaracteristicaTecnicaIdCaracteristica(5L)).thenReturn(false);
+        when(caracteristicaTecnicaRepository.existeEnUso(5L)).thenReturn(false);
 
         service.eliminar(5L);
 
@@ -348,11 +522,11 @@ class AdminCaracteristicaTecnicaServiceTest {
     }
 
     @Test
-    void eliminar_enUsoPorPerfiles_lanzaCaracteristicaEnUsoException() {
+    void eliminar_enUsoPorPerfilesORequerimientos_lanzaCaracteristicaEnUsoException() {
         CaracteristicaTecnica c = CaracteristicaTecnica.builder().idCaracteristica(5L).build();
 
         when(caracteristicaTecnicaRepository.findById(5L)).thenReturn(Optional.of(c));
-        when(caracteristicaPerfilRepository.existsByCaracteristicaTecnicaIdCaracteristica(5L)).thenReturn(true);
+        when(caracteristicaTecnicaRepository.existeEnUso(5L)).thenReturn(true);
 
         assertThrows(CaracteristicaEnUsoException.class, () -> service.eliminar(5L));
         verify(caracteristicaTecnicaRepository, never()).delete(any());
