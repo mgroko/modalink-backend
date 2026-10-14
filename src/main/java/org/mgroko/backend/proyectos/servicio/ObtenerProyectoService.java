@@ -3,18 +3,22 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Objetivo;
+import org.mgroko.backend.modelo.PermisoProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoGralCaract;
 import org.mgroko.backend.modelo.RequerimientoGralCaractValor;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
+import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.Privacidad;
@@ -23,6 +27,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
+import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
@@ -95,11 +100,11 @@ public class ObtenerProyectoService {
         Proyecto proyecto = proyectoRepository.findById(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
-        boolean esMiembroActivo = miembroProyectoRepository
-                .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
-                        idProyecto, idPerfilActivo, EstadoParticipacion.ACTIVO);
+        // Una sola consulta: membresía activa + rol + permisos del consultante
+        Optional<MiembroProyecto> miembroActivo = miembroProyectoRepository
+                .findMiembroActivoConPermisos(idProyecto, idPerfilActivo);
 
-        if (!esMiembroActivo && !esVisibleParaNoMiembro(proyecto)) {
+        if (miembroActivo.isEmpty() && !esVisibleParaNoMiembro(proyecto)) {
             throw new AccesoDenegadoProyectoException(
                     "No tienes acceso a este proyecto.");
         }
@@ -112,16 +117,59 @@ public class ObtenerProyectoService {
 
         List<Objetivo> objetivos = objetivoRepository.findByProyectoIdProyecto(idProyecto);
 
+        Long idProfesionPerfil = perfil.getProfesion() != null
+                ? perfil.getProfesion().getIdProfesion()
+                : null;
+        boolean profesionDelPerfilCoincide = false;
+
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
         for (RequerimientoGralProyecto rg : requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto)) {
             requerimientos.add(armarRequerimientoResponse(rg));
+            if (idProfesionPerfil != null && rg.getProfesion() != null
+                    && idProfesionPerfil.equals(rg.getProfesion().getIdProfesion())) {
+                profesionDelPerfilCoincide = true;
+            }
         }
 
         MoodboardResponse moodboardResponse = moodboardRepository.findByProyectoIdProyecto(idProyecto)
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos, requerimientos, moodboardResponse);
+        boolean elegibleParaPostularse = miembroActivo.isEmpty()
+                && Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral())
+                && profesionDelPerfilCoincide;
+
+        ContextoConsultaProyecto contexto = armarContexto(miembroActivo, elegibleParaPostularse);
+
+        return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos, requerimientos,
+                moodboardResponse, contexto);
+    }
+
+    /**
+     * Contexto del consultante: rol y permisos si es miembro activo; si no es
+     * miembro, indica la elegibilidad para postularse (profesión coincidente).
+     */
+    private ContextoConsultaProyecto armarContexto(Optional<MiembroProyecto> miembroActivo,
+            boolean elegibleParaPostularse) {
+        if (miembroActivo.isEmpty()) {
+            return new ContextoConsultaProyecto(null, Boolean.FALSE, List.of(), elegibleParaPostularse);
+        }
+
+        MiembroProyecto miembro = miembroActivo.get();
+        RolProyecto rol = miembro.getRolProyecto();
+        List<String> permisos = rol != null && rol.getPermisos() != null
+                ? rol.getPermisos().stream()
+                        .map(PermisoProyecto::getNombre)
+                        .filter(Objects::nonNull)
+                        .sorted()
+                        .toList()
+                : List.of();
+
+        return new ContextoConsultaProyecto(
+                RolProyectoUsuario.desde(rol),
+                Boolean.TRUE,
+                permisos,
+                Boolean.FALSE);
     }
 
     private boolean esVisibleParaNoMiembro(Proyecto proyecto) {

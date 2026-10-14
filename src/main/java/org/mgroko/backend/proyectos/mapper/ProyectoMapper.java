@@ -13,6 +13,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.proyectos.dto.ActividadResumenResponse;
+import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
 import org.mgroko.backend.proyectos.dto.ImagenMoodboardResponse;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ObjetivoResponse;
@@ -89,7 +90,8 @@ public final class ProyectoMapper {
             LocalDate fechaEntregaEstipulada,
             List<Objetivo> objetivos,
             List<RequerimientoGralResponse> requerimientosGral,
-            MoodboardResponse moodboard) {
+            MoodboardResponse moodboard,
+            ContextoConsultaProyecto contexto) {
 
         UbicacionResponse ubicacionResponse = proyecto.getUbicacion() != null
                 ? UbicacionMapper.toResponse(proyecto.getUbicacion())
@@ -115,7 +117,11 @@ public final class ProyectoMapper {
                 director != null ? director.getNombreArtistico() : null,
                 objetivosResponse,
                 requerimientosGral != null ? requerimientosGral : Collections.emptyList(),
-                moodboard
+                moodboard,
+                contexto.rolUsuario(),
+                contexto.esMiembro(),
+                contexto.permisos(),
+                contexto.elegibleParaPostularse()
         );
     }
 }

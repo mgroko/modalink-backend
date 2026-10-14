@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.mgroko.backend.common.util.LikePatrones;
@@ -14,6 +15,7 @@ import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.PermisoProyecto;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
@@ -27,6 +29,7 @@ import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -40,6 +43,7 @@ import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
+import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
@@ -229,13 +233,28 @@ public class CrearProyectoService {
             moodboardResponse = ProyectoMapper.toMoodboardResponse(guardado);
         }
 
+        // El creador queda como Director: contexto de rol/permisos para la
+        // respuesta (mismo contrato que GET /proyectos/{idProyecto})
+        List<String> permisosDirector = rolDirector.getPermisos() != null
+                ? rolDirector.getPermisos().stream()
+                        .map(PermisoProyecto::getNombre)
+                        .filter(Objects::nonNull)
+                        .sorted()
+                        .toList()
+                : List.of();
+
         return ProyectoMapper.toResponse(
                 proyectoGuardado,
                 perfil,
                 request.fechaEntregaEstipulada(),
                 objetivosGuardados,
                 requerimientosResponse,
-                moodboardResponse
+                moodboardResponse,
+                new ContextoConsultaProyecto(
+                        RolProyectoUsuario.desde(rolDirector),
+                        Boolean.TRUE,
+                        permisosDirector,
+                        Boolean.FALSE)
         );
     }
 

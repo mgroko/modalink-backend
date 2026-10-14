@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.dto;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.ubicacion.dto.UbicacionResponse;
 
 public record ProyectoResponse(
@@ -19,5 +20,9 @@ public record ProyectoResponse(
         String nombreDirector,
         List<ObjetivoResponse> objetivos,
         List<RequerimientoGralResponse> requerimientosGral,
-        MoodboardResponse moodboard
+        MoodboardResponse moodboard,
+        RolProyectoUsuario rolUsuario,
+        Boolean esMiembro,
+        List<String> permisos,
+        Boolean elegibleParaPostularse
 ) {}
