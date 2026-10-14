@@ -3,10 +3,13 @@ package org.mgroko.backend.proyectos.controlador;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
+import org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
+import org.mgroko.backend.proyectos.dto.ProyectoPropioResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectoService;
+import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
 import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -29,13 +32,16 @@ public class ProyectoController {
     private final CrearProyectoService crearProyectoService;
     private final ObtenerProyectoService obtenerProyectoService;
     private final BuscarProyectoService buscarProyectoService;
+    private final BuscarProyectosPropiosService buscarProyectosPropiosService;
 
     public ProyectoController(CrearProyectoService crearProyectoService,
             ObtenerProyectoService obtenerProyectoService,
-            BuscarProyectoService buscarProyectoService) {
+            BuscarProyectoService buscarProyectoService,
+            BuscarProyectosPropiosService buscarProyectosPropiosService) {
         this.crearProyectoService = crearProyectoService;
         this.obtenerProyectoService = obtenerProyectoService;
         this.buscarProyectoService = buscarProyectoService;
+        this.buscarProyectosPropiosService = buscarProyectosPropiosService;
     }
 
     // UC-24: Crear proyecto
@@ -68,6 +74,29 @@ public class ProyectoController {
             @RequestParam(defaultValue = "false") boolean todos) {
 
         return ResponseEntity.ok(buscarProyectoService.buscarProyectos(filtro, page, size, todos));
+    }
+
+    // UC-29 bis - Buscar proyectos propios: proyectos asociados al perfil activo
+    // como director o miembro (catálogo "Proyectos / Inicio")
+    @GetMapping("/proyectos/propios")
+    public ResponseEntity<PaginaResponse<ProyectoPropioResponse>> buscarPropios(
+            @ModelAttribute BuscarProyectosPropiosFiltro filtro,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean todos,
+            Authentication authentication) {
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        return ResponseEntity.ok(
+                buscarProyectosPropiosService.buscar(idPerfilActivo, filtro, page, size, todos));
     }
 
     // Dashboard de proyecto: detalle para la vista /proyectos/{id}

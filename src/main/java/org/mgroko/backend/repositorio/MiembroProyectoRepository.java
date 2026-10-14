@@ -17,6 +17,17 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
 
     @Query("""
         SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.rolProyecto
+        WHERE mp.proyecto.idProyecto IN :idsProyectos
+          AND mp.perfil.idPerfil = :idPerfil
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<MiembroProyecto> buscarMiembrosActivosDeProyectos(
+            @Param("idsProyectos") List<Long> idsProyectos,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
         JOIN FETCH mp.perfil p
         LEFT JOIN FETCH p.usuario
         WHERE mp.proyecto.idProyecto IN :idsProyectos

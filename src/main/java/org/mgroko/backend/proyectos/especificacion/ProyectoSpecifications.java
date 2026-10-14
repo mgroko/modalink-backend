@@ -24,6 +24,9 @@ public class ProyectoSpecifications {
     /** Patrón de rol director: código 'DIRECTOR' o nombre 'Director...' (semilla de BD). */
     public static final String PATRON_ROL_DIRECTOR = "director%";
 
+    /** Patrón de rol miembro: código 'MIEMBRO' o nombre 'Miembro...' (semilla de BD). */
+    public static final String PATRON_ROL_MIEMBRO = "miembro%";
+
     public static Specification<Proyecto> conFiltros(BuscarProyectosFiltro filtro) {
         return (root, query, cb) -> {
             // Evitamos registros duplicados al hacer joins con colecciones

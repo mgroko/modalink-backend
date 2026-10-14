@@ -34,4 +34,31 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long> {
     List<Actividad> findActividadesDeUsuario(
             @Param("idUsuario") Long idUsuario,
             @Param("estados") Collection<EstadoProyecto> estados);
+
+    /**
+     * Próxima actividad asignada al perfil en cada uno de los proyectos
+     * indicados, ordenada por fecha de inicio: la primera fila de cada
+     * proyecto es su próxima actividad pendiente (o en curso).
+     *
+     * @param idsProyectos proyectos a evaluar (los de la página actual)
+     * @param idPerfil     perfil activo del usuario
+     * @param ahora        corte temporal: solo actividades desde ese instante
+     * @return actividades futuras pendientes/asignadas, ordenadas por inicio
+     */
+    @Query("""
+        SELECT a FROM Actividad a
+        JOIN AsignacionActividad asg ON asg.actividad = a
+        JOIN asg.miembro m
+        WHERE m.proyecto.idProyecto IN :idsProyectos
+          AND m.perfil.idPerfil = :idPerfil
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND a.fechaHoraInicio >= :ahora
+          AND a.estado IN (org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE,
+                            org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
+        ORDER BY a.fechaHoraInicio ASC
+    """)
+    List<Actividad> findProximasActividadesAsignadas(
+            @Param("idsProyectos") Collection<Long> idsProyectos,
+            @Param("idPerfil") Long idPerfil,
+            @Param("ahora") java.time.LocalDateTime ahora);
 }
