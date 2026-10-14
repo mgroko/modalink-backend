@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -13,6 +14,7 @@ import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.PermisoProyecto;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RolProyecto;
@@ -22,6 +24,7 @@ import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -110,7 +113,11 @@ class CrearProyectoServiceTest {
 
         rolDirector = RolProyecto.builder()
                 .idRolProyecto(1L)
+                .codigo("DIRECTOR")
                 .nombre("Director")
+                .permisos(Set.of(
+                        PermisoProyecto.builder().idPermisoProyecto(1L).nombre("VER_PROYECTO").build(),
+                        PermisoProyecto.builder().idPermisoProyecto(2L).nombre("MODIFICAR_PROYECTO").build()))
                 .build();
     }
 
@@ -162,6 +169,11 @@ class CrearProyectoServiceTest {
         assertThat(response.fechaEntregaEstipulada()).isEqualTo(LocalDate.now().plusDays(20));
         assertThat(response.objetivos()).hasSize(1);
         assertThat(response.objetivos().get(0).nombre()).isEqualTo("Conseguir sponsors");
+
+        assertThat(response.rolUsuario()).isEqualTo(RolProyectoUsuario.DIRECTOR);
+        assertThat(response.esMiembro()).isTrue();
+        assertThat(response.permisos()).containsExactly("MODIFICAR_PROYECTO", "VER_PROYECTO");
+        assertThat(response.elegibleParaPostularse()).isFalse();
 
         verify(miembroProyectoRepository).save(any(MiembroProyecto.class));
         verify(planificacionRepository).save(any(Planificacion.class));

@@ -82,7 +82,11 @@ class ProyectoControllerTest {
                 "Luna Diseños",
                 List.of(),
                 List.of(),
-                null
+                null,
+                org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
+                true,
+                List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -96,7 +100,11 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.idProyecto").value(100L))
                 .andExpect(jsonPath("$.nombre").value("Desfile Primavera"))
                 .andExpect(jsonPath("$.estado").value("Borrador"))
-                .andExpect(jsonPath("$.idDirector").value(10L));
+                .andExpect(jsonPath("$.idDirector").value(10L))
+                .andExpect(jsonPath("$.rolUsuario").value("DIRECTOR"))
+                .andExpect(jsonPath("$.esMiembro").value(true))
+                .andExpect(jsonPath("$.permisos[0]").value("MODIFICAR_PROYECTO"))
+                .andExpect(jsonPath("$.elegibleParaPostularse").value(false));
     }
 
     @Test
@@ -235,7 +243,11 @@ class ProyectoControllerTest {
                 "Luna Diseños",
                 List.of(),
                 List.of(requeriaResp),
-                moodboardResp
+                moodboardResp,
+                org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
+                true,
+                List.of("VER_PROYECTO"),
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -307,7 +319,11 @@ class ProyectoControllerTest {
                 "Luna Diseños",
                 List.of(),
                 List.of(),
-                null
+                null,
+                org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
+                true,
+                List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
+                false
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
@@ -319,7 +335,52 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.idProyecto").value(100L))
                 .andExpect(jsonPath("$.nombre").value("Desfile Primavera"))
                 .andExpect(jsonPath("$.estado").value("Borrador"))
-                .andExpect(jsonPath("$.idDirector").value(10L));
+                .andExpect(jsonPath("$.idDirector").value(10L))
+                .andExpect(jsonPath("$.rolUsuario").value("DIRECTOR"))
+                .andExpect(jsonPath("$.esMiembro").value(true))
+                .andExpect(jsonPath("$.permisos[0]").value("MODIFICAR_PROYECTO"))
+                .andExpect(jsonPath("$.permisos[1]").value("PUBLICAR_PROYECTO"))
+                .andExpect(jsonPath("$.permisos[2]").value("VER_PROYECTO"))
+                .andExpect(jsonPath("$.elegibleParaPostularse").value(false));
+    }
+
+    @Test
+    void obtener_noMiembro_devuelveContextoSinRol() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        ProyectoResponse response = new ProyectoResponse(
+                200L,
+                "Desfile Público",
+                "Colección",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 7, 1),
+                "Publicado",
+                "PUBLICO",
+                true,
+                null,
+                10L,
+                "Luna Diseños",
+                List.of(),
+                List.of(),
+                null,
+                null,
+                false,
+                List.of(),
+                true
+        );
+
+        when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(200L))).thenReturn(response);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/200")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idProyecto").value(200L))
+                .andExpect(jsonPath("$.rolUsuario").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.esMiembro").value(false))
+                .andExpect(jsonPath("$.permisos").isEmpty())
+                .andExpect(jsonPath("$.elegibleParaPostularse").value(true));
     }
 
     @Test
