@@ -25,8 +25,7 @@ Esta especificación detalla la interacción con la API, validaciones, modelos d
   "nombre": "Colección Primavera-Verano",
   "descripcion": "Diseño y confección de prendas sostenibles para la nueva temporada.",
   "privacidad": "PUBLICO",
-  "fechaInicio": "2026-10-01",
-  "fechaFinEstipulada": "2026-12-15",
+  "fechaEntregaEstipulada": "2026-12-15",
   "aceptaPostulacionGral": true,
   "ubicacion": {
     "localidadId": "06049010000",
@@ -64,9 +63,8 @@ Esta especificación detalla la interacción con la API, validaciones, modelos d
 | :--- | :--- | :---: | :--- | :--- |
 | `nombre` | `string` | **Sí** | Máx. 50 caracteres. No blanco. Único para el perfil director activo. | Input con contador `(x/50)`. |
 | `descripcion` | `string` | **Sí** | Máx. 200 caracteres. No blanco. | Textarea con contador `(x/200)`. |
-| `privacidad` | `enum` | **Sí** | `PUBLICO` \| `PRIVADO` \| `OCULTO` (mayúsculas). | Segmented Control / Radio. |
-| `fechaInicio` | `YYYY-MM-DD` | **Sí** | Fecha ISO. | Datepicker. |
-| `fechaFinEstipulada` | `YYYY-MM-DD` | No | ≥ `fechaInicio`. | Datepicker con `min = fechaInicio`. |
+| `privacidad` | `enum` | **Sí** | `PUBLICO` \| `PRIVADO` (mayúsculas). | Segmented Control / Radio. |
+| `fechaEntregaEstipulada` | `YYYY-MM-DD` | No | Fecha ISO. Si se envía, no puede ser anterior a hoy. | Datepicker con `min = hoy`. |
 | `aceptaPostulacionGral` | `boolean` | No | Default `false`. | Switch. |
 | `ubicacion` | `object` | No | Si se envía, `localidadId` no puede estar en blanco. | Autocompletado Georef. |
 | `objetivos[]` | `array` | No | Lista dinámica. | Sección +/- objetivos. |
@@ -93,8 +91,8 @@ Esta especificación detalla la interacción con la API, validaciones, modelos d
   "idProyecto": 105,
   "nombre": "Colección Primavera-Verano",
   "descripcion": "Diseño y confección de prendas sostenibles para la nueva temporada.",
-  "fechaInicio": "2026-10-01",
-  "fechaFinEstipulada": "2026-12-15",
+  "fechaInicio": null,
+  "fechaEntregaEstipulada": "2026-12-15",
   "estado": "Borrador",
   "privacidad": "PUBLICO",
   "aceptaPostulacionGral": true,
@@ -147,7 +145,7 @@ Esta especificación detalla la interacción con la API, validaciones, modelos d
 | Código HTTP | Excepción Backend | Causa / Mensaje de Error | Acción Frontend Recomendada |
 | :---: | :--- | :--- | :--- |
 | **400** | `MethodArgumentNotValidException` | Fallos de formulario (vacíos, largos máximos, `cantidad ≤ 0`, `idProfesion` null). Body: `{ "errores": {campo: msg} }`. | Resaltar inputs con mensaje inline. |
-| **400** | `RangoFechasProyectoInvalidoException` | `fechaFinEstipulada` anterior a `fechaInicio`. | Error en campo de fecha fin. |
+| **400** | `FechaEntregaInvalidaException` | `fechaEntregaEstipulada` anterior a la fecha actual. | Error en campo de fecha de entrega. |
 | **400** | `RequerimientoInvalidoException` | Reglas de requerimiento: rango invertido/negativo, NUMERICO sin rango, ENUMERADO sin valores, característica duplicada, rango en no-NUMERICO. | Mostrar `message` bajo la sección de requerimientos. |
 | **400** | `DataIntegrityViolation` | Restricción de BD no pre-validada (red de seguridad). | Alerta genérica. |
 | **404** | `PerfilActivoNoSeleccionadoException` | Sin perfil activo en sesión. | Modal de selección de perfil. |
@@ -163,5 +161,5 @@ Esta especificación detalla la interacción con la API, validaciones, modelos d
 
 1. **Requerimientos dinámicos:** botón `+ Agregar requerimiento`; cada fila filtra características/habilidades por la profesión seleccionada.
 2. **Coherencia tipo de dato:** según `tipoDato` de la característica seleccionada (la respuesta del catálogo de características lo incluye), mostrar rango (NUMERICO) o checklist de valores (ENUMERADO); ocultar el control inaplicable.
-3. **Validación reactiva de fechas:** `min` del datepicker de fin = `fechaInicio`.
+3. **Fecha de inicio calculada:** `fechaInicio` no se envía al crear; el backend la deriva de las actividades de la planificación y responde `null` hasta entonces. **Validación reactiva:** `min` del datepicker de `fechaEntregaEstipulada` = hoy.
 4. **Navegación post-creación:** usar `idProyecto` retornado para ir al dashboard del proyecto (estado inicial: `Borrador`).
