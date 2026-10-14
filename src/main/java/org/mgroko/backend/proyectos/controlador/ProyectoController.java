@@ -71,9 +71,20 @@ public class ProyectoController {
             @ModelAttribute BuscarProyectosFiltro filtro,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "false") boolean todos) {
+            @RequestParam(defaultValue = "false") boolean todos,
+            Authentication authentication) {
 
-        return ResponseEntity.ok(buscarProyectoService.buscarProyectos(filtro, page, size, todos));
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        return ResponseEntity.ok(
+                buscarProyectoService.buscarProyectos(idPerfilActivo, filtro, page, size, todos));
     }
 
     // UC-29 bis - Buscar proyectos propios: proyectos asociados al perfil activo

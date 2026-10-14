@@ -80,7 +80,7 @@ el historial de git sirva de bitácora adicional.
 | UC-26 | Dar de alta postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
 | UC-27 | Dar de baja postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
 | UC-28 | Aceptar solicitud de incorporación   | No iniciado |                  |       | Primera iteracion |
-| UC-29 | Buscar proyecto                      | Implementado y testeado | `GET /proyectos/buscar` | Sí    | Requiere al menos un criterio (nombre, estado o director); filtros combinables, paginación parametrizable y directores resueltos sin N+1 |
+| UC-29 | Buscar proyecto                      | Implementado y testeado | `GET /proyectos/buscar` | Sí    | Requiere al menos un criterio (nombre, estado o director) y perfil activo (404 si no). Visibilidad: miembro activo ve cualquier proyecto; no miembro solo ve no-borradores Públicos (Borrador y Privado solo miembros, interino hasta contactos UC-43..46) |
 | UC-29 bis | Buscar proyectos propios          | Implementado y testeado | `GET /proyectos/propios` | Sí    | Catálogo del perfil activo (membresía activa como director o miembro); filtros opcionales nombre/estado/rol, rol devuelto por proyecto y próxima actividad futura sin N+1; 404 si no hay perfil activo |
 | UC-30 | Buscar invitaciones                  | No iniciado |                  |       | Primera iteracion |
 | UC-31 | Invitar a proyecto                   | No iniciado |                  |       | Primera iteracion |

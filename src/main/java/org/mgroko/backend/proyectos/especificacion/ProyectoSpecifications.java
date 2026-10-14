@@ -8,6 +8,8 @@ import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -27,7 +29,13 @@ public class ProyectoSpecifications {
     /** Patrón de rol miembro: código 'MIEMBRO' o nombre 'Miembro...' (semilla de BD). */
     public static final String PATRON_ROL_MIEMBRO = "miembro%";
 
-    public static Specification<Proyecto> conFiltros(BuscarProyectosFiltro filtro) {
+    /**
+     * Búsqueda global (UC-29) con regla de visibilidad base:
+     * un proyecto es visible para el perfil activo si es miembro activo,
+     * o si no está en Borrador y es Público. El Borrador y el Privado solo
+     * son visibles para miembros (interino hasta el módulo de contactos, UC-43..46).
+     */
+    public static Specification<Proyecto> conFiltros(BuscarProyectosFiltro filtro, Long idPerfilActivo) {
         return (root, query, cb) -> {
             // Evitamos registros duplicados al hacer joins con colecciones
             if (query != null) {
@@ -36,8 +44,10 @@ public class ProyectoSpecifications {
 
             List<Predicate> predicates = new ArrayList<>();
 
+            predicates.add(conPredicadoVisibilidad(query, cb, root, idPerfilActivo));
+
             if (filtro == null) {
-                return cb.conjunction();
+                return cb.and(predicates.toArray(new Predicate[0]));
             }
 
             // Filtrado por nombre del proyecto (parcial, insensible a mayúsculas)
@@ -58,6 +68,44 @@ public class ProyectoSpecifications {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * Visibilidad: el perfil activo es miembro activo del proyecto, o el proyecto
+     * es Público y no está en Borrador (misma regla que el detalle del proyecto).
+     */
+    private static Predicate conPredicadoVisibilidad(
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            Path<Proyecto> root,
+            Long idPerfilActivo) {
+
+        Predicate esMiembroActivo = conSubqueryMiembroActivo(query, cb, root, idPerfilActivo);
+
+        Predicate publicoNoBorrador = cb.and(
+                cb.notEqual(root.get("estado"), EstadoProyecto.BORRADOR),
+                cb.equal(root.get("privacidad"), Privacidad.PUBLICO));
+
+        return cb.or(esMiembroActivo, publicoNoBorrador);
+    }
+
+    /** Subquery: el perfil activo tiene una membresía ACTIVA en el proyecto. */
+    private static Predicate conSubqueryMiembroActivo(
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            Path<Proyecto> root,
+            Long idPerfilActivo) {
+
+        var subquery = query.subquery(Long.class);
+        var miembro = subquery.from(MiembroProyecto.class);
+
+        subquery.select(miembro.get("proyecto").get("idProyecto"));
+        subquery.where(
+                cb.equal(miembro.get("proyecto"), root),
+                cb.equal(miembro.get("estadoParticipacion"), EstadoParticipacion.ACTIVO),
+                cb.equal(miembro.get("perfil").get("idPerfil"), idPerfilActivo));
+
+        return cb.exists(subquery);
     }
 
     /** Predicado genérico: el miembro posee el rol Director (por codigo o por nombre). */

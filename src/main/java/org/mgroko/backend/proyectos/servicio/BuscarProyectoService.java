@@ -8,6 +8,7 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.especificacion.ProyectoSpecifications;
@@ -38,10 +39,15 @@ public class BuscarProyectoService {
 
     @Transactional(readOnly = true)
     public PaginaResponse<ProyectoBusquedaResponse> buscarProyectos(
+            Long idPerfilActivo,
             BuscarProyectosFiltro filtro,
             int page,
             int size,
             boolean todos) {
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
 
         validarCriterioMinimo(filtro);
 
@@ -56,7 +62,7 @@ public class BuscarProyectoService {
             pageable = PageRequest.of(paginaAjustada, size, sort);
         }
 
-        Specification<Proyecto> spec = ProyectoSpecifications.conFiltros(filtro);
+        Specification<Proyecto> spec = ProyectoSpecifications.conFiltros(filtro, idPerfilActivo);
         Page<Proyecto> resultados = proyectoRepository.findAll(spec, pageable);
 
         Map<Long, Perfil> directores = buscarDirectores(resultados.getContent());

@@ -15,6 +15,7 @@ import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.exception.CriterioBusquedaInvalidoException;
@@ -34,6 +35,8 @@ import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class BuscarProyectoServiceTest {
+
+    private static final Long ID_PERFIL = 99L;
 
     @Mock
     private ProyectoRepository proyectoRepository;
@@ -79,7 +82,7 @@ class BuscarProyectoServiceTest {
 
         BuscarProyectosFiltro filtro = new BuscarProyectosFiltro("Desfile", EstadoProyecto.BORRADOR, null);
         PaginaResponse<ProyectoBusquedaResponse> resultado =
-                buscarProyectoService.buscarProyectos(filtro, 0, 20, false);
+                buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false);
 
         assertThat(resultado).isNotNull();
         assertThat(resultado.contenido()).hasSize(2);
@@ -103,7 +106,7 @@ class BuscarProyectoServiceTest {
 
         BuscarProyectosFiltro filtro = new BuscarProyectosFiltro("Desfile", null, null);
         PaginaResponse<ProyectoBusquedaResponse> resultado =
-                buscarProyectoService.buscarProyectos(filtro, 0, 0, true);
+                buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 0, true);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(proyectoRepository).findAll(any(Specification.class), captor.capture());
@@ -124,7 +127,7 @@ class BuscarProyectoServiceTest {
 
         BuscarProyectosFiltro filtro = new BuscarProyectosFiltro(null, EstadoProyecto.PUBLICADO, null);
         PaginaResponse<ProyectoBusquedaResponse> resultado =
-                buscarProyectoService.buscarProyectos(filtro, 0, 20, false);
+                buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false);
 
         assertThat(resultado.contenido()).hasSize(1);
         assertThat(resultado.contenido().get(0).estado()).isEqualTo("Publicado");
@@ -141,7 +144,7 @@ class BuscarProyectoServiceTest {
 
         BuscarProyectosFiltro filtro = new BuscarProyectosFiltro(null, null, "Luna");
         PaginaResponse<ProyectoBusquedaResponse> resultado =
-                buscarProyectoService.buscarProyectos(filtro, 0, 20, false);
+                buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false);
 
         assertThat(resultado.contenido()).hasSize(1);
         assertThat(resultado.contenido().get(0).nombreDirector()).isEqualTo("Luna Diseños");
@@ -154,7 +157,7 @@ class BuscarProyectoServiceTest {
 
         BuscarProyectosFiltro filtro = new BuscarProyectosFiltro("Inexistente", null, null);
         PaginaResponse<ProyectoBusquedaResponse> resultado =
-                buscarProyectoService.buscarProyectos(filtro, 0, 50, false);
+                buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 50, false);
 
         assertThat(resultado.contenido()).isEmpty();
         assertThat(resultado.totalElementos()).isZero();
@@ -165,7 +168,7 @@ class BuscarProyectoServiceTest {
     void buscarProyectos_sinCriterio_lanzaExcepcion() {
         BuscarProyectosFiltro filtro = new BuscarProyectosFiltro(null, null, null);
 
-        assertThatThrownBy(() -> buscarProyectoService.buscarProyectos(filtro, 0, 20, false))
+        assertThatThrownBy(() -> buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false))
                 .isInstanceOf(CriterioBusquedaInvalidoException.class)
                 .hasMessage("Debes indicar al menos un criterio de búsqueda: nombre, estado o director.");
     }
@@ -174,7 +177,16 @@ class BuscarProyectoServiceTest {
     void buscarProyectos_conSoloBlancos_lanzaExcepcion() {
         BuscarProyectosFiltro filtro = new BuscarProyectosFiltro("   ", null, "  ");
 
-        assertThatThrownBy(() -> buscarProyectoService.buscarProyectos(filtro, 0, 20, false))
+        assertThatThrownBy(() -> buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false))
                 .isInstanceOf(CriterioBusquedaInvalidoException.class);
+    }
+
+    @Test
+    void buscarProyectos_sinPerfilActivo_lanzaExcepcion() {
+        BuscarProyectosFiltro filtro = new BuscarProyectosFiltro("Desfile", null, null);
+
+        assertThatThrownBy(() -> buscarProyectoService.buscarProyectos(null, filtro, 0, 20, false))
+                .isInstanceOf(PerfilActivoNoSeleccionadoException.class)
+                .hasMessage("No hay un perfil activo seleccionado en la sesión.");
     }
 }

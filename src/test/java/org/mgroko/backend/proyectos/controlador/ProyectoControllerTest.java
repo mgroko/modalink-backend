@@ -383,6 +383,7 @@ class ProyectoControllerTest {
                 contenido, 0, 20, 1, 1, true, true);
 
         when(buscarProyectoService.buscarProyectos(
+                org.mockito.ArgumentMatchers.eq(10L),
                 any(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class),
                 org.mockito.ArgumentMatchers.eq(0),
                 org.mockito.ArgumentMatchers.eq(20),
@@ -407,6 +408,7 @@ class ProyectoControllerTest {
         org.mockito.ArgumentCaptor<org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro> captor =
                 org.mockito.ArgumentCaptor.forClass(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class);
         verify(buscarProyectoService).buscarProyectos(
+                org.mockito.ArgumentMatchers.eq(10L),
                 captor.capture(),
                 org.mockito.ArgumentMatchers.eq(0),
                 org.mockito.ArgumentMatchers.eq(20),
@@ -427,6 +429,7 @@ class ProyectoControllerTest {
                 List.of(), 0, 20, 0, 0, true, true);
 
         when(buscarProyectoService.buscarProyectos(
+                org.mockito.ArgumentMatchers.eq(10L),
                 any(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class),
                 org.mockito.ArgumentMatchers.anyInt(),
                 org.mockito.ArgumentMatchers.anyInt(),
@@ -448,6 +451,7 @@ class ProyectoControllerTest {
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
 
         when(buscarProyectoService.buscarProyectos(
+                org.mockito.ArgumentMatchers.eq(10L),
                 any(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class),
                 org.mockito.ArgumentMatchers.anyInt(),
                 org.mockito.ArgumentMatchers.anyInt(),
@@ -460,6 +464,19 @@ class ProyectoControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("Debes indicar al menos un criterio de búsqueda: nombre, estado o director."));
+    }
+
+    @Test
+    void buscar_sinPerfilActivo_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, null, null));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/buscar")
+                        .param("nombre", "Desfile")
+                        .principal(auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
     }
 
     // ---------------------------------------------------------------------
