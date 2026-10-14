@@ -1274,7 +1274,7 @@ CREATE TABLE proyecto(
     privacidad                 varchar(20)     NOT NULL,
     id_ubicacion               int8,
     CONSTRAINT chk_proyecto_estado CHECK (estado IN ('BORRADOR', 'PUBLICADO', 'CONFIRMADO', 'FINALIZADO', 'CANCELADO')),
-    CONSTRAINT chk_proyecto_privacidad CHECK (privacidad IN ('PUBLICO', 'PRIVADO', 'OCULTO')),
+    CONSTRAINT chk_proyecto_privacidad CHECK (privacidad IN ('PUBLICO', 'PRIVADO')),
     CONSTRAINT "PK_proyecto" PRIMARY KEY (id_proyecto)
 )
 ;
