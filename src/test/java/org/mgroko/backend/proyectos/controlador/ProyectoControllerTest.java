@@ -219,7 +219,7 @@ class ProyectoControllerTest {
                         5L, "COLOR_OJOS", "ENUMERADO", null, null, List.of(1L))),
                 List.of(1L, 4L));
         var moodboardResp = new org.mgroko.backend.proyectos.dto.MoodboardResponse(
-                77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0));
+                77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0), List.of());
 
         ProyectoResponse response = new ProyectoResponse(
                 101L,
