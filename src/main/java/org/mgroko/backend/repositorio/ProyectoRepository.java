@@ -3,10 +3,11 @@ package org.mgroko.backend.repositorio;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ProyectoRepository extends JpaRepository<Proyecto, Long> {
+public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSpecificationExecutor<Proyecto> {
 
     @Query("""
         SELECT COUNT(p) > 0

@@ -9,6 +9,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ObjetivoResponse;
+import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
 import org.mgroko.backend.ubicacion.dto.UbicacionResponse;
@@ -17,6 +18,20 @@ import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 public final class ProyectoMapper {
 
     private ProyectoMapper() {}
+
+    public static ProyectoBusquedaResponse toBusquedaResponse(Proyecto proyecto, Perfil director) {
+        return new ProyectoBusquedaResponse(
+                proyecto.getIdProyecto(),
+                proyecto.getNombre(),
+                proyecto.getDescripcion(),
+                proyecto.getFechaInicio() != null ? proyecto.getFechaInicio().toLocalDate() : null,
+                proyecto.getEstado() != null ? proyecto.getEstado().getNombre() : null,
+                proyecto.getPrivacidad() != null ? proyecto.getPrivacidad().name() : null,
+                proyecto.getAceptaPostulacionGral(),
+                director != null ? director.getIdPerfil() : null,
+                director != null ? director.getNombreArtistico() : null
+        );
+    }
 
     public static ProyectoResponse toResponse(
             Proyecto proyecto,

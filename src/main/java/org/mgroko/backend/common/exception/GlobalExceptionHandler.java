@@ -254,6 +254,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.CriterioBusquedaInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleCriterioBusquedaInvalido(
+            org.mgroko.backend.proyectos.exception.CriterioBusquedaInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {
