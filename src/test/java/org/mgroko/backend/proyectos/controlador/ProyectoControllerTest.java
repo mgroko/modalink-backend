@@ -11,8 +11,10 @@ import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -42,6 +44,9 @@ class ProyectoControllerTest {
 
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.ObtenerProyectoService obtenerProyectoService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.BuscarProyectoService buscarProyectoService;
 
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
@@ -355,5 +360,102 @@ class ProyectoControllerTest {
                         .principal(auth))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("No tienes acceso a este proyecto."));
+    }
+
+    // ---------------------------------------------------------------------
+    // GET /proyectos/buscar — UC-29 Buscar proyecto
+    // ---------------------------------------------------------------------
+
+    @Test
+    void buscar_conFiltros_devuelve200ConResultados() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var contenido = List.of(
+                new org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse(
+                        100L, "Desfile Primavera", "Colección primavera",
+                        LocalDate.of(2026, 6, 1), "Borrador", "Publico",
+                        false, 10L, "Luna Diseños"));
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
+                contenido, 0, 20, 1, 1, true, true);
+
+        when(buscarProyectoService.buscarProyectos(
+                any(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class),
+                org.mockito.ArgumentMatchers.eq(0),
+                org.mockito.ArgumentMatchers.eq(20),
+                org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/buscar")
+                        .param("nombre", "Desfile")
+                        .param("estado", "PUBLICADO")
+                        .param("director", "Luna")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].idProyecto").value(100L))
+                .andExpect(jsonPath("$.contenido[0].nombre").value("Desfile Primavera"))
+                .andExpect(jsonPath("$.contenido[0].estado").value("Borrador"))
+                .andExpect(jsonPath("$.contenido[0].nombreDirector").value("Luna Diseños"));
+
+        org.mockito.ArgumentCaptor<org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro> captor =
+                org.mockito.ArgumentCaptor.forClass(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class);
+        verify(buscarProyectoService).buscarProyectos(
+                captor.capture(),
+                org.mockito.ArgumentMatchers.eq(0),
+                org.mockito.ArgumentMatchers.eq(20),
+                org.mockito.ArgumentMatchers.eq(false));
+
+        var filtro = captor.getValue();
+        assertThat(filtro.nombre()).isEqualTo("Desfile");
+        assertThat(filtro.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoProyecto.PUBLICADO);
+        assertThat(filtro.director()).isEqualTo("Luna");
+    }
+
+    @Test
+    void buscar_sinResultados_devuelve200ListaVacia() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse>(
+                List.of(), 0, 20, 0, 0, true, true);
+
+        when(buscarProyectoService.buscarProyectos(
+                any(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenReturn(pagina);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/buscar")
+                        .param("nombre", "Inexistente")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido").isEmpty())
+                .andExpect(jsonPath("$.totalElementos").value(0));
+    }
+
+    @Test
+    void buscar_sinCriterios_devuelve400() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        when(buscarProyectoService.buscarProyectos(
+                any(org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro.class),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.CriterioBusquedaInvalidoException());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/buscar")
+                        .principal(auth))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Debes indicar al menos un criterio de búsqueda: nombre, estado o director."));
     }
 }
