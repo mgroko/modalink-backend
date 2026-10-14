@@ -48,6 +48,9 @@ class ProyectoControllerTest {
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.BuscarProyectoService buscarProyectoService;
 
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService buscarProyectosPropiosService;
+
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
@@ -457,5 +460,97 @@ class ProyectoControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("Debes indicar al menos un criterio de búsqueda: nombre, estado o director."));
+    }
+
+    // ---------------------------------------------------------------------
+    // GET /proyectos/propios — UC-29 bis Buscar proyectos propios
+    // ---------------------------------------------------------------------
+
+    @Test
+    void buscarPropios_conPerfilActivo_devuelve200ConRol() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var contenido = List.of(
+                new org.mgroko.backend.proyectos.dto.ProyectoPropioResponse(
+                        100L, "Desfile Primavera", "Colección",
+                        LocalDate.of(2026, 6, 1), "Borrador", "Publico",
+                        org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
+                        new org.mgroko.backend.proyectos.dto.ActividadResumenResponse(
+                                500L, "Sesion",
+                                java.time.LocalDateTime.of(2026, 6, 1, 15, 0), 180)));
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.proyectos.dto.ProyectoPropioResponse>(
+                contenido, 0, 20, 1, 1, true, true);
+
+        when(buscarProyectosPropiosService.buscar(
+                org.mockito.ArgumentMatchers.eq(10L),
+                any(org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro.class),
+                org.mockito.ArgumentMatchers.eq(0),
+                org.mockito.ArgumentMatchers.eq(20),
+                org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/propios")
+                        .param("nombre", "Desfile")
+                        .param("estado", "PUBLICADO")
+                        .param("rol", "DIRECTOR")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].idProyecto").value(100L))
+                .andExpect(jsonPath("$.contenido[0].rolUsuario").value("DIRECTOR"))
+                .andExpect(jsonPath("$.contenido[0].proximaActividad.nombre").value("Sesion"))
+                .andExpect(jsonPath("$.contenido[0].proximaActividad.duracionMinutos").value(180));
+
+        org.mockito.ArgumentCaptor<org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro> captor =
+                org.mockito.ArgumentCaptor.forClass(org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro.class);
+        verify(buscarProyectosPropiosService).buscar(
+                org.mockito.ArgumentMatchers.eq(10L),
+                captor.capture(),
+                org.mockito.ArgumentMatchers.eq(0),
+                org.mockito.ArgumentMatchers.eq(20),
+                org.mockito.ArgumentMatchers.eq(false));
+
+        var filtro = captor.getValue();
+        assertThat(filtro.nombre()).isEqualTo("Desfile");
+        assertThat(filtro.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoProyecto.PUBLICADO);
+        assertThat(filtro.rol()).isEqualTo(org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR);
+    }
+
+    @Test
+    void buscarPropios_sinPerfilActivo_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, null, null));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/propios")
+                        .principal(auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
+    }
+
+    @Test
+    void buscarPropios_sinFiltros_devuelve200ListaVacia() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.proyectos.dto.ProyectoPropioResponse>(
+                List.of(), 0, 20, 0, 0, true, true);
+
+        when(buscarProyectosPropiosService.buscar(
+                org.mockito.ArgumentMatchers.eq(10L),
+                any(org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro.class),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenReturn(pagina);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/proyectos/propios")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido").isEmpty())
+                .andExpect(jsonPath("$.totalElementos").value(0));
     }
 }
