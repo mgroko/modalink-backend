@@ -224,10 +224,7 @@ public class CrearProyectoService {
                             : null)
                     .build();
             Moodboard guardado = moodboardRepository.save(moodboard);
-            moodboardResponse = new MoodboardResponse(
-                    guardado.getIdMoodboard(),
-                    guardado.getDescripcion(),
-                    guardado.getFechaCreacion());
+            moodboardResponse = ProyectoMapper.toMoodboardResponse(guardado);
         }
 
         return ProyectoMapper.toResponse(

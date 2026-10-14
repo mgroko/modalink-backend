@@ -17,6 +17,14 @@ public interface StorageService {
     ArchivoAlmacenado almacenarFotoPerfil(MultipartFile archivo);
 
     /**
+     * Procesa, valida y almacena una imagen del moodboard en el formato de salida.
+     *
+     * @param archivo archivo multipart recibido
+     * @return detalles del archivo almacenado
+     */
+    ArchivoAlmacenado almacenarImagenMoodboard(MultipartFile archivo);
+
+    /**
      * Elimina el archivo de almacenamiento según su nombre de archivo en disco.
      *
      * @param nombreArchivo nombre del archivo a eliminar

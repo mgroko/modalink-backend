@@ -224,6 +224,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException.class)
+    public ResponseEntity<Map<String, Object>> handleLimiteImagenesMoodboardExcedido(
+            org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException.class)
     public ResponseEntity<Map<String, Object>> handleRolProyectoNoEncontrado(
             org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException ex) {
@@ -499,6 +505,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ErrorAlmacenamientoException.class)
     public ResponseEntity<Map<String, Object>> handleErrorAlmacenamiento(ErrorAlmacenamientoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExcedido(
+            org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        return buildErrorResponse(
+                "El archivo supera el tamaño máximo permitido.", HttpStatus.BAD_REQUEST);
     }
 
 }

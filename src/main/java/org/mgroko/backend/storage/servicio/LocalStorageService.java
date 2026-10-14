@@ -25,9 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Persiste en disco local las fotos de perfil ya convertidas por
- * {@link ProcesadorImagen}: este servicio solo valida el content type de entrada,
- * escribe los bytes resultantes y borra archivos.
+ * Persiste en disco local las fotos de perfil y las im&aacute;genes del moodboard
+ * ya convertidas por {@link ProcesadorImagen}: este servicio solo valida el
+ * content type de entrada, escribe los bytes resultantes y borra archivos.
+ * Ambos tipos de imagen comparten el mismo directorio (se distinguen por el
+ * prefijo del nombre) para que la limpieza y el borrado por nombre cubran
+ * tambi&eacute;n las im&aacute;genes del moodboard.
  */
 @Service
 public class LocalStorageService implements StorageService {
@@ -42,6 +45,7 @@ public class LocalStorageService implements StorageService {
 
     private static final String PREFIJO_CONTENT_TYPE = "image/";
     private static final String PREFIJO_NOMBRE_PERFIL = "perfil_";
+    private static final String PREFIJO_NOMBRE_MOODBOARD = "moodboard_";
 
     private final Path perfilesPath;
     private final String uploadDir;
@@ -66,6 +70,15 @@ public class LocalStorageService implements StorageService {
 
     @Override
     public ArchivoAlmacenado almacenarFotoPerfil(MultipartFile archivo) {
+        return almacenar(PREFIJO_NOMBRE_PERFIL, archivo);
+    }
+
+    @Override
+    public ArchivoAlmacenado almacenarImagenMoodboard(MultipartFile archivo) {
+        return almacenar(PREFIJO_NOMBRE_MOODBOARD, archivo);
+    }
+
+    private ArchivoAlmacenado almacenar(String prefijoNombre, MultipartFile archivo) {
         if (archivo == null || archivo.isEmpty()) {
             throw new ArchivoVacioException("El archivo de imagen no puede estar vacío.");
         }
@@ -85,7 +98,7 @@ public class LocalStorageService implements StorageService {
 
         byte[] bytesConvertidos = procesadorImagen.procesar(bytes);
 
-        String nombreArchivoGenerado = PREFIJO_NOMBRE_PERFIL + UUID.randomUUID()
+        String nombreArchivoGenerado = prefijoNombre + UUID.randomUUID()
                 + "." + ProcesadorImagen.EXTENSION_SALIDA;
         Path destino = this.perfilesPath.resolve(nombreArchivoGenerado);
 

@@ -2,14 +2,18 @@ package org.mgroko.backend.proyectos.mapper;
 
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import org.mgroko.backend.modelo.Actividad;
+import org.mgroko.backend.modelo.Imagen;
+import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.proyectos.dto.ActividadResumenResponse;
+import org.mgroko.backend.proyectos.dto.ImagenMoodboardResponse;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ObjetivoResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
@@ -60,6 +64,22 @@ public final class ProyectoMapper {
                 actividad.getNombre(),
                 actividad.getFechaHoraInicio(),
                 actividad.getDuracionMinutos()
+        );
+    }
+
+    public static MoodboardResponse toMoodboardResponse(Moodboard moodboard) {
+        List<ImagenMoodboardResponse> imagenes = moodboard.getImagenes() != null
+                ? moodboard.getImagenes().stream()
+                        .sorted(Comparator.comparing(Imagen::getIdImagen))
+                        .map(imagen -> new ImagenMoodboardResponse(imagen.getIdImagen(), imagen.getUrl()))
+                        .toList()
+                : Collections.emptyList();
+
+        return new MoodboardResponse(
+                moodboard.getIdMoodboard(),
+                moodboard.getDescripcion(),
+                moodboard.getFechaCreacion(),
+                imagenes
         );
     }
 

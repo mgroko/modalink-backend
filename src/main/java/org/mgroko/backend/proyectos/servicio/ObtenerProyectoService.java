@@ -119,7 +119,7 @@ public class ObtenerProyectoService {
         }
 
         MoodboardResponse moodboardResponse = moodboardRepository.findByProyectoIdProyecto(idProyecto)
-                .map(m -> new MoodboardResponse(m.getIdMoodboard(), m.getDescripcion(), m.getFechaCreacion()))
+                .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
         return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos, requerimientos, moodboardResponse);
