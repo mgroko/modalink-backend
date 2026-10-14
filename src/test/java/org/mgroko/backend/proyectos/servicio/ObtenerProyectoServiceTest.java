@@ -127,7 +127,10 @@ class ObtenerProyectoServiceTest {
                 .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(100L, 10L, EstadoParticipacion.ACTIVO))
                 .thenReturn(true);
 
-        RolProyecto rolDirector = RolProyecto.builder().nombre("Director").build();
+        RolProyecto rolDirector = RolProyecto.builder()
+                .codigo("DIRECTOR")
+                .nombre("Director de proyecto")
+                .build();
         MiembroProyecto miembro = MiembroProyecto.builder()
                 .proyecto(proyectoBorrador)
                 .perfil(perfil)
