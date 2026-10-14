@@ -23,7 +23,7 @@ public class Proyecto {
     @Column(name = "descripcion", nullable = false, length = 200)
     private String descripcion;
 
-    @Column(name = "fecha_inicio", nullable = false)
+    @Column(name = "fecha_inicio")
     private LocalDateTime fechaInicio;
 
     public void setFechaInicio(LocalDate fecha) {

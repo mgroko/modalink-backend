@@ -218,9 +218,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
-    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException.class)
-    public ResponseEntity<Map<String, Object>> handleRangoFechasProyectoInvalido(
-            org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException ex) {
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleFechaEntregaInvalida(
+            org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 

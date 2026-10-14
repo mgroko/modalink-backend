@@ -23,10 +23,7 @@ public record CrearProyectoRequest(
         @NotNull(message = "La privacidad del proyecto es obligatoria.")
         Privacidad privacidad,
 
-        @NotNull(message = "La fecha de inicio es obligatoria.")
-        LocalDate fechaInicio,
-
-        LocalDate fechaFinEstipulada,
+        LocalDate fechaEntregaEstipulada,
 
         Boolean aceptaPostulacionGral,
 

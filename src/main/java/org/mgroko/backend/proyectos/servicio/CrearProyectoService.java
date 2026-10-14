@@ -43,9 +43,9 @@ import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
+import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException;
 import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
-import org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
@@ -131,10 +131,10 @@ public class CrearProyectoService {
             throw new PerfilEnBajaException("El perfil no se encuentra activo.");
         }
 
-        // 2. Validar que la fecha de entrega / fin no sea anterior a la fecha de inicio
-        if (request.fechaFinEstipulada() != null && request.fechaFinEstipulada().isBefore(request.fechaInicio())) {
-            throw new RangoFechasProyectoInvalidoException(
-                    "La fecha de finalización o entrega no puede ser anterior a la fecha de inicio.");
+        // 2. Validar que la fecha de entrega estipulada no sea anterior a la fecha actual
+        if (request.fechaEntregaEstipulada() != null && request.fechaEntregaEstipulada().isBefore(LocalDate.now())) {
+            throw new FechaEntregaInvalidaException(
+                    "La fecha de entrega estipulada no puede ser anterior a la fecha actual.");
         }
 
         // 3. Validar unicidad del nombre del proyecto para el perfil director
@@ -167,7 +167,6 @@ public class CrearProyectoService {
         Proyecto proyecto = Proyecto.builder()
                 .nombre(request.nombre().trim())
                 .descripcion(request.descripcion().trim())
-                .fechaInicio(request.fechaInicio())
                 .estado(EstadoProyecto.Borrador)
                 .privacidad(request.privacidad())
                 .aceptaPostulacionGral(Boolean.TRUE.equals(request.aceptaPostulacionGral()))
@@ -189,7 +188,7 @@ public class CrearProyectoService {
         // 8. Inicializar la Planificación 1:1
         Planificacion planificacion = Planificacion.builder()
                 .proyecto(proyectoGuardado)
-                .fechaEntrega(request.fechaFinEstipulada())
+                .fechaEntrega(request.fechaEntregaEstipulada())
                 .build();
 
         planificacionRepository.save(planificacion);
@@ -234,7 +233,7 @@ public class CrearProyectoService {
         return ProyectoMapper.toResponse(
                 proyectoGuardado,
                 perfil,
-                request.fechaFinEstipulada(),
+                request.fechaEntregaEstipulada(),
                 objetivosGuardados,
                 requerimientosResponse,
                 moodboardResponse

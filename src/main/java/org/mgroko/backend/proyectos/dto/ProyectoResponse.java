@@ -10,7 +10,7 @@ public record ProyectoResponse(
         String nombre,
         String descripcion,
         LocalDate fechaInicio,
-        LocalDate fechaFinEstipulada,
+        LocalDate fechaEntregaEstipulada,
         String estado,
         String privacidad,
         Boolean aceptaPostulacionGral,

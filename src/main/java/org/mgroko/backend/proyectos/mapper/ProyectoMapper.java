@@ -21,7 +21,7 @@ public final class ProyectoMapper {
     public static ProyectoResponse toResponse(
             Proyecto proyecto,
             Perfil director,
-            LocalDate fechaFinEstipulada,
+            LocalDate fechaEntregaEstipulada,
             List<Objetivo> objetivos,
             List<RequerimientoGralResponse> requerimientosGral,
             MoodboardResponse moodboard) {
@@ -41,7 +41,7 @@ public final class ProyectoMapper {
                 proyecto.getNombre(),
                 proyecto.getDescripcion(),
                 proyecto.getFechaInicio() != null ? proyecto.getFechaInicio().toLocalDate() : null,
-                fechaFinEstipulada,
+                fechaEntregaEstipulada,
                 proyecto.getEstado().getNombre(),
                 proyecto.getPrivacidad().name(),
                 proyecto.getAceptaPostulacionGral(),

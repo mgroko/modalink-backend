@@ -107,7 +107,7 @@ public class ObtenerProyectoService {
 
         Perfil director = buscarDirector(idProyecto);
 
-        LocalDate fechaFin = planificacionRepository.findByProyectoIdProyecto(idProyecto)
+        LocalDate fechaEntrega = planificacionRepository.findByProyectoIdProyecto(idProyecto)
                 .map(Planificacion::getFechaEntrega)
                 .orElse(null);
 
@@ -122,7 +122,7 @@ public class ObtenerProyectoService {
                 .map(m -> new MoodboardResponse(m.getIdMoodboard(), m.getDescripcion(), m.getFechaCreacion()))
                 .orElse(null);
 
-        return ProyectoMapper.toResponse(proyecto, director, fechaFin, objetivos, requerimientos, moodboardResponse);
+        return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos, requerimientos, moodboardResponse);
     }
 
     private boolean esVisibleParaNoMiembro(Proyecto proyecto) {
