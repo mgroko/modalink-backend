@@ -18,6 +18,7 @@ import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -41,8 +42,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ObtenerProyectoService {
-
-    public static final String ROL_DIRECTOR = "Director";
 
     private final ProyectoRepository proyectoRepository;
     private final PerfilRepository perfilRepository;
@@ -135,7 +134,7 @@ public class ObtenerProyectoService {
         return miembroProyectoRepository.findByProyectoIdProyecto(idProyecto).stream()
                 .filter(m -> m.getEstadoParticipacion() == EstadoParticipacion.ACTIVO)
                 .filter(m -> m.getRolProyecto() != null
-                        && ROL_DIRECTOR.equalsIgnoreCase(m.getRolProyecto().getNombre()))
+                        && RolProyectoUsuario.desde(m.getRolProyecto()) == RolProyectoUsuario.DIRECTOR)
                 .map(MiembroProyecto::getPerfil)
                 .findFirst()
                 .orElse(null);
