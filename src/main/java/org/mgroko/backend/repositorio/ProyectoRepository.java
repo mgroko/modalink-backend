@@ -15,13 +15,13 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSp
         JOIN MiembroProyecto mp ON mp.proyecto = p
         WHERE LOWER(p.nombre) = LOWER(:nombre)
           AND mp.perfil.idPerfil = :idPerfil
-          AND mp.rolProyecto.nombre = :nombreRol
+          AND mp.rolProyecto.idRolProyecto = :idRolProyecto
           AND mp.estadoParticipacion = :estado
     """)
     boolean existeProyectoConNombreParaPerfil(
             @Param("nombre") String nombre,
             @Param("idPerfil") Long idPerfil,
-            @Param("nombreRol") String nombreRol,
+            @Param("idRolProyecto") Long idRolProyecto,
             @Param("estado") EstadoParticipacion estado
     );
 }

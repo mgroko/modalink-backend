@@ -129,7 +129,7 @@ class CrearProyectoServiceTest {
         );
 
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
-        when(proyectoRepository.existeProyectoConNombreParaPerfil("Desfile 2026", 10L, "Director", EstadoParticipacion.Activo))
+        when(proyectoRepository.existeProyectoConNombreParaPerfil("Desfile 2026", 10L, 1L, EstadoParticipacion.Activo))
                 .thenReturn(false);
         when(rolProyectoRepository.findByNombre("Director", "Director")).thenReturn(Optional.of(rolDirector));
 
@@ -220,12 +220,53 @@ class CrearProyectoServiceTest {
                 "Proyecto Existente", "Desc", Privacidad.Publico, null, false, null, null, null, null
         );
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
-        when(proyectoRepository.existeProyectoConNombreParaPerfil("Proyecto Existente", 10L, "Director", EstadoParticipacion.Activo))
+        when(rolProyectoRepository.findByNombre("Director", "Director")).thenReturn(Optional.of(rolDirector));
+        when(proyectoRepository.existeProyectoConNombreParaPerfil("Proyecto Existente", 10L, 1L, EstadoParticipacion.Activo))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> crearProyectoService.crear(1L, 10L, request))
                 .isInstanceOf(NombreProyectoDuplicadoException.class)
                 .hasMessageContaining("Ya tienes un proyecto con el nombre 'Proyecto Existente'");
+    }
+
+    @Test
+    void crear_rolDirectorConNombreDeSemilla_detectaDuplicado() {
+        RolProyecto rolSemilla = RolProyecto.builder()
+                .idRolProyecto(1L)
+                .codigo("DIRECTOR")
+                .nombre("Director de proyecto")
+                .build();
+
+        CrearProyectoRequest request = new CrearProyectoRequest(
+                "Proyecto Existente", "Desc", Privacidad.Publico, null, false, null, null, null, null
+        );
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
+        when(rolProyectoRepository.findByNombre("Director", "Director")).thenReturn(Optional.of(rolSemilla));
+        when(proyectoRepository.existeProyectoConNombreParaPerfil("Proyecto Existente", 10L, 1L, EstadoParticipacion.Activo))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> crearProyectoService.crear(1L, 10L, request))
+                .isInstanceOf(NombreProyectoDuplicadoException.class);
+    }
+
+    @Test
+    void crear_nombreConEspaciosAlrededor_seComparaYGuardaRecortado() {
+        CrearProyectoRequest request = new CrearProyectoRequest(
+                "  Desfile 2026  ", "Pasarela invierno", Privacidad.Publico, null, false, null, null, null, null
+        );
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
+        when(rolProyectoRepository.findByNombre("Director", "Director")).thenReturn(Optional.of(rolDirector));
+        when(proyectoRepository.existeProyectoConNombreParaPerfil("Desfile 2026", 10L, 1L, EstadoParticipacion.Activo))
+                .thenReturn(false);
+        when(proyectoRepository.save(any(Proyecto.class))).thenAnswer(invocation -> {
+            Proyecto p = invocation.getArgument(0);
+            p.setIdProyecto(100L);
+            return p;
+        });
+
+        ProyectoResponse response = crearProyectoService.crear(1L, 10L, request);
+
+        assertThat(response.nombre()).isEqualTo("Desfile 2026");
     }
 
     // ---------------------------------------------------------------------
@@ -234,7 +275,7 @@ class CrearProyectoServiceTest {
 
     private void prepararCaminoFelizRequerimiento() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
-        when(proyectoRepository.existeProyectoConNombreParaPerfil(anyString(), eq(10L), eq("Director"), eq(EstadoParticipacion.Activo)))
+        when(proyectoRepository.existeProyectoConNombreParaPerfil(anyString(), eq(10L), eq(1L), eq(EstadoParticipacion.Activo)))
                 .thenReturn(false);
         when(rolProyectoRepository.findByNombre("Director", "Director")).thenReturn(Optional.of(rolDirector));
         when(proyectoRepository.save(any(Proyecto.class))).thenAnswer(invocation -> {

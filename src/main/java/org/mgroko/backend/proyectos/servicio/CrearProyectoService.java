@@ -137,21 +137,23 @@ public class CrearProyectoService {
                     "La fecha de entrega estipulada no puede ser anterior a la fecha actual.");
         }
 
-        // 3. Validar unicidad del nombre del proyecto para el perfil director
-        boolean nombreExiste = proyectoRepository.existeProyectoConNombreParaPerfil(
-                request.nombre(),
-                idPerfilActivo,
-                ROL_DIRECTOR,
-                EstadoParticipacion.Activo
-        );
-        if (nombreExiste) {
-            throw new NombreProyectoDuplicadoException(request.nombre());
-        }
-
-        // 4. Buscar rol Director
+        // 3. Buscar rol Director (se resuelve antes de validar unicidad para
+        // comparar por el rol exacto que se va a asignar, no por su nombre)
         RolProyecto rolDirector = rolProyectoRepository
                 .findByNombre(LikePatrones.escapar(ROL_DIRECTOR), ROL_DIRECTOR)
                 .orElseThrow(() -> new RolProyectoNoEncontradoException(ROL_DIRECTOR));
+
+        // 4. Validar unicidad del nombre del proyecto para el perfil director
+        String nombreProyecto = request.nombre().trim();
+        boolean nombreExiste = proyectoRepository.existeProyectoConNombreParaPerfil(
+                nombreProyecto,
+                idPerfilActivo,
+                rolDirector.getIdRolProyecto(),
+                EstadoParticipacion.Activo
+        );
+        if (nombreExiste) {
+            throw new NombreProyectoDuplicadoException(nombreProyecto);
+        }
 
         // 5. Resolver ubicación opcional
         Ubicacion ubicacion = null;
@@ -165,7 +167,7 @@ public class CrearProyectoService {
 
         // 6. Crear entidad Proyecto en estado Borrador
         Proyecto proyecto = Proyecto.builder()
-                .nombre(request.nombre().trim())
+                .nombre(nombreProyecto)
                 .descripcion(request.descripcion().trim())
                 .estado(EstadoProyecto.Borrador)
                 .privacidad(request.privacidad())
