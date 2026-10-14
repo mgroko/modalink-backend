@@ -1,6 +1,6 @@
 # Ficha Técnica Frontend: Búsqueda de Proyectos (UC-29)
 
-Especificación de la API para el listado/búsqueda de proyectos con criterios de filtrado y paginación parametrizable.
+Especificación de la API para el listado/búsqueda de proyectos con criterios de filtrado y paginación parametrizable, aplicando la regla de visibilidad del proyecto.
 
 ---
 
@@ -10,17 +10,32 @@ Especificación de la API para el listado/búsqueda de proyectos con criterios d
 * **URL:** `/proyectos/buscar`
 * **Content-Type:** `application/json` (respuesta)
 * **Autenticación requerida:** Sí (JWT en cookie HTTP-only `jwt` + header `X-XSRF-TOKEN`).
-* **Permisos:** cualquier sesión válida (usuario, director de proyecto o miembro de proyecto). No requiere perfil activo.
+* **Permisos:** cualquier sesión válida. **Requiere perfil activo seleccionado** (se resuelve desde la sesión; el frontend no envía el id).
 * **Cota de tiempo:** 2 s (paso 3 del UC-29).
 
 ---
 
-## 2. Query Params
+## 2. Visibilidad (regla base del listado)
+
+Un proyecto aparece en los resultados si:
+
+* el **perfil activo es miembro activo** del proyecto (cualquier estado o privacidad), **o**
+* el proyecto **no está en Borrador** y su privacidad es **Público**.
+
+Consecuencias prácticas:
+
+* **Borrador** solo es visible para sus miembros (el director siempre ve sus borradores — permite los flujos UC-25/35/36/37).
+* **Privado** (aún publicado) solo es visible para sus miembros. *Comportamiento interino aprobado por producto:* el requerimiento final (UC-25) lo hará visible también a la red de contactos del director cuando exista el módulo de contactos (UC-43..46, segunda iteración).
+* Los proyectos invisibles se **omiten** del listado (no hay error 403 por elemento).
+
+---
+
+## 3. Query Params
 
 | Parámetro | Tipo | Obligatorio | Default | Descripción |
 | :--- | :--- | :---: | :--- | :--- |
 | `nombre` | `string` | **Al menos uno de los tres** | — | Coincidencia parcial del nombre del proyecto, insensible a mayúsculas. |
-| `estado` | `enum` | **Al menos uno de los tres** | — | `BORRADOR` \| `PUBLICADO` \| `CONFIRMADO` \| `FINALIZADO` \| `CANCELADO`. |
+| `estado` | `enum` | **Al menos uno de los tres** | — | `BORRADOR` \| `PUBLICADO` \| `CONFIRMADO` \| `FINALIZADO` \| `CANCELADO`. Filtrar `BORRADOR` sin ser miembro devuelve vacío (la visibilidad es un filtro AND aparte). |
 | `director` | `string` | **Al menos uno de los tres** | — | Coincidencia parcial sobre nombre artístico o nombre/apellido del director activo del proyecto. |
 | `page` | `int` | No | `0` | Página (base 0). |
 | `size` | `int` | No | `20` | Tamaño de página. |
@@ -34,7 +49,7 @@ GET /proyectos/buscar?nombre=desfile&estado=PUBLICADO&director=luna&page=0&size=
 
 ---
 
-## 3. Respuesta Exitosa (`200 OK`)
+## 4. Respuesta Exitosa (`200 OK`)
 
 Formato `PaginaResponse` estándar:
 
@@ -67,18 +82,19 @@ Formato `PaginaResponse` estándar:
 
 ---
 
-## 4. Manejo de Errores
+## 5. Manejo de Errores
 
 | Código HTTP | Excepción Backend | Causa / Mensaje | Acción Frontend |
 | :---: | :--- | :--- | :--- |
+| **404** | `PerfilActivoNoSeleccionadoException` | La sesión no tiene perfil activo: *"No hay un perfil activo seleccionado en la sesión."* | Invitar a elegir perfil antes de buscar. |
 | **400** | `CriterioBusquedaInvalidoException` | Ningún criterio informado (o todos en blanco): *"Debes indicar al menos un criterio de búsqueda: nombre, estado o director."* | Resaltar los campos de filtro y pedir al menos uno. |
 | **400** | `MethodArgumentTypeMismatch` | `estado` con valor fuera del enum. | Validar el select de estados. |
-| **200** (lista vacía) | — | Sin coincidencias: `contenido: []`, `totalElementos: 0`. | **No** es error: mostrar estado "sin resultados" y volver al paso 1 del UC (mantener filtros visibles). |
+| **200** (lista vacía) | — | Sin coincidencias o todo oculto por visibilidad: `contenido: []`, `totalElementos: 0`. | **No** es error: mostrar estado "sin resultados" y volver al paso 1 del UC (mantener filtros visibles). |
 | **401/403** | Seguridad | Sesión ausente o inválida. | Redirigir a login. |
 
 ---
 
-## 5. Consideraciones de UX
+## 6. Consideraciones de UX
 
 1. **Al menos un criterio:** habilitar el botón *Buscar* solo si `nombre`, `estado` o `director` tienen valor (coincide con la validación del backend).
 2. **Búsqueda sin resultados:** el UC indica notificar al actor y volver al paso 1 o finalizar; mostrar el mensaje sobre la tabla conservando los filtros.
