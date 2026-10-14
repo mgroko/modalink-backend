@@ -12,7 +12,6 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.especificacion.ProyectoSpecifications;
-import org.mgroko.backend.proyectos.exception.CriterioBusquedaInvalidoException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
@@ -49,8 +48,6 @@ public class BuscarProyectoService {
             throw new PerfilActivoNoSeleccionadoException();
         }
 
-        validarCriterioMinimo(filtro);
-
         Pageable pageable;
         Sort sort = Sort.by(Sort.Direction.ASC, "nombre");
 
@@ -71,16 +68,6 @@ public class BuscarProyectoService {
                 proyecto -> ProyectoMapper.toBusquedaResponse(
                         proyecto, directores.get(proyecto.getIdProyecto())));
         return PaginaResponse.fromPage(paginaDto);
-    }
-
-    private void validarCriterioMinimo(BuscarProyectosFiltro filtro) {
-        boolean tieneNombre = filtro != null && filtro.nombre() != null && !filtro.nombre().isBlank();
-        boolean tieneEstado = filtro != null && filtro.estado() != null;
-        boolean tieneDirector = filtro != null && filtro.director() != null && !filtro.director().isBlank();
-
-        if (!tieneNombre && !tieneEstado && !tieneDirector) {
-            throw new CriterioBusquedaInvalidoException();
-        }
     }
 
     /** Resuelve los directores activos de la página en una sola consulta (sin N+1). */

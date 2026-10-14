@@ -446,9 +446,16 @@ class ProyectoControllerTest {
     }
 
     @Test
-    void buscar_sinCriterios_devuelve400() throws Exception {
+    void buscar_sinCriterios_devuelve200ConTodosLosVisibles() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var contenido = List.of(
+                new org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse(
+                        100L, "Desfile Primavera", "Colección primavera",
+                        LocalDate.of(2026, 6, 1), "Publicado", "Publico",
+                        false, 10L, "Luna Diseños"));
+        var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(contenido, 0, 20, 1, 1, true, true);
 
         when(buscarProyectoService.buscarProyectos(
                 org.mockito.ArgumentMatchers.eq(10L),
@@ -456,14 +463,14 @@ class ProyectoControllerTest {
                 org.mockito.ArgumentMatchers.anyInt(),
                 org.mockito.ArgumentMatchers.anyInt(),
                 org.mockito.ArgumentMatchers.anyBoolean()))
-                .thenThrow(new org.mgroko.backend.proyectos.exception.CriterioBusquedaInvalidoException());
+                .thenReturn(pagina);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/proyectos/buscar")
                         .principal(auth))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message")
-                        .value("Debes indicar al menos un criterio de búsqueda: nombre, estado o director."));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].nombre").value("Desfile Primavera"));
     }
 
     @Test

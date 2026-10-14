@@ -34,12 +34,14 @@ Consecuencias prácticas:
 
 | Parámetro | Tipo | Obligatorio | Default | Descripción |
 | :--- | :--- | :---: | :--- | :--- |
-| `nombre` | `string` | **Al menos uno de los tres** | — | Coincidencia parcial del nombre del proyecto, insensible a mayúsculas. |
-| `estado` | `enum` | **Al menos uno de los tres** | — | `BORRADOR` \| `PUBLICADO` \| `CONFIRMADO` \| `FINALIZADO` \| `CANCELADO`. Filtrar `BORRADOR` sin ser miembro devuelve vacío (la visibilidad es un filtro AND aparte). |
-| `director` | `string` | **Al menos uno de los tres** | — | Coincidencia parcial sobre nombre artístico o nombre/apellido del director activo del proyecto. |
+| `nombre` | `string` | No | — | Coincidencia parcial del nombre del proyecto, insensible a mayúsculas. |
+| `estado` | `enum` | No | — | `BORRADOR` \| `PUBLICADO` \| `CONFIRMADO` \| `FINALIZADO` \| `CANCELADO`. Filtrar `BORRADOR` sin ser miembro devuelve vacío (la visibilidad es un filtro AND aparte). |
+| `director` | `string` | No | — | Coincidencia parcial sobre nombre artístico o nombre/apellido del director activo del proyecto. |
 | `page` | `int` | No | `0` | Página (base 0). |
 | `size` | `int` | No | `20` | Tamaño de página. |
 | `todos` | `boolean` | No | `false` | `true` (o `size ≤ 0`) devuelve todos los resultados sin paginar. |
+
+Todos los criterios de filtrado son **opcionales** (consistente con "Buscar perfil"). Sin parámetros, se listan todos los proyectos visibles para el perfil activo. Filtrar `BORRADOR` sin ser miembro devuelve vacío (la visibilidad es un filtro AND aparte).
 
 Ejemplo:
 
@@ -87,7 +89,6 @@ Formato `PaginaResponse` estándar:
 | Código HTTP | Excepción Backend | Causa / Mensaje | Acción Frontend |
 | :---: | :--- | :--- | :--- |
 | **404** | `PerfilActivoNoSeleccionadoException` | La sesión no tiene perfil activo: *"No hay un perfil activo seleccionado en la sesión."* | Invitar a elegir perfil antes de buscar. |
-| **400** | `CriterioBusquedaInvalidoException` | Ningún criterio informado (o todos en blanco): *"Debes indicar al menos un criterio de búsqueda: nombre, estado o director."* | Resaltar los campos de filtro y pedir al menos uno. |
 | **400** | `MethodArgumentTypeMismatch` | `estado` con valor fuera del enum. | Validar el select de estados. |
 | **200** (lista vacía) | — | Sin coincidencias o todo oculto por visibilidad: `contenido: []`, `totalElementos: 0`. | **No** es error: mostrar estado "sin resultados" y volver al paso 1 del UC (mantener filtros visibles). |
 | **401/403** | Seguridad | Sesión ausente o inválida. | Redirigir a login. |
@@ -96,7 +97,7 @@ Formato `PaginaResponse` estándar:
 
 ## 6. Consideraciones de UX
 
-1. **Al menos un criterio:** habilitar el botón *Buscar* solo si `nombre`, `estado` o `director` tienen valor (coincide con la validación del backend).
+1. **Criterios opcionales:** búsqueda "vacía" (sin parámetros) lista todos los proyectos visibles para el perfil activo, consistente con "Buscar perfil". El botón *Buscar* puede estar siempre habilitado o deshabilitarse solo si todos los filtros están en blanco y no se desea refrescar.
 2. **Búsqueda sin resultados:** el UC indica notificar al actor y volver al paso 1 o finalizar; mostrar el mensaje sobre la tabla conservando los filtros.
 3. **Paginación:** usar `page`/`size` estándar; para exportar o "ver todo", pedir con `todos=true`.
-4. **Debounce:** sugerido 300–400 ms en los inputs de texto (nombre/director) respetando la cota de 2 s del UC.
+4. **Debounce:** sugerido 300–400 ms en los inputs de texto (nombre/director).

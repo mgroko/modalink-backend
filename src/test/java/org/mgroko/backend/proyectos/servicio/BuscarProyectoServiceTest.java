@@ -18,7 +18,6 @@ import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
-import org.mgroko.backend.proyectos.exception.CriterioBusquedaInvalidoException;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import static org.mockito.ArgumentMatchers.any;
@@ -165,20 +164,36 @@ class BuscarProyectoServiceTest {
     }
 
     @Test
-    void buscarProyectos_sinCriterio_lanzaExcepcion() {
-        BuscarProyectosFiltro filtro = new BuscarProyectosFiltro(null, null, null);
+    void buscarProyectos_sinCriterio_retornaTodosLosVisibles() {
+        Proyecto p1 = crearProyectoMock(1L, "Desfile Primavera");
+        PageImpl<Proyecto> page = new PageImpl<>(List.of(p1), PageRequest.of(0, 20), 1);
 
-        assertThatThrownBy(() -> buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false))
-                .isInstanceOf(CriterioBusquedaInvalidoException.class)
-                .hasMessage("Debes indicar al menos un criterio de búsqueda: nombre, estado o director.");
+        when(proyectoRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(anyList()))
+                .thenReturn(List.of(crearDirectorMock(p1, 10L, "Luna Diseños")));
+
+        BuscarProyectosFiltro filtro = new BuscarProyectosFiltro(null, null, null);
+        PaginaResponse<ProyectoBusquedaResponse> resultado =
+                buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false);
+
+        assertThat(resultado.contenido()).hasSize(1);
+        assertThat(resultado.totalElementos()).isEqualTo(1);
     }
 
     @Test
-    void buscarProyectos_conSoloBlancos_lanzaExcepcion() {
-        BuscarProyectosFiltro filtro = new BuscarProyectosFiltro("   ", null, "  ");
+    void buscarProyectos_conSoloBlancos_retornaTodosLosVisibles() {
+        Proyecto p1 = crearProyectoMock(1L, "Desfile Primavera");
+        PageImpl<Proyecto> page = new PageImpl<>(List.of(p1), PageRequest.of(0, 20), 1);
 
-        assertThatThrownBy(() -> buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false))
-                .isInstanceOf(CriterioBusquedaInvalidoException.class);
+        when(proyectoRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(anyList()))
+                .thenReturn(List.of(crearDirectorMock(p1, 10L, "Luna Diseños")));
+
+        BuscarProyectosFiltro filtro = new BuscarProyectosFiltro("   ", null, "  ");
+        PaginaResponse<ProyectoBusquedaResponse> resultado =
+                buscarProyectoService.buscarProyectos(ID_PERFIL, filtro, 0, 20, false);
+
+        assertThat(resultado.contenido()).hasSize(1);
     }
 
     @Test
