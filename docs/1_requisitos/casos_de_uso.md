@@ -487,17 +487,17 @@
 | **Descripción**  | El caso de uso inicia cuando el usuario desea crear un proyecto profesional.  |  |
 | **Precondición**  | El usuario debe haber iniciado sesión en el sistema. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
-|  | 1 | El sistema despliega un formulario solicitando información básica del proyecto.  Campos obligatorios: Nombre del proyecto Descripción del proyecto Privacidad del proyecto (público o privado) Fecha de inicio estipulada  Campos opcionales: Ubicación Requerimientos de personal (cantidad, tipo de profesionales y características técnicas) Material de inspiración / Moodboard  Objetivos del proyecto Fecha de entrega final estipulada |
+|  | 1 | El sistema despliega un formulario solicitando información básica del proyecto.  Campos obligatorios: Nombre del proyecto Descripción del proyecto Privacidad del proyecto (público o privado)  Campos opcionales: Ubicación Requerimientos de personal (cantidad, tipo de profesionales y características técnicas) Material de inspiración / Moodboard  Objetivos del proyecto Fecha de entrega final estipulada |
 |  | 2 | El usuario ingresa la información solicitada. |
 |  | 3 | El sistema crea el proyecto en estado “Borrador” y asocia al perfil de usuario como “Director de proyecto”. |
 | **Postcondición** | Se dió de alta un proyecto con estado “Borrador”.  El perfil de usuario adquiere los permisos y el rol de “Director de proyecto” sobre el proyecto creado. |  |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 2 | Si el usuario deja campos obligatorios vacíos, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. Si el nombre ingresado es igual al nombre de otro proyecto asociado al perfil, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. Si la fecha de fin es menor a la fecha de inicio el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. |
+|  | 2 | Si el usuario deja campos obligatorios vacíos, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. Si el nombre ingresado es igual al nombre de otro proyecto asociado al perfil, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
 |  | 3 | 2 segundos |
 | **Frecuencia**  | 100 veces/día |  |
 | **Estabilidad**  | media |  |
-| **Comentarios** |  Al crear un proyecto, los únicos campos obligatorios son el nombre del proyecto, su descripción, privacidad de proyecto y fecha de inicio estipulada dado que permanece como borrador. Véase que en el caso de uso UC-25 Publicar proyecto todos los campos se vuelven obligatorios. |  |
+| **Comentarios** |  Al crear un proyecto, los únicos campos obligatorios son el nombre del proyecto, su descripción y privacidad de proyecto dado que permanece como borrador. Véase que en el caso de uso UC-25 Publicar proyecto todos los campos se vuelven obligatorios. |  |
 
 | UC–25 | Publicar proyecto |  |
 | ----- | ----- | ----- |
@@ -747,7 +747,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene al menos un proyecto en estado “Borrador”, “Publicado” o “Confirmado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que quiere modificar (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema despliega un formulario cargando los datos actuales del proyecto. Los datos que el actor no puede modificar son:  Nombre del proyecto Cualquier requerimiento de personal que esté previamente satisfecho. Los datos que puede modificar son:  Descripción del proyecto Privacidad del proyecto (público, privado u oculto) Ubicación Requerimientos de personal: Profesión, aptitudes y cantidad por profesión Moodboard  Objetivos Fecha de entrega final estipulada |
+|  | 2 | El sistema despliega un formulario cargando los datos actuales del proyecto. Los datos que el actor no puede modificar son:  Nombre del proyecto Cualquier requerimiento de personal que esté previamente satisfecho. Los datos que puede modificar son:  Descripción del proyecto Privacidad del proyecto (público o privado) Ubicación Requerimientos de personal: Profesión, aptitudes y cantidad por profesión Moodboard  Objetivos |
 |  | 3 | El actor realiza las modificaciones deseadas y confirma los cambios |
 |  | 4 | El sistema actualiza el proyecto con los nuevos datos ingresados. |
 | **Postcondición** | Se actualizaron los atributos de un proyecto. El sistema notifica a todos los participantes sobre los cambios (si corresponde) |  |

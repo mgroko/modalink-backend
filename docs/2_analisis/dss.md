@@ -211,9 +211,9 @@
 - **Actor:** Usuario
 - **Sistema:** `:ModaLink`
 - **Flujo de interacción:**
-  1. El actor solicita crear un proyecto enviando el mensaje `crearProyecto(nombre, descripcion, privacidad, fechaInicioEstipulada, ubicacion, requerimientosGral[], moodboard, objetivos[], fechaFinEstipulada)`.
+  1. El actor solicita crear un proyecto enviando el mensaje `crearProyecto(nombre, descripcion, privacidad, ubicacion, requerimientosGral[], moodboard, objetivos[], fechaEntregaEstipulada)`.
   2. **Bloque Alternativo (`alt`)**:
-     - `[Campos obligatorios vacíos || nombre igual a otro proyecto del perfil || fecha de fin menor a la fecha de inicio]`: El sistema retorna `excepcion()`.
+     - `[Campos obligatorios vacíos || nombre igual a otro proyecto del perfil || fecha de entrega menor a la fecha actual]`: El sistema retorna `excepcion()`.
      - `[campos correctos]`: El sistema retorna la entidad `unProyecto`.
 
 ---
