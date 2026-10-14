@@ -8,7 +8,7 @@ import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
-import org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException;
+import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,7 +52,6 @@ class ProyectoControllerTest {
                 "Desfile Primavera",
                 "Colección primavera-verano",
                 Privacidad.Publico,
-                LocalDate.now().plusDays(10),
                 LocalDate.now().plusDays(20),
                 true,
                 null,
@@ -101,7 +100,6 @@ class ProyectoControllerTest {
                 "Desfile Primavera",
                 "Colección primavera-verano",
                 Privacidad.Publico,
-                LocalDate.now().plusDays(10),
                 null,
                 false,
                 null,
@@ -127,7 +125,6 @@ class ProyectoControllerTest {
                 "Desfile Repetido",
                 "Colección primavera-verano",
                 Privacidad.Publico,
-                LocalDate.now().plusDays(10),
                 null,
                 false,
                 null,
@@ -148,7 +145,7 @@ class ProyectoControllerTest {
     }
 
     @Test
-    void crear_fechasInvalidas_devuelve400() throws Exception {
+    void crear_fechaEntregaAnteriorAHoy_devuelve400() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
 
@@ -156,8 +153,7 @@ class ProyectoControllerTest {
                 "Desfile",
                 "Colección",
                 Privacidad.Publico,
-                LocalDate.of(2026, 6, 10),
-                LocalDate.of(2026, 6, 5),
+                LocalDate.now().minusDays(1),
                 false,
                 null,
                 null,
@@ -166,14 +162,16 @@ class ProyectoControllerTest {
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
-                .thenThrow(new RangoFechasProyectoInvalidoException("La fecha de finalización o entrega no puede ser anterior a la fecha de inicio."));
+                .thenThrow(new FechaEntregaInvalidaException(
+                        "La fecha de entrega estipulada no puede ser anterior a la fecha actual."));
 
         mockMvc.perform(post("/proyectos")
                         .principal(auth)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("La fecha de finalización o entrega no puede ser anterior a la fecha de inicio."));
+                .andExpect(jsonPath("$.message")
+                        .value("La fecha de entrega estipulada no puede ser anterior a la fecha actual."));
     }
 
     @Test
@@ -186,7 +184,7 @@ class ProyectoControllerTest {
                   "nombre": "Desfile Requerimientos",
                   "descripcion": "Producción con equipo técnico",
                   "privacidad": "PUBLICO",
-                  "fechaInicio": "2026-06-01",
+                  "fechaEntregaEstipulada": "2026-06-15",
                   "requerimientosGral": [
                     {
                       "cantidad": 2,
@@ -261,7 +259,6 @@ class ProyectoControllerTest {
                   "nombre": "Desfile Invalido",
                   "descripcion": "Producción",
                   "privacidad": "PUBLICO",
-                  "fechaInicio": "2026-06-01",
                   "requerimientosGral": [
                     {
                       "cantidad": 0,

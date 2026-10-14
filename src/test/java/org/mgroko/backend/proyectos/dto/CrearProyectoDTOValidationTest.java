@@ -29,7 +29,6 @@ class CrearProyectoDTOValidationTest {
                 "Desfile Primavera",
                 "Colección primavera-verano",
                 Privacidad.Publico,
-                LocalDate.now().plusDays(10),
                 LocalDate.now().plusDays(20),
                 true,
                 null,
@@ -49,7 +48,6 @@ class CrearProyectoDTOValidationTest {
                 "   ",
                 null,
                 null,
-                null,
                 false,
                 null,
                 null,
@@ -58,7 +56,7 @@ class CrearProyectoDTOValidationTest {
         );
 
         Set<ConstraintViolation<CrearProyectoRequest>> violations = validator.validate(request);
-        assertThat(violations).hasSize(4);
+        assertThat(violations).hasSize(3);
     }
 
     @Test
@@ -68,7 +66,6 @@ class CrearProyectoDTOValidationTest {
                 nombreLargo,
                 "Descripción válida",
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
                 null,
@@ -89,7 +86,6 @@ class CrearProyectoDTOValidationTest {
                 "Proyecto Valido",
                 descLarga,
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
                 null,
@@ -109,7 +105,6 @@ class CrearProyectoDTOValidationTest {
                 "Proyecto Valido",
                 "Desc",
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
                 null,
@@ -129,7 +124,6 @@ class CrearProyectoDTOValidationTest {
                 "Proyecto Valido",
                 "Desc",
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
                 null,
@@ -149,7 +143,6 @@ class CrearProyectoDTOValidationTest {
                 "Proyecto Valido",
                 "Desc",
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
                 null,
@@ -172,7 +165,6 @@ class CrearProyectoDTOValidationTest {
                 "Proyecto Valido",
                 "Desc",
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
                 null,

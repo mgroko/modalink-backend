@@ -133,7 +133,7 @@ class CrearProyectoRequerimientosIntegrationTest extends AbstractPostgresIntegra
 
         CrearProyectoRequest request = new CrearProyectoRequest(
                 "Desfile Int", "Producción completa", Privacidad.PUBLICO,
-                LocalDate.now().plusDays(10), LocalDate.now().plusDays(30), false,
+                LocalDate.now().plusDays(30), false,
                 null, null,
                 List.of(requerimiento),
                 null);
@@ -185,7 +185,7 @@ class CrearProyectoRequerimientosIntegrationTest extends AbstractPostgresIntegra
 
         CrearProyectoRequest request = new CrearProyectoRequest(
                 "Desfile Dup", "Duplicada", Privacidad.PUBLICO,
-                LocalDate.now().plusDays(5), null, false,
+                null, false,
                 null, null,
                 List.of(requerimiento),
                 null);

@@ -158,7 +158,7 @@ class ObtenerProyectoServiceTest {
         assertThat(response.estado()).isEqualTo("Borrador");
         assertThat(response.idDirector()).isEqualTo(10L);
         assertThat(response.nombreDirector()).isEqualTo("Luna Diseños");
-        assertThat(response.fechaFinEstipulada()).isEqualTo(LocalDate.of(2026, 6, 15));
+        assertThat(response.fechaEntregaEstipulada()).isEqualTo(LocalDate.of(2026, 6, 15));
         assertThat(response.moodboard()).isNotNull();
         assertThat(response.moodboard().idMoodboard()).isEqualTo(77L);
         assertThat(response.requerimientosGral()).isEmpty();

@@ -29,7 +29,7 @@ import org.mgroko.backend.proyectos.dto.CrearObjetivoRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
-import org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException;
+import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -120,8 +120,7 @@ class CrearProyectoServiceTest {
                 "Desfile 2026",
                 "Pasarela invierno",
                 Privacidad.Publico,
-                LocalDate.of(2026, 6, 1),
-                LocalDate.of(2026, 6, 15),
+                LocalDate.now().plusDays(20),
                 true,
                 new UbicacionRequest("12345", "06"),
                 List.of(new CrearObjetivoRequest("Conseguir sponsors", "Contactar marcas")),
@@ -160,7 +159,7 @@ class CrearProyectoServiceTest {
         assertThat(response.estado()).isEqualTo("Borrador");
         assertThat(response.idDirector()).isEqualTo(10L);
         assertThat(response.nombreDirector()).isEqualTo("Luna Diseños");
-        assertThat(response.fechaFinEstipulada()).isEqualTo(LocalDate.of(2026, 6, 15));
+        assertThat(response.fechaEntregaEstipulada()).isEqualTo(LocalDate.now().plusDays(20));
         assertThat(response.objetivos()).hasSize(1);
         assertThat(response.objetivos().get(0).nombre()).isEqualTo("Conseguir sponsors");
 
@@ -171,7 +170,7 @@ class CrearProyectoServiceTest {
     @Test
     void crear_sinPerfilActivo_lanzaExcepcion() {
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Proyecto", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null, null, null
+                "Proyecto", "Desc", Privacidad.Publico, null, false, null, null, null, null
         );
 
         assertThatThrownBy(() -> crearProyectoService.crear(1L, null, request))
@@ -181,7 +180,7 @@ class CrearProyectoServiceTest {
     @Test
     void crear_perfilNoExiste_lanzaExcepcion() {
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Proyecto", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null, null, null
+                "Proyecto", "Desc", Privacidad.Publico, null, false, null, null, null, null
         );
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(99L, 1L)).thenReturn(Optional.empty());
 
@@ -193,7 +192,7 @@ class CrearProyectoServiceTest {
     void crear_perfilEnBaja_lanzaExcepcion() {
         perfil.setEstado(EstadoPerfil.PendienteBaja);
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Proyecto", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null, null, null
+                "Proyecto", "Desc", Privacidad.Publico, null, false, null, null, null, null
         );
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
 
@@ -202,24 +201,23 @@ class CrearProyectoServiceTest {
     }
 
     @Test
-    void crear_fechaFinMenorAFechaInicio_lanzaExcepcion() {
+    void crear_fechaEntregaAnteriorAHoy_lanzaExcepcion() {
         CrearProyectoRequest request = new CrearProyectoRequest(
                 "Proyecto", "Desc", Privacidad.Publico,
-                LocalDate.of(2026, 6, 10),
-                LocalDate.of(2026, 6, 5),
+                LocalDate.now().minusDays(1),
                 false, null, null, null, null
         );
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
 
         assertThatThrownBy(() -> crearProyectoService.crear(1L, 10L, request))
-                .isInstanceOf(RangoFechasProyectoInvalidoException.class)
-                .hasMessageContaining("no puede ser anterior a la fecha de inicio");
+                .isInstanceOf(FechaEntregaInvalidaException.class)
+                .hasMessageContaining("no puede ser anterior a la fecha actual");
     }
 
     @Test
     void crear_nombreDuplicadoParaMismoDirector_lanzaExcepcion() {
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Proyecto Existente", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null, null, null
+                "Proyecto Existente", "Desc", Privacidad.Publico, null, false, null, null, null, null
         );
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
         when(proyectoRepository.existeProyectoConNombreParaPerfil("Proyecto Existente", 10L, "Director", EstadoParticipacion.Activo))
@@ -274,7 +272,7 @@ class CrearProyectoServiceTest {
                 });
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Desfile Rango", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Desfile Rango", "Desc", Privacidad.Publico, null, false, null, null,
                 List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest(
                         2, 2L, "Dos modelos",
                         List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest(
@@ -325,7 +323,7 @@ class CrearProyectoServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Desfile Enumerado", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Desfile Enumerado", "Desc", Privacidad.Publico, null, false, null, null,
                 List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest(
                         1, 2L, null,
                         List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest(
@@ -357,7 +355,7 @@ class CrearProyectoServiceTest {
         when(caracteristicaTecnicaRepository.findById(1L)).thenReturn(Optional.of(caract));
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Req Sin Rango", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Req Sin Rango", "Desc", Privacidad.Publico, null, false, null, null,
                 List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest(
                         1, 2L, null,
                         List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest(1L, null, null, null)),
@@ -385,7 +383,7 @@ class CrearProyectoServiceTest {
         when(caracteristicaTecnicaRepository.findById(5L)).thenReturn(Optional.of(caract));
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Req Sin Valores", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Req Sin Valores", "Desc", Privacidad.Publico, null, false, null, null,
                 List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest(
                         1, 2L, null,
                         List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest(5L, null, null, null)),
@@ -413,7 +411,7 @@ class CrearProyectoServiceTest {
         when(caracteristicaTecnicaRepository.findById(1L)).thenReturn(Optional.of(caract));
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Req Duplicada", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Req Duplicada", "Desc", Privacidad.Publico, null, false, null, null,
                 List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest(
                         1, 2L, null,
                         List.of(
@@ -445,7 +443,7 @@ class CrearProyectoServiceTest {
         when(caracteristicaTecnicaRepository.findById(1L)).thenReturn(Optional.of(caract));
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Req Invertido", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Req Invertido", "Desc", Privacidad.Publico, null, false, null, null,
                 List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest(
                         1, 2L, null,
                         List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest(
@@ -469,7 +467,7 @@ class CrearProyectoServiceTest {
         when(habilidadRepository.findById(999L)).thenReturn(Optional.empty());
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Req Habilidad", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Req Habilidad", "Desc", Privacidad.Publico, null, false, null, null,
                 List.of(new org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest(
                         1, 2L, null, null, List.of(999L))),
                 null
@@ -492,7 +490,7 @@ class CrearProyectoServiceTest {
                 });
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Proyecto Moodboard", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Proyecto Moodboard", "Desc", Privacidad.Publico, null, false, null, null,
                 null,
                 new org.mgroko.backend.proyectos.dto.CrearMoodboardRequest("Paleta fría, telas de lino")
         );
@@ -510,7 +508,7 @@ class CrearProyectoServiceTest {
         prepararCaminoFelizRequerimiento();
 
         CrearProyectoRequest request = new CrearProyectoRequest(
-                "Proyecto Regresion", "Desc", Privacidad.Publico, LocalDate.now(), null, false, null, null,
+                "Proyecto Regresion", "Desc", Privacidad.Publico, null, false, null, null,
                 null, null
         );
 
