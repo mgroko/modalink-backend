@@ -260,6 +260,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException.class)
+    public ResponseEntity<Map<String, Object>> handleInformacionBasicaIncompleta(
+            org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoInvalido(
+            org.mgroko.backend.proyectos.exception.EstadoProyectoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {

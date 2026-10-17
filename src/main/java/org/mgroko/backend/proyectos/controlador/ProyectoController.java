@@ -12,6 +12,7 @@ import org.mgroko.backend.proyectos.servicio.BuscarProyectoService;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
 import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
+import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,15 +34,18 @@ public class ProyectoController {
     private final ObtenerProyectoService obtenerProyectoService;
     private final BuscarProyectoService buscarProyectoService;
     private final BuscarProyectosPropiosService buscarProyectosPropiosService;
+    private final PublicarProyectoService publicarProyectoService;
 
     public ProyectoController(CrearProyectoService crearProyectoService,
             ObtenerProyectoService obtenerProyectoService,
             BuscarProyectoService buscarProyectoService,
-            BuscarProyectosPropiosService buscarProyectosPropiosService) {
+            BuscarProyectosPropiosService buscarProyectosPropiosService,
+            PublicarProyectoService publicarProyectoService) {
         this.crearProyectoService = crearProyectoService;
         this.obtenerProyectoService = obtenerProyectoService;
         this.buscarProyectoService = buscarProyectoService;
         this.buscarProyectosPropiosService = buscarProyectosPropiosService;
+        this.publicarProyectoService = publicarProyectoService;
     }
 
     // UC-24: Crear proyecto
@@ -128,6 +132,27 @@ public class ProyectoController {
         }
 
         ProyectoResponse response = obtenerProyectoService.obtener(idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // UC-25: Publicar proyecto (Borrador -> Publicado)
+    @PostMapping("/proyectos/{idProyecto}/publicar")
+    public ResponseEntity<ProyectoResponse> publicar(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        ProyectoResponse response = publicarProyectoService.publicar(idUsuario, idPerfilActivo, idProyecto);
         return ResponseEntity.ok(response);
     }
 }
