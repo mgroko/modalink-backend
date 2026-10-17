@@ -51,6 +51,9 @@ class ProyectoControllerTest {
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService buscarProyectosPropiosService;
 
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.PublicarProyectoService publicarProyectoService;
+
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
