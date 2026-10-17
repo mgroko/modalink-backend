@@ -93,14 +93,20 @@ public class AdminSeeder implements CommandLineRunner {
                             .activo(true)
                             .build()));
 
-            Provincia provincia = provinciaRepository.findByNombreAndPais_IdPais("Buenos Aires", pais.getIdPais()).orElseGet(() ->
-                    provinciaRepository.save(Provincia.builder()
-                            .nombre("Buenos Aires")
-                            .idExterno("02")
-                            .fuenteApi("GEOREF")
-                            .pais(pais)
-                            .activo(true)
-                            .build()));
+            // En Georef el id "06" es la provincia Buenos Aires ("02" es la Ciudad
+            // Autónoma). La clave natural de la tabla provincia es (fuente_api,
+            // id_externo): buscar por nombre generaba una fila duplicada que
+            // violaba UQ_provincia_pais_nombre al crear ubicaciones en BA.
+            Provincia provincia = provinciaRepository.findByFuenteApiAndIdExterno("GEOREF", "06")
+                    .or(() -> provinciaRepository.findByNombreAndPais_IdPais("Buenos Aires", pais.getIdPais()))
+                    .orElseGet(() ->
+                            provinciaRepository.save(Provincia.builder()
+                                    .nombre("Buenos Aires")
+                                    .idExterno("06")
+                                    .fuenteApi("GEOREF")
+                                    .pais(pais)
+                                    .activo(true)
+                                    .build()));
 
             Ciudad ciudad = ciudadRepository.findByFuenteApiAndIdExterno("GEOREF", "LA_PLATA").orElseGet(() ->
                     ciudadRepository.save(Ciudad.builder()
