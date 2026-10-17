@@ -505,10 +505,10 @@
 | **Objetivos asociados**  | OBJ-02 OBJ-03 |  |
 | **Requisitos asociados**  | IRQ-03 |  |
 | **Descripción**  | El caso de uso inicia cuando el director de proyecto quiere publicar un proyecto en estado “Borrador”.  |  |
-| **Precondición**  | El usuario inició sesión en el sistema. El proyecto tiene actividades en la planificación. El director de proyecto cuenta con disponibilidad en su calendario personal para los bloques de tiempo y fechas estipulados en las actividades planificadas del proyecto.  |  |
+| **Precondición**  | El usuario inició sesión en el sistema. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que desea publicar (ver caso de uso UC-29 Buscar proyecto) |
-|  | 2 | El sistema verifica que toda información básica esté completada y solicita confirmación. |
+|  | 2 | El sistema verifica que toda información básica esté completada y que el perfil sea director del proyecto y solicita confirmación. |
 |  | 3 | El actor confirma la acción. |
 |  | 4 | El sistema actualiza el estado del proyecto a “Publicado” y lo hace visible para la comunidad.  |
 | **Postcondición** | El estado del proyecto se actualizó de “Borrador” a “Publicado”, haciéndolo \*visible para la comunidad. |  |

@@ -195,7 +195,7 @@ publicado que acepta postulaciones y cuya profesión coincide con la del perfil)
 | Hero: nombre + `EstadoProyectoBadge` + descripción | ✅ | ✅ | ✅ |
 | Subtítulo de rol | ✅ ver textos §4.1 | ✅ ver textos §4.1 | ✅ "Vista pública del proyecto" |
 | Botón **Editar** | ✅ **deshabilitado**, tooltip "Próximamente" | ❌ oculto | ❌ oculto |
-| Botón **Publicar** | ✅ **deshabilitado**, tooltip "Próximamente" (solo si estado Borrador) | ❌ oculto | ❌ oculto |
+| Botón **Publicar** | ✅ **activo** (solo si estado Borrador y `PUBLICAR_PROYECTO`) | ❌ oculto | ❌ oculto |
 | Botón **Postularme** | ❌ | ❌ | ✅ **deshabilitado**, etiqueta "Próximamente..." (si cumple §4.2) |
 | Secciones: Datos generales / Objetivos / Personal requerido / Moodboard | ✅ | ✅ | ✅ |
 | Bloque "Próximamente" (miembros, actividades, postulaciones) | ✅ placeholder | ✅ placeholder | ❌ oculto |
@@ -218,14 +218,18 @@ Usar `etiquetaRolProyecto(rolUsuario)` de `proyectoConstants.js` para el nombre 
   (en la práctica: solo el director). **`disabled`** con tooltip *"Próximamente"*:
   el backend aún no implementa Modificar proyecto (UC-36). No disparar ninguna llamada.
 * **Publicar** — visible solo si `permisos.includes("PUBLICAR_PROYECTO")` **y**
-  `normalizarEstadoProyecto(estado) === "BORRADOR"`. **`disabled`** con tooltip
-  *"Próximamente"*: el backend aún no implementa Publicar proyecto (UC-25).
+  `normalizarEstadoProyecto(estado) === "BORRADOR"`. **Activo**: llama a
+  `POST /proyectos/{idProyecto}/publicar` tras confirmación del usuario (modal de
+  confirmación del UC-25, paso 3). Si la respuesta es `400` (información básica
+  incompleta) mostrar el detalle de campos faltantes; si es `409` (estado ≠ Borrador),
+  refrescar los datos del proyecto. En `200`, reemplazar los datos del proyecto con la
+  respuesta (el estado pasa a `Publicado` y el botón desaparece).
 * **Postularme** — visible solo si `!esMiembro && aceptaPostulacionGral && elegibleParaPostularse`.
   **`disabled`** con etiqueta *"Próximamente..."*: el backend aún no implementa
   postulaciones (UC-26/27/34). No es error si el proyecto acepta postulaciones pero el
   perfil no cumple la profesión: simplemente **no se muestra** el botón.
-* Ninguna acción mutante de esta vista tiene endpoint hoy: la vista es **solo lectura**
-  con acciones visuales deshabilitadas.
+* Única acción mutante con endpoint hoy: **Publicar** (UC-25). Editar (UC-36) y
+  Postularme (UC-26/27/34) siguen deshabilitadas; el resto de la vista es **solo lectura**.
 
 ---
 
