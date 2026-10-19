@@ -396,7 +396,7 @@
 - **Flujo de interacción:**
   1. **Referencia/Inclusión:** Comienza el DSS de `UC-29 Buscar proyecto`.
   2. El actor envía el mensaje `unProyecto = obtenerProyecto(idProyecto)`.
-  3. El actor envía el mensaje `modificarProyecto(unProyecto, descripcion, privacidad, ubicacion, requerimientosPersonal[], moodboard, objetivos, fechaFinEstipulada)`.
+  3. El actor envía el mensaje `modificarProyecto(unProyecto, descripcion, privacidad, ubicacion, requerimientosPersonal[], moodboard, objetivos, fechaEntregaEstipulada)`.
   4. **Bloque Alternativo (`alt`)**:
      - `[campos obligatorios vacíos o inconsistentes]`: El sistema retorna `excepcion()`.
      - `[datos válidos]`:

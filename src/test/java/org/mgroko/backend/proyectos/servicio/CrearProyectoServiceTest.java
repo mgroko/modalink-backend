@@ -44,7 +44,6 @@ import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -95,7 +94,6 @@ class CrearProyectoServiceTest {
     @Mock
     private org.mgroko.backend.repositorio.MoodboardRepository moodboardRepository;
 
-    @InjectMocks
     private CrearProyectoService crearProyectoService;
 
     private Perfil perfil;
@@ -103,6 +101,25 @@ class CrearProyectoServiceTest {
 
     @BeforeEach
     void setUp() {
+        RequerimientoGralService requerimientoGralService = new RequerimientoGralService(
+                profesionRepository,
+                caracteristicaTecnicaRepository,
+                valorCaracteristicaRepository,
+                habilidadRepository,
+                requerimientoGralProyectoRepository,
+                requerimientoGralCaractValorRepository);
+
+        crearProyectoService = new CrearProyectoService(
+                proyectoRepository,
+                perfilRepository,
+                rolProyectoRepository,
+                miembroProyectoRepository,
+                planificacionRepository,
+                objetivoRepository,
+                ubicacionService,
+                requerimientoGralService,
+                moodboardRepository);
+
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
         perfil = Perfil.builder()
                 .idPerfil(10L)

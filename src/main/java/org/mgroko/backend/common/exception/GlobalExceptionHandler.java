@@ -272,6 +272,24 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoModificable(
+            org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException.class)
+    public ResponseEntity<Map<String, Object>> handleUbicacionObligatoria(
+            org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RequerimientoSatisfechoException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoSatisfecho(
+            org.mgroko.backend.proyectos.exception.RequerimientoSatisfechoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {

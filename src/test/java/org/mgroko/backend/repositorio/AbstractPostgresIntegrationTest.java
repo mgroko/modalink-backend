@@ -12,7 +12,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * la primera clase que herede de esta base); todas las clases de test lo
  * comparten y Ryuk lo detiene al finalizar la ejecución. Como además las
  * subclases quedan con configuración de contexto idéntica, Spring cachea
- * un único ApplicationContext: Flyway corre una sola vez en todo el build.
+ * un único ApplicationContext: Modalink.sql.
  *
  * Contrapartida del patrón: al ser la misma BD para todos los tests, las
  * filas que persista un test son visibles para los demás. Los tests que

@@ -54,6 +54,9 @@ class ProyectoControllerTest {
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.PublicarProyectoService publicarProyectoService;
 
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.ModificarProyectoService modificarProyectoService;
+
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
@@ -228,7 +231,8 @@ class ProyectoControllerTest {
                 10L, 2, "Dos modelos", 2L, "Modelo",
                 List.of(new org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse(
                         5L, "COLOR_OJOS", "ENUMERADO", null, null, List.of(1L))),
-                List.of(1L, 4L));
+                List.of(1L, 4L),
+                false);
         var moodboardResp = new org.mgroko.backend.proyectos.dto.MoodboardResponse(
                 77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0), List.of());
 
@@ -640,5 +644,101 @@ class ProyectoControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido").isEmpty())
                 .andExpect(jsonPath("$.totalElementos").value(0));
+    }
+
+    // ---------------------------------------------------------------------
+    // PUT /proyectos/{id} — UC-36 Modificar proyecto
+    // ---------------------------------------------------------------------
+
+    private ProyectoResponse proyectoResponseModificado() {
+        return new ProyectoResponse(
+                100L,
+                "Desfile 2026",
+                "Nueva descripción",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 7, 15),
+                "Borrador",
+                "PRIVADO",
+                true,
+                null,
+                10L,
+                "Luna Diseños",
+                List.of(),
+                List.of(),
+                null,
+                org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
+                true,
+                List.of("MODIFICAR_PROYECTO", "VER_PROYECTO"),
+                false
+        );
+    }
+
+    @Test
+    void modificar_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.ModificarProyectoRequest(
+                "Nueva descripción",
+                Privacidad.Privado,
+                true,
+                LocalDate.of(2026, 7, 15),
+                null,
+                null,
+                null,
+                null);
+
+        when(modificarProyectoService.modificar(
+                eq(1L), eq(10L), eq(100L), any(org.mgroko.backend.proyectos.dto.ModificarProyectoRequest.class)))
+                .thenReturn(proyectoResponseModificado());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/proyectos/100")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idProyecto").value(100L))
+                .andExpect(jsonPath("$.descripcion").value("Nueva descripción"))
+                .andExpect(jsonPath("$.privacidad").value("PRIVADO"))
+                .andExpect(jsonPath("$.aceptaPostulacionGral").value(true));
+    }
+
+    @Test
+    void modificar_sinPerfilActivo_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, null, null));
+
+        var request = new org.mgroko.backend.proyectos.dto.ModificarProyectoRequest(
+                "Nueva descripción", Privacidad.Publico, true, null, null, null, null, null);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/proyectos/100")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("No hay un perfil activo seleccionado en la sesión."));
+    }
+
+    @Test
+    void modificar_estadoNoModificable_devuelve409() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.ModificarProyectoRequest(
+                "Nueva descripción", Privacidad.Publico, true, null, null, null, null, null);
+
+        when(modificarProyectoService.modificar(
+                eq(1L), eq(10L), eq(100L), any(org.mgroko.backend.proyectos.dto.ModificarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException("Finalizado"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/proyectos/100")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("No se puede modificar un proyecto en estado Finalizado."));
     }
 }

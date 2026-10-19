@@ -88,7 +88,7 @@ el historial de git sirva de bitácora adicional.
 | UC-33 | Visualizar cronograma de proyecto    | No iniciado |                  |       | Primera iteracion |
 | UC-34 | Gestionar postulaciones              | No iniciado |                  |       | Primera iteracion |
 | UC-35 | Cancelar proyecto                    | No iniciado |                  |       | Primera iteracion |
-| UC-36 | Modificar proyecto                   | No iniciado |                  |       | Primera iteracion |
+| UC-36 | Modificar proyecto                   | Implementado y testeado | `PUT /proyectos/{idProyecto}` | Sí    | Estados Borrador/Publicado/Confirmado; permiso `MODIFICAR_PROYECTO`; nombre inmutable; requerimientos con postulación ACEPTADA no modificables (se conservan si se omiten); reemplazo de objetivos y requerimientos no satisfechos; en Publicado/Confirmado exige ubicación y toda la información básica; `satisfecho` expuesto en `requerimientosGral` |
 | UC-37 | Finalizar proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-38 | Eliminar integrante                  | No iniciado |                  |       | Primera iteracion |
 | UC-40 | Darse de baja de proyecto            | No iniciado |                  |       | Primera iteracion |
@@ -131,10 +131,10 @@ el historial de git sirva de bitácora adicional.
 | Gestión de usuarios y administración | 15     | 12                      | 0            | 0           | 3           |
 | Gestión de perfiles y disponibilidad | 13     | 9                       | 0            | 0           | 4           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
-| Gestión de proyectos               | 25       | 3                       | 0            | 0           | 22          |
+| Gestión de proyectos               | 25       | 4                       | 0            | 0           | 21          |
 | Gestión de contratos               | 5        | 0                       | 0            | 0           | 5           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **74**   | **24**                  | **0**        | **0**       | **50**      |
+| **Total**                          | **74**   | **25**                  | **0**        | **0**       | **49**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **74 casos de uso** (`UC-01` a `UC-74`). Con el avance del desarrollo se incorporaron
@@ -145,4 +145,4 @@ el historial de git sirva de bitácora adicional.
 > que no forma parte del catálogo numerado; se listan sus filas en el módulo de proyectos solo a efectos de
 > seguimiento y **no se computa** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 24 de 74 casos de uso implementados y testeados = **32,4 %** del catálogo de requisitos.
+**Avance global:** 25 de 74 casos de uso implementados y testeados = **33,8 %** del catálogo de requisitos.

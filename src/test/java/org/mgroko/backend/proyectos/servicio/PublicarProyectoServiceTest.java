@@ -40,6 +40,7 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
@@ -79,6 +80,9 @@ class PublicarProyectoServiceTest {
 
     @Mock
     private ObjetivoRepository objetivoRepository;
+
+    @Mock
+    private PostulacionGralRepository postulacionGralRepository;
 
     @Mock
     private ProyectoSecurityService proyectoSecurityService;

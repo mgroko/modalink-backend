@@ -21,6 +21,7 @@ import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
@@ -31,7 +32,6 @@ import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoInvalidoException;
-import org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
@@ -39,6 +39,7 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
@@ -69,6 +70,7 @@ public class PublicarProyectoService {
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
     private final ObjetivoRepository objetivoRepository;
+    private final PostulacionGralRepository postulacionGralRepository;
     private final ProyectoSecurityService proyectoSecurityService;
 
     public PublicarProyectoService(
@@ -80,6 +82,7 @@ public class PublicarProyectoService {
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             ObjetivoRepository objetivoRepository,
+            PostulacionGralRepository postulacionGralRepository,
             ProyectoSecurityService proyectoSecurityService) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
@@ -89,6 +92,7 @@ public class PublicarProyectoService {
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
         this.objetivoRepository = objetivoRepository;
+        this.postulacionGralRepository = postulacionGralRepository;
         this.proyectoSecurityService = proyectoSecurityService;
     }
 
@@ -123,30 +127,15 @@ public class PublicarProyectoService {
     }
 
     private void validarInformacionBasicaCompleta(Long idProyecto, Proyecto proyecto) {
-        List<String> faltantes = new ArrayList<>();
+        LocalDate fechaEntrega = planificacionRepository.findByProyectoIdProyecto(idProyecto)
+                .map(Planificacion::getFechaEntrega)
+                .orElse(null);
 
-        if (proyecto.getUbicacion() == null) {
-            faltantes.add("ubicación");
-        }
-
-        boolean tieneFechaEntrega = planificacionRepository.findByProyectoIdProyecto(idProyecto)
-                .map(p -> p.getFechaEntrega() != null)
-                .orElse(false);
-        if (!tieneFechaEntrega) {
-            faltantes.add("fecha de entrega");
-        }
-
-        if (moodboardRepository.findByProyectoIdProyecto(idProyecto).isEmpty()) {
-            faltantes.add("moodboard");
-        }
-
-        if (requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto).isEmpty()) {
-            faltantes.add("al menos un requerimiento de personal");
-        }
-
-        if (!faltantes.isEmpty()) {
-            throw new InformacionBasicaIncompletaException(faltantes);
-        }
+        ProyectoInformacionBasicaValidator.validar(
+                proyecto.getUbicacion(),
+                fechaEntrega,
+                moodboardRepository.findByProyectoIdProyecto(idProyecto).isPresent(),
+                !requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto).isEmpty());
     }
 
     private ProyectoResponse armarResponse(Proyecto proyecto, Perfil perfilConsultante) {
@@ -235,6 +224,10 @@ public class PublicarProyectoService {
                 .sorted()
                 .toList();
 
+        boolean satisfecho = postulacionGralRepository
+                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
+                        rg.getIdRequerimientoGral(), EstadoSolicitud.ACEPTADA);
+
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
                 rg.getCantidad(),
@@ -242,6 +235,7 @@ public class PublicarProyectoService {
                 rg.getProfesion() != null ? rg.getProfesion().getIdProfesion() : null,
                 rg.getProfesion() != null ? rg.getProfesion().getNombre() : null,
                 caracts,
-                habilidades);
+                habilidades,
+                satisfecho);
     }
 }

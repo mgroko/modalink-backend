@@ -5,12 +5,14 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
+import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoPropioResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectoService;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
+import org.mgroko.backend.proyectos.servicio.ModificarProyectoService;
 import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
 import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,17 +38,20 @@ public class ProyectoController {
     private final BuscarProyectoService buscarProyectoService;
     private final BuscarProyectosPropiosService buscarProyectosPropiosService;
     private final PublicarProyectoService publicarProyectoService;
+    private final ModificarProyectoService modificarProyectoService;
 
     public ProyectoController(CrearProyectoService crearProyectoService,
             ObtenerProyectoService obtenerProyectoService,
             BuscarProyectoService buscarProyectoService,
             BuscarProyectosPropiosService buscarProyectosPropiosService,
-            PublicarProyectoService publicarProyectoService) {
+            PublicarProyectoService publicarProyectoService,
+            ModificarProyectoService modificarProyectoService) {
         this.crearProyectoService = crearProyectoService;
         this.obtenerProyectoService = obtenerProyectoService;
         this.buscarProyectoService = buscarProyectoService;
         this.buscarProyectosPropiosService = buscarProyectosPropiosService;
         this.publicarProyectoService = publicarProyectoService;
+        this.modificarProyectoService = modificarProyectoService;
     }
 
     // UC-24: Crear proyecto
@@ -153,6 +159,29 @@ public class ProyectoController {
         }
 
         ProyectoResponse response = publicarProyectoService.publicar(idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // UC-36: Modificar proyecto
+    @PutMapping("/proyectos/{idProyecto}")
+    public ResponseEntity<ProyectoResponse> modificar(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody ModificarProyectoRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        ProyectoResponse response = modificarProyectoService.modificar(
+                idUsuario, idPerfilActivo, idProyecto, request);
         return ResponseEntity.ok(response);
     }
 }

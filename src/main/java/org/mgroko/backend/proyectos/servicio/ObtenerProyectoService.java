@@ -21,6 +21,7 @@ import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -39,6 +40,7 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
@@ -55,6 +57,7 @@ public class ObtenerProyectoService {
     private final ObjetivoRepository objetivoRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
+    private final PostulacionGralRepository postulacionGralRepository;
     private final MoodboardRepository moodboardRepository;
 
     public ObtenerProyectoService(
@@ -65,6 +68,7 @@ public class ObtenerProyectoService {
             ObjetivoRepository objetivoRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
+            PostulacionGralRepository postulacionGralRepository,
             MoodboardRepository moodboardRepository) {
         this.proyectoRepository = proyectoRepository;
         this.perfilRepository = perfilRepository;
@@ -73,6 +77,7 @@ public class ObtenerProyectoService {
         this.objetivoRepository = objetivoRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
+        this.postulacionGralRepository = postulacionGralRepository;
         this.moodboardRepository = moodboardRepository;
     }
 
@@ -211,6 +216,10 @@ public class ObtenerProyectoService {
                 .sorted()
                 .toList();
 
+        boolean satisfecho = postulacionGralRepository
+                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
+                        rg.getIdRequerimientoGral(), EstadoSolicitud.ACEPTADA);
+
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
                 rg.getCantidad(),
@@ -218,6 +227,7 @@ public class ObtenerProyectoService {
                 rg.getProfesion() != null ? rg.getProfesion().getIdProfesion() : null,
                 rg.getProfesion() != null ? rg.getProfesion().getNombre() : null,
                 caracts,
-                habilidades);
+                habilidades,
+                satisfecho);
     }
 }

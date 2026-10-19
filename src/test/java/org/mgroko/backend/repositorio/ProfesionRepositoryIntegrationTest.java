@@ -9,11 +9,6 @@ import org.mgroko.backend.modelo.Profesion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * Test de integración de la búsqueda de profesiones (UC-59) contra PostgreSQL
- * real. Flyway ejecuta las migraciones y V5/V6 dejan sembradas las profesiones
- * base; este test valida la query de {@link ProfesionRepository#buscar}.
- */
 @SpringBootTest
 class ProfesionRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
 
