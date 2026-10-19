@@ -57,6 +57,9 @@ class ProyectoControllerTest {
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.ModificarProyectoService modificarProyectoService;
 
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.CancelarProyectoService cancelarProyectoService;
+
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
@@ -92,7 +95,8 @@ class ProyectoControllerTest {
                 org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
                 true,
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
-                false
+                false,
+                null
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -254,7 +258,8 @@ class ProyectoControllerTest {
                 org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
                 true,
                 List.of("VER_PROYECTO"),
-                false
+                false,
+                null
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -330,7 +335,8 @@ class ProyectoControllerTest {
                 org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
                 true,
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
-                false
+                false,
+                null
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
@@ -374,7 +380,8 @@ class ProyectoControllerTest {
                 null,
                 false,
                 List.of(),
-                true
+                true,
+                null
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(200L))).thenReturn(response);
@@ -669,7 +676,8 @@ class ProyectoControllerTest {
                 org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
                 true,
                 List.of("MODIFICAR_PROYECTO", "VER_PROYECTO"),
-                false
+                false,
+                null
         );
     }
 
@@ -740,5 +748,104 @@ class ProyectoControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("No se puede modificar un proyecto en estado Finalizado."));
+    }
+
+    // ---------------------------------------------------------------------
+    // POST /proyectos/{idProyecto}/cancelar - UC-35
+    // ---------------------------------------------------------------------
+
+    private ProyectoResponse proyectoCancelado() {
+        return new ProyectoResponse(
+                100L,
+                "Desfile Cancelado",
+                "Proyecto cancelado",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 7, 15),
+                "Cancelado",
+                "PUBLICO",
+                true,
+                null,
+                10L,
+                "Luna Diseños",
+                List.of(),
+                List.of(),
+                null,
+                org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
+                true,
+                List.of("CANCELAR_PROYECTO", "VER_PROYECTO"),
+                false,
+                "Falta de presupuesto"
+        );
+    }
+
+    @Test
+    void cancelar_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.CancelarProyectoRequest("Falta de presupuesto");
+
+        when(cancelarProyectoService.cancelar(
+                eq(1L), eq(10L), eq(100L),
+                any(org.mgroko.backend.proyectos.dto.CancelarProyectoRequest.class)))
+                .thenReturn(proyectoCancelado());
+
+        mockMvc.perform(post("/proyectos/100/cancelar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("Cancelado"))
+                .andExpect(jsonPath("$.motivoCancelacion").value("Falta de presupuesto"));
+    }
+
+    @Test
+    void cancelar_sinPerfilActivo_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, null, null));
+
+        var request = new org.mgroko.backend.proyectos.dto.CancelarProyectoRequest("Motivo válido");
+
+        mockMvc.perform(post("/proyectos/100/cancelar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void cancelar_motivoVacio_devuelve400() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.CancelarProyectoRequest(" ");
+
+        mockMvc.perform(post("/proyectos/100/cancelar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores['motivoCancelacion']").exists());
+    }
+
+    @Test
+    void cancelar_estadoNoCancelable_devuelve409() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.CancelarProyectoRequest("Motivo válido");
+
+        when(cancelarProyectoService.cancelar(
+                eq(1L), eq(10L), eq(100L),
+                any(org.mgroko.backend.proyectos.dto.CancelarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.EstadoProyectoNoCancelableException("Borrador"));
+
+        mockMvc.perform(post("/proyectos/100/cancelar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "Solo se puede cancelar un proyecto en estado Publicado o Confirmado. Estado actual: Borrador."));
     }
 }

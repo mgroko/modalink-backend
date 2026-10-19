@@ -24,5 +24,6 @@ public record ProyectoResponse(
         RolProyectoUsuario rolUsuario,
         Boolean esMiembro,
         List<String> permisos,
-        Boolean elegibleParaPostularse
+        Boolean elegibleParaPostularse,
+        String motivoCancelacion
 ) {}

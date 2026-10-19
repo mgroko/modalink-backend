@@ -1,6 +1,7 @@
 package org.mgroko.backend.proyectos.servicio;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -8,8 +9,10 @@ import java.util.stream.Collectors;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Actividad;
+import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RolProyecto;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.ActividadResumenResponse;
@@ -94,13 +97,28 @@ public class BuscarProyectosPropiosService {
         return PaginaResponse.fromPage(paginaDto);
     }
 
-    /** Rol del perfil activo en cada proyecto de la página (una sola consulta). */
+    /**
+     * Rol del perfil activo en cada proyecto de la página (una sola consulta).
+     * Para proyectos cancelados se conserva el rol de una membresía histórica;
+     * si hay varias, se prioriza la ACTIVA.
+     */
     private Map<Long, RolProyectoUsuario> buscarRoles(Long idPerfilActivo, List<Long> idsProyectos) {
-        return miembroProyectoRepository.buscarMiembrosActivosDeProyectos(idsProyectos, idPerfilActivo).stream()
-                .collect(Collectors.toMap(
-                        miembro -> miembro.getProyecto().getIdProyecto(),
-                        miembro -> normalizarRol(miembro.getRolProyecto()),
-                        (actual, repetido) -> actual));
+        Map<Long, MiembroProyecto> membresias = new HashMap<>();
+
+        for (MiembroProyecto miembro : miembroProyectoRepository
+                .buscarMembresiasDeProyectos(idsProyectos, idPerfilActivo)) {
+            membresias.merge(
+                    miembro.getProyecto().getIdProyecto(),
+                    miembro,
+                    (actual, nuevo) -> actual.getEstadoParticipacion() == EstadoParticipacion.ACTIVO
+                            ? actual
+                            : nuevo);
+        }
+
+        Map<Long, RolProyectoUsuario> roles = new HashMap<>();
+        membresias.forEach((idProyecto, miembro) -> roles.put(
+                idProyecto, normalizarRol(miembro.getRolProyecto())));
+        return roles;
     }
 
     /** Próxima actividad pendiente/en curso por proyecto de la página (una sola consulta). */

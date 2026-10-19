@@ -32,8 +32,8 @@ public class ProyectoSpecifications {
     /**
      * Búsqueda global (UC-29) con regla de visibilidad base:
      * un proyecto es visible para el perfil activo si es miembro activo,
-     * o si no está en Borrador y es Público. El Borrador y el Privado solo
-     * son visibles para miembros (interino hasta el módulo de contactos, UC-43..46).
+     * o si no está en Borrador ni Cancelado y es Público. Los proyectos
+     * cancelados solo se consultan desde "proyectos propios" (historial).
      */
     public static Specification<Proyecto> conFiltros(BuscarProyectosFiltro filtro, Long idPerfilActivo) {
         return (root, query, cb) -> {
@@ -72,7 +72,8 @@ public class ProyectoSpecifications {
 
     /**
      * Visibilidad: el perfil activo es miembro activo del proyecto, o el proyecto
-     * es Público y no está en Borrador (misma regla que el detalle del proyecto).
+     * es Público, no está en Borrador y no está Cancelado (misma regla que el
+     * detalle del proyecto).
      */
     private static Predicate conPredicadoVisibilidad(
             CriteriaQuery<?> query,
@@ -86,7 +87,9 @@ public class ProyectoSpecifications {
                 cb.notEqual(root.get("estado"), EstadoProyecto.BORRADOR),
                 cb.equal(root.get("privacidad"), Privacidad.PUBLICO));
 
-        return cb.or(esMiembroActivo, publicoNoBorrador);
+        Predicate noCancelado = cb.notEqual(root.get("estado"), EstadoProyecto.CANCELADO);
+
+        return cb.and(noCancelado, cb.or(esMiembroActivo, publicoNoBorrador));
     }
 
     /** Subquery: el perfil activo tiene una membresía ACTIVA en el proyecto. */

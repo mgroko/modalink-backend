@@ -278,6 +278,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoCancelableException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoCancelable(
+            org.mgroko.backend.proyectos.exception.EstadoProyectoNoCancelableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.MotivoCancelacionObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleMotivoCancelacionObligatorio(
+            org.mgroko.backend.proyectos.exception.MotivoCancelacionObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException.class)
     public ResponseEntity<Map<String, Object>> handleUbicacionObligatoria(
             org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException ex) {

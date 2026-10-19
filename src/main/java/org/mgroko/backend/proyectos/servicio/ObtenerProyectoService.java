@@ -21,6 +21,7 @@ import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
@@ -86,8 +87,8 @@ public class ObtenerProyectoService {
      *
      * Reglas de visibilidad:
      * - Miembro activo: ve cualquier proyecto.
-     * - No miembro: solo ve proyectos PUBLICADO (o estados posteriores) con privacidad PUBLICO.
-     * - Proyectos en Borrador solo son visibles para miembros activos.
+     * - Exmiembro: ve el detalle de proyectos CANCELADOS (historial).
+     * - No miembro: solo ve proyectos PUBLICO que no estén en BORRADOR ni CANCELADO.
      */
     @Transactional(readOnly = true)
     public ProyectoResponse obtener(Long idUsuario, Long idPerfilActivo, Long idProyecto) {
@@ -109,7 +110,13 @@ public class ObtenerProyectoService {
         Optional<MiembroProyecto> miembroActivo = miembroProyectoRepository
                 .findMiembroActivoConPermisos(idProyecto, idPerfilActivo);
 
-        if (miembroActivo.isEmpty() && !esVisibleParaNoMiembro(proyecto)) {
+        boolean exMiembroDeProyectoCancelado = miembroActivo.isEmpty()
+                && proyecto.getEstado() == EstadoProyecto.CANCELADO
+                && miembroProyectoRepository
+                        .findByProyectoIdProyectoAndPerfilIdPerfil(idProyecto, idPerfilActivo)
+                        .isPresent();
+
+        if (miembroActivo.isEmpty() && !exMiembroDeProyectoCancelado && !esVisibleParaNoMiembro(proyecto)) {
             throw new AccesoDenegadoProyectoException(
                     "No tienes acceso a este proyecto.");
         }
@@ -140,7 +147,8 @@ public class ObtenerProyectoService {
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        boolean elegibleParaPostularse = miembroActivo.isEmpty()
+        boolean elegibleParaPostularse = proyecto.getEstado() != EstadoProyecto.CANCELADO
+                && miembroActivo.isEmpty()
                 && Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral())
                 && profesionDelPerfilCoincide;
 
@@ -178,9 +186,10 @@ public class ObtenerProyectoService {
     }
 
     private boolean esVisibleParaNoMiembro(Proyecto proyecto) {
-        boolean noBorrador = proyecto.getEstado() != null
-                && proyecto.getEstado() != org.mgroko.backend.modelo.enums.EstadoProyecto.BORRADOR;
-        return noBorrador && proyecto.getPrivacidad() == Privacidad.PUBLICO;
+        boolean visible = proyecto.getEstado() != null
+                && proyecto.getEstado() != EstadoProyecto.BORRADOR
+                && proyecto.getEstado() != EstadoProyecto.CANCELADO;
+        return visible && proyecto.getPrivacidad() == Privacidad.PUBLICO;
     }
 
     private Perfil buscarDirector(Long idProyecto) {

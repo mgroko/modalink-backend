@@ -87,7 +87,7 @@ el historial de git sirva de bitácora adicional.
 | UC-32 | Eliminar invitación a proyecto       | No iniciado |                  |       | Primera iteracion |
 | UC-33 | Visualizar cronograma de proyecto    | No iniciado |                  |       | Primera iteracion |
 | UC-34 | Gestionar postulaciones              | No iniciado |                  |       | Primera iteracion |
-| UC-35 | Cancelar proyecto                    | No iniciado |                  |       | Primera iteracion |
+| UC-35 | Cancelar proyecto                    | Implementado y testeado | `POST /proyectos/{idProyecto}/cancelar` | Sí    | Estados Publicado/Confirmado; permiso `CANCELAR_PROYECTO`; motivo obligatorio (máx. 200); cancela actividades PENDIENTE/EN_CURSO, rechaza postulaciones e invitaciones pendientes y notifica al equipo y afectados; el cancelado sale de la búsqueda global, permanece en proyectos propios y es visible para exmiembros |
 | UC-36 | Modificar proyecto                   | Implementado y testeado | `PUT /proyectos/{idProyecto}` | Sí    | Estados Borrador/Publicado/Confirmado; permiso `MODIFICAR_PROYECTO`; nombre inmutable; requerimientos con postulación ACEPTADA no modificables (se conservan si se omiten); reemplazo de objetivos y requerimientos no satisfechos; en Publicado/Confirmado exige ubicación y toda la información básica; `satisfecho` expuesto en `requerimientosGral` |
 | UC-37 | Finalizar proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-38 | Eliminar integrante                  | No iniciado |                  |       | Primera iteracion |

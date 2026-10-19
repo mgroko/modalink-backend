@@ -59,6 +59,9 @@ public class Proyecto {
     @Builder.Default
     private Boolean aceptaPostulacionGral = false;
 
+    @Column(name = "motivo_cancelacion", length = 200)
+    private String motivoCancelacion;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ubicacion")
     private Ubicacion ubicacion;

@@ -4,6 +4,7 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro;
+import org.mgroko.backend.proyectos.dto.CancelarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
@@ -11,6 +12,7 @@ import org.mgroko.backend.proyectos.dto.ProyectoPropioResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectoService;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
+import org.mgroko.backend.proyectos.servicio.CancelarProyectoService;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
 import org.mgroko.backend.proyectos.servicio.ModificarProyectoService;
 import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
@@ -39,19 +41,22 @@ public class ProyectoController {
     private final BuscarProyectosPropiosService buscarProyectosPropiosService;
     private final PublicarProyectoService publicarProyectoService;
     private final ModificarProyectoService modificarProyectoService;
+    private final CancelarProyectoService cancelarProyectoService;
 
     public ProyectoController(CrearProyectoService crearProyectoService,
             ObtenerProyectoService obtenerProyectoService,
             BuscarProyectoService buscarProyectoService,
             BuscarProyectosPropiosService buscarProyectosPropiosService,
             PublicarProyectoService publicarProyectoService,
-            ModificarProyectoService modificarProyectoService) {
+            ModificarProyectoService modificarProyectoService,
+            CancelarProyectoService cancelarProyectoService) {
         this.crearProyectoService = crearProyectoService;
         this.obtenerProyectoService = obtenerProyectoService;
         this.buscarProyectoService = buscarProyectoService;
         this.buscarProyectosPropiosService = buscarProyectosPropiosService;
         this.publicarProyectoService = publicarProyectoService;
         this.modificarProyectoService = modificarProyectoService;
+        this.cancelarProyectoService = cancelarProyectoService;
     }
 
     // UC-24: Crear proyecto
@@ -159,6 +164,29 @@ public class ProyectoController {
         }
 
         ProyectoResponse response = publicarProyectoService.publicar(idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // UC-35: Cancelar proyecto
+    @PostMapping("/proyectos/{idProyecto}/cancelar")
+    public ResponseEntity<ProyectoResponse> cancelar(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CancelarProyectoRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        ProyectoResponse response = cancelarProyectoService.cancelar(
+                idUsuario, idPerfilActivo, idProyecto, request);
         return ResponseEntity.ok(response);
     }
 

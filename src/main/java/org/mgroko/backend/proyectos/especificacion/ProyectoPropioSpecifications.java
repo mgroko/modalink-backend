@@ -7,6 +7,7 @@ import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,8 +17,9 @@ import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 
 /**
- * Búsqueda de proyectos propios: solo proyectos donde el perfil activo es
- * miembro con estado de participación ACTIVO (director o miembro).
+ * Búsqueda de proyectos propios: proyectos donde el perfil activo es miembro
+ * ACTIVO (director o miembro) y, si el proyecto está CANCELADO, también
+ * proyectos donde participó en el pasado (historial).
  */
 public class ProyectoPropioSpecifications {
 
@@ -68,7 +70,9 @@ public class ProyectoPropioSpecifications {
         List<Predicate> subqueryPredicates = new ArrayList<>();
         subqueryPredicates.add(cb.equal(miembro.get("proyecto"), root));
         subqueryPredicates.add(cb.equal(miembro.get("perfil").get("idPerfil"), idPerfilActivo));
-        subqueryPredicates.add(cb.equal(miembro.get("estadoParticipacion"), EstadoParticipacion.ACTIVO));
+        subqueryPredicates.add(cb.or(
+                cb.equal(miembro.get("estadoParticipacion"), EstadoParticipacion.ACTIVO),
+                cb.equal(root.get("estado"), EstadoProyecto.CANCELADO)));
 
         if (filtro != null && filtro.rol() != null) {
             subqueryPredicates.add(conRol(filtro.rol(), miembro, cb));

@@ -70,12 +70,17 @@ class BuscarProyectosPropiosServiceTest {
     }
 
     private MiembroProyecto crearMiembroMock(Proyecto proyecto, String codigoRol) {
+        return crearMiembroMock(proyecto, codigoRol, EstadoParticipacion.ACTIVO);
+    }
+
+    private MiembroProyecto crearMiembroMock(
+            Proyecto proyecto, String codigoRol, EstadoParticipacion estadoParticipacion) {
         return MiembroProyecto.builder()
                 .proyecto(proyecto)
                 .rolProyecto(RolProyecto.builder().codigo(codigoRol)
                         .nombre("DIRECTOR".equals(codigoRol) ? "Director de proyecto" : "Miembro de proyecto")
                         .build())
-                .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .estadoParticipacion(estadoParticipacion)
                 .build();
     }
 
@@ -96,7 +101,7 @@ class BuscarProyectosPropiosServiceTest {
         PageImpl<Proyecto> page = new PageImpl<>(List.of(p1, p2), PageRequest.of(0, 20), 2);
 
         when(proyectoRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
-        when(miembroProyectoRepository.buscarMiembrosActivosDeProyectos(anyList(), anyLong()))
+        when(miembroProyectoRepository.buscarMembresiasDeProyectos(anyList(), anyLong()))
                 .thenReturn(List.of(crearMiembroMock(p1, "DIRECTOR"), crearMiembroMock(p2, "MIEMBRO")));
         when(actividadRepository.findProximasActividadesAsignadas(anyCollection(), anyLong(), any()))
                 .thenReturn(List.of(crearActividadMock(p1, "Sesion")));
@@ -120,12 +125,32 @@ class BuscarProyectosPropiosServiceTest {
     }
 
     @Test
+    void buscar_conMembresiaActivaEHistorica_priorizaLaActiva() {
+        Proyecto p1 = crearProyectoMock(1L, "Desfile Primavera");
+        PageImpl<Proyecto> page = new PageImpl<>(List.of(p1), PageRequest.of(0, 20), 1);
+
+        when(proyectoRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+        when(miembroProyectoRepository.buscarMembresiasDeProyectos(anyList(), anyLong()))
+                .thenReturn(List.of(
+                        crearMiembroMock(p1, "MIEMBRO", EstadoParticipacion.BAJA_VOLUNTARIA),
+                        crearMiembroMock(p1, "DIRECTOR", EstadoParticipacion.ACTIVO)));
+        when(actividadRepository.findProximasActividadesAsignadas(anyCollection(), anyLong(), any()))
+                .thenReturn(List.of());
+
+        PaginaResponse<ProyectoPropioResponse> resultado = service.buscar(
+                10L, new BuscarProyectosPropiosFiltro(null, null, null), 0, 20, false);
+
+        assertThat(resultado.contenido()).hasSize(1);
+        assertThat(resultado.contenido().get(0).rolUsuario()).isEqualTo(RolProyectoUsuario.DIRECTOR);
+    }
+
+    @Test
     void buscar_conPerfilActivoPasaAlScoping() {
         Proyecto p1 = crearProyectoMock(1L, "Desfile Primavera");
         PageImpl<Proyecto> page = new PageImpl<>(List.of(p1), PageRequest.of(0, 20), 1);
 
         when(proyectoRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
-        when(miembroProyectoRepository.buscarMiembrosActivosDeProyectos(anyList(), anyLong()))
+        when(miembroProyectoRepository.buscarMembresiasDeProyectos(anyList(), anyLong()))
                 .thenReturn(List.of(crearMiembroMock(p1, "MIEMBRO")));
         when(actividadRepository.findProximasActividadesAsignadas(anyCollection(), anyLong(), any()))
                 .thenReturn(List.of());
@@ -134,7 +159,7 @@ class BuscarProyectosPropiosServiceTest {
                 "Desfile", EstadoProyecto.BORRADOR, RolProyectoUsuario.DIRECTOR);
         service.buscar(10L, filtro, 0, 20, false);
 
-        verify(miembroProyectoRepository).buscarMiembrosActivosDeProyectos(List.of(1L), 10L);
+        verify(miembroProyectoRepository).buscarMembresiasDeProyectos(List.of(1L), 10L);
         verify(actividadRepository).findProximasActividadesAsignadas(
                 org.mockito.ArgumentMatchers.eq(List.of(1L)),
                 org.mockito.ArgumentMatchers.eq(10L),
@@ -147,7 +172,7 @@ class BuscarProyectosPropiosServiceTest {
         PageImpl<Proyecto> page = new PageImpl<>(List.of(p1));
 
         when(proyectoRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
-        when(miembroProyectoRepository.buscarMiembrosActivosDeProyectos(anyList(), anyLong()))
+        when(miembroProyectoRepository.buscarMembresiasDeProyectos(anyList(), anyLong()))
                 .thenReturn(List.of(crearMiembroMock(p1, "DIRECTOR")));
         when(actividadRepository.findProximasActividadesAsignadas(anyCollection(), anyLong(), any()))
                 .thenReturn(List.of());
@@ -172,7 +197,7 @@ class BuscarProyectosPropiosServiceTest {
 
         assertThat(resultado.contenido()).isEmpty();
         assertThat(resultado.totalElementos()).isZero();
-        verify(miembroProyectoRepository, never()).buscarMiembrosActivosDeProyectos(anyList(), anyLong());
+        verify(miembroProyectoRepository, never()).buscarMembresiasDeProyectos(anyList(), anyLong());
         verify(actividadRepository, never()).findProximasActividadesAsignadas(anyCollection(), anyLong(), any());
     }
 

@@ -121,7 +121,8 @@ public final class ProyectoMapper {
                 contexto.rolUsuario(),
                 contexto.esMiembro(),
                 contexto.permisos(),
-                contexto.elegibleParaPostularse()
+                contexto.elegibleParaPostularse(),
+                proyecto.getMotivoCancelacion()
         );
     }
 }

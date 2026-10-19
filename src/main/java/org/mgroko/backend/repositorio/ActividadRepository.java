@@ -6,6 +6,7 @@ import java.util.List;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -61,4 +62,14 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long> {
             @Param("idsProyectos") Collection<Long> idsProyectos,
             @Param("idPerfil") Long idPerfil,
             @Param("ahora") java.time.LocalDateTime ahora);
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+        UPDATE Actividad a
+        SET a.estado = org.mgroko.backend.modelo.enums.EstadoActividad.CANCELADA
+        WHERE a.planificacion.proyecto.idProyecto = :idProyecto
+          AND a.estado IN (org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE,
+                            org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
+    """)
+    int cancelarPendientesDeProyecto(@Param("idProyecto") Long idProyecto);
 }
