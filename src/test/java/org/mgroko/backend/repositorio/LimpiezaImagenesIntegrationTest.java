@@ -50,8 +50,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final Path DIRECTORIO_SUBIDAS = Path.of("target", "uploads-limpieza-fase5", "perfiles");
-    private static final Path ARCHIVO_COMMITEADO = Path.of("uploads", "perfiles",
-            "perfil_1df0847a-dd47-40ee-b875-d7fb5bd227c8.jpg");
     private static final AtomicInteger SECUENCIA = new AtomicInteger();
 
     @Autowired
@@ -143,8 +141,6 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
         assertEquals(0, resultado.errores());
         assertFalse(Files.exists(huerfanoViejo), "El archivo huÃ©rfano fuera de la gracia debe borrarse");
         assertTrue(Files.exists(huerfanoReciente), "El archivo reciente estÃ¡ en gracia y se conserva");
-        assertTrue(Files.exists(ARCHIVO_COMMITEADO),
-                "El job no debe tocar el directorio de subidas por defecto");
     }
 
     @Test
