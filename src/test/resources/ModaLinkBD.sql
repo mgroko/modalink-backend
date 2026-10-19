@@ -1272,6 +1272,7 @@ CREATE TABLE proyecto(
     descripcion                varchar(200)    NOT NULL,
     estado                     varchar(50)     NOT NULL,
     privacidad                 varchar(20)     NOT NULL,
+    motivo_cancelacion         varchar(200),
     id_ubicacion               int8,
     CONSTRAINT chk_proyecto_estado CHECK (estado IN ('BORRADOR', 'PUBLICADO', 'CONFIRMADO', 'FINALIZADO', 'CANCELADO')),
     CONSTRAINT chk_proyecto_privacidad CHECK (privacidad IN ('PUBLICO', 'PRIVADO')),
