@@ -1727,6 +1727,10 @@ CREATE TABLE requerimiento_gral_caract(
 )
 ;
 
+DROP TRIGGER IF EXISTS trg_req_gral_caract_rango ON requerimiento_gral_caract;
+CREATE TRIGGER trg_req_gral_caract_rango
+    BEFORE INSERT OR UPDATE ON requerimiento_gral_caract
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_rango_solo_numerico();
 
 
 -- 
@@ -1740,39 +1744,6 @@ CREATE TABLE requerimiento_gral_caract_valor(
     CONSTRAINT "PK_requerimiento_gral_caract_valor" PRIMARY KEY (id_valor, id_caracteristica, id_req_gral_caract)
 )
 ;
-
-CREATE OR REPLACE FUNCTION fn_req_caract_valor_solo_enumerado() RETURNS trigger AS $$
-DECLARE
-    v_id_caract_padre BIGINT;
-    v_tipo_dato VARCHAR(50);
-BEGIN
-    IF TG_TABLE_NAME = 'requerimiento_act_caract_valor' THEN
-        SELECT id_caracteristica INTO v_id_caract_padre
-        FROM requerimiento_act_caract
-        WHERE id_req_act_caract = NEW.id_req_act_caract;
-    ELSE
-        SELECT id_caracteristica INTO v_id_caract_padre
-        FROM requerimiento_gral_caract
-        WHERE id_req_gral_caract = NEW.id_req_gral_caract;
-    END IF;
-
-    IF v_id_caract_padre IS DISTINCT FROM NEW.id_caracteristica THEN
-        RAISE EXCEPTION 'id_caracteristica no coincide con la caracteristica del requerimiento padre.'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    SELECT tipo_dato INTO v_tipo_dato
-    FROM caracteristica_tecnica
-    WHERE id_caracteristica = v_id_caract_padre;
-
-    IF v_tipo_dato <> 'ENUMERADO' THEN
-        RAISE EXCEPTION 'Solo caracteristicas ENUMERADAS admiten valores de catalogo en requerimientos (caracteristica %, tipo %).',
-            v_id_caract_padre, v_tipo_dato
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    RETURN NEW;
-END $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_req_gral_caract_valor ON requerimiento_gral_caract_valor;
 CREATE TRIGGER trg_req_gral_caract_valor
