@@ -161,6 +161,7 @@ BEGIN
            SELECT 1
            FROM notificacion n
            WHERE n.id_usuario_destino = v_id_usuario_destino
+             AND n.id_perfil_contexto = v_id_perfil_contexto
              AND n.tipo = 'ACTIVIDAD_ASIGNADA'
              AND n.entidad_tipo = 'ACTIVIDAD'
              AND n.entidad_id = NEW.id_actividad
