@@ -1032,7 +1032,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene un proyecto en estado “Borrador” o “Publicado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto al cual desea agregar la actividad (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Descripción Duración estimada en días/horas Y de forma opcional: Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
+|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Duración estimada en días/horas Y de forma opcional: Descripción Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
 |  | 3 | El actor completa los campos solicitados y confirma la acción. |
 |  | 4  | Mientras exista requerimiento profesional por cargar, se ejecutan los siguientes pasos: |
 |  | 4.a | El sistema despliega el formulario para la carga de requerimiento profesional: Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Si corresponde, el sistema despliega debajo de este formulario un listado de los miembros del proyecto, permitiendo al actor la asignación directa.  |

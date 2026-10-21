@@ -96,7 +96,7 @@ el historial de git sirva de bitácora adicional.
 | UC-49 | Crear actividad en planificación     | No iniciado |                  |       | Primera iteracion |
 | UC-50 | Modificar actividad de planificación | No iniciado |                  |       | Primera iteracion |
 | UC-51 | Eliminar actividad de planificación  | No iniciado |                  |       | Primera iteracion |
-| UC-52 | Buscar actividades                   | No iniciado |                  |       | Primera iteracion |
+| UC-52 | Buscar actividades                   | Implementado y testeado | `GET /proyectos/{idProyecto}/actividades/buscar` | Sí    | Primera iteracion. Filtros opcionales nombre/descripción/requerimiento (profesión, habilidad o característica), duración mínima/máxima y estado; visibilidad compartida con UC-25; orden por inicio ascendente; requerimientos y predecesoras resueltos en batch sin N+1 |
 | UC-60 | Confirmar proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-70 | Asignar actividad a miembro          | No iniciado |                  |       | Segunda iteracion |
 | UC-72 | Buscar requerimiento general         | No iniciado |                  |       | Segunda iteracion |
