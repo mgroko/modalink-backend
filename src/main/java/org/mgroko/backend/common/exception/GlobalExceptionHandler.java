@@ -212,6 +212,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.notificaciones.exception.NotificacionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleNotificacionNoEncontrada(
+            org.mgroko.backend.notificaciones.exception.NotificacionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException.class)
     public ResponseEntity<Map<String, Object>> handleNombreProyectoDuplicado(
             org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException ex) {

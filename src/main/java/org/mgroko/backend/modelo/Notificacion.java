@@ -47,7 +47,18 @@ public class Notificacion {
     @Builder.Default
     private LocalDateTime fechaGenerada = LocalDateTime.now();
 
+    @Column(name = "fecha_leida")
+    private LocalDateTime fechaLeida;
+
+    @Column(name = "origen", nullable = false, length = 20)
+    @Builder.Default
+    private String origen = "SERVICIO";
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario_destino", nullable = false)
     private Usuario usuarioDestino;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_perfil_contexto")
+    private Perfil perfilContexto;
 }

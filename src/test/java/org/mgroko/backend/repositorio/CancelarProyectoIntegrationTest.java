@@ -173,6 +173,56 @@ class CancelarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void cancelar_notificaUnaVezPorCadaPerfilActivoDelMismoUsuario() {
+        PerfilCreado director = crearPerfil(
+                "can35.multi1@example.com", "78735005", "Director Multiperfil UC35");
+
+        Long idProfesionModelo = profesionRepository.buscar("%modelo%", "modelo")
+                .get(0).getIdProfesion();
+        Long idProfesionAlternativa = profesionRepository.findAllByOrderByCodigo().stream()
+                .map(p -> p.getIdProfesion())
+                .filter(id -> !id.equals(idProfesionModelo))
+                .findFirst()
+                .orElseThrow();
+
+        PerfilResponse segundoPerfil = crearPerfilService.crear(
+                director.idUsuario(),
+                new CrearPerfilRequest(
+                        "Director Multiperfil Alterno UC35",
+                        idProfesionAlternativa,
+                        "Segundo perfil del mismo usuario.",
+                        List.of()));
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(), proyectoCompleto("Desfile Multiperfil"));
+        publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+
+        Long idRolDirector = jdbcTemplate.queryForObject(
+                "SELECT id_rol_proyecto FROM rol_proyecto WHERE codigo = 'DIRECTOR'", Long.class);
+        jdbcTemplate.update("""
+                INSERT INTO miembros_proyecto
+                    (id_rol_proyecto, estado_participacion, id_proyecto, id_perfil)
+                VALUES (?, 'ACTIVO', ?, ?)
+                """, idRolDirector, borrador.idProyecto(), segundoPerfil.idPerfil());
+
+        cancelarProyectoService.cancelar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto(),
+                new CancelarProyectoRequest("Cierre multiperfil"));
+
+        List<Long> contextos = jdbcTemplate.queryForList("""
+                SELECT id_perfil_contexto
+                  FROM notificacion
+                 WHERE id_usuario_destino = ?
+                   AND tipo = 'PROYECTO_CANCELADO'
+                   AND entidad_id = ?
+                """, Long.class, director.idUsuario(), borrador.idProyecto());
+
+        assertThat(contextos).containsExactlyInAnyOrder(
+                director.idPerfil(), segundoPerfil.idPerfil());
+    }
+
+    @Test
     void cancelado_sigueVisibleParaExMiembroYPermiteAbrirDetalle() {
         PerfilCreado director = crearPerfil("can35.dir2@example.com", "78735003", "Ex Director UC35");
         PerfilCreado directorReemplazo = crearPerfil(

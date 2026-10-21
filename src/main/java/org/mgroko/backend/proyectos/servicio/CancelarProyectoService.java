@@ -187,10 +187,12 @@ public class CancelarProyectoService {
 
         for (MiembroProyecto miembro : miembroProyectoRepository
                 .buscarMiembrosActivosDeProyecto(proyecto.getIdProyecto())) {
-            Usuario usuario = miembro.getPerfil() != null ? miembro.getPerfil().getUsuario() : null;
-            if (usuario != null && destinatarios.add(usuario.getIdUsuario())) {
+            Perfil perfil = miembro.getPerfil();
+            Usuario usuario = perfil != null ? perfil.getUsuario() : null;
+            if (usuario != null && destinatarios.add(perfil.getIdPerfil())) {
                 notificaciones.add(notificacionService.crear(
                         usuario,
+                        perfil,
                         NotificacionService.TIPO_PROYECTO_CANCELADO,
                         mensaje,
                         ENTIDAD_PROYECTO,
@@ -209,12 +211,12 @@ public class CancelarProyectoService {
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (PostulacionGral postulacion : postulaciones) {
-            Usuario usuario = postulacion.getPerfil() != null
-                    ? postulacion.getPerfil().getUsuario()
-                    : null;
+            Perfil perfil = postulacion.getPerfil();
+            Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
                         usuario,
+                        perfil,
                         NotificacionService.TIPO_POSTULACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_POSTULACION_GRAL,
@@ -233,12 +235,12 @@ public class CancelarProyectoService {
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (PostulacionActividad postulacion : postulaciones) {
-            Usuario usuario = postulacion.getPerfil() != null
-                    ? postulacion.getPerfil().getUsuario()
-                    : null;
+            Perfil perfil = postulacion.getPerfil();
+            Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
                         usuario,
+                        perfil,
                         NotificacionService.TIPO_POSTULACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_POSTULACION_ACTIVIDAD,
@@ -257,12 +259,12 @@ public class CancelarProyectoService {
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (InvitacionGral invitacion : invitaciones) {
-            Usuario usuario = invitacion.getPerfilDestinatario() != null
-                    ? invitacion.getPerfilDestinatario().getUsuario()
-                    : null;
+            Perfil perfil = invitacion.getPerfilDestinatario();
+            Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
                         usuario,
+                        perfil,
                         NotificacionService.TIPO_INVITACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_INVITACION_GRAL,
@@ -281,12 +283,12 @@ public class CancelarProyectoService {
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (InvitacionActividad invitacion : invitaciones) {
-            Usuario usuario = invitacion.getPerfilDestinatario() != null
-                    ? invitacion.getPerfilDestinatario().getUsuario()
-                    : null;
+            Perfil perfil = invitacion.getPerfilDestinatario();
+            Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
                         usuario,
+                        perfil,
                         NotificacionService.TIPO_INVITACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_INVITACION_ACTIVIDAD,

@@ -179,13 +179,15 @@ class CancelarProyectoServiceTest {
                 .thenAnswer(invocacion -> invocacion.getArgument(0));
 
         when(notificacionService.crear(
-                any(Usuario.class), anyString(), anyString(), anyString(), anyLong()))
+                any(Usuario.class), any(Perfil.class), anyString(), anyString(),
+                anyString(), anyLong()))
                 .thenAnswer(invocacion -> Notificacion.builder()
                         .usuarioDestino(invocacion.getArgument(0))
-                        .tipo(invocacion.getArgument(1))
-                        .mensaje(invocacion.getArgument(2))
-                        .entidadTipo(invocacion.getArgument(3))
-                        .entidadId(invocacion.getArgument(4))
+                        .perfilContexto(invocacion.getArgument(1))
+                        .tipo(invocacion.getArgument(2))
+                        .mensaje(invocacion.getArgument(3))
+                        .entidadTipo(invocacion.getArgument(4))
+                        .entidadId(invocacion.getArgument(5))
                         .build());
     }
 
@@ -221,6 +223,9 @@ class CancelarProyectoServiceTest {
         assertThat(captor.getValue())
                 .allSatisfy(notificacion -> assertThat(notificacion.getMensaje())
                         .contains("Falta de presupuesto"));
+        assertThat(captor.getValue())
+                .allSatisfy(notificacion -> assertThat(notificacion.getPerfilContexto())
+                        .isNotNull());
     }
 
     @Test
