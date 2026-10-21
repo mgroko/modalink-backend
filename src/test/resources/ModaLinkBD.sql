@@ -64,12 +64,12 @@ BEGIN
                 -- Notificar a todos los directores activos del proyecto
                 IF v_id_rol_director IS NOT NULL THEN
                     FOR r_director IN
-                        SELECT per.id_usuario
-                        FROM miembros_proyecto mp
-                        JOIN perfil per ON mp.id_perfil = per.id_perfil
-                        WHERE mp.id_proyecto = r_hito.id_proyecto
-                          AND mp.estado_participacion = 'ACTIVO'
-                          AND mp.id_rol_proyecto = v_id_rol_director
+                        SELECT DISTINCT per.id_usuario
+                         FROM miembros_proyecto mp
+                         JOIN perfil per ON mp.id_perfil = per.id_perfil
+                         WHERE mp.id_proyecto = r_hito.id_proyecto
+                           AND mp.estado_participacion = 'ACTIVO'
+                           AND mp.id_rol_proyecto = v_id_rol_director
                     LOOP
                         INSERT INTO notificacion (
                             id_usuario_destino,
@@ -85,8 +85,8 @@ BEGIN
                             r_director.id_usuario,
                             'HITO_CUMPLIDO',
                             'El hito "' || r_hito.nombre_hito || '" ha sido completado.',
-                            'hito',
-                            r_hito.id_hito,
+                            'HITO',
+                             r_hito.id_hito,
                             false,
                             NULL,
                             'TRIGGER',
@@ -136,26 +136,36 @@ CREATE TABLE asignacion_actividad(
 CREATE OR REPLACE FUNCTION fn_notificar_asignacion_actividad() RETURNS trigger AS $$
 DECLARE
     v_id_usuario_destino BIGINT;
+    v_id_perfil_contexto BIGINT;
     v_nombre_actividad VARCHAR(100);
     v_nombre_proyecto VARCHAR(100);
 BEGIN
-    -- Obtener el id_usuario asociado al perfil del miembro
-    SELECT p.id_usuario INTO v_id_usuario_destino
-    FROM miembros_proyecto mp
-    JOIN perfil p ON p.id_perfil = mp.id_perfil
-    WHERE mp.id_miembro = NEW.id_miembro;
+    SELECT p.id_usuario, p.id_perfil
+      INTO v_id_usuario_destino, v_id_perfil_contexto
+      FROM miembros_proyecto mp
+      JOIN perfil p ON p.id_perfil = mp.id_perfil
+     WHERE mp.id_miembro = NEW.id_miembro;
 
-    -- Obtener nombre de la actividad y del proyecto
     SELECT a.nombre, proy.nombre
-    INTO v_nombre_actividad, v_nombre_proyecto
-    FROM actividad a
-    JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
-    JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
-    WHERE a.id_actividad = NEW.id_actividad;
+      INTO v_nombre_actividad, v_nombre_proyecto
+      FROM actividad a
+      JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
+      JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
+     WHERE a.id_actividad = NEW.id_actividad;
 
-    IF v_id_usuario_destino IS NOT NULL THEN
+    IF v_id_usuario_destino IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1
+           FROM notificacion n
+           WHERE n.id_usuario_destino = v_id_usuario_destino
+             AND n.tipo = 'ACTIVIDAD_ASIGNADA'
+             AND n.entidad_tipo = 'ACTIVIDAD'
+             AND n.entidad_id = NEW.id_actividad
+       ) THEN
+
         INSERT INTO notificacion (
             id_usuario_destino,
+            id_perfil_contexto,
             tipo,
             mensaje,
             entidad_tipo,
@@ -166,9 +176,10 @@ BEGIN
             fecha_generada
         ) VALUES (
             v_id_usuario_destino,
+            v_id_perfil_contexto,
             'ACTIVIDAD_ASIGNADA',
             'Has sido asignado a la actividad "' || COALESCE(v_nombre_actividad, 'Sin Nombre') || '" en el proyecto "' || COALESCE(v_nombre_proyecto, 'Sin Nombre') || '".',
-            'actividad',
+            'ACTIVIDAD',
             NEW.id_actividad,
             false,
             NULL,
@@ -179,6 +190,7 @@ BEGIN
 
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
+
 
 DROP TRIGGER IF EXISTS trg_notificar_asignacion_actividad ON asignacion_actividad;
 CREATE TRIGGER trg_notificar_asignacion_actividad
@@ -932,6 +944,7 @@ CREATE TABLE notificacion(
     origen                varchar(20)    DEFAULT 'SERVICIO' NOT NULL,
     fecha_generada        timestamp      DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id_usuario_destino    int8           NOT NULL,
+    id_perfil_contexto    int8,
     CONSTRAINT chk_notif_entidad CHECK (
         (entidad_tipo IS NULL AND entidad_id IS NULL) OR
         (entidad_tipo IS NOT NULL AND entidad_id IS NOT NULL)
@@ -1089,6 +1102,37 @@ CREATE TRIGGER trg_perfil_fecha_solicitud_baja
     BEFORE UPDATE OF estado ON perfil
     FOR EACH ROW EXECUTE FUNCTION chk_perfil_fecha_solicitud_baja();
 
+--  validación usuario-perfil notificacion
+CREATE OR REPLACE FUNCTION fn_validar_notificacion_perfil_contexto() RETURNS trigger AS $$
+DECLARE
+    v_id_usuario_perfil BIGINT;
+BEGIN
+    IF NEW.id_perfil_contexto IS NOT NULL THEN
+        SELECT p.id_usuario INTO v_id_usuario_perfil
+        FROM perfil p
+        WHERE p.id_perfil = NEW.id_perfil_contexto;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'El perfil de contexto % no existe.', NEW.id_perfil_contexto
+                USING ERRCODE = 'foreign_key_violation';
+        END IF;
+
+        IF v_id_usuario_perfil <> NEW.id_usuario_destino THEN
+            RAISE EXCEPTION 'El perfil de contexto % no pertenece al usuario destinatario %.',
+                NEW.id_perfil_contexto, NEW.id_usuario_destino
+                USING ERRCODE = 'check_violation';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validar_notificacion_perfil_contexto ON notificacion;
+
+CREATE TRIGGER trg_validar_notificacion_perfil_contexto
+    BEFORE INSERT OR UPDATE OF id_perfil_contexto, id_usuario_destino ON notificacion
+    FOR EACH ROW EXECUTE FUNCTION fn_validar_notificacion_perfil_contexto();
+
 -- 
 -- TABLE: perfil_tyc 
 --
@@ -1220,27 +1264,65 @@ DECLARE
     v_cantidad_requerida INT;
     v_aceptadas_actuales INT;
 BEGIN
-    -- Se evalúa únicamente cuando la postulación pasa a 'ACEPTADA'
     IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-        
-        -- Obtener la cantidad requerida para esta actividad
+
         SELECT ra.cantidad INTO v_cantidad_requerida
         FROM requerimiento_actividad ra
         WHERE ra.id_requerimiento_act = NEW.id_requerimiento_act;
 
-        -- Contar cuántas postulaciones aceptadas existen en total (incluyendo la actual)
         SELECT COUNT(*) INTO v_aceptadas_actuales
         FROM postulacion_actividad
         WHERE id_requerimiento_act = NEW.id_requerimiento_act
           AND estado = 'ACEPTADA';
 
-        -- Si se alcanzo o supero el cupo solicitado, cerrar las demas postulaciones pendientes
         IF v_cantidad_requerida IS NOT NULL AND v_aceptadas_actuales >= v_cantidad_requerida THEN
-            UPDATE postulacion_actividad
-            SET estado = 'RECHAZADA'
-            WHERE id_requerimiento_act = NEW.id_requerimiento_act
-              AND id_postulacion <> NEW.id_postulacion
-              AND estado = 'PENDIENTE';
+
+            WITH rechazadas AS (
+                UPDATE postulacion_actividad pa
+                SET estado = 'RECHAZADA'
+                WHERE pa.id_requerimiento_act = NEW.id_requerimiento_act
+                  AND pa.id_postulacion <> NEW.id_postulacion
+                  AND pa.estado = 'PENDIENTE'
+                RETURNING pa.id_postulacion, pa.id_perfil, pa.id_requerimiento_act
+            )
+            INSERT INTO notificacion (
+                id_usuario_destino,
+                id_perfil_contexto,
+                tipo,
+                mensaje,
+                entidad_tipo,
+                entidad_id,
+                leida,
+                fecha_leida,
+                origen,
+                fecha_generada
+            )
+            SELECT p.id_usuario,
+                   r.id_perfil,
+                   'POSTULACION_RECHAZADA',
+                   'Tu postulación a la actividad "' || a.nombre
+                       || '" del proyecto "' || proy.nombre
+                       || '" fue rechazada porque el cupo ya fue cubierto.',
+                   'POSTULACION_ACTIVIDAD',
+                   r.id_postulacion,
+                   false,
+                   NULL,
+                   'TRIGGER',
+                   clock_timestamp()
+            FROM rechazadas r
+            JOIN perfil p ON p.id_perfil = r.id_perfil
+            JOIN requerimiento_actividad ra ON ra.id_requerimiento_act = r.id_requerimiento_act
+            JOIN actividad a ON a.id_actividad = ra.id_actividad
+            JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
+            JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM notificacion n
+                WHERE n.id_usuario_destino = p.id_usuario
+                  AND n.tipo = 'POSTULACION_RECHAZADA'
+                  AND n.entidad_tipo = 'POSTULACION_ACTIVIDAD'
+                  AND n.entidad_id = r.id_postulacion
+            );
         END IF;
     END IF;
 
@@ -1272,27 +1354,63 @@ DECLARE
     v_cantidad_requerida INT;
     v_aceptadas_actuales INT;
 BEGIN
-    -- Se evalua únicamente cuando la postulación pasa a 'ACEPTADA'
     IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-        
-        -- Obtener la cantidad requerida para este requerimiento general del proyecto
+
         SELECT rgp.cantidad INTO v_cantidad_requerida
         FROM requerimiento_gral_proyecto rgp
         WHERE rgp.id_requerimiento_gral = NEW.id_requerimiento_gral;
 
-        -- Contar cuántas postulaciones aceptadas existen en total (incluyendo la actual)
         SELECT COUNT(*) INTO v_aceptadas_actuales
         FROM postulacion_gral
         WHERE id_requerimiento_gral = NEW.id_requerimiento_gral
           AND estado = 'ACEPTADA';
 
-        -- Si se alcanzo o supero el cupo solicitado, cerrar las demas postulaciones pendientes
         IF v_cantidad_requerida IS NOT NULL AND v_aceptadas_actuales >= v_cantidad_requerida THEN
-            UPDATE postulacion_gral
-            SET estado = 'RECHAZADA'
-            WHERE id_requerimiento_gral = NEW.id_requerimiento_gral
-              AND id_postulacion_gral <> NEW.id_postulacion_gral
-              AND estado = 'PENDIENTE';
+
+            WITH rechazadas AS (
+                UPDATE postulacion_gral post
+                SET estado = 'RECHAZADA'
+                WHERE post.id_requerimiento_gral = NEW.id_requerimiento_gral
+                  AND post.id_postulacion_gral <> NEW.id_postulacion_gral
+                  AND post.estado = 'PENDIENTE'
+                RETURNING post.id_postulacion_gral, post.id_perfil, post.id_requerimiento_gral
+            )
+            INSERT INTO notificacion (
+                id_usuario_destino,
+                id_perfil_contexto,
+                tipo,
+                mensaje,
+                entidad_tipo,
+                entidad_id,
+                leida,
+                fecha_leida,
+                origen,
+                fecha_generada
+            )
+            SELECT p.id_usuario,
+                   r.id_perfil,
+                   'POSTULACION_RECHAZADA',
+                   'Tu postulación al proyecto "' || proy.nombre
+                       || '" fue rechazada porque el cupo ya fue cubierto.',
+                   'POSTULACION_GRAL',
+                   r.id_postulacion_gral,
+                   false,
+                   NULL,
+                   'TRIGGER',
+                   clock_timestamp()
+            FROM rechazadas r
+            JOIN perfil p ON p.id_perfil = r.id_perfil
+            JOIN requerimiento_gral_proyecto rgp
+              ON rgp.id_requerimiento_gral = r.id_requerimiento_gral
+            JOIN proyecto proy ON proy.id_proyecto = rgp.id_proyecto
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM notificacion n
+                WHERE n.id_usuario_destino = p.id_usuario
+                  AND n.tipo = 'POSTULACION_RECHAZADA'
+                  AND n.entidad_tipo = 'POSTULACION_GRAL'
+                  AND n.entidad_id = r.id_postulacion_gral
+            );
         END IF;
     END IF;
 
@@ -2248,6 +2366,12 @@ CREATE INDEX idx_notif_usuario_no_leida ON notificacion(id_usuario_destino, fech
 CREATE INDEX idx_notif_entidad ON notificacion(entidad_tipo, entidad_id);
 
 --
+-- INDEX: idx_notif_usuario_perfil_fecha
+--
+CREATE INDEX idx_notif_usuario_perfil_fecha
+    ON notificacion (id_usuario_destino, id_perfil_contexto, fecha_generada DESC);
+
+--
 -- INDEX: idx_notif_purga
 --
 
@@ -2610,6 +2734,11 @@ ALTER TABLE moodboard ADD CONSTRAINT "Refproyecto731"
 ALTER TABLE notificacion ADD CONSTRAINT "Refusuario1531" 
     FOREIGN KEY (id_usuario_destino)
     REFERENCES usuario(id_usuario)
+;
+
+ALTER TABLE notificacion ADD CONSTRAINT "FK_notif_perfil_contexto"
+    FOREIGN KEY (id_perfil_contexto)
+    REFERENCES perfil(id_perfil)
 ;
 
 ALTER TABLE notificacion ADD CONSTRAINT fk_notificacion_tipo 
