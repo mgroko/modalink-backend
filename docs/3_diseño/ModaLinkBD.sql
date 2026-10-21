@@ -25,20 +25,15 @@ CREATE TABLE actividad(
     CONSTRAINT "PK_actividad" PRIMARY KEY (id_actividad)
 )
 ;
--- Derivacion automatica de cumplimiento de hitos y notificacion a los Directores
+-- Derivacion automatica de cumplimiento de hitos y notificacion a todos los perfiles activos del proyecto
 CREATE OR REPLACE FUNCTION fn_derivar_cumplimiento_hito() RETURNS trigger AS $$
 DECLARE
     r_hito RECORD;
-    r_director RECORD;
+    r_destinatario RECORD;
     v_pendientes INT;
-    v_id_rol_director BIGINT;
 BEGIN
     -- Se dispara cuando la actividad pasa a 'FINALIZADA'
     IF NEW.estado = 'FINALIZADA' AND (OLD.estado IS NULL OR OLD.estado <> 'FINALIZADA') THEN
-        
-        SELECT id_rol_proyecto INTO v_id_rol_director
-        FROM rol_proyecto
-        WHERE codigo = 'DIRECTOR';
 
         FOR r_hito IN
             SELECT h.id_hito, h.id_proyecto, h.nombre AS nombre_hito
@@ -61,39 +56,47 @@ BEGIN
                     fecha_cumplimiento = clock_timestamp()
                 WHERE id_hito = r_hito.id_hito;
 
-                -- Notificar a todos los directores activos del proyecto
-                IF v_id_rol_director IS NOT NULL THEN
-                    FOR r_director IN
-                        SELECT DISTINCT per.id_usuario
-                         FROM miembros_proyecto mp
-                         JOIN perfil per ON mp.id_perfil = per.id_perfil
-                         WHERE mp.id_proyecto = r_hito.id_proyecto
-                           AND mp.estado_participacion = 'ACTIVO'
-                           AND mp.id_rol_proyecto = v_id_rol_director
-                    LOOP
-                        INSERT INTO notificacion (
-                            id_usuario_destino,
-                            tipo,
-                            mensaje,
-                            entidad_tipo,
-                            entidad_id,
-                            leida,
-                            fecha_leida,
-                            origen,
-                            fecha_generada
-                        ) VALUES (
-                            r_director.id_usuario,
-                            'HITO_CUMPLIDO',
-                            'El hito "' || r_hito.nombre_hito || '" ha sido completado.',
-                            'HITO',
-                             r_hito.id_hito,
-                            false,
-                            NULL,
-                            'TRIGGER',
-                            clock_timestamp()
-                        );
-                    END LOOP;
-                END IF;
+                -- Notificar a todos los perfiles activos del proyecto
+                FOR r_destinatario IN
+                    SELECT DISTINCT per.id_perfil, per.id_usuario
+                    FROM miembros_proyecto mp
+                    JOIN perfil per ON mp.id_perfil = per.id_perfil
+                    WHERE mp.id_proyecto = r_hito.id_proyecto
+                      AND mp.estado_participacion = 'ACTIVO'
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM notificacion n
+                          WHERE n.id_usuario_destino = per.id_usuario
+                            AND n.id_perfil_contexto = per.id_perfil
+                            AND n.tipo = 'HITO_CUMPLIDO'
+                            AND n.entidad_tipo = 'HITO'
+                            AND n.entidad_id = r_hito.id_hito
+                      )
+                LOOP
+                    INSERT INTO notificacion (
+                        id_usuario_destino,
+                        id_perfil_contexto,
+                        tipo,
+                        mensaje,
+                        entidad_tipo,
+                        entidad_id,
+                        leida,
+                        fecha_leida,
+                        origen,
+                        fecha_generada
+                    ) VALUES (
+                        r_destinatario.id_usuario,
+                        r_destinatario.id_perfil,
+                        'HITO_CUMPLIDO',
+                        'El hito "' || r_hito.nombre_hito || '" ha sido completado.',
+                        'HITO',
+                        r_hito.id_hito,
+                        false,
+                        NULL,
+                        'TRIGGER',
+                        clock_timestamp()
+                    );
+                END LOOP;
             END IF;
         END LOOP;
     END IF;
