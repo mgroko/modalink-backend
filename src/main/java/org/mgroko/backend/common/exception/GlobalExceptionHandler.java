@@ -553,7 +553,43 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExcedido(
             org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
         return buildErrorResponse(
-                "El archivo supera el tamaño máximo permitido.", HttpStatus.BAD_REQUEST);
+                "El archivo supera el tama�o m�ximo permitido.", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handleNombreActividadDuplicado(
+            org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.PredecesoraInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePredecesoraInvalida(
+            org.mgroko.backend.actividades.exception.PredecesoraInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteActividadesException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteActividades(
+            org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteActividadesException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.FechaEntregaNoDefinidaException.class)
+    public ResponseEntity<Map<String, Object>> handleFechaEntregaNoDefinida(
+            org.mgroko.backend.actividades.exception.FechaEntregaNoDefinidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.CronogramaInviableException.class)
+    public ResponseEntity<Map<String, Object>> handleCronogramaInviable(
+            org.mgroko.backend.actividades.exception.CronogramaInviableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.DuracionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleDuracionInvalida(
+            org.mgroko.backend.actividades.exception.DuracionInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
 }

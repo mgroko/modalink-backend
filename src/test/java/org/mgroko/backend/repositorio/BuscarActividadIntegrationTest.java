@@ -1,5 +1,6 @@
 package org.mgroko.backend.repositorio;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +24,7 @@ import org.mgroko.backend.modelo.PerfilTycId;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
@@ -191,8 +193,15 @@ class BuscarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 .profesion(profesion)
                 .actividad(actividad)
                 .habilidades(Set.of(habilidad))
-                .caracteristicas(Set.of(caracteristica))
                 .build();
+
+        requerimiento.setCaracteristicas(List.of(RequerimientoActCaract.builder()
+                .requerimientoActividad(requerimiento)
+                .caracteristica(caracteristica)
+                .valorMin(BigDecimal.ZERO)
+                .valorMax(BigDecimal.TEN)
+                .build()));
+
         em.persist(requerimiento);
         return requerimiento;
     }

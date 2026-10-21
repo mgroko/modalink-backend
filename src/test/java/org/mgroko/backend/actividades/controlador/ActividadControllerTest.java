@@ -12,10 +12,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
+import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
+import org.mgroko.backend.actividades.dto.CrearActividadRequest;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResumenResponse;
 import org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
+import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -26,8 +29,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.springframework.http.MediaType;
 
 @WebMvcTest(controllers = ActividadController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -38,6 +44,48 @@ class ActividadControllerTest {
 
     @MockitoBean
     private BuscarActividadService buscarActividadService;
+
+    @MockitoBean
+    private CrearActividadService crearActividadService;
+
+    @Test
+    void crear_conDatosValidos_devuelve201() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        ActividadResponse response = new ActividadResponse(
+                55L,
+                100L,
+                "Desfile Primavera",
+                "Montaje",
+                "Montar escenario",
+                90,
+                LocalDateTime.of(2026, 11, 1, 22, 29),
+                LocalDateTime.of(2026, 11, 1, 23, 59),
+                "PENDIENTE",
+                null,
+                List.of(),
+                List.of());
+
+        when(crearActividadService.crear(
+                eq(1L), eq(10L), eq(100L), any(CrearActividadRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/proyectos/100/actividades")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Montaje",
+                                  "descripcion": "Montar escenario",
+                                  "duracion": 1,
+                                  "unidadDuracion": "HORAS"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idActividad").value(55L))
+                .andExpect(jsonPath("$.duracionMinutos").value(90));
+    }
 
     @Test
     void buscar_conPerfilActivo_devuelvePagina() throws Exception {

@@ -8,6 +8,7 @@ import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
+import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -142,8 +143,10 @@ public class ActividadSpecifications {
 
         Subquery<Long> subquery = query.subquery(Long.class);
         Root<RequerimientoActividad> correlacionado = subquery.correlate(requerimiento);
-        Join<RequerimientoActividad, CaracteristicaTecnica> caracteristica =
+        Join<RequerimientoActividad, RequerimientoActCaract> requerimientoCaract =
                 correlacionado.join("caracteristicas");
+        Join<RequerimientoActCaract, CaracteristicaTecnica> caracteristica =
+                requerimientoCaract.join("caracteristica");
 
         subquery.select(caracteristica.get("idCaracteristica"));
         subquery.where(cb.or(

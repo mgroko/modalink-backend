@@ -61,9 +61,8 @@ public interface CaracteristicaTecnicaRepository extends JpaRepository<Caracteri
      * {@code trg_caracteristica_en_uso_solo_nombre} en la base de datos:
      * cuando está en uso, sólo puede modificarse el nombre.
      *
-     * Se consulta nativamente porque {@code requerimiento_act_caract} y
-     * {@code requerimiento_gral_caract} están mapeadas como tablas de unión
-     * {@code @ManyToMany} sin sus columnas de rango.
+     * Se consulta nativamente para cubrir las tres tablas de referencia en una
+     * sola comprobación, incluyendo las filas con rango de requerimientos.
      *
      * @param idCaracteristica id de la característica técnica
      * @return true si alguna fila la referencia

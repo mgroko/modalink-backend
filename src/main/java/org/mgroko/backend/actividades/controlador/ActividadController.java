@@ -1,26 +1,60 @@
 package org.mgroko.backend.actividades.controlador;
 
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
+import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
+import org.mgroko.backend.actividades.dto.CrearActividadRequest;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
+import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 
 @RestController
 public class ActividadController {
 
     private final BuscarActividadService buscarActividadService;
+    private final CrearActividadService crearActividadService;
 
-    public ActividadController(BuscarActividadService buscarActividadService) {
+    public ActividadController(
+            BuscarActividadService buscarActividadService,
+            CrearActividadService crearActividadService) {
         this.buscarActividadService = buscarActividadService;
+        this.crearActividadService = crearActividadService;
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/actividades")
+    public ResponseEntity<ActividadResponse> crear(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CrearActividadRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        ActividadResponse response = crearActividadService.crear(
+                idUsuario, idPerfilActivo, idProyecto, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // UC-52: Buscar actividades dentro de la planificación de un proyecto

@@ -88,4 +88,31 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
                             org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
     """)
     int cancelarPendientesDeProyecto(@Param("idProyecto") Long idProyecto);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END
+        FROM Actividad a
+        WHERE a.planificacion.idPlanificacion = :idPlanificacion
+          AND LOWER(TRIM(a.nombre)) = LOWER(TRIM(:nombre))
+    """)
+    boolean existeNombreEnPlanificacion(
+            @Param("idPlanificacion") Long idPlanificacion,
+            @Param("nombre") String nombre);
+
+    @Query("""
+        SELECT DISTINCT a FROM Actividad a
+        LEFT JOIN FETCH a.predecesoras
+        WHERE a.planificacion.idPlanificacion = :idPlanificacion
+    """)
+    List<Actividad> findConPredecesorasByPlanificacion(
+            @Param("idPlanificacion") Long idPlanificacion);
+
+    @Query("""
+        SELECT a FROM Actividad a
+        WHERE a.idActividad IN :idsActividades
+          AND a.planificacion.idPlanificacion = :idPlanificacion
+    """)
+    List<Actividad> findByIdsAndPlanificacion(
+            @Param("idsActividades") Collection<Long> idsActividades,
+            @Param("idPlanificacion") Long idPlanificacion);
 }
