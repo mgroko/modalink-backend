@@ -22,6 +22,7 @@ import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -42,6 +43,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,6 +76,9 @@ class PublicarProyectoServiceTest {
 
     @Mock
     private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+
+    @Mock
+    private RequerimientoActividadRepository requerimientoActividadRepository;
 
     @Mock
     private RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
@@ -136,6 +141,10 @@ class PublicarProyectoServiceTest {
     }
 
     private void prepararCaminoFeliz() {
+        prepararCaminoFeliz(true);
+    }
+
+    private void prepararCaminoFeliz(boolean conRequerimientoGral) {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
         when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyectoBorrador));
         when(planificacionRepository.findByProyectoIdProyecto(100L))
@@ -149,12 +158,14 @@ class PublicarProyectoServiceTest {
                         .proyecto(proyectoBorrador)
                         .build()));
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L))
-                .thenReturn(List.of(RequerimientoGralProyecto.builder()
-                        .idRequerimientoGral(20L)
-                        .proyecto(proyectoBorrador)
-                        .profesion(Profesion.builder().idProfesion(2L).nombre("Modelo").build())
-                        .cantidad(2)
-                        .build()));
+                .thenReturn(conRequerimientoGral
+                        ? List.of(RequerimientoGralProyecto.builder()
+                                .idRequerimientoGral(20L)
+                                .proyecto(proyectoBorrador)
+                                .profesion(Profesion.builder().idProfesion(2L).nombre("Modelo").build())
+                                .cantidad(2)
+                                .build())
+                        : List.of());
         when(proyectoRepository.save(any(Proyecto.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(miembroProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(miembroDirector));
         when(miembroProyectoRepository.findMiembroActivoConPermisos(100L, 10L))
@@ -186,6 +197,43 @@ class PublicarProyectoServiceTest {
         assertThat(proyectoBorrador.getEstado()).isEqualTo(EstadoProyecto.PUBLICADO);
         verify(proyectoSecurityService).validarPermiso(100L, 10L, "PUBLICAR_PROYECTO");
         verify(proyectoRepository).save(proyectoBorrador);
+    }
+
+    @Test
+    void publicar_sinRequerimientoGralConRequerimientoDeActividad_cambiaEstadoAPublicado() {
+        prepararCaminoFeliz(false);
+        when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
+                100L, EstadoActividad.CANCELADA)).thenReturn(true);
+
+        ProyectoResponse response = publicarProyectoService.publicar(1L, 10L, 100L);
+
+        assertThat(response.estado()).isEqualTo("Publicado");
+        assertThat(response.requerimientosGral()).isEmpty();
+        assertThat(proyectoBorrador.getEstado()).isEqualTo(EstadoProyecto.PUBLICADO);
+        verify(proyectoRepository).save(proyectoBorrador);
+    }
+
+    @Test
+    void publicar_soloConRequerimientoDeActividadCancelado_lanzaExcepcionDeInformacionIncompleta() {
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
+        when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyectoBorrador));
+        when(planificacionRepository.findByProyectoIdProyecto(100L))
+                .thenReturn(Optional.of(Planificacion.builder()
+                        .proyecto(proyectoBorrador)
+                        .fechaEntrega(LocalDate.now().plusDays(30))
+                        .build()));
+        when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.of(
+                Moodboard.builder().idMoodboard(7L).proyecto(proyectoBorrador).build()));
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
+        when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
+                100L, EstadoActividad.CANCELADA)).thenReturn(false);
+
+        assertThatThrownBy(() -> publicarProyectoService.publicar(1L, 10L, 100L))
+                .isInstanceOf(InformacionBasicaIncompletaException.class)
+                .hasMessageContaining("requerimiento")
+                .hasMessageContaining("actividad");
+
+        verify(proyectoRepository, never()).save(any(Proyecto.class));
     }
 
     @Test
@@ -323,7 +371,7 @@ class PublicarProyectoServiceTest {
     }
 
     @Test
-    void publicar_sinRequerimientos_lanzaExcepcionDeInformacionIncompleta() {
+    void publicar_sinRequerimientosGralNiDeActividad_lanzaExcepcionDeInformacionIncompleta() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
         when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyectoBorrador));
         when(planificacionRepository.findByProyectoIdProyecto(100L))
@@ -334,10 +382,13 @@ class PublicarProyectoServiceTest {
         when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.of(
                 Moodboard.builder().idMoodboard(7L).proyecto(proyectoBorrador).build()));
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
+        when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
+                100L, EstadoActividad.CANCELADA)).thenReturn(false);
 
         assertThatThrownBy(() -> publicarProyectoService.publicar(1L, 10L, 100L))
                 .isInstanceOf(InformacionBasicaIncompletaException.class)
-                .hasMessageContaining("requerimiento de personal");
+                .hasMessageContaining("requerimiento")
+                .hasMessageContaining("general o de actividad");
     }
 
     @Test
@@ -348,12 +399,15 @@ class PublicarProyectoServiceTest {
         when(planificacionRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.empty());
         when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.empty());
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
+        when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
+                100L, EstadoActividad.CANCELADA)).thenReturn(false);
 
         assertThatThrownBy(() -> publicarProyectoService.publicar(1L, 10L, 100L))
                 .isInstanceOf(InformacionBasicaIncompletaException.class)
                 .hasMessageContaining("ubicación")
                 .hasMessageContaining("fecha de entrega")
                 .hasMessageContaining("moodboard")
-                .hasMessageContaining("requerimiento de personal");
+                .hasMessageContaining("requerimiento")
+                .hasMessageContaining("general o de actividad");
     }
 }

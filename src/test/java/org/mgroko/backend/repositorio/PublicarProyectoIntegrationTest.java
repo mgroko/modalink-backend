@@ -6,9 +6,15 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.actividades.dto.CrearActividadRequest;
+import org.mgroko.backend.actividades.dto.CrearRequerimientoActividadRequest;
+import org.mgroko.backend.actividades.enums.UnidadDuracion;
+import org.mgroko.backend.actividades.servicio.CrearActividadService;
+import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
@@ -66,7 +72,13 @@ class PublicarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
     private PublicarProyectoService publicarProyectoService;
 
     @Autowired
+    private CrearActividadService crearActividadService;
+
+    @Autowired
     private ProyectoRepository proyectoRepository;
+
+    @Autowired
+    private ActividadRepository actividadRepository;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -115,6 +127,27 @@ class PublicarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
                 nombre, "Sin ubicación, moodboard ni requerimientos", Privacidad.PUBLICO,
                 null, false,
                 null, null, null, null);
+    }
+
+    private CrearProyectoRequest proyectoCompletoSinRequerimientoGral(String nombre) {
+        return new CrearProyectoRequest(
+                nombre, "Proyecto completo sin requerimientos generales", Privacidad.PUBLICO,
+                LocalDate.now().plusDays(30), true,
+                new UbicacionRequest("0602801002"),
+                null,
+                List.of(),
+                new CrearMoodboardRequest("Telas frías, tonos neutros"));
+    }
+
+    private Long crearActividadConRequerimiento(PerfilCreado director, Long idProyecto, String nombre) {
+        return crearActividadService.crear(
+                director.idUsuario(), director.idPerfil(), idProyecto,
+                new CrearActividadRequest(
+                        nombre, "Actividad de prueba UC-25", 1, UnidadDuracion.DIAS,
+                        null, null,
+                        List.of(new CrearRequerimientoActividadRequest(
+                                2, idProfesionModelo(), "Dos modelos", null, null))))
+                .idActividad();
     }
 
     private List<String> nombresVisiblesPara(Long idPerfil, BuscarProyectosFiltro filtro) {
@@ -196,9 +229,50 @@ class PublicarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
                 .hasMessageContaining("ubicación")
                 .hasMessageContaining("fecha de entrega")
                 .hasMessageContaining("moodboard")
-                .hasMessageContaining("requerimiento de personal");
+                .hasMessageContaining("al menos un requerimiento (general o de actividad)");
 
         assertThat(proyectoRepository.findById(idProyecto).orElseThrow().getEstado())
+                .isEqualTo(EstadoProyecto.BORRADOR);
+    }
+
+    @Test
+    void publicar_soloConRequerimientoDeActividad_publica() {
+        PerfilCreado director = crearPerfil("pub25.dir7@example.com", "77725010", "Director Actividad");
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(),
+                proyectoCompletoSinRequerimientoGral("Solo Actividad"));
+
+        crearActividadConRequerimiento(director, borrador.idProyecto(), "Prueba modelos");
+
+        ProyectoResponse publicado = publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+
+        assertThat(publicado.estado()).isEqualTo("Publicado");
+        assertThat(proyectoRepository.findById(borrador.idProyecto()).orElseThrow().getEstado())
+                .isEqualTo(EstadoProyecto.PUBLICADO);
+    }
+
+    @Test
+    void publicar_soloConRequerimientoDeActividadCancelado_lanzaExcepcionYNoCambiaEstado() {
+        PerfilCreado director = crearPerfil("pub25.dir8@example.com", "77725011", "Director Cancelado");
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(),
+                proyectoCompletoSinRequerimientoGral("Actividad Cancelada"));
+
+        Long idActividad = crearActividadConRequerimiento(
+                director, borrador.idProyecto(), "Prueba cancelada");
+        Actividad actividad = actividadRepository.findById(idActividad).orElseThrow();
+        actividad.setEstado(EstadoActividad.CANCELADA);
+        actividadRepository.saveAndFlush(actividad);
+
+        assertThatThrownBy(() -> publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto()))
+                .isInstanceOf(InformacionBasicaIncompletaException.class)
+                .hasMessageContaining("al menos un requerimiento (general o de actividad)");
+
+        assertThat(proyectoRepository.findById(borrador.idProyecto()).orElseThrow().getEstado())
                 .isEqualTo(EstadoProyecto.BORRADOR);
     }
 

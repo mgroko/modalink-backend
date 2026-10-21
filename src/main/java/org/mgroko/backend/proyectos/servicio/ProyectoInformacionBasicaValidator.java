@@ -10,7 +10,8 @@ import org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaExcepti
 /**
  * Valida que un proyecto cuente con la información básica exigida para estar
  * publicado o confirmado (ubicación, fecha de entrega, moodboard y al menos un
- * requerimiento de personal). La usan tanto UC-25 Publicar como UC-36 Modificar.
+ * requerimiento general o de actividad). La usan tanto UC-25 Publicar como
+ * UC-36 Modificar.
  */
 public final class ProyectoInformacionBasicaValidator {
 
@@ -21,7 +22,7 @@ public final class ProyectoInformacionBasicaValidator {
             Ubicacion ubicacion,
             LocalDate fechaEntrega,
             boolean tieneMoodboard,
-            boolean tieneRequerimiento) {
+            boolean tieneRequerimientoGeneralOActividad) {
 
         List<String> faltantes = new ArrayList<>();
 
@@ -34,8 +35,8 @@ public final class ProyectoInformacionBasicaValidator {
         if (!tieneMoodboard) {
             faltantes.add("moodboard");
         }
-        if (!tieneRequerimiento) {
-            faltantes.add("al menos un requerimiento de personal");
+        if (!tieneRequerimientoGeneralOActividad) {
+            faltantes.add("al menos un requerimiento (general o de actividad)");
         }
 
         if (!faltantes.isEmpty()) {

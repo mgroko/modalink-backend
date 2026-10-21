@@ -21,6 +21,7 @@ import org.mgroko.backend.modelo.RequerimientoGralCaract;
 import org.mgroko.backend.modelo.RequerimientoGralCaractValor;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -51,6 +52,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
@@ -81,6 +83,7 @@ public class ModificarProyectoService {
     private final ObjetivoRepository objetivoRepository;
     private final MoodboardRepository moodboardRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+    private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
     private final PostulacionGralRepository postulacionGralRepository;
     private final UbicacionService ubicacionService;
@@ -95,6 +98,7 @@ public class ModificarProyectoService {
             ObjetivoRepository objetivoRepository,
             MoodboardRepository moodboardRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
+            RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             PostulacionGralRepository postulacionGralRepository,
             UbicacionService ubicacionService,
@@ -107,6 +111,7 @@ public class ModificarProyectoService {
         this.objetivoRepository = objetivoRepository;
         this.moodboardRepository = moodboardRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
+        this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
         this.postulacionGralRepository = postulacionGralRepository;
         this.ubicacionService = ubicacionService;
@@ -307,11 +312,16 @@ public class ModificarProyectoService {
                 .map(Planificacion::getFechaEntrega)
                 .orElse(null);
 
+        boolean tieneRequerimientoGral = !requerimientoGralProyectoRepository
+                .findByProyectoIdProyecto(idProyecto).isEmpty();
+        boolean tieneRequerimientoActividad = requerimientoActividadRepository
+                .existsByProyectoExcluyendoEstado(idProyecto, EstadoActividad.CANCELADA);
+
         ProyectoInformacionBasicaValidator.validar(
                 proyecto.getUbicacion(),
                 fechaEntrega,
                 moodboardRepository.findByProyectoIdProyecto(idProyecto).isPresent(),
-                !requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto).isEmpty());
+                tieneRequerimientoGral || tieneRequerimientoActividad);
     }
 
     private boolean esSatisfecho(Long idRequerimientoGral) {

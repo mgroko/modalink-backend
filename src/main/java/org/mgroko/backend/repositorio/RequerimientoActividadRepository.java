@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,4 +26,24 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
     """)
     List<RequerimientoActividad> findConProfesionByActividadIds(
             @Param("idsActividades") Collection<Long> idsActividades);
+
+    /**
+     * Indica si el proyecto tiene al menos un requerimiento de actividad en
+     * actividades que no se encuentren en el estado excluido. Se usa para
+     * validar la informacion basica exigida al publicar o modificar un
+     * proyecto.
+     *
+     * @param idProyecto     proyecto a evaluar
+     * @param estadoExcluido estado de actividad que no debe computarse
+     * @return true si existe al menos un requerimiento computable
+     */
+    @Query("""
+        SELECT CASE WHEN COUNT(ra) > 0 THEN TRUE ELSE FALSE END
+        FROM RequerimientoActividad ra
+        WHERE ra.actividad.planificacion.proyecto.idProyecto = :idProyecto
+          AND ra.actividad.estado <> :estadoExcluido
+    """)
+    boolean existsByProyectoExcluyendoEstado(
+            @Param("idProyecto") Long idProyecto,
+            @Param("estadoExcluido") EstadoActividad estadoExcluido);
 }

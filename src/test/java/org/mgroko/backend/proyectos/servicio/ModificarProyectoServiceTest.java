@@ -21,6 +21,7 @@ import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -45,6 +46,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.ubicacion.dto.UbicacionRequest;
@@ -86,6 +88,9 @@ class ModificarProyectoServiceTest {
 
     @Mock
     private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+
+    @Mock
+    private RequerimientoActividadRepository requerimientoActividadRepository;
 
     @Mock
     private RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
@@ -279,12 +284,28 @@ class ModificarProyectoServiceTest {
     }
 
     @Test
-    void modificar_publicadoSinRequerimientos_lanzaInformacionIncompleta() {
+    void modificar_publicadoSinRequerimientosGralNiDeActividad_lanzaInformacionIncompleta() {
         proyecto.setEstado(EstadoProyecto.PUBLICADO);
+        when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
+                100L, EstadoActividad.CANCELADA)).thenReturn(false);
 
         assertThatThrownBy(() -> modificarProyectoService.modificar(1L, 10L, 100L, requestPublicado()))
                 .isInstanceOf(InformacionBasicaIncompletaException.class)
-                .hasMessageContaining("requerimiento de personal");
+                .hasMessageContaining("requerimiento")
+                .hasMessageContaining("general o de actividad");
+    }
+
+    @Test
+    void modificar_publicadoConRequerimientoDeActividad_permiteModificar() {
+        proyecto.setEstado(EstadoProyecto.PUBLICADO);
+        when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
+                100L, EstadoActividad.CANCELADA)).thenReturn(true);
+
+        ProyectoResponse response = modificarProyectoService.modificar(1L, 10L, 100L, requestPublicado());
+
+        assertThat(response.estado()).isEqualTo("Publicado");
+        assertThat(response.requerimientosGral()).isEmpty();
+        verify(proyectoRepository).save(proyecto);
     }
 
     @Test

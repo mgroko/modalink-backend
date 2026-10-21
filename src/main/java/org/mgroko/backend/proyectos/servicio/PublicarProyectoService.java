@@ -18,6 +18,7 @@ import org.mgroko.backend.modelo.RequerimientoGralCaract;
 import org.mgroko.backend.modelo.RequerimientoGralCaractValor;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -41,6 +42,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.stereotype.Service;
@@ -54,8 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * Información básica obligatoria para publicar (definida con producto):
  * ubicación, fecha de entrega (planificación), moodboard y al menos un
- * requerimiento de personal. Con el módulo de actividades se sumará "al menos
- * un requerimiento de actividad" como alternativa válida.
+ * requerimiento general o de actividad no cancelado.
  */
 @Service
 public class PublicarProyectoService {
@@ -68,6 +69,7 @@ public class PublicarProyectoService {
     private final PlanificacionRepository planificacionRepository;
     private final MoodboardRepository moodboardRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+    private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
     private final ObjetivoRepository objetivoRepository;
     private final PostulacionGralRepository postulacionGralRepository;
@@ -80,6 +82,7 @@ public class PublicarProyectoService {
             PlanificacionRepository planificacionRepository,
             MoodboardRepository moodboardRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
+            RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             ObjetivoRepository objetivoRepository,
             PostulacionGralRepository postulacionGralRepository,
@@ -90,6 +93,7 @@ public class PublicarProyectoService {
         this.planificacionRepository = planificacionRepository;
         this.moodboardRepository = moodboardRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
+        this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
         this.objetivoRepository = objetivoRepository;
         this.postulacionGralRepository = postulacionGralRepository;
@@ -131,11 +135,16 @@ public class PublicarProyectoService {
                 .map(Planificacion::getFechaEntrega)
                 .orElse(null);
 
+        boolean tieneRequerimientoGral = !requerimientoGralProyectoRepository
+                .findByProyectoIdProyecto(idProyecto).isEmpty();
+        boolean tieneRequerimientoActividad = requerimientoActividadRepository
+                .existsByProyectoExcluyendoEstado(idProyecto, EstadoActividad.CANCELADA);
+
         ProyectoInformacionBasicaValidator.validar(
                 proyecto.getUbicacion(),
                 fechaEntrega,
                 moodboardRepository.findByProyectoIdProyecto(idProyecto).isPresent(),
-                !requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto).isEmpty());
+                tieneRequerimientoGral || tieneRequerimientoActividad);
     }
 
     private ProyectoResponse armarResponse(Proyecto proyecto, Perfil perfilConsultante) {
