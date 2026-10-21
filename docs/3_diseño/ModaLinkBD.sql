@@ -1728,36 +1728,6 @@ CREATE TABLE requerimiento_gral_caract(
 ;
 
 
-CREATE OR REPLACE FUNCTION fn_req_caract_rango_solo_numerico() RETURNS trigger AS $$
-DECLARE
-    v_tipo_dato VARCHAR(50);
-BEGIN
-    SELECT tipo_dato INTO v_tipo_dato
-    FROM caracteristica_tecnica
-    WHERE id_caracteristica = NEW.id_caracteristica;
-
-    IF v_tipo_dato IS NULL THEN
-        RAISE EXCEPTION 'La caracteristica % no existe.', NEW.id_caracteristica
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    IF v_tipo_dato <> 'NUMERICO'
-       AND (NEW.valor_min IS NOT NULL OR NEW.valor_max IS NOT NULL) THEN
-        RAISE EXCEPTION 'valor_min/valor_max solo aplican a caracteristicas NUMERICAS (caracteristica %, tipo %).',
-            NEW.id_caracteristica, v_tipo_dato
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    RETURN NEW;
-END $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_req_gral_caract_rango ON requerimiento_gral_caract;
-CREATE TRIGGER trg_req_gral_caract_rango
-    BEFORE INSERT OR UPDATE ON requerimiento_gral_caract
-    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_rango_solo_numerico();
-
-
-
 
 -- 
 -- TABLE: requerimiento_gral_caract_valor 
