@@ -6,11 +6,12 @@ import java.util.List;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ActividadRepository extends JpaRepository<Actividad, Long> {
+public interface ActividadRepository extends JpaRepository<Actividad, Long>, JpaSpecificationExecutor<Actividad> {
 
     /**
      * Devuelve las actividades de los proyectos activos a las que está
@@ -62,6 +63,21 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long> {
             @Param("idsProyectos") Collection<Long> idsProyectos,
             @Param("idPerfil") Long idPerfil,
             @Param("ahora") java.time.LocalDateTime ahora);
+
+    /**
+     * Carga, para las actividades indicadas, sus predecesoras en una sola
+     * consulta. Se usa en la búsqueda de actividades (UC-52) para evitar N+1.
+     *
+     * @param idsActividades actividades de la página actual
+     * @return actividades con su colección de predecesoras inicializada
+     */
+    @Query("""
+        SELECT DISTINCT a FROM Actividad a
+        LEFT JOIN FETCH a.predecesoras
+        WHERE a.idActividad IN :idsActividades
+    """)
+    List<Actividad> findConPredecesoras(
+            @Param("idsActividades") Collection<Long> idsActividades);
 
     @Modifying(flushAutomatically = true)
     @Query("""

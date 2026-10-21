@@ -260,6 +260,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoDuracionInvalido(
+            org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException.class)
     public ResponseEntity<Map<String, Object>> handleInformacionBasicaIncompleta(
             org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException ex) {

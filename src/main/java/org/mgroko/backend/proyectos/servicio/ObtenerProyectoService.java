@@ -23,7 +23,6 @@ import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
-import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
@@ -60,6 +59,7 @@ public class ObtenerProyectoService {
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
     private final PostulacionGralRepository postulacionGralRepository;
     private final MoodboardRepository moodboardRepository;
+    private final ProyectoVisibilidadService proyectoVisibilidadService;
 
     public ObtenerProyectoService(
             ProyectoRepository proyectoRepository,
@@ -70,7 +70,8 @@ public class ObtenerProyectoService {
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             PostulacionGralRepository postulacionGralRepository,
-            MoodboardRepository moodboardRepository) {
+            MoodboardRepository moodboardRepository,
+            ProyectoVisibilidadService proyectoVisibilidadService) {
         this.proyectoRepository = proyectoRepository;
         this.perfilRepository = perfilRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -80,6 +81,7 @@ public class ObtenerProyectoService {
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
         this.postulacionGralRepository = postulacionGralRepository;
         this.moodboardRepository = moodboardRepository;
+        this.proyectoVisibilidadService = proyectoVisibilidadService;
     }
 
     /**
@@ -111,12 +113,10 @@ public class ObtenerProyectoService {
                 .findMiembroActivoConPermisos(idProyecto, idPerfilActivo);
 
         boolean exMiembroDeProyectoCancelado = miembroActivo.isEmpty()
-                && proyecto.getEstado() == EstadoProyecto.CANCELADO
-                && miembroProyectoRepository
-                        .findByProyectoIdProyectoAndPerfilIdPerfil(idProyecto, idPerfilActivo)
-                        .isPresent();
+                && proyectoVisibilidadService.esExMiembroDeProyectoCancelado(proyecto, idPerfilActivo);
 
-        if (miembroActivo.isEmpty() && !exMiembroDeProyectoCancelado && !esVisibleParaNoMiembro(proyecto)) {
+        if (miembroActivo.isEmpty() && !exMiembroDeProyectoCancelado
+                && !proyectoVisibilidadService.esVisibleParaNoMiembro(proyecto)) {
             throw new AccesoDenegadoProyectoException(
                     "No tienes acceso a este proyecto.");
         }
@@ -183,13 +183,6 @@ public class ObtenerProyectoService {
                 Boolean.TRUE,
                 permisos,
                 Boolean.FALSE);
-    }
-
-    private boolean esVisibleParaNoMiembro(Proyecto proyecto) {
-        boolean visible = proyecto.getEstado() != null
-                && proyecto.getEstado() != EstadoProyecto.BORRADOR
-                && proyecto.getEstado() != EstadoProyecto.CANCELADO;
-        return visible && proyecto.getPrivacidad() == Privacidad.PUBLICO;
     }
 
     private Perfil buscarDirector(Long idProyecto) {

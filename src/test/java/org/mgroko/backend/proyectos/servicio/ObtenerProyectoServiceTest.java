@@ -79,6 +79,9 @@ class ObtenerProyectoServiceTest {
     @Mock
     private MoodboardRepository moodboardRepository;
 
+    @Mock
+    private ProyectoVisibilidadService proyectoVisibilidadService;
+
     @InjectMocks
     private ObtenerProyectoService obtenerProyectoService;
 
@@ -185,6 +188,7 @@ class ObtenerProyectoServiceTest {
     void obtener_noMiembroProyectoPublicadoPermitido() {
         prepararPerfil();
         when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
         when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
@@ -309,6 +313,7 @@ class ObtenerProyectoServiceTest {
 
         prepararPerfil();
         when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
         when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
@@ -340,6 +345,7 @@ class ObtenerProyectoServiceTest {
 
         prepararPerfil();
         when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
         when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
