@@ -17,5 +17,6 @@ public record CrearRequerimientoCaractRequest(
         @PositiveOrZero(message = "El valor máximo no puede ser negativo.")
         BigDecimal valorMax,
 
-        List<Long> valores
+        List<@NotNull(message = "La lista de valores no puede contener valores nulos.")
+        Long> valores
 ) {}

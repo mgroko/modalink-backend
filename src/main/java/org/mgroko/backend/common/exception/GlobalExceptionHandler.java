@@ -317,9 +317,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {
+        if (esViolacionPorCiclo(ex)) {
+            return buildErrorResponse(
+                    "La modificacion genera un ciclo entre actividades.",
+                    HttpStatus.CONFLICT);
+        }
         return buildErrorResponse(
-                "Los datos enviados violan una restricción de integridad de la base de datos.",
+                "Los datos enviados violan una restriccion de integridad de la base de datos.",
                 HttpStatus.BAD_REQUEST);
+    }
+
+    private boolean esViolacionPorCiclo(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null
+                    && mensaje.toLowerCase(java.util.Locale.ROOT).contains("genera un ciclo")) {
+                return true;
+            }
+            actual = actual.getCause();
+        }
+        return false;
     }
 
     /**
@@ -562,6 +580,30 @@ public class GlobalExceptionHandler {
                 "El archivo supera el tama�o m�ximo permitido.", HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadNoEncontrada(
+            org.mgroko.backend.actividades.exception.ActividadNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadNoModificableException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadNoModificable(
+            org.mgroko.backend.actividades.exception.ActividadNoModificableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteModificarActividadesException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteModificarActividades(
+            org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteModificarActividadesException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleTransicionEstadoActividadInvalida(
+            org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException.class)
     public ResponseEntity<Map<String, Object>> handleNombreActividadDuplicado(
             org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException ex) {
@@ -589,6 +631,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.mgroko.backend.actividades.exception.CronogramaInviableException.class)
     public ResponseEntity<Map<String, Object>> handleCronogramaInviable(
             org.mgroko.backend.actividades.exception.CronogramaInviableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.CicloActividadException.class)
+    public ResponseEntity<Map<String, Object>> handleCicloActividad(
+            org.mgroko.backend.actividades.exception.CicloActividadException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.RequerimientoConVinculosException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoConVinculos(
+            org.mgroko.backend.actividades.exception.RequerimientoConVinculosException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 

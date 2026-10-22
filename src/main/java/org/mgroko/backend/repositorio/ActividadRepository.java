@@ -32,6 +32,8 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
         WHERE per.usuario.idUsuario = :idUsuario
           AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
           AND a.planificacion.proyecto.estado IN :estados
+          AND a.estado IN (org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE,
+                            org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
     """)
     List<Actividad> findActividadesDeUsuario(
             @Param("idUsuario") Long idUsuario,
@@ -98,6 +100,27 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
     boolean existeNombreEnPlanificacion(
             @Param("idPlanificacion") Long idPlanificacion,
             @Param("nombre") String nombre);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END
+        FROM Actividad a
+        WHERE a.planificacion.idPlanificacion = :idPlanificacion
+          AND LOWER(TRIM(a.nombre)) = LOWER(TRIM(:nombre))
+          AND a.idActividad <> :idActividad
+    """)
+    boolean existeNombreEnPlanificacionExcluyendo(
+            @Param("idPlanificacion") Long idPlanificacion,
+            @Param("nombre") String nombre,
+            @Param("idActividad") Long idActividad);
+
+    @Query("""
+        SELECT a FROM Actividad a
+        WHERE a.idActividad = :idActividad
+          AND a.planificacion.idPlanificacion = :idPlanificacion
+    """)
+    java.util.Optional<Actividad> findByIdActividadAndPlanificacionIdPlanificacion(
+            @Param("idActividad") Long idActividad,
+            @Param("idPlanificacion") Long idPlanificacion);
 
     @Query("""
         SELECT DISTINCT a FROM Actividad a

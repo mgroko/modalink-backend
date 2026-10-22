@@ -15,8 +15,10 @@ public record ActividadResponse(
         LocalDateTime fechaHoraInicio,
         LocalDateTime fechaHoraFin,
         String estado,
+        String estadoCronograma,
         UbicacionResponse ubicacion,
         List<ActividadVinculadaResponse> predecesoras,
-        List<RequerimientoActividadResponse> requerimientos
+        List<RequerimientoActividadResponse> requerimientos,
+        List<ProfesionalAsignadoResponse> profesionalesAsignados
 ) {
 }

@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface InvitacionActividadRepository extends JpaRepository<InvitacionActividad, Long> {
 
+    boolean existsByRequerimiento_IdRequerimiento(Long idRequerimiento);
+
     @Query("""
         SELECT i FROM InvitacionActividad i
         JOIN FETCH i.perfilDestinatario perfil

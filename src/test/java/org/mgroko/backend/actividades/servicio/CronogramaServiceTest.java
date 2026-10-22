@@ -15,6 +15,7 @@ import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.modelo.enums.EstadoCronograma;
 
 class CronogramaServiceTest {
 
@@ -31,53 +32,103 @@ class CronogramaServiceTest {
     }
 
     @Test
-    void recalcular_cadenaPendiente_programaHaciaAtrasDesdeLaEntrega() {
-        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10), null);
+    void recalcular_cadenaPendiente_programaHaciaAdelanteDesdeInicioProyecto() {
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 11, 10),
+                LocalDateTime.of(2026, 11, 1, 9, 0));
 
         Actividad b = actividad(2L, "B", 120, EstadoActividad.PENDIENTE, null);
         Actividad a = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
         b.setPredecesoras(Set.of(a));
 
-        cronogramaService.recalcular(planificacion, List.of(a, b));
+        EstadoCronograma estado = cronogramaService.recalcular(
+                planificacion, List.of(a, b));
 
-        assertThat(b.getFechaHoraInicio())
-                .isEqualTo(LocalDateTime.of(2026, 11, 10, 21, 59));
+        assertThat(estado).isEqualTo(EstadoCronograma.NORMAL);
         assertThat(a.getFechaHoraInicio())
-                .isEqualTo(LocalDateTime.of(2026, 11, 10, 20, 59));
+                .isEqualTo(LocalDateTime.of(2026, 11, 1, 9, 0));
+        assertThat(b.getFechaHoraInicio())
+                .isEqualTo(LocalDateTime.of(2026, 11, 1, 10, 0));
     }
 
     @Test
-    void recalcular_sucesoraNoPendiente_usaSuInicioFijo() {
-        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10), null);
+    void recalcular_sucesoraPendienteDeNoPendiente_continuaDesdeSuFinFijo() {
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 11, 10),
+                LocalDateTime.of(2026, 11, 1, 9, 0));
 
         Actividad enCurso = actividad(
-                2L,
+                1L,
                 "En curso",
                 120,
                 EstadoActividad.EN_CURSO,
                 LocalDateTime.of(2026, 11, 5, 10, 0));
         LocalDateTime inicioOriginal = enCurso.getFechaHoraInicio();
 
-        Actividad pendiente = actividad(1L, "Pendiente", 60, EstadoActividad.PENDIENTE, null);
-        enCurso.setPredecesoras(Set.of(pendiente));
+        Actividad pendiente = actividad(2L, "Pendiente", 60, EstadoActividad.PENDIENTE, null);
+        pendiente.setPredecesoras(Set.of(enCurso));
 
-        cronogramaService.recalcular(planificacion, List.of(pendiente, enCurso));
+        cronogramaService.recalcular(planificacion, List.of(enCurso, pendiente));
 
-        assertThat(pendiente.getFechaHoraInicio())
-                .isEqualTo(LocalDateTime.of(2026, 11, 5, 9, 0));
         assertThat(enCurso.getFechaHoraInicio()).isEqualTo(inicioOriginal);
+        assertThat(pendiente.getFechaHoraInicio())
+                .isEqualTo(LocalDateTime.of(2026, 11, 5, 12, 0));
     }
 
     @Test
-    void recalcular_inicioAnteriorAlProyecto_lanzaExcepcion() {
+    void recalcular_superaFechaEntrega_lanzaExcepcion() {
         Planificacion planificacion = planificacion(
-                LocalDate.of(2026, 11, 10),
-                LocalDateTime.of(2026, 11, 10, 21, 0));
+                LocalDate.of(2026, 11, 2),
+                LocalDateTime.of(2026, 11, 1, 9, 0));
 
-        Actividad actividad = actividad(1L, "A", 240, EstadoActividad.PENDIENTE, null);
+        Actividad actividad = actividad(1L, "A", 2880, EstadoActividad.PENDIENTE, null);
 
         assertThatThrownBy(() -> cronogramaService.recalcular(planificacion, List.of(actividad)))
-                .isInstanceOf(CronogramaInviableException.class);
+                .isInstanceOf(CronogramaInviableException.class)
+                .hasMessageContaining("supera la fecha de entrega");
+    }
+
+    @Test
+    void recalcularTolerandoDesborde_superaEntrega_marcaAlertaYConservaInicioTemprano() {
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 11, 2),
+                LocalDateTime.of(2026, 11, 1, 9, 0));
+
+        Actividad actividad = actividad(1L, "A", 2880, EstadoActividad.PENDIENTE, null);
+
+        EstadoCronograma estado = cronogramaService.recalcularTolerandoDesborde(
+                planificacion, List.of(actividad));
+
+        assertThat(estado).isEqualTo(EstadoCronograma.ALERTA_DESBORDE);
+        assertThat(actividad.getFechaHoraInicio())
+                .isEqualTo(LocalDateTime.of(2026, 11, 1, 9, 0));
+    }
+
+    @Test
+    void evaluar_conFinPosteriorALaEntrega_marcaAlerta() {
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 11, 2),
+                LocalDateTime.of(2026, 11, 1, 9, 0));
+
+        Actividad actividad = actividad(
+                1L,
+                "A",
+                120,
+                EstadoActividad.PENDIENTE,
+                LocalDateTime.of(2026, 11, 2, 23, 0));
+
+        assertThat(cronogramaService.evaluar(planificacion, List.of(actividad)))
+                .isEqualTo(EstadoCronograma.ALERTA_DESBORDE);
+    }
+
+    @Test
+    void evaluar_sinFechaEntrega_marcaNormal() {
+        Planificacion planificacion = Planificacion.builder()
+                .proyecto(Proyecto.builder().build())
+                .build();
+
+        assertThat(cronogramaService.evaluar(planificacion, List.of()))
+                .isEqualTo(EstadoCronograma.NORMAL);
     }
 
     private Planificacion planificacion(LocalDate fechaEntrega, LocalDateTime fechaInicioProyecto) {

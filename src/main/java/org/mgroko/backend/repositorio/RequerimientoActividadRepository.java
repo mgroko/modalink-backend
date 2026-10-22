@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface RequerimientoActividadRepository extends JpaRepository<RequerimientoActividad, Long> {
 
+    List<RequerimientoActividad> findByActividad_IdActividad(Long idActividad);
+
     /**
      * Recupera los requerimientos de las actividades indicadas junto con su
      * profesión en una sola consulta, para armar el resumen de UC-52 sin N+1.

@@ -89,6 +89,94 @@ public class RequerimientoActividadService {
         return toResponse(guardado, idsValoresPorCaracteristica);
     }
 
+    public RequerimientoActividadResponse actualizar(
+            RequerimientoActividad requerimiento,
+            CrearRequerimientoActividadRequest request) {
+
+        Profesion profesion = profesionRepository.findById(request.idProfesion())
+                .orElseThrow(() -> new ProfesionNoEncontradaException(
+                        "Profesion no encontrada: " + request.idProfesion()));
+
+        requerimiento.setProfesion(profesion);
+        requerimiento.setCantidad(request.cantidad());
+        requerimiento.setDescripcion(
+                request.descripcion() != null ? request.descripcion().trim() : null);
+
+        for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
+            requerimientoActCaractValorRepository
+                    .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
+        }
+        requerimiento.getCaracteristicas().clear();
+
+        Map<Long, List<Long>> idsValoresPorCaracteristica = new HashMap<>();
+        List<RequerimientoActCaract> caracteristicasEntidad = construirCaracteristicas(
+                requerimiento,
+                request.caracteristicas(),
+                idsValoresPorCaracteristica);
+        requerimiento.getCaracteristicas().addAll(caracteristicasEntidad);
+
+        requerimiento.getHabilidades().clear();
+        requerimiento.getHabilidades().addAll(resolverHabilidades(request.habilidades()));
+
+        RequerimientoActividad guardado = requerimientoActividadRepository
+                .saveAndFlush(requerimiento);
+
+        persistirValoresCaracteristicas(caracteristicasEntidad, idsValoresPorCaracteristica);
+
+        return toResponse(guardado, idsValoresPorCaracteristica);
+    }
+
+    public void eliminar(RequerimientoActividad requerimiento) {
+        for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
+            requerimientoActCaractValorRepository
+                    .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
+        }
+        requerimientoActividadRepository.delete(requerimiento);
+    }
+
+    public List<RequerimientoActividadResponse> listarPorActividad(Long idActividad) {
+        List<RequerimientoActividad> requerimientos =
+                requerimientoActividadRepository.findByActividad_IdActividad(idActividad);
+
+        if (requerimientos.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> idsCaracteristicas = requerimientos.stream()
+                .flatMap(requerimiento -> requerimiento.getCaracteristicas().stream())
+                .map(RequerimientoActCaract::getIdReqActCaract)
+                .toList();
+
+        Map<Long, List<RequerimientoActCaractValor>> valoresPorCaracteristica =
+                new HashMap<>();
+        if (!idsCaracteristicas.isEmpty()) {
+            for (RequerimientoActCaractValor valor : requerimientoActCaractValorRepository
+                    .findByIdReqActCaractIn(idsCaracteristicas)) {
+                valoresPorCaracteristica
+                        .computeIfAbsent(valor.getIdReqActCaract(), id -> new ArrayList<>())
+                        .add(valor);
+            }
+        }
+
+        List<RequerimientoActividadResponse> resultado = new ArrayList<>();
+        for (RequerimientoActividad requerimiento : requerimientos) {
+            Map<Long, List<Long>> idsValoresPorCaracteristica = new HashMap<>();
+            for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
+                List<Long> idsValores = valoresPorCaracteristica
+                        .getOrDefault(caracteristica.getIdReqActCaract(), List.of())
+                        .stream()
+                        .map(RequerimientoActCaractValor::getIdValor)
+                        .toList();
+                idsValoresPorCaracteristica.put(
+                        caracteristica.getCaracteristica().getIdCaracteristica(),
+                        idsValores);
+            }
+            resultado.add(toResponse(requerimiento, idsValoresPorCaracteristica));
+        }
+
+        return resultado;
+    }
+
     private RequerimientoActividadResponse toResponse(
             RequerimientoActividad guardado,
             Map<Long, List<Long>> idsValoresPorCaracteristica) {
