@@ -3098,14 +3098,21 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
 ON CONFLICT (clave) DO UPDATE 
     SET valor       = EXCLUDED.valor,
         descripcion = EXCLUDED.descripcion;
-        
+
 INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('HITO_CUMPLIDO',         'Hito cumplido',         'PROYECTO',    'MEDIA'),
     ('ACTIVIDAD_ASIGNADA',    'Actividad asignada',    'ACTIVIDAD',   'MEDIA'),
     ('PROYECTO_CANCELADO',    'Proyecto cancelado',    'PROYECTO',    'ALTA'),
     ('POSTULACION_RECHAZADA', 'Postulación rechazada', 'POSTULACION', 'ALTA'),
     ('INVITACION_RECHAZADA',  'Invitación rechazada',  'INVITACION',  'ALTA'),
-    ('ACTIVIDAD_MODIFICADA',  'Actividad modificada',  'ACTIVIDAD',   'MEDIA')
+    ('ACTIVIDAD_MODIFICADA',  'Actividad modificada',  'ACTIVIDAD',   'MEDIA'),
+    ('ACTIVIDAD_ELIMINADA',   'Actividad eliminada',   'ACTIVIDAD',   'ALTA'),
+    ('POSTULACION_ACEPTADA',  'Postulación aceptada',  'POSTULACION', 'ALTA'),
+    ('INVITACION_ACEPTADA',   'Invitación aceptada',   'INVITACION',  'ALTA'),
+    ('PROYECTO_FINALIZADO',   'Proyecto finalizado',   'PROYECTO',    'ALTA'),
+    ('PROYECTO_PUBLICADO',    'Proyecto publicado',    'PROYECTO',    'ALTA'),
+    ('PROYECTO_CONFIRMADO',   'Proyecto confirmado',   'PROYECTO',    'ALTA')
+
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,
         categoria = EXCLUDED.categoria,
