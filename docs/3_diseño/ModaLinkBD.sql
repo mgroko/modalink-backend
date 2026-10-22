@@ -3104,7 +3104,8 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('ACTIVIDAD_ASIGNADA',    'Actividad asignada',    'ACTIVIDAD',   'MEDIA'),
     ('PROYECTO_CANCELADO',    'Proyecto cancelado',    'PROYECTO',    'ALTA'),
     ('POSTULACION_RECHAZADA', 'Postulación rechazada', 'POSTULACION', 'ALTA'),
-    ('INVITACION_RECHAZADA',  'Invitación rechazada',  'INVITACION',  'ALTA')
+    ('INVITACION_RECHAZADA',  'Invitación rechazada',  'INVITACION',  'ALTA'),
+    ('ACTIVIDAD_MODIFICADA',  'Actividad modificada',  'ACTIVIDAD',   'MEDIA')
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,
         categoria = EXCLUDED.categoria,
