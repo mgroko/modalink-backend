@@ -95,7 +95,7 @@ el historial de git sirva de bitácora adicional.
 | UC-41 | Enviar mensaje a chat grupal         | No iniciado |                  |       | Segunda iteracion |
 | UC-49 | Crear actividad en planificación     | Implementado y testeado | `POST /proyectos/{idProyecto}/actividades` | Sí | Primera iteracion. Incluye programacion regresiva basica; CPM completo queda para UC-33. |
 | UC-50 | Modificar actividad de planificación | No iniciado |                  |       | Primera iteracion |
-| UC-51 | Eliminar actividad de planificación  | No iniciado |                  |       | Primera iteracion |
+| UC-51 | Eliminar actividad de planificación  | Implementado y testeado | `DELETE /proyectos/{idProyecto}/actividades/{idActividad}?motivo=...` | Sí (unitario + integración) | Primera iteracion. Eliminación física con motivo obligatorio (máx. 200); permiso `ELIMINAR_ACTIVIDAD`; permitido en proyectos Borrador/Publicado/Confirmado; borra dependencias, hitos vinculados, requerimientos, postulaciones, invitaciones y asignaciones; reconecta predecesoras/sucesoras; conserva miembros; notifica a asignados y afectados |
 | UC-52 | Buscar actividades                   | Implementado y testeado | `GET /proyectos/{idProyecto}/actividades/buscar` | Sí    | Primera iteracion. Filtros opcionales nombre/descripción/requerimiento (profesión, habilidad o característica), duración mínima/máxima y estado; visibilidad compartida con UC-25; orden por inicio ascendente; requerimientos y predecesoras resueltos en batch sin N+1 |
 | UC-60 | Confirmar proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-70 | Asignar actividad a miembro          | No iniciado |                  |       | Segunda iteracion |
