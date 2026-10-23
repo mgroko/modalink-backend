@@ -592,6 +592,24 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadNoEliminableException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadNoEliminable(
+            org.mgroko.backend.actividades.exception.ActividadNoEliminableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteEliminarActividades(
+            org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.MotivoEliminacionObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleMotivoEliminacionObligatorio(
+            org.mgroko.backend.actividades.exception.MotivoEliminacionObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteModificarActividadesException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteModificarActividades(
             org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteModificarActividadesException ex) {

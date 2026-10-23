@@ -7,6 +7,7 @@ import org.mgroko.backend.actividades.dto.CrearActividadRequest;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
+import org.mgroko.backend.actividades.servicio.EliminarActividadService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
 import org.mgroko.backend.common.dto.PaginaResponse;
@@ -15,6 +16,7 @@ import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,16 +35,19 @@ public class ActividadController {
     private final CrearActividadService crearActividadService;
     private final ModificarActividadService modificarActividadService;
     private final ObtenerActividadService obtenerActividadService;
+    private final EliminarActividadService eliminarActividadService;
 
     public ActividadController(
             BuscarActividadService buscarActividadService,
             CrearActividadService crearActividadService,
             ModificarActividadService modificarActividadService,
-            ObtenerActividadService obtenerActividadService) {
+            ObtenerActividadService obtenerActividadService,
+            EliminarActividadService eliminarActividadService) {
         this.buscarActividadService = buscarActividadService;
         this.crearActividadService = crearActividadService;
         this.modificarActividadService = modificarActividadService;
         this.obtenerActividadService = obtenerActividadService;
+        this.eliminarActividadService = eliminarActividadService;
     }
 
     @PostMapping("/proyectos/{idProyecto}/actividades")
@@ -88,6 +93,29 @@ public class ActividadController {
         ActividadResponse response = modificarActividadService.modificar(
                 idUsuario, idPerfilActivo, idProyecto, idActividad, request);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/proyectos/{idProyecto}/actividades/{idActividad}")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idActividad,
+            @RequestParam String motivo,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        eliminarActividadService.eliminar(
+                idUsuario, idPerfilActivo, idProyecto, idActividad, motivo);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/proyectos/{idProyecto}/actividades/{idActividad}")

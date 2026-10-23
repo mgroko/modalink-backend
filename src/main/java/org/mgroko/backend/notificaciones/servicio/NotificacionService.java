@@ -27,6 +27,7 @@ public class NotificacionService {
 
     public static final String TIPO_PROYECTO_CANCELADO = "PROYECTO_CANCELADO";
     public static final String TIPO_ACTIVIDAD_MODIFICADA = "ACTIVIDAD_MODIFICADA";
+    public static final String TIPO_ACTIVIDAD_ELIMINADA = "ACTIVIDAD_ELIMINADA";
     public static final String TIPO_POSTULACION_RECHAZADA = "POSTULACION_RECHAZADA";
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
     public static final String ORIGEN_SERVICIO = "SERVICIO";

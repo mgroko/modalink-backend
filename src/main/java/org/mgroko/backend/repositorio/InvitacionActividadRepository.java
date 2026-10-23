@@ -19,4 +19,13 @@ public interface InvitacionActividadRepository extends JpaRepository<InvitacionA
           AND i.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
     """)
     List<InvitacionActividad> findPendientesDeProyectoConDestinatario(@Param("idProyecto") Long idProyecto);
+
+    @Query("""
+        SELECT i FROM InvitacionActividad i
+        JOIN FETCH i.perfilDestinatario perfil
+        JOIN FETCH perfil.usuario
+        WHERE i.requerimiento.actividad.idActividad = :idActividad
+    """)
+    List<InvitacionActividad> findByActividadIdConDestinatario(
+            @Param("idActividad") Long idActividad);
 }

@@ -138,4 +138,17 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
     List<Actividad> findByIdsAndPlanificacion(
             @Param("idsActividades") Collection<Long> idsActividades,
             @Param("idPlanificacion") Long idPlanificacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+        DELETE FROM dependencia_actividades
+        WHERE id_actividad_sucesora = :idActividad
+           OR id_actividad_predecesora = :idActividad
+        """, nativeQuery = true)
+    int deleteDependenciasByActividadId(@Param("idActividad") Long idActividad);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "DELETE FROM hito_actividad WHERE id_actividad = :idActividad",
+            nativeQuery = true)
+    int deleteHitoActividadByActividadId(@Param("idActividad") Long idActividad);
 }
