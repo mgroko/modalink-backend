@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.actividades.exception.ActividadNoEliminableException;
+import org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException;
+import org.mgroko.backend.actividades.exception.MotivoEliminacionObligatorioException;
 import org.mgroko.backend.actividades.exception.RequerimientoConVinculosException;
 import org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalidaException;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -78,6 +81,42 @@ class GlobalExceptionHandlerTest {
         assertEquals(409, respuesta.getBody().get("httpStatus"));
         assertTrue(respuesta.getBody().get("message").toString()
                 .contains("PENDIENTE a FINALIZADA"));
+    }
+
+    @Test
+    void actividadNoEliminable_responde409() {
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleActividadNoEliminable(
+                        new ActividadNoEliminableException("FINALIZADA"));
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("FINALIZADA"));
+    }
+
+    @Test
+    void proyectoNoPermiteEliminarActividades_responde409() {
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleEstadoProyectoNoPermiteEliminarActividades(
+                        new EstadoProyectoNoPermiteEliminarActividadesException("CANCELADO"));
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("CANCELADO"));
+    }
+
+    @Test
+    void motivoEliminacionObligatorio_responde400() {
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleMotivoEliminacionObligatorio(
+                        new MotivoEliminacionObligatorioException("El motivo es obligatorio."));
+
+        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
+        assertEquals(400, respuesta.getBody().get("httpStatus"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("obligatorio"));
     }
 
     @Test

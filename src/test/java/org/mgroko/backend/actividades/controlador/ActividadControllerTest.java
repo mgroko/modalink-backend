@@ -24,6 +24,7 @@ import org.mgroko.backend.actividades.exception.RequerimientoConVinculosExceptio
 import org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalidaException;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
+import org.mgroko.backend.actividades.servicio.EliminarActividadService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
 import org.mgroko.backend.common.dto.PaginaResponse;
@@ -35,6 +36,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -61,6 +63,23 @@ class ActividadControllerTest {
 
     @MockitoBean
     private ObtenerActividadService obtenerActividadService;
+
+    @MockitoBean
+    private EliminarActividadService eliminarActividadService;
+
+    @Test
+    void eliminar_conDatosValidos_devuelve204() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(delete("/proyectos/100/actividades/55")
+                        .param("motivo", "Falta de presupuesto")
+                        .principal(auth))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarActividadService)
+                .eliminar(1L, 10L, 100L, 55L, "Falta de presupuesto");
+    }
 
     @Test
     void crear_conDatosValidos_devuelve201() throws Exception {
