@@ -286,12 +286,15 @@ public class ConfiguracionSistemaService {
     }
 
     private LocalDateTime calcularProximaEjecucion(String cron) {
-        try {
-            CronExpression expression = CronExpression.parse(cron);
-            return expression.next(LocalDateTime.now().atZone(ZoneId.systemDefault()))
-                    .toLocalDateTime();
-        } catch (Exception e) {
-            return null;
+        if (!CronExpression.isValidExpression(cron)) {
+            throw new IllegalStateException("Expresión cron inválida: " + cron);
         }
+        CronExpression expression = CronExpression.parse(cron);
+        LocalDateTime siguiente = expression.next(LocalDateTime.now().atZone(ZoneId.systemDefault()))
+                .toLocalDateTime();
+        if (siguiente == null) {
+            throw new IllegalStateException("No se pudo calcular la próxima ejecución para: " + cron);
+        }
+        return siguiente;
     }
 }

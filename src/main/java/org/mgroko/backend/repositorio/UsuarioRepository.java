@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.mgroko.backend.admin.dto.AdminDashboardProvinciaRow;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +13,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpecificationExecutor<Usuario> {
+
+    @Query("""
+        SELECT new org.mgroko.backend.admin.dto.AdminDashboardProvinciaRow(
+            prov.idProvincia, prov.nombre, COUNT(DISTINCT per.idPerfil))
+        FROM Perfil per
+        JOIN per.usuario u
+        JOIN u.ubicacion ub
+        JOIN ub.ciudad ciudad
+        JOIN ciudad.provincia prov
+        WHERE per.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+        GROUP BY prov.idProvincia, prov.nombre
+        ORDER BY prov.nombre
+    """)
+    List<AdminDashboardProvinciaRow> contarPerfilesActivosPorProvincia();
 
     /**
      * Busca un usuario por su correo electrónico.

@@ -72,7 +72,7 @@ public class AdminCaracteristicaTecnicaService {
 
     @Transactional
     public CaracteristicaTecnicaResponse crear(AdminCaracteristicaTecnicaRequest request) {
-        validarTipoDato(request.tipoDato());
+        String tipoDato = normalizarTipoDato(request.tipoDato());
 
         if (caracteristicaTecnicaRepository.existsByCodigo(request.codigo().trim().toUpperCase(Locale.ROOT))) {
             throw new CaracteristicaCodigoDuplicadoException(
@@ -80,14 +80,14 @@ public class AdminCaracteristicaTecnicaService {
         }
 
         Profesion profesion = buscarProfesion(request.idProfesion());
-        boolean enumerado = CaracteristicaTecnica.TIPO_ENUMERADO.equals(request.tipoDato());
+        boolean enumerado = CaracteristicaTecnica.TIPO_ENUMERADO.equals(tipoDato);
         if (!enumerado && request.valores() != null && !request.valores().isEmpty()) {
             throw new TipoDatoInvalidoException(
-                    "La característica " + request.tipoDato()
+                    "La característica " + tipoDato
                             + " no admite valores de catálogo (valores).");
         }
 
-        UnidadMedida unidad = resolverYValidarUnidad(request.idUnidad(), request.tipoDato());
+        UnidadMedida unidad = resolverYValidarUnidad(request.idUnidad(), tipoDato);
 
         String nombre = request.nombre() != null ? request.nombre().trim() : null;
 
@@ -95,7 +95,7 @@ public class AdminCaracteristicaTecnicaService {
                 .codigo(request.codigo().trim().toUpperCase(Locale.ROOT))
                 .nombre(nombre)
                 .unidadMedida(unidad)
-                .tipoDato(request.tipoDato())
+                .tipoDato(tipoDato)
                 .profesion(profesion)
                 .valores(new ArrayList<>())
                 .build();
@@ -113,7 +113,7 @@ public class AdminCaracteristicaTecnicaService {
     public CaracteristicaTecnicaResponse actualizar(Long idCaracteristica,
                                                     AdminCaracteristicaTecnicaRequest request) {
         CaracteristicaTecnica caracteristica = buscarOFallar(idCaracteristica);
-        validarTipoDato(request.tipoDato());
+        String tipoDato = normalizarTipoDato(request.tipoDato());
 
         String codigo = request.codigo().trim().toUpperCase(Locale.ROOT);
 
@@ -121,7 +121,7 @@ public class AdminCaracteristicaTecnicaService {
         // solo el nombre puede modificarse (mismo criterio del trigger de BD).
         boolean enUso = caracteristicaTecnicaRepository.existeEnUso(idCaracteristica);
         if (enUso) {
-            validarSoloNombreModificado(caracteristica, request, codigo);
+            validarSoloNombreModificado(caracteristica, request, codigo, tipoDato);
         }
 
         if (!codigo.equals(caracteristica.getCodigo().toUpperCase(Locale.ROOT))
@@ -134,23 +134,23 @@ public class AdminCaracteristicaTecnicaService {
 
         boolean pasaANoEnumerado =
                 CaracteristicaTecnica.TIPO_ENUMERADO.equals(caracteristica.getTipoDato())
-                        && !CaracteristicaTecnica.TIPO_ENUMERADO.equals(request.tipoDato());
+                        && !CaracteristicaTecnica.TIPO_ENUMERADO.equals(tipoDato);
         if (pasaANoEnumerado && !caracteristica.getValores().isEmpty()) {
             throw new CaracteristicaEnUsoException(
                     "La característica posee valores de catálogo; elimínelos antes de cambiar su tipo.");
         }
-        if (!CaracteristicaTecnica.TIPO_ENUMERADO.equals(request.tipoDato())
+        if (!CaracteristicaTecnica.TIPO_ENUMERADO.equals(tipoDato)
                 && request.valores() != null && !request.valores().isEmpty()) {
             throw new TipoDatoInvalidoException(
-                    "La característica " + request.tipoDato() + " no admite valores de catálogo (valores).");
+                    "La característica " + tipoDato + " no admite valores de catálogo (valores).");
         }
 
-        UnidadMedida unidad = resolverYValidarUnidad(request.idUnidad(), request.tipoDato());
+        UnidadMedida unidad = resolverYValidarUnidad(request.idUnidad(), tipoDato);
 
         caracteristica.setCodigo(codigo);
         caracteristica.setNombre(request.nombre() != null ? request.nombre().trim() : null);
         caracteristica.setUnidadMedida(unidad);
-        caracteristica.setTipoDato(request.tipoDato());
+        caracteristica.setTipoDato(tipoDato);
         caracteristica.setProfesion(profesion);
 
         return CaracteristicaTecnicaMapper.toResponse(caracteristicaTecnicaRepository.save(caracteristica), enUso);
@@ -283,9 +283,9 @@ public class AdminCaracteristicaTecnicaService {
      * {@link CaracteristicaEnUsoException} si algo distinto del nombre cambió.
      */
     private void validarSoloNombreModificado(CaracteristicaTecnica caracteristica,
-            AdminCaracteristicaTecnicaRequest request, String codigo) {
+            AdminCaracteristicaTecnicaRequest request, String codigo, String tipoDato) {
         boolean cambioCodigo = !codigo.equals(caracteristica.getCodigo().toUpperCase(Locale.ROOT));
-        boolean cambioTipoDato = !request.tipoDato().equals(caracteristica.getTipoDato());
+        boolean cambioTipoDato = !tipoDato.equals(caracteristica.getTipoDato());
         Profesion profesionActual = caracteristica.getProfesion();
         boolean cambioProfesion = profesionActual == null
                 || !request.idProfesion().equals(profesionActual.getIdProfesion());
@@ -300,10 +300,12 @@ public class AdminCaracteristicaTecnicaService {
         }
     }
 
-    private void validarTipoDato(String tipoDato) {
-        if (tipoDato == null || !TIPOS_VALIDOS.contains(tipoDato)) {
+    private String normalizarTipoDato(String tipoDato) {
+        String normalizado = tipoDato == null ? null : tipoDato.trim().toUpperCase(Locale.ROOT);
+        if (normalizado == null || !TIPOS_VALIDOS.contains(normalizado)) {
             throw new TipoDatoInvalidoException(
                     "tipoDato debe ser ENUMERADO, TEXTO o NUMERICO.");
         }
+        return normalizado;
     }
 }

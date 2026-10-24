@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.mgroko.backend.admin.dto.AdminDashboardProfesionRow;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +13,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecificationExecutor<Perfil> {
+
+    @Query("""
+        SELECT new org.mgroko.backend.admin.dto.AdminDashboardProfesionRow(
+            p.idProfesion, p.nombre, COUNT(DISTINCT perfil.idPerfil))
+        FROM Perfil perfil
+        JOIN perfil.profesion p
+        WHERE perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+        GROUP BY p.idProfesion, p.nombre
+        ORDER BY COUNT(DISTINCT perfil.idPerfil) DESC, p.nombre ASC
+    """)
+    List<AdminDashboardProfesionRow> contarPerfilesActivosPorProfesion(
+            org.springframework.data.domain.Pageable pageable);
 
     /**
      * Busca todos los perfiles asociados a un usuario por su ID.
