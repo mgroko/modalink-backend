@@ -2257,6 +2257,21 @@ CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, 
 ;
 
 -- 
+-- INDEX: "UQ_perfil_postulacion_act" 
+--
+
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_act" ON perfil_postulacion_act(id_perfil, id_requerimiento_act)
+;
+
+-- 
+-- INDEX: "UQ_perfil_postulacion_gral" 
+--
+
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_gral" ON perfil_postulacion_gral(id_perfil, id_requerimiento_gral)
+;
+
+
+-- 
 -- INDEX: "IDX_bloqueo_agenda_rango" 
 --
 
