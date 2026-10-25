@@ -11,17 +11,6 @@ import org.mgroko.backend.modelo.Genero;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * Test de integración de GeneroRepository contra PostgreSQL real.
- *
- * El contenedor se comparte vía {@link AbstractPostgresIntegrationTest};
- * Flyway ejecuta las migraciones (V1 a V3) y este test valida que
- * GeneroRepository.findByCodigo funcione contra los códigos sembrados en
- * V3__adicion_de_genero.sql. Al usar ddl-auto=validate, también verifica
- * que las entidades mapeadas coinciden con el esquema migrado.
- *
- * Solo lee datos sembrados: no necesita @Transactional ni limpieza.
- */
 @SpringBootTest
 class GeneroRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
 

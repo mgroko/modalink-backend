@@ -73,7 +73,7 @@ class AdminCaracteristicaTecnicaControllerTest {
     @Test
     void listar_retorna200YLista() throws Exception {
         CaracteristicaTecnicaResponse c = new CaracteristicaTecnicaResponse(
-                1L, "altura", "Altura", unidadCm(), 1L, "modelo", "NUMERICO", List.of());
+                1L, "altura", "Altura", unidadCm(), 1L, "modelo", "NUMERICO", List.of(), false);
 
         when(adminCaracteristicaTecnicaService.listar()).thenReturn(List.of(c));
 
@@ -83,7 +83,21 @@ class AdminCaracteristicaTecnicaControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].codigo").value("altura"))
                 .andExpect(jsonPath("$[0].nombre").value("Altura"))
-                .andExpect(jsonPath("$[0].unidad.simbolo").value("cm"));
+                .andExpect(jsonPath("$[0].unidad.simbolo").value("cm"))
+                .andExpect(jsonPath("$[0].enUso").value(false));
+    }
+
+    @Test
+    void listar_caracteristicaEnUso_retornaEnUsoTrue() throws Exception {
+        CaracteristicaTecnicaResponse c = new CaracteristicaTecnicaResponse(
+                1L, "altura", "Altura", unidadCm(), 1L, "modelo", "NUMERICO", List.of(), true);
+
+        when(adminCaracteristicaTecnicaService.listar()).thenReturn(List.of(c));
+
+        mockMvc.perform(get("/admin/caracteristicas-tecnicas")
+                        .principal(autenticacionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].enUso").value(true));
     }
 
     // --- POST /admin/caracteristicas-tecnicas ---
@@ -92,7 +106,7 @@ class AdminCaracteristicaTecnicaControllerTest {
     void crear_valido_retorna201() throws Exception {
         AdminCaracteristicaTecnicaRequest req = requestCaracteristica("altura", "NUMERICO");
         CaracteristicaTecnicaResponse res = new CaracteristicaTecnicaResponse(
-                10L, "altura", "Altura", unidadCm(), 1L, "modelo", "NUMERICO", List.of());
+                10L, "altura", "Altura", unidadCm(), 1L, "modelo", "NUMERICO", List.of(), false);
 
         when(adminCaracteristicaTecnicaService.crear(any())).thenReturn(res);
 
@@ -158,7 +172,7 @@ class AdminCaracteristicaTecnicaControllerTest {
     void actualizar_valido_retorna200() throws Exception {
         AdminCaracteristicaTecnicaRequest req = requestCaracteristica("altura_nueva", "NUMERICO");
         CaracteristicaTecnicaResponse res = new CaracteristicaTecnicaResponse(
-                5L, "altura_nueva", "Altura Nueva", unidadCm(), 1L, "modelo", "NUMERICO", List.of());
+                5L, "altura_nueva", "Altura Nueva", unidadCm(), 1L, "modelo", "NUMERICO", List.of(), false);
 
         when(adminCaracteristicaTecnicaService.actualizar(eq(5L), any())).thenReturn(res);
 

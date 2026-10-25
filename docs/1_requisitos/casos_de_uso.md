@@ -487,17 +487,17 @@
 | **Descripción**  | El caso de uso inicia cuando el usuario desea crear un proyecto profesional.  |  |
 | **Precondición**  | El usuario debe haber iniciado sesión en el sistema. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
-|  | 1 | El sistema despliega un formulario solicitando información básica del proyecto.  Campos obligatorios: Nombre del proyecto Descripción del proyecto Privacidad del proyecto (público o privado) Fecha de inicio estipulada  Campos opcionales: Ubicación Requerimientos de personal (cantidad, tipo de profesionales y características técnicas) Material de inspiración / Moodboard  Objetivos del proyecto Fecha de entrega final estipulada |
+|  | 1 | El sistema despliega un formulario solicitando información básica del proyecto.  Campos obligatorios: Nombre del proyecto Descripción del proyecto Privacidad del proyecto (público o privado)  Campos opcionales: Ubicación Requerimientos de personal (cantidad, tipo de profesionales y características técnicas) Material de inspiración / Moodboard  Objetivos del proyecto Fecha de entrega final estipulada |
 |  | 2 | El usuario ingresa la información solicitada. |
 |  | 3 | El sistema crea el proyecto en estado “Borrador” y asocia al perfil de usuario como “Director de proyecto”. |
 | **Postcondición** | Se dió de alta un proyecto con estado “Borrador”.  El perfil de usuario adquiere los permisos y el rol de “Director de proyecto” sobre el proyecto creado. |  |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 2 | Si el usuario deja campos obligatorios vacíos, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. Si el nombre ingresado es igual al nombre de otro proyecto asociado al perfil, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. Si la fecha de fin es menor a la fecha de inicio el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. |
+|  | 2 | Si el usuario deja campos obligatorios vacíos, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. Si el nombre ingresado es igual al nombre de otro proyecto asociado al perfil, el sistema notifica la excepción y vuelve al paso 1 o el caso de uso finaliza. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
 |  | 3 | 2 segundos |
 | **Frecuencia**  | 100 veces/día |  |
 | **Estabilidad**  | media |  |
-| **Comentarios** |  Al crear un proyecto, los únicos campos obligatorios son el nombre del proyecto, su descripción, privacidad de proyecto y fecha de inicio estipulada dado que permanece como borrador. Véase que en el caso de uso UC-25 Publicar proyecto todos los campos se vuelven obligatorios. |  |
+| **Comentarios** |  Al crear un proyecto, los únicos campos obligatorios son el nombre del proyecto, su descripción y privacidad de proyecto dado que permanece como borrador. Véase que en el caso de uso UC-25 Publicar proyecto todos los campos se vuelven obligatorios. |  |
 
 | UC–25 | Publicar proyecto |  |
 | ----- | ----- | ----- |
@@ -505,10 +505,10 @@
 | **Objetivos asociados**  | OBJ-02 OBJ-03 |  |
 | **Requisitos asociados**  | IRQ-03 |  |
 | **Descripción**  | El caso de uso inicia cuando el director de proyecto quiere publicar un proyecto en estado “Borrador”.  |  |
-| **Precondición**  | El usuario inició sesión en el sistema. El proyecto tiene actividades en la planificación. El director de proyecto cuenta con disponibilidad en su calendario personal para los bloques de tiempo y fechas estipulados en las actividades planificadas del proyecto.  |  |
+| **Precondición**  | El usuario inició sesión en el sistema. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que desea publicar (ver caso de uso UC-29 Buscar proyecto) |
-|  | 2 | El sistema verifica que toda información básica esté completada y solicita confirmación. |
+|  | 2 | El sistema verifica que toda información básica esté completada y que el perfil sea director del proyecto y solicita confirmación. |
 |  | 3 | El actor confirma la acción. |
 |  | 4 | El sistema actualiza el estado del proyecto a “Publicado” y lo hace visible para la comunidad.  |
 | **Postcondición** | El estado del proyecto se actualizó de “Borrador” a “Publicado”, haciéndolo \*visible para la comunidad. |  |
@@ -747,7 +747,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene al menos un proyecto en estado “Borrador”, “Publicado” o “Confirmado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que quiere modificar (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema despliega un formulario cargando los datos actuales del proyecto. Los datos que el actor no puede modificar son:  Nombre del proyecto Cualquier requerimiento de personal que esté previamente satisfecho. Los datos que puede modificar son:  Descripción del proyecto Privacidad del proyecto (público, privado u oculto) Ubicación Requerimientos de personal: Profesión, aptitudes y cantidad por profesión Moodboard  Objetivos Fecha de entrega final estipulada |
+|  | 2 | El sistema despliega un formulario cargando los datos actuales del proyecto. Los datos que el actor no puede modificar son:  Nombre del proyecto Cualquier requerimiento de personal que esté previamente satisfecho. Los datos que puede modificar son:  Descripción del proyecto Privacidad del proyecto (público o privado) Ubicación Requerimientos de personal: Profesión, aptitudes y cantidad por profesión Moodboard  Objetivos |
 |  | 3 | El actor realiza las modificaciones deseadas y confirma los cambios |
 |  | 4 | El sistema actualiza el proyecto con los nuevos datos ingresados. |
 | **Postcondición** | Se actualizaron los atributos de un proyecto. El sistema notifica a todos los participantes sobre los cambios (si corresponde) |  |
@@ -1032,7 +1032,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene un proyecto en estado “Borrador” o “Publicado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto al cual desea agregar la actividad (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Descripción Duración estimada en días/horas Y de forma opcional: Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
+|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Duración estimada en días/horas Y de forma opcional: Descripción Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
 |  | 3 | El actor completa los campos solicitados y confirma la acción. |
 |  | 4  | Mientras exista requerimiento profesional por cargar, se ejecutan los siguientes pasos: |
 |  | 4.a | El sistema despliega el formulario para la carga de requerimiento profesional: Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Si corresponde, el sistema despliega debajo de este formulario un listado de los miembros del proyecto, permitiendo al actor la asignación directa.  |

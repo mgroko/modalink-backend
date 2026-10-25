@@ -29,9 +29,10 @@ class CrearProyectoDTOValidationTest {
                 "Desfile Primavera",
                 "Colección primavera-verano",
                 Privacidad.Publico,
-                LocalDate.now().plusDays(10),
                 LocalDate.now().plusDays(20),
                 true,
+                null,
+                null,
                 null,
                 null
         );
@@ -47,14 +48,15 @@ class CrearProyectoDTOValidationTest {
                 "   ",
                 null,
                 null,
-                null,
                 false,
+                null,
+                null,
                 null,
                 null
         );
 
         Set<ConstraintViolation<CrearProyectoRequest>> violations = validator.validate(request);
-        assertThat(violations).hasSize(4);
+        assertThat(violations).hasSize(3);
     }
 
     @Test
@@ -64,9 +66,10 @@ class CrearProyectoDTOValidationTest {
                 nombreLargo,
                 "Descripción válida",
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
+                null,
+                null,
                 null,
                 null
         );
@@ -83,9 +86,10 @@ class CrearProyectoDTOValidationTest {
                 "Proyecto Valido",
                 descLarga,
                 Privacidad.Privado,
-                LocalDate.now(),
                 null,
                 false,
+                null,
+                null,
                 null,
                 null
         );
@@ -93,5 +97,84 @@ class CrearProyectoDTOValidationTest {
         Set<ConstraintViolation<CrearProyectoRequest>> violations = validator.validate(request);
         assertThat(violations).hasSize(1);
         assertThat(violations.iterator().next().getMessage()).contains("no puede superar los 200 caracteres");
+    }
+
+    @Test
+    void requerimientoConCantidadNoPositiva_tieneViolacion() {
+        CrearProyectoRequest request = new CrearProyectoRequest(
+                "Proyecto Valido",
+                "Desc",
+                Privacidad.Privado,
+                null,
+                false,
+                null,
+                null,
+                java.util.List.of(new CrearRequerimientoGralRequest(0, 2L, null, null, null)),
+                null
+        );
+
+        Set<ConstraintViolation<CrearProyectoRequest>> violations = validator.validate(request);
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getMessage().contains("mayor a cero"));
+    }
+
+    @Test
+    void requerimientoSinProfesion_tieneViolacion() {
+        CrearProyectoRequest request = new CrearProyectoRequest(
+                "Proyecto Valido",
+                "Desc",
+                Privacidad.Privado,
+                null,
+                false,
+                null,
+                null,
+                java.util.List.of(new CrearRequerimientoGralRequest(1, null, null, null, null)),
+                null
+        );
+
+        Set<ConstraintViolation<CrearProyectoRequest>> violations = validator.validate(request);
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getMessage().contains("La profesión del requerimiento es obligatoria."));
+    }
+
+    @Test
+    void caracteristicaSinId_tieneViolacion() {
+        CrearProyectoRequest request = new CrearProyectoRequest(
+                "Proyecto Valido",
+                "Desc",
+                Privacidad.Privado,
+                null,
+                false,
+                null,
+                null,
+                java.util.List.of(new CrearRequerimientoGralRequest(
+                        1, 2L, null,
+                        java.util.List.of(new CrearRequerimientoCaractRequest(null, null, null, null)),
+                        null)),
+                null
+        );
+
+        Set<ConstraintViolation<CrearProyectoRequest>> violations = validator.validate(request);
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getMessage().contains("El id de la característica es obligatorio."));
+    }
+
+    @Test
+    void moodboardConDescripcionMuyLarga_tieneViolacion() {
+        CrearProyectoRequest request = new CrearProyectoRequest(
+                "Proyecto Valido",
+                "Desc",
+                Privacidad.Privado,
+                null,
+                false,
+                null,
+                null,
+                null,
+                new CrearMoodboardRequest("M".repeat(201))
+        );
+
+        Set<ConstraintViolation<CrearProyectoRequest>> violations = validator.validate(request);
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getMessage().contains("no puede superar los 200 caracteres"));
     }
 }

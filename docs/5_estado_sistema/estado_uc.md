@@ -17,7 +17,7 @@ el historial de git sirva de bitácora adicional.
 
 ---
 
-## Gestión de usuarios (14 UC)
+## Gestión de usuarios y administración (15 UC)
 
 | UC    | Nombre                                           | Estado                  | Endpoint / clase                                                                                                                                 | Tests | Notas                                                                                                  |
 | ----- | ------------------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------ |
@@ -31,14 +31,13 @@ el historial de git sirva de bitácora adicional.
 | UC-08 | Modificar datos personales                       | Implementado y testeado | `PUT /usuario/datos-personales`                                                                                                                  | Sí    | Primera iteracion                                                                                      |
 | UC-09 | Autenticar mediante Google OAuth                 | No iniciado             |                                                                                                                                                  |       | Primera iteracion                                                                                      |
 | UC-56 | Gestionar habilidades del sistema                | No iniciado             |                                                                                                                                                  |       | Segunda iteracion                                                                                      |
-| UC-57 | Gestionar características técnicas por profesión | Implementado y testeado           | `POST /admin/caracteristicas-tecnicas/{id}/valores`, ` PUT /admin/caracteristicas-tecnicas/{id}` y `DELETE /admin/caracteristicas-tecnicas/{id}` | No    | Segunda iteracion                                                                                      |
+| UC-57 | Gestionar características técnicas por profesión | Implementado y testeado           | `GET/POST /admin/caracteristicas-tecnicas`, `PUT/DELETE /admin/caracteristicas-tecnicas/{id}`, `POST /admin/caracteristicas-tecnicas/{id}/valores` | Sí    | Segunda iteracion                                                                                      |
 | UC-58 | Buscar características técnicas                  | Implementado y testeado | `GET /profesiones/{id}/caracteristicas-tecnicas`                                                                                                 | Sí    | Primera iteracion                                                                                      |
 | UC-59 | Buscar profesiones                               | Implementado y testeado | `GET /profesiones`                                                                                                                               | Sí    | Primera iteracion                                                                                      |
 | UC-67 | Generar informe de auditoría                     | No iniciado             |                                                                                                                                                  |       | Segunda iteracion                                                                                      |
-| UC-70 | Recuperar contraseña                             | No iniciado             |                                                                                                                                                  |       | Segunda iteracion                                                                                      |
 | UC-74 | Gestionar unidades de medida                     | Implementado y testeado | `GET/POST /admin/unidades-medida`, `GET/PUT/DELETE /admin/unidades-medida/{id}`                                                                   | Sí    | Segunda iteracion. Borrado físico (solo si no está asociada a una característica técnica); `tipoDatoPermitido` NUMERICO o TEXTO. **Pendiente:** notificación a los perfiles afectados al modificar la unidad (postcondición 2.1) |
 
-## Gestión de perfiles (12 UC)
+## Gestión de perfiles y disponibilidad (13 UC)
 
 | UC    | Nombre                                  | Estado                  | Endpoint / clase                                                      | Tests             | Notas                                                                                                                                                          |
 | ----- | --------------------------------------- | ----------------------- | --------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -50,7 +49,8 @@ el historial de git sirva de bitácora adicional.
 | UC-15 | Reportar perfil                         | No iniciado             |                                                                       |                   | Segunda iteracion                                                                                                                                              |
 | UC-16 | Buscar perfil                           | Implementado y testeado | `GET /perfiles/buscar`                                                | Sí                | Primera iteracion                                                                                                                                              |
 | UC-17 | Asignar en calendario día disponible    | Implementado y testeado | `DELETE /calendario/bloqueos/{idBloqueo}`                             | Sí                | Módulo calendario: `GET /calendario` (agenda completa) y `PUT /calendario/jornada` (jornada laboral de corrido o partida —bloques de mañana y tarde— + margen) |
-| UC-18 | Asignar en calendario día no disponible | Implementado y testeado | `POST /calendario/bloqueos`                                           | Sí                | Módulo calendario; bloqueos manuales sin solapamiento (trigger V14)                                                                                            |
+| UC-18 | Asignar en calendario día no disponible | Implementado y testeado | `POST /calendario/bloqueos`                                           | Sí                | Módulo calendario; bloqueos manuales sin solapamiento                                                                                                          |
+| UC-71 | Configurar jornada laboral              | Implementado y testeado | `PUT /calendario/jornada` y `GET /calendario`                          | Sí                | Segunda iteracion. Jornada corrida o partida (bloques mañana/tarde) + margen de actividad                                                                      |
 | UC-23 | Configurar términos y condiciones       | No iniciado             |                                                                       |                   | Segunda iteracion                                                                                                                                              |
 | UC-47 | Gestionar habilidades                   | No iniciado             |                                                                       |                   | Segunda iteracion                                                                                                                                              |
 | UC-48 | Buscar habilidades                      | No iniciado             |                                                                       |                   | Segunda iteracion                                                                                                                                              |
@@ -71,32 +71,36 @@ el historial de git sirva de bitácora adicional.
 | UC-66 | Interactuar con publicación        | No iniciado |                  |       | Segunda iteracion |
 | UC-69 | Reportar publicación               | No iniciado |                  |       | Segunda iteracion |
 
-## Gestión de proyectos (22 UC)
+## Gestión de proyectos (25 UC)
 
 | UC    | Nombre                               | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | ------------------------------------ | ----------- | ---------------- | ----- | ----------------- |
-| UC-24 | Crear proyecto                       | Implementado y testeado | `POST /proyectos` | Sí    | Primera iteracion. Proyecto en estado Borrador, director asignado y planificación inicializada |
-| UC-25 | Publicar proyecto                    | No iniciado |                  |       | Primera iteracion |
+| UC-24 | Crear proyecto                       | Implementado y testeado | `POST /proyectos` | Sí    | Contrato completo: proyecto en Borrador, director asignado, planificación inicializada, requerimientosGral (cantidad/profesión/características/habilidades) y moodboard opcionales |
+| UC-25 | Publicar proyecto                    | Implementado y testeado | `POST /proyectos/{idProyecto}/publicar` | Sí    | Transición Borrador → Publicado; exige permiso `PUBLICAR_PROYECTO` (rol Director) e información básica completa (ubicación, fecha de entrega, moodboard, ≥1 requerimiento de personal). 400 si falta información, 409 si el estado no es Borrador. Visibilidad según privacidad (Público visible para no miembros) y auditoría vía trigger `trg_auditar_cambio_proyecto` |
 | UC-26 | Dar de alta postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
 | UC-27 | Dar de baja postulación a proyecto   | No iniciado |                  |       | Primera iteracion |
 | UC-28 | Aceptar solicitud de incorporación   | No iniciado |                  |       | Primera iteracion |
-| UC-29 | Buscar proyecto                      | No iniciado |                  |       | Primera iteracion |
+| UC-29 | Buscar proyecto                      | Implementado y testeado | `GET /proyectos/buscar` | Sí    | Criterios opcionales (nombre, estado, director); browse-able sin parámetros como "Buscar perfil". Requiere perfil activo (404 si no). Visibilidad: miembro activo ve cualquier proyecto; no miembro solo ve no-borradores Públicos (Borrador y Privado solo miembros, interino hasta contactos UC-43..46) |
+| UC-29 bis | Buscar proyectos propios          | Implementado y testeado | `GET /proyectos/propios` | Sí    | Catálogo del perfil activo (membresía activa como director o miembro); filtros opcionales nombre/estado/rol, rol devuelto por proyecto y próxima actividad futura sin N+1; 404 si no hay perfil activo |
 | UC-30 | Buscar invitaciones                  | No iniciado |                  |       | Primera iteracion |
 | UC-31 | Invitar a proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-32 | Eliminar invitación a proyecto       | No iniciado |                  |       | Primera iteracion |
 | UC-33 | Visualizar cronograma de proyecto    | No iniciado |                  |       | Primera iteracion |
 | UC-34 | Gestionar postulaciones              | No iniciado |                  |       | Primera iteracion |
-| UC-35 | Cancelar proyecto                    | No iniciado |                  |       | Primera iteracion |
-| UC-36 | Modificar proyecto                   | No iniciado |                  |       | Primera iteracion |
+| UC-35 | Cancelar proyecto                    | Implementado y testeado | `POST /proyectos/{idProyecto}/cancelar` | Sí    | Estados Publicado/Confirmado; permiso `CANCELAR_PROYECTO`; motivo obligatorio (máx. 200); cancela actividades PENDIENTE/EN_CURSO, rechaza postulaciones e invitaciones pendientes y notifica al equipo y afectados; el cancelado sale de la búsqueda global, permanece en proyectos propios y es visible para exmiembros |
+| UC-36 | Modificar proyecto                   | Implementado y testeado | `PUT /proyectos/{idProyecto}` | Sí    | Estados Borrador/Publicado/Confirmado; permiso `MODIFICAR_PROYECTO`; nombre inmutable; requerimientos con postulación ACEPTADA no modificables (se conservan si se omiten); reemplazo de objetivos y requerimientos no satisfechos; en Publicado/Confirmado exige ubicación y toda la información básica; `satisfecho` expuesto en `requerimientosGral` |
 | UC-37 | Finalizar proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-38 | Eliminar integrante                  | No iniciado |                  |       | Primera iteracion |
 | UC-40 | Darse de baja de proyecto            | No iniciado |                  |       | Primera iteracion |
 | UC-41 | Enviar mensaje a chat grupal         | No iniciado |                  |       | Segunda iteracion |
-| UC-49 | Crear actividad en planificación     | No iniciado |                  |       | Primera iteracion |
+| UC-49 | Crear actividad en planificación     | Implementado y testeado | `POST /proyectos/{idProyecto}/actividades` | Sí | Primera iteracion. Incluye programacion regresiva basica; CPM completo queda para UC-33. |
 | UC-50 | Modificar actividad de planificación | No iniciado |                  |       | Primera iteracion |
-| UC-51 | Eliminar actividad de planificación  | No iniciado |                  |       | Primera iteracion |
-| UC-52 | Buscar actividades                   | No iniciado |                  |       | Primera iteracion |
+| UC-51 | Eliminar actividad de planificación  | Implementado y testeado | `DELETE /proyectos/{idProyecto}/actividades/{idActividad}?motivo=...` | Sí (unitario + integración) | Primera iteracion. Eliminación física con motivo obligatorio (máx. 200); permiso `ELIMINAR_ACTIVIDAD`; permitido en proyectos Borrador/Publicado/Confirmado; borra dependencias, hitos vinculados, requerimientos, postulaciones, invitaciones y asignaciones; reconecta predecesoras/sucesoras; conserva miembros; notifica a asignados y afectados |
+| UC-52 | Buscar actividades                   | Implementado y testeado | `GET /proyectos/{idProyecto}/actividades/buscar` | Sí    | Primera iteracion. Filtros opcionales nombre/descripción/requerimiento (profesión, habilidad o característica), duración mínima/máxima y estado; visibilidad compartida con UC-25; orden por inicio ascendente; requerimientos y predecesoras resueltos en batch sin N+1 |
 | UC-60 | Confirmar proyecto                   | No iniciado |                  |       | Primera iteracion |
+| UC-70 | Asignar actividad a miembro          | No iniciado |                  |       | Segunda iteracion |
+| UC-72 | Buscar requerimiento general         | No iniciado |                  |       | Segunda iteracion |
+| UC-73 | Buscar requerimiento actividad       | No iniciado |                  |       | Segunda iteracion |
 
 ## Gestión de contratos (5 UC)
 
@@ -124,10 +128,21 @@ el historial de git sirva de bitácora adicional.
 
 | Módulo                             | Total UC | Implementado y testeado | Implementado | En progreso | No iniciado |
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
-| Gestión de usuarios                | 14       | 10                      | 0            | 0           | 4           |
-| Gestión de perfiles                | 12       | 3                       | 0            | 4           | 5           |
+| Gestión de usuarios y administración | 15     | 12                      | 0            | 0           | 3           |
+| Gestión de perfiles y disponibilidad | 13     | 9                       | 0            | 0           | 4           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
-| Gestión de proyectos               | 22       | 1                       | 0            | 0           | 21          |
+| Gestión de proyectos               | 25       | 4                       | 0            | 0           | 21          |
 | Gestión de contratos               | 5        | 0                       | 0            | 0           | 5           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **69**   | **14**                  | **0**        | **4**       | **51**      |
+| **Total**                          | **74**   | **25**                  | **0**        | **0**       | **49**      |
+
+> **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
+> comprende **74 casos de uso** (`UC-01` a `UC-74`). Con el avance del desarrollo se incorporaron
+> `UC-70` *Asignar actividad a miembro*, `UC-71` *Configurar jornada laboral*, `UC-72` *Buscar requerimiento general*,
+> `UC-73` *Buscar requerimiento actividad* y `UC-74` *Gestionar unidades de medida*, pasando de 69 a 74.
+>
+> El escenario **`UC-29 bis` *Buscar proyectos propios*** es un caso derivado del desarrollo (ficha técnica propia)
+> que no forma parte del catálogo numerado; se listan sus filas en el módulo de proyectos solo a efectos de
+> seguimiento y **no se computa** en el total ni en los porcentajes anteriores.
+
+**Avance global:** 25 de 74 casos de uso implementados y testeados = **33,8 %** del catálogo de requisitos.

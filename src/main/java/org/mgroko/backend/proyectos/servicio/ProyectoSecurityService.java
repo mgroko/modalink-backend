@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.PermisoProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.springframework.stereotype.Service;
@@ -12,8 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service("proyectoSecurity")
 public class ProyectoSecurityService {
-
-    public static final String ROL_DIRECTOR = "Director";
 
     private final MiembroProyectoRepository miembroProyectoRepository;
 
@@ -64,7 +63,7 @@ public class ProyectoSecurityService {
         }
 
         RolProyecto rol = miembroOpt.get().getRolProyecto();
-        return rol != null && ROL_DIRECTOR.equalsIgnoreCase(rol.getNombre());
+        return RolProyectoUsuario.desde(rol) == RolProyectoUsuario.DIRECTOR;
     }
 
     /**

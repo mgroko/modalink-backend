@@ -42,6 +42,5 @@ public class MiembroProyecto {
     private PerfilTyc tycAceptado;
 
     @Column(name = "id_tyc_aceptado")
-    @Builder.Default
-    private Long idTycAceptado = 1L;
+    private Long idTycAceptado;
 }

@@ -3,11 +3,14 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.PermisoProyecto;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RolProyecto;
@@ -15,17 +18,23 @@ import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CrearObjetivoRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
+import org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest;
+import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
+import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
+import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
+import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
-import org.mgroko.backend.proyectos.exception.RangoFechasProyectoInvalidoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
+import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
@@ -47,6 +56,8 @@ public class CrearProyectoService {
     private final PlanificacionRepository planificacionRepository;
     private final ObjetivoRepository objetivoRepository;
     private final UbicacionService ubicacionService;
+    private final RequerimientoGralService requerimientoGralService;
+    private final MoodboardRepository moodboardRepository;
 
     public CrearProyectoService(
             ProyectoRepository proyectoRepository,
@@ -55,7 +66,9 @@ public class CrearProyectoService {
             MiembroProyectoRepository miembroProyectoRepository,
             PlanificacionRepository planificacionRepository,
             ObjetivoRepository objetivoRepository,
-            UbicacionService ubicacionService) {
+            UbicacionService ubicacionService,
+            RequerimientoGralService requerimientoGralService,
+            MoodboardRepository moodboardRepository) {
         this.proyectoRepository = proyectoRepository;
         this.perfilRepository = perfilRepository;
         this.rolProyectoRepository = rolProyectoRepository;
@@ -63,6 +76,8 @@ public class CrearProyectoService {
         this.planificacionRepository = planificacionRepository;
         this.objetivoRepository = objetivoRepository;
         this.ubicacionService = ubicacionService;
+        this.requerimientoGralService = requerimientoGralService;
+        this.moodboardRepository = moodboardRepository;
     }
 
     @Transactional
@@ -79,29 +94,31 @@ public class CrearProyectoService {
             throw new PerfilEnBajaException("El perfil no se encuentra activo.");
         }
 
-        // 2. Validar que la fecha de entrega / fin no sea anterior a la fecha de inicio
-        if (request.fechaFinEstipulada() != null && request.fechaFinEstipulada().isBefore(request.fechaInicio())) {
-            throw new RangoFechasProyectoInvalidoException(
-                    "La fecha de finalización o entrega no puede ser anterior a la fecha de inicio.");
+        // 2. Validar que la fecha de entrega estipulada no sea anterior a la fecha actual
+        if (request.fechaEntregaEstipulada() != null && request.fechaEntregaEstipulada().isBefore(LocalDate.now())) {
+            throw new FechaEntregaInvalidaException(
+                    "La fecha de entrega estipulada no puede ser anterior a la fecha actual.");
         }
 
-        // 3. Validar unicidad del nombre del proyecto para el perfil director
-        boolean nombreExiste = proyectoRepository.existeProyectoConNombreParaPerfil(
-                request.nombre(),
-                idPerfilActivo,
-                ROL_DIRECTOR,
-                EstadoParticipacion.Activo
-        );
-        if (nombreExiste) {
-            throw new NombreProyectoDuplicadoException(request.nombre());
-        }
-
-        // 4. Buscar rol Director
+        // 3. Buscar rol Director (se resuelve antes de validar unicidad para
+        // comparar por el rol exacto que se va a asignar, no por su nombre)
         RolProyecto rolDirector = rolProyectoRepository
                 .findByNombre(LikePatrones.escapar(ROL_DIRECTOR), ROL_DIRECTOR)
                 .orElseThrow(() -> new RolProyectoNoEncontradoException(ROL_DIRECTOR));
 
-        // 5. Resolver ubicación opcional
+        // 4. Validar unicidad del nombre del proyecto para el perfil director
+        String nombreProyecto = request.nombre().trim();
+        boolean nombreExiste = proyectoRepository.existeProyectoConNombreParaPerfil(
+                nombreProyecto,
+                idPerfilActivo,
+                rolDirector.getIdRolProyecto(),
+                EstadoParticipacion.Activo
+        );
+        if (nombreExiste) {
+            throw new NombreProyectoDuplicadoException(nombreProyecto);
+        }
+
+        // 5. Resolver ubicaciÃ³n opcional
         Ubicacion ubicacion = null;
         if (request.ubicacion() != null && request.ubicacion().localidadId() != null
                 && !request.ubicacion().localidadId().isBlank()) {
@@ -113,9 +130,8 @@ public class CrearProyectoService {
 
         // 6. Crear entidad Proyecto en estado Borrador
         Proyecto proyecto = Proyecto.builder()
-                .nombre(request.nombre().trim())
+                .nombre(nombreProyecto)
                 .descripcion(request.descripcion().trim())
-                .fechaInicio(request.fechaInicio())
                 .estado(EstadoProyecto.Borrador)
                 .privacidad(request.privacidad())
                 .aceptaPostulacionGral(Boolean.TRUE.equals(request.aceptaPostulacionGral()))
@@ -134,10 +150,10 @@ public class CrearProyectoService {
 
         miembroProyectoRepository.save(miembroDirector);
 
-        // 8. Inicializar la Planificación 1:1
+        // 8. Inicializar la PlanificaciÃ³n 1:1
         Planificacion planificacion = Planificacion.builder()
                 .proyecto(proyectoGuardado)
-                .fechaEntrega(request.fechaFinEstipulada())
+                .fechaEntrega(request.fechaEntregaEstipulada())
                 .build();
 
         planificacionRepository.save(planificacion);
@@ -155,11 +171,55 @@ public class CrearProyectoService {
             }
         }
 
+        // 10. Guardar requerimientos de personal si se recibieron
+        List<RequerimientoGralResponse> requerimientosResponse = new ArrayList<>();
+        if (request.requerimientosGral() != null && !request.requerimientosGral().isEmpty()) {
+            for (CrearRequerimientoGralRequest reqGral : request.requerimientosGral()) {
+                requerimientosResponse.add(requerimientoGralService.persistir(
+                        proyectoGuardado,
+                        reqGral.idProfesion(),
+                        reqGral.cantidad(),
+                        reqGral.descripcion(),
+                        reqGral.caracteristicas(),
+                        reqGral.habilidades()));
+            }
+        }
+
+        // 11. Guardar moodboard si se recibiÃ³
+        MoodboardResponse moodboardResponse = null;
+        if (request.moodboard() != null) {
+            Moodboard moodboard = Moodboard.builder()
+                    .proyecto(proyectoGuardado)
+                    .descripcion(request.moodboard().descripcion() != null
+                            ? request.moodboard().descripcion().trim()
+                            : null)
+                    .build();
+            Moodboard guardado = moodboardRepository.save(moodboard);
+            moodboardResponse = ProyectoMapper.toMoodboardResponse(guardado);
+        }
+
+        // El creador queda como Director: contexto de rol/permisos para la
+        // respuesta (mismo contrato que GET /proyectos/{idProyecto})
+        List<String> permisosDirector = rolDirector.getPermisos() != null
+                ? rolDirector.getPermisos().stream()
+                        .map(PermisoProyecto::getNombre)
+                        .filter(Objects::nonNull)
+                        .sorted()
+                        .toList()
+                : List.of();
+
         return ProyectoMapper.toResponse(
                 proyectoGuardado,
                 perfil,
-                request.fechaFinEstipulada(),
-                objetivosGuardados
+                request.fechaEntregaEstipulada(),
+                objetivosGuardados,
+                requerimientosResponse,
+                moodboardResponse,
+                new ContextoConsultaProyecto(
+                        RolProyectoUsuario.desde(rolDirector),
+                        Boolean.TRUE,
+                        permisosDirector,
+                        Boolean.FALSE)
         );
     }
 }

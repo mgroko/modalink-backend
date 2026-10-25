@@ -14,6 +14,15 @@ public class CaracteristicaTecnicaMapper {
     private CaracteristicaTecnicaMapper() {}
 
     public static CaracteristicaTecnicaResponse toResponse(CaracteristicaTecnica caracteristica) {
+        return toResponse(caracteristica, null);
+    }
+
+    /**
+     * @param enUso flag de negocio: la característica está en uso por perfiles
+     *              o requerimientos (sólo puede modificarse el nombre).
+     *              {@code null} cuando el contexto no lo calcula (lado perfiles).
+     */
+    public static CaracteristicaTecnicaResponse toResponse(CaracteristicaTecnica caracteristica, Boolean enUso) {
         Long idProfesion = null;
         String nombreProfesion = null;
         Profesion profesion = caracteristica.getProfesion();
@@ -43,6 +52,7 @@ public class CaracteristicaTecnicaMapper {
                 idProfesion,
                 nombreProfesion,
                 caracteristica.getTipoDato(),
-                valores);
+                valores,
+                enUso);
     }
 }

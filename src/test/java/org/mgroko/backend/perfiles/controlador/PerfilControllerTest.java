@@ -2,6 +2,7 @@ package org.mgroko.backend.perfiles.controlador;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.perfiles.dto.CaracteristicaPerfilRequest;
@@ -21,6 +22,7 @@ import org.mgroko.backend.perfiles.servicio.FotoPerfilService;
 import org.mgroko.backend.perfiles.servicio.ReactivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
 import org.mgroko.backend.security.JwtCookieFactory;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -325,7 +327,7 @@ class PerfilControllerTest {
                 .thenReturn(perfil);
 
         EditarPerfilRequest request = new EditarPerfilRequest(
-                "Luna Nova", "Modelo renovada.", null,
+                "Luna Nova", "Modelo renovada.",
                 List.of(new CaracteristicaPerfilRequest(11L, "176", null)));
 
         mockMvc.perform(put("/perfiles/10")
@@ -338,11 +340,41 @@ class PerfilControllerTest {
     }
 
     @Test
+    void editar_conIdImagenEnElRequest_esIgnoradoYDevuelve200() throws Exception {
+        var authentication = autenticacion();
+
+        PerfilResponse perfil = new PerfilResponse(
+                10L, "Luna Nova", "Modelo renovada.", "Activo", "modelo", null,
+                List.of(new CaracteristicaResponse(11L, "altura", "176", null, null, null)));
+
+        when(editarPerfilService.editar(anyLong(), anyLong(), any(EditarPerfilRequest.class)))
+                .thenReturn(perfil);
+
+        String cuerpo = """
+                {"nombreArtistico":"Luna Nova","biografia":"Modelo renovada.",
+                "idImagen":99,"caracteristicas":[{"idCaracteristica":11,"valor":"176","idValor":null}]}
+                """;
+
+        mockMvc.perform(put("/perfiles/10")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpo))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombreArtistico").value("Luna Nova"));
+
+        ArgumentCaptor<EditarPerfilRequest> captor = ArgumentCaptor.forClass(EditarPerfilRequest.class);
+        verify(editarPerfilService).editar(anyLong(), anyLong(), captor.capture());
+        assertEquals("Luna Nova", captor.getValue().nombreArtistico());
+        assertEquals(List.of(new CaracteristicaPerfilRequest(11L, "176", null)),
+                captor.getValue().caracteristicas());
+    }
+
+    @Test
     void editar_nombreArtisticoVacio_devuelve400() throws Exception {
         var authentication = autenticacion();
 
         EditarPerfilRequest request = new EditarPerfilRequest(
-                "", "Modelo renovada.", null, List.of());
+                "", "Modelo renovada.", List.of());
 
         mockMvc.perform(put("/perfiles/10")
                         .principal(authentication)
@@ -361,7 +393,7 @@ class PerfilControllerTest {
                 .thenThrow(new PerfilEnBajaException("No se puede editar un perfil dado de baja."));
 
         EditarPerfilRequest request = new EditarPerfilRequest(
-                "Luna Nova", "Modelo renovada.", null, List.of());
+                "Luna Nova", "Modelo renovada.", List.of());
 
         mockMvc.perform(put("/perfiles/10")
                         .principal(authentication)

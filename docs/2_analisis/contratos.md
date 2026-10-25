@@ -88,13 +88,13 @@
 | **Precondición** | unaActividad debe existir |
 | **Postcondición** |  |
 
-| Nombre | crearProyecto(nombre, descripcion, privacidad, fechaInicioEstipulada,  ubicacion, requerimientosGral\[\], moodboard, objetivos\[\], fechaFinEstipulada) |
+| Nombre | crearProyecto(nombre, descripcion, privacidad,  ubicacion, requerimientosGral\[\], moodboard, objetivos\[\], fechaEntregaEstipulada) |
 | :---- | :---- |
 | **Responsabilidades** | Esta operación cumple la función de crear un proyecto profesional en el sistema con estado Borrador. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-24 |
 | **Notas** | \- |
-| **Excepciones** | Si hay campos obligatorios vacíos. Si el usuario tiene un proyecto con el mismo nombre en su perfil Si las fechas estipuladas son inválidas (fecha de fin \< fecha de inicio) |
+| **Excepciones** | Si hay campos obligatorios vacíos. Si el usuario tiene un proyecto con el mismo nombre en su perfil Si la fecha de entrega estipulada es inválida (fecha de entrega \< fecha actual) |
 | **Salida** | unProyecto |
 | **Precondición** | \- |
 | **Postcondición** | Se creó una instancia de Proyecto unProyecto Se asignó a unProyecto.estado el valor “Borrador” Se asoció unProyecto a unPerfil Se creó una instancia de Planificación unaPlanificación Se asoció unaPlanificacion a unProyecto |

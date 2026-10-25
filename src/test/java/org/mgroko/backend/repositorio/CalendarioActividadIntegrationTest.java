@@ -29,6 +29,7 @@ import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.PerfilTyc;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -282,6 +283,34 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
         Usuario usuario = guardarUsuario("find.borrador@example.com", "88880006");
         crearCadenaActividad(usuario, EstadoProyecto.Borrador,
                 LocalDateTime.of(2026, 9, 15, 10, 0), 120);
+
+        List<Actividad> actividades = actividadRepository.findActividadesDeUsuario(
+                usuario.getIdUsuario(), List.of(EstadoProyecto.Publicado, EstadoProyecto.Confirmado));
+
+        assertTrue(actividades.isEmpty());
+    }
+
+    @Test
+    void findActividadesDeUsuario_actividadCancelada_noDevuelve() {
+        Usuario usuario = guardarUsuario("find.cancelada@example.com", "88880009");
+        Actividad actividad = crearCadenaActividad(usuario, EstadoProyecto.Publicado,
+                LocalDateTime.of(2026, 9, 15, 10, 0), 120);
+        actividad.setEstado(EstadoActividad.CANCELADA);
+        em.flush();
+
+        List<Actividad> actividades = actividadRepository.findActividadesDeUsuario(
+                usuario.getIdUsuario(), List.of(EstadoProyecto.Publicado, EstadoProyecto.Confirmado));
+
+        assertTrue(actividades.isEmpty());
+    }
+
+    @Test
+    void findActividadesDeUsuario_actividadFinalizada_noDevuelve() {
+        Usuario usuario = guardarUsuario("find.finalizada@example.com", "88880010");
+        Actividad actividad = crearCadenaActividad(usuario, EstadoProyecto.Publicado,
+                LocalDateTime.of(2026, 9, 15, 10, 0), 120);
+        actividad.setEstado(EstadoActividad.FINALIZADA);
+        em.flush();
 
         List<Actividad> actividades = actividadRepository.findActividadesDeUsuario(
                 usuario.getIdUsuario(), List.of(EstadoProyecto.Publicado, EstadoProyecto.Confirmado));

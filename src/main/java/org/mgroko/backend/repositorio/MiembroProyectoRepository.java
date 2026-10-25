@@ -15,6 +15,47 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
 
     Optional<MiembroProyecto> findByProyectoIdProyectoAndPerfilIdPerfil(Long idProyecto, Long idPerfil);
 
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.rolProyecto
+        WHERE mp.proyecto.idProyecto IN :idsProyectos
+          AND mp.perfil.idPerfil = :idPerfil
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<MiembroProyecto> buscarMiembrosActivosDeProyectos(
+            @Param("idsProyectos") List<Long> idsProyectos,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.rolProyecto
+        WHERE mp.proyecto.idProyecto IN :idsProyectos
+          AND mp.perfil.idPerfil = :idPerfil
+    """)
+    List<MiembroProyecto> buscarMembresiasDeProyectos(
+            @Param("idsProyectos") List<Long> idsProyectos,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<MiembroProyecto> buscarMiembrosActivosDeProyecto(@Param("idProyecto") Long idProyecto);
+
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        LEFT JOIN FETCH p.usuario
+        WHERE mp.proyecto.idProyecto IN :idsProyectos
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND (LOWER(mp.rolProyecto.codigo) = 'director'
+               OR LOWER(mp.rolProyecto.nombre) LIKE 'director%')
+    """)
+    List<MiembroProyecto> buscarDirectoresDeProyectos(@Param("idsProyectos") List<Long> idsProyectos);
+
     boolean existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
             Long idProyecto, Long idPerfil, EstadoParticipacion estadoParticipacion);
 

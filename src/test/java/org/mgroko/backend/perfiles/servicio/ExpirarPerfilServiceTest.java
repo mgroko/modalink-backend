@@ -25,11 +25,14 @@ class ExpirarPerfilServiceTest {
     @Mock
     private PerfilRepository perfilRepository;
 
+    @Mock
+    private EliminarImagenesPerfilService eliminarImagenesPerfilService;
+
     @InjectMocks
     private ExpirarPerfilService expirarPerfilService;
 
     @Test
-    void expirarVencidos_cambiaEstadoABaja() {
+    void expirarVencidos_cambiaEstadoABaja_yEliminaImagenesDelPerfil() {
         Perfil perfil = Perfil.builder()
                 .idPerfil(10L)
                 .nombreArtistico("Luna")
@@ -45,10 +48,11 @@ class ExpirarPerfilServiceTest {
         ArgumentCaptor<List<Perfil>> captor = ArgumentCaptor.forClass(List.class);
         verify(perfilRepository).saveAll(captor.capture());
         assertEquals(EstadoPerfil.Baja, captor.getValue().get(0).getEstado());
+        verify(eliminarImagenesPerfilService).eliminarImagenesDePerfil(perfil);
     }
 
     @Test
-    void expirarVencidos_sinVencidos_noGuarda() {
+    void expirarVencidos_sinVencidos_noGuarda_niEliminaImagenes() {
         when(perfilRepository.findByEstadoAndFechaSolicitudBajaBefore(eq(EstadoPerfil.PendienteBaja), any()))
                 .thenReturn(List.of());
 
@@ -56,5 +60,6 @@ class ExpirarPerfilServiceTest {
 
         assertEquals(0, cantidad);
         verify(perfilRepository, never()).saveAll(any());
+        verify(eliminarImagenesPerfilService, never()).eliminarImagenesDePerfil(any(Perfil.class));
     }
 }

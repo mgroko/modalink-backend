@@ -2,6 +2,7 @@ package org.mgroko.backend.admin.servicio;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -222,5 +223,87 @@ class ConfiguracionSistemaServiceTest {
 
         assertEquals(0, response.registrosAfectados());
         assertTrue(response.mensaje().contains("No se encontraron"));
+    }
+
+    // ---------------------------------------------------------------
+    // Limpieza de imagenes (Fase 5)
+    // ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("obtenerIntervaloLimpiezaImagenesHoras - Retorna el valor configurado")
+    void obtenerIntervaloLimpiezaImagenesHoras_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS)
+                        .valor("6").build()));
+
+        assertEquals(6, configuracionSistemaService.obtenerIntervaloLimpiezaImagenesHoras());
+    }
+
+    @Test
+    @DisplayName("obtenerIntervaloLimpiezaImagenesHoras - Sin fila configurada lanza IllegalStateException")
+    void obtenerIntervaloLimpiezaImagenesHoras_sinFila_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS))
+                .thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerIntervaloLimpiezaImagenesHoras());
+    }
+
+    @Test
+    @DisplayName("obtenerIntervaloLimpiezaImagenesHoras - Valor no numerico lanza IllegalStateException")
+    void obtenerIntervaloLimpiezaImagenesHoras_valorNoNumerico_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS)
+                        .valor("cada-cuanto").build()));
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerIntervaloLimpiezaImagenesHoras());
+    }
+
+    @Test
+    @DisplayName("obtenerIntervaloLimpiezaImagenesHoras - Valor en cero lanza IllegalStateException")
+    void obtenerIntervaloLimpiezaImagenesHoras_valorEnCero_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS)
+                        .valor("0").build()));
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerIntervaloLimpiezaImagenesHoras());
+    }
+
+    @Test
+    @DisplayName("obtenerGraciaLimpiezaImagenesMinutos - Retorna el valor configurado")
+    void obtenerGraciaLimpiezaImagenesMinutos_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS)
+                        .valor("90").build()));
+
+        assertEquals(90, configuracionSistemaService.obtenerGraciaLimpiezaImagenesMinutos());
+    }
+
+    @Test
+    @DisplayName("obtenerGraciaLimpiezaImagenesMinutos - Sin fila configurada lanza IllegalStateException")
+    void obtenerGraciaLimpiezaImagenesMinutos_sinFila_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS))
+                .thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerGraciaLimpiezaImagenesMinutos());
+    }
+
+    @Test
+    @DisplayName("obtenerGraciaLimpiezaImagenesMinutos - Valor negativo lanza IllegalStateException")
+    void obtenerGraciaLimpiezaImagenesMinutos_valorNegativo_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS)
+                        .valor("-1").build()));
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerGraciaLimpiezaImagenesMinutos());
     }
 }

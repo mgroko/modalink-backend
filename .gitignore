@@ -51,3 +51,6 @@ Thumbs.db
 # (ej. target/classes/db/...)
 /target/classes/
 src/main/resources/application.properties
+uploads/
+backups/
+docs/calidad/informe-estrategia-notificaciones.md

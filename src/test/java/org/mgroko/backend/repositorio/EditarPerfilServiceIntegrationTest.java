@@ -128,7 +128,7 @@ class EditarPerfilServiceIntegrationTest extends AbstractPostgresIntegrationTest
         assertEquals(8, creado.caracteristicas().size());
 
         EditarPerfilRequest edicion = new EditarPerfilRequest(
-                "Luna Nova", "Modelo profesional renovada.", null, caracteristicas);
+                "Luna Nova", "Modelo profesional renovada.", caracteristicas);
 
         PerfilResponse editado = assertDoesNotThrow(
                 () -> editarPerfilService.editar(usuario.getIdUsuario(), creado.idPerfil(), edicion));
@@ -148,7 +148,7 @@ class EditarPerfilServiceIntegrationTest extends AbstractPostgresIntegrationTest
         assertNotNull(creado.idPerfil());
 
         EditarPerfilRequest edicion = new EditarPerfilRequest(
-                "Luna Nova", "Modelo sin características.", null, List.of());
+                "Luna Nova", "Modelo sin características.", List.of());
 
         PerfilResponse editado = assertDoesNotThrow(
                 () -> editarPerfilService.editar(usuario.getIdUsuario(), creado.idPerfil(), edicion));

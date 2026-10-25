@@ -47,13 +47,15 @@ class ProyectoSecurityServiceTest {
 
         rolDirector = RolProyecto.builder()
                 .idRolProyecto(1L)
-                .nombre("Director")
+                .codigo("DIRECTOR")
+                .nombre("Director de proyecto")
                 .permisos(Set.of(permisoVer, permisoModificar, permisoCancelar))
                 .build();
 
         rolMiembro = RolProyecto.builder()
                 .idRolProyecto(2L)
-                .nombre("Miembro")
+                .codigo("MIEMBRO")
+                .nombre("Miembro de proyecto")
                 .permisos(Set.of(permisoVer))
                 .build();
     }

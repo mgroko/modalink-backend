@@ -25,20 +25,15 @@ CREATE TABLE actividad(
     CONSTRAINT "PK_actividad" PRIMARY KEY (id_actividad)
 )
 ;
--- Derivacion automatica de cumplimiento de hitos y notificacion a los Directores
+-- Derivacion automatica de cumplimiento de hitos y notificacion a todos los perfiles activos del proyecto
 CREATE OR REPLACE FUNCTION fn_derivar_cumplimiento_hito() RETURNS trigger AS $$
 DECLARE
     r_hito RECORD;
-    r_director RECORD;
+    r_destinatario RECORD;
     v_pendientes INT;
-    v_id_rol_director BIGINT;
 BEGIN
     -- Se dispara cuando la actividad pasa a 'FINALIZADA'
     IF NEW.estado = 'FINALIZADA' AND (OLD.estado IS NULL OR OLD.estado <> 'FINALIZADA') THEN
-        
-        SELECT id_rol_proyecto INTO v_id_rol_director
-        FROM rol_proyecto
-        WHERE codigo = 'DIRECTOR';
 
         FOR r_hito IN
             SELECT h.id_hito, h.id_proyecto, h.nombre AS nombre_hito
@@ -61,35 +56,47 @@ BEGIN
                     fecha_cumplimiento = clock_timestamp()
                 WHERE id_hito = r_hito.id_hito;
 
-                -- Notificar a todos los directores activos del proyecto
-                IF v_id_rol_director IS NOT NULL THEN
-                    FOR r_director IN
-                        SELECT per.id_usuario
-                        FROM miembros_proyecto mp
-                        JOIN perfil per ON mp.id_perfil = per.id_perfil
-                        WHERE mp.id_proyecto = r_hito.id_proyecto
-                          AND mp.estado_participacion = 'ACTIVO'
-                          AND mp.id_rol_proyecto = v_id_rol_director
-                    LOOP
-                        INSERT INTO notificacion (
-                            id_usuario_destino,
-                            tipo,
-                            mensaje,
-                            entidad_tipo,
-                            entidad_id,
-                            leida,
-                            fecha_generada
-                        ) VALUES (
-                            r_director.id_usuario,
-                            'HitoCumplido',
-                            'El hito "' || r_hito.nombre_hito || '" ha sido completado.',
-                            'hito',
-                            r_hito.id_hito,
-                            false,
-                            clock_timestamp()
-                        );
-                    END LOOP;
-                END IF;
+                -- Notificar a todos los perfiles activos del proyecto
+                FOR r_destinatario IN
+                    SELECT DISTINCT per.id_perfil, per.id_usuario
+                    FROM miembros_proyecto mp
+                    JOIN perfil per ON mp.id_perfil = per.id_perfil
+                    WHERE mp.id_proyecto = r_hito.id_proyecto
+                      AND mp.estado_participacion = 'ACTIVO'
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM notificacion n
+                          WHERE n.id_usuario_destino = per.id_usuario
+                            AND n.id_perfil_contexto = per.id_perfil
+                            AND n.tipo = 'HITO_CUMPLIDO'
+                            AND n.entidad_tipo = 'HITO'
+                            AND n.entidad_id = r_hito.id_hito
+                      )
+                LOOP
+                    INSERT INTO notificacion (
+                        id_usuario_destino,
+                        id_perfil_contexto,
+                        tipo,
+                        mensaje,
+                        entidad_tipo,
+                        entidad_id,
+                        leida,
+                        fecha_leida,
+                        origen,
+                        fecha_generada
+                    ) VALUES (
+                        r_destinatario.id_usuario,
+                        r_destinatario.id_perfil,
+                        'HITO_CUMPLIDO',
+                        'El hito "' || r_hito.nombre_hito || '" ha sido completado.',
+                        'HITO',
+                        r_hito.id_hito,
+                        false,
+                        NULL,
+                        'TRIGGER',
+                        clock_timestamp()
+                    );
+                END LOOP;
             END IF;
         END LOOP;
     END IF;
@@ -132,45 +139,62 @@ CREATE TABLE asignacion_actividad(
 CREATE OR REPLACE FUNCTION fn_notificar_asignacion_actividad() RETURNS trigger AS $$
 DECLARE
     v_id_usuario_destino BIGINT;
+    v_id_perfil_contexto BIGINT;
     v_nombre_actividad VARCHAR(100);
     v_nombre_proyecto VARCHAR(100);
 BEGIN
-    -- Obtener el id_usuario asociado al perfil del miembro
-    SELECT p.id_usuario INTO v_id_usuario_destino
-    FROM miembros_proyecto mp
-    JOIN perfil p ON p.id_perfil = mp.id_perfil
-    WHERE mp.id_miembro = NEW.id_miembro;
+    SELECT p.id_usuario, p.id_perfil
+      INTO v_id_usuario_destino, v_id_perfil_contexto
+      FROM miembros_proyecto mp
+      JOIN perfil p ON p.id_perfil = mp.id_perfil
+     WHERE mp.id_miembro = NEW.id_miembro;
 
-    -- Obtener nombre de la actividad y del proyecto
     SELECT a.nombre, proy.nombre
-    INTO v_nombre_actividad, v_nombre_proyecto
-    FROM actividad a
-    JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
-    JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
-    WHERE a.id_actividad = NEW.id_actividad;
+      INTO v_nombre_actividad, v_nombre_proyecto
+      FROM actividad a
+      JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
+      JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
+     WHERE a.id_actividad = NEW.id_actividad;
 
-    IF v_id_usuario_destino IS NOT NULL THEN
+    IF v_id_usuario_destino IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1
+           FROM notificacion n
+           WHERE n.id_usuario_destino = v_id_usuario_destino
+             AND n.id_perfil_contexto = v_id_perfil_contexto
+             AND n.tipo = 'ACTIVIDAD_ASIGNADA'
+             AND n.entidad_tipo = 'ACTIVIDAD'
+             AND n.entidad_id = NEW.id_actividad
+       ) THEN
+
         INSERT INTO notificacion (
             id_usuario_destino,
+            id_perfil_contexto,
             tipo,
             mensaje,
             entidad_tipo,
             entidad_id,
             leida,
+            fecha_leida,
+            origen,
             fecha_generada
         ) VALUES (
             v_id_usuario_destino,
-            'AsignacionActividad',
+            v_id_perfil_contexto,
+            'ACTIVIDAD_ASIGNADA',
             'Has sido asignado a la actividad "' || COALESCE(v_nombre_actividad, 'Sin Nombre') || '" en el proyecto "' || COALESCE(v_nombre_proyecto, 'Sin Nombre') || '".',
-            'actividad',
+            'ACTIVIDAD',
             NEW.id_actividad,
             false,
+            NULL,
+            'TRIGGER',
             clock_timestamp()
         );
     END IF;
 
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
+
 
 DROP TRIGGER IF EXISTS trg_notificar_asignacion_actividad ON asignacion_actividad;
 CREATE TRIGGER trg_notificar_asignacion_actividad
@@ -390,10 +414,42 @@ CREATE TABLE caracteristica_tecnica(
     CONSTRAINT chk_codigo_no_vacio CHECK (btrim(codigo) <> ''),
     CONSTRAINT chk_caracteristica_tecnica_tipo_dato CHECK (tipo_dato IN ('ENUMERADO', 'TEXTO', 'NUMERICO')),
     CONSTRAINT "PK_caracteristica_tecnica" PRIMARY KEY (id_caracteristica),
-    CONSTRAINT chk_caract_tipo_dato_enum_id_unidad CHECK ((tipo_dato = 'ENUMERADO' AND id_unidad IS NULL) OR (tipo_dato <> 'ENUMERADO'))
+    CONSTRAINT chk_caract_tipo_dato_enum_id_unidad CHECK ((tipo_dato = 'ENUMERADO' AND id_unidad IS NULL) OR (tipo_dato <> 'ENUMERADO')),
+    CONSTRAINT chk_unidad_solo_numerico CHECK (id_unidad IS NULL OR tipo_dato = 'NUMERICO')
 )
 ;
 
+-- Regla de negocio: si la caracteristica esta en uso, solo puede modificarse el nombre
+CREATE OR REPLACE FUNCTION fn_caracteristica_en_uso_solo_nombre() RETURNS trigger AS $$
+DECLARE
+    v_en_uso BOOLEAN;
+BEGIN
+    -- Si fuera de 'nombre' no cambio nada, no hay nada que validar
+    IF NEW.codigo = OLD.codigo
+       AND NEW.tipo_dato = OLD.tipo_dato
+       AND NEW.id_profesion = OLD.id_profesion
+       AND NEW.id_unidad IS NOT DISTINCT FROM OLD.id_unidad THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT (
+           EXISTS (SELECT 1 FROM caracteristica_perfil   WHERE id_caracteristica = NEW.id_caracteristica)
+        OR EXISTS (SELECT 1 FROM requerimiento_act_caract WHERE id_caracteristica = NEW.id_caracteristica)
+        OR EXISTS (SELECT 1 FROM requerimiento_gral_caract WHERE id_caracteristica = NEW.id_caracteristica)
+    ) INTO v_en_uso;
+
+    IF v_en_uso THEN
+        RAISE EXCEPTION 'La caracteristica % esta en uso por perfiles o requerimientos; solo puede modificarse su nombre.',
+            OLD.codigo
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_caracteristica_en_uso_solo_nombre ON caracteristica_tecnica;
+CREATE TRIGGER trg_caracteristica_en_uso_solo_nombre
+    BEFORE UPDATE ON caracteristica_tecnica
+    FOR EACH ROW EXECUTE FUNCTION fn_caracteristica_en_uso_solo_nombre();
 
 -- 
 -- TABLE: ciudad 
@@ -784,7 +840,7 @@ CREATE TABLE miembros_proyecto(
     estado_participacion    varchar(50)     NOT NULL,
     id_proyecto             int8            NOT NULL,
     id_perfil               int8            NOT NULL,
-    id_tyc_aceptado         int8            NOT NULL,
+    id_tyc_aceptado         int8,
     CONSTRAINT chk_estado_participacion CHECK (estado_participacion IN ('ACTIVO', 'BAJA_VOLUNTARIA', 'ELIMINADO')),
     CONSTRAINT "PK_miembro_proyecto" PRIMARY KEY (id_miembro)
 )
@@ -860,19 +916,88 @@ CREATE TABLE moodboard(
 
 
 -- 
+-- TABLE: notificacion_tipo 
+--
+
+CREATE TABLE notificacion_tipo(
+    codigo              varchar(50)     NOT NULL,
+    nombre              varchar(100)    NOT NULL,
+    categoria           varchar(30)     NOT NULL,
+    prioridad           varchar(10)    DEFAULT 'MEDIA' NOT NULL,
+    activo              boolean        DEFAULT true NOT NULL,
+    CONSTRAINT "PK_notificacion_tipo" PRIMARY KEY (codigo),
+    CONSTRAINT chk_notif_tipo_prioridad CHECK (prioridad IN ('ALTA', 'MEDIA', 'BAJA')),
+    CONSTRAINT chk_notif_tipo_categoria CHECK (categoria IN ('CUENTA', 'PROYECTO', 'POSTULACION', 'INVITACION', 'ACTIVIDAD', 'CONTRATO', 'SOCIAL', 'ADMINISTRACION'))
+)
+;
+
+
+
+-- 
 -- TABLE: notificacion 
 --
 
 CREATE TABLE notificacion(
     id_notificacion       int8            GENERATED BY DEFAULT AS IDENTITY NOT NULL,
-    tipo                  varchar(50),
-    mensaje               text,
+    tipo                  varchar(50)     NOT NULL,
+    mensaje               text            NOT NULL,
     entidad_tipo          varchar(50),
     entidad_id            int8,
     leida                 boolean        DEFAULT false NOT NULL,
-    fecha_generada        timestamp      DEFAULT CURRENT_TIMESTAMP,
+    fecha_leida           timestamp,
+    origen                varchar(20)    DEFAULT 'SERVICIO' NOT NULL,
+    fecha_generada        timestamp      DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id_usuario_destino    int8           NOT NULL,
+    id_perfil_contexto    int8,
+    CONSTRAINT chk_notif_entidad CHECK (
+        (entidad_tipo IS NULL AND entidad_id IS NULL) OR
+        (entidad_tipo IS NOT NULL AND entidad_id IS NOT NULL)
+    ),
+    CONSTRAINT chk_notif_origen CHECK (origen IN ('TRIGGER', 'SERVICIO', 'SCHEDULER')),
+    CONSTRAINT chk_notif_leida_fecha CHECK (
+        (leida = false AND fecha_leida IS NULL) OR
+        (leida = true AND fecha_leida IS NOT NULL)
+    ),
     CONSTRAINT "PK_notificacion" PRIMARY KEY (id_notificacion)
+)
+;
+
+
+
+-- 
+-- TABLE: notificacion_entrega 
+--
+
+CREATE TABLE notificacion_entrega(
+    id_entrega             int8            GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+    id_notificacion        int8            NOT NULL,
+    canal                  varchar(20)    DEFAULT 'EMAIL' NOT NULL,
+    estado                 varchar(20)    DEFAULT 'PENDIENTE' NOT NULL,
+    intentos               int            DEFAULT 0 NOT NULL,
+    proximo_intento        timestamp,
+    fecha_ultimo_intento   timestamp,
+    fecha_envio            timestamp,
+    error                  varchar(500),
+    CONSTRAINT "PK_notificacion_entrega" PRIMARY KEY (id_entrega),
+    CONSTRAINT chk_notif_entrega_canal CHECK (canal IN ('EMAIL')),
+    CONSTRAINT chk_notif_entrega_estado CHECK (estado IN ('PENDIENTE', 'ENVIADO', 'FALLIDO', 'CANCELADO')),
+    CONSTRAINT chk_notif_entrega_intentos CHECK (intentos >= 0)
+)
+;
+
+
+
+-- 
+-- TABLE: notificacion_preferencia 
+--
+
+CREATE TABLE notificacion_preferencia(
+    id_usuario             int8            NOT NULL,
+    tipo                   varchar(50)     NOT NULL,
+    canal                  varchar(20)    DEFAULT 'IN_APP' NOT NULL,
+    activo                 boolean        DEFAULT true NOT NULL,
+    CONSTRAINT "PK_notificacion_preferencia" PRIMARY KEY (id_usuario, tipo, canal),
+    CONSTRAINT chk_notif_preferencia_canal CHECK (canal IN ('EMAIL', 'PUSH', 'IN_APP'))
 )
 ;
 
@@ -980,6 +1105,37 @@ DROP TRIGGER IF EXISTS trg_perfil_fecha_solicitud_baja ON perfil;
 CREATE TRIGGER trg_perfil_fecha_solicitud_baja
     BEFORE UPDATE OF estado ON perfil
     FOR EACH ROW EXECUTE FUNCTION chk_perfil_fecha_solicitud_baja();
+
+--  validación usuario-perfil notificacion
+CREATE OR REPLACE FUNCTION fn_validar_notificacion_perfil_contexto() RETURNS trigger AS $$
+DECLARE
+    v_id_usuario_perfil BIGINT;
+BEGIN
+    IF NEW.id_perfil_contexto IS NOT NULL THEN
+        SELECT p.id_usuario INTO v_id_usuario_perfil
+        FROM perfil p
+        WHERE p.id_perfil = NEW.id_perfil_contexto;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'El perfil de contexto % no existe.', NEW.id_perfil_contexto
+                USING ERRCODE = 'foreign_key_violation';
+        END IF;
+
+        IF v_id_usuario_perfil <> NEW.id_usuario_destino THEN
+            RAISE EXCEPTION 'El perfil de contexto % no pertenece al usuario destinatario %.',
+                NEW.id_perfil_contexto, NEW.id_usuario_destino
+                USING ERRCODE = 'check_violation';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validar_notificacion_perfil_contexto ON notificacion;
+
+CREATE TRIGGER trg_validar_notificacion_perfil_contexto
+    BEFORE INSERT OR UPDATE OF id_perfil_contexto, id_usuario_destino ON notificacion
+    FOR EACH ROW EXECUTE FUNCTION fn_validar_notificacion_perfil_contexto();
 
 -- 
 -- TABLE: perfil_tyc 
@@ -1112,27 +1268,65 @@ DECLARE
     v_cantidad_requerida INT;
     v_aceptadas_actuales INT;
 BEGIN
-    -- Se evalúa únicamente cuando la postulación pasa a 'ACEPTADA'
     IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-        
-        -- Obtener la cantidad requerida para esta actividad
+
         SELECT ra.cantidad INTO v_cantidad_requerida
         FROM requerimiento_actividad ra
         WHERE ra.id_requerimiento_act = NEW.id_requerimiento_act;
 
-        -- Contar cuántas postulaciones aceptadas existen en total (incluyendo la actual)
         SELECT COUNT(*) INTO v_aceptadas_actuales
         FROM postulacion_actividad
         WHERE id_requerimiento_act = NEW.id_requerimiento_act
           AND estado = 'ACEPTADA';
 
-        -- Si se alcanzo o supero el cupo solicitado, cerrar las demas postulaciones pendientes
         IF v_cantidad_requerida IS NOT NULL AND v_aceptadas_actuales >= v_cantidad_requerida THEN
-            UPDATE postulacion_actividad
-            SET estado = 'RECHAZADA'
-            WHERE id_requerimiento_act = NEW.id_requerimiento_act
-              AND id_postulacion <> NEW.id_postulacion
-              AND estado = 'PENDIENTE';
+
+            WITH rechazadas AS (
+                UPDATE postulacion_actividad pa
+                SET estado = 'RECHAZADA'
+                WHERE pa.id_requerimiento_act = NEW.id_requerimiento_act
+                  AND pa.id_postulacion <> NEW.id_postulacion
+                  AND pa.estado = 'PENDIENTE'
+                RETURNING pa.id_postulacion, pa.id_perfil, pa.id_requerimiento_act
+            )
+            INSERT INTO notificacion (
+                id_usuario_destino,
+                id_perfil_contexto,
+                tipo,
+                mensaje,
+                entidad_tipo,
+                entidad_id,
+                leida,
+                fecha_leida,
+                origen,
+                fecha_generada
+            )
+            SELECT p.id_usuario,
+                   r.id_perfil,
+                   'POSTULACION_RECHAZADA',
+                   'Tu postulación a la actividad "' || a.nombre
+                       || '" del proyecto "' || proy.nombre
+                       || '" fue rechazada porque el cupo ya fue cubierto.',
+                   'POSTULACION_ACTIVIDAD',
+                   r.id_postulacion,
+                   false,
+                   NULL,
+                   'TRIGGER',
+                   clock_timestamp()
+            FROM rechazadas r
+            JOIN perfil p ON p.id_perfil = r.id_perfil
+            JOIN requerimiento_actividad ra ON ra.id_requerimiento_act = r.id_requerimiento_act
+            JOIN actividad a ON a.id_actividad = ra.id_actividad
+            JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
+            JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM notificacion n
+                WHERE n.id_usuario_destino = p.id_usuario
+                  AND n.tipo = 'POSTULACION_RECHAZADA'
+                  AND n.entidad_tipo = 'POSTULACION_ACTIVIDAD'
+                  AND n.entidad_id = r.id_postulacion
+            );
         END IF;
     END IF;
 
@@ -1164,27 +1358,63 @@ DECLARE
     v_cantidad_requerida INT;
     v_aceptadas_actuales INT;
 BEGIN
-    -- Se evalua únicamente cuando la postulación pasa a 'ACEPTADA'
     IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-        
-        -- Obtener la cantidad requerida para este requerimiento general del proyecto
+
         SELECT rgp.cantidad INTO v_cantidad_requerida
         FROM requerimiento_gral_proyecto rgp
         WHERE rgp.id_requerimiento_gral = NEW.id_requerimiento_gral;
 
-        -- Contar cuántas postulaciones aceptadas existen en total (incluyendo la actual)
         SELECT COUNT(*) INTO v_aceptadas_actuales
         FROM postulacion_gral
         WHERE id_requerimiento_gral = NEW.id_requerimiento_gral
           AND estado = 'ACEPTADA';
 
-        -- Si se alcanzo o supero el cupo solicitado, cerrar las demas postulaciones pendientes
         IF v_cantidad_requerida IS NOT NULL AND v_aceptadas_actuales >= v_cantidad_requerida THEN
-            UPDATE postulacion_gral
-            SET estado = 'RECHAZADA'
-            WHERE id_requerimiento_gral = NEW.id_requerimiento_gral
-              AND id_postulacion_gral <> NEW.id_postulacion_gral
-              AND estado = 'PENDIENTE';
+
+            WITH rechazadas AS (
+                UPDATE postulacion_gral post
+                SET estado = 'RECHAZADA'
+                WHERE post.id_requerimiento_gral = NEW.id_requerimiento_gral
+                  AND post.id_postulacion_gral <> NEW.id_postulacion_gral
+                  AND post.estado = 'PENDIENTE'
+                RETURNING post.id_postulacion_gral, post.id_perfil, post.id_requerimiento_gral
+            )
+            INSERT INTO notificacion (
+                id_usuario_destino,
+                id_perfil_contexto,
+                tipo,
+                mensaje,
+                entidad_tipo,
+                entidad_id,
+                leida,
+                fecha_leida,
+                origen,
+                fecha_generada
+            )
+            SELECT p.id_usuario,
+                   r.id_perfil,
+                   'POSTULACION_RECHAZADA',
+                   'Tu postulación al proyecto "' || proy.nombre
+                       || '" fue rechazada porque el cupo ya fue cubierto.',
+                   'POSTULACION_GRAL',
+                   r.id_postulacion_gral,
+                   false,
+                   NULL,
+                   'TRIGGER',
+                   clock_timestamp()
+            FROM rechazadas r
+            JOIN perfil p ON p.id_perfil = r.id_perfil
+            JOIN requerimiento_gral_proyecto rgp
+              ON rgp.id_requerimiento_gral = r.id_requerimiento_gral
+            JOIN proyecto proy ON proy.id_proyecto = rgp.id_proyecto
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM notificacion n
+                WHERE n.id_usuario_destino = p.id_usuario
+                  AND n.tipo = 'POSTULACION_RECHAZADA'
+                  AND n.entidad_tipo = 'POSTULACION_GRAL'
+                  AND n.entidad_id = r.id_postulacion_gral
+            );
         END IF;
     END IF;
 
@@ -1234,15 +1464,16 @@ CREATE TABLE provincia(
 
 CREATE TABLE proyecto(
     id_proyecto                int8             GENERATED BY DEFAULT AS IDENTITY NOT NULL,
-    fecha_inicio               timestamp       NOT NULL,
+    fecha_inicio               timestamp,
     acepta_postulacion_gral    boolean         DEFAULT false NOT NULL,
     nombre                     varchar(50)     NOT NULL,
     descripcion                varchar(200)    NOT NULL,
     estado                     varchar(50)     NOT NULL,
     privacidad                 varchar(20)     NOT NULL,
+    motivo_cancelacion         varchar(200),
     id_ubicacion               int8,
     CONSTRAINT chk_proyecto_estado CHECK (estado IN ('BORRADOR', 'PUBLICADO', 'CONFIRMADO', 'FINALIZADO', 'CANCELADO')),
-    CONSTRAINT chk_proyecto_privacidad CHECK (privacidad IN ('PUBLICO', 'PRIVADO', 'OCULTO')),
+    CONSTRAINT chk_proyecto_privacidad CHECK (privacidad IN ('PUBLICO', 'PRIVADO')),
     CONSTRAINT "PK_proyecto" PRIMARY KEY (id_proyecto)
 )
 ;
@@ -1363,10 +1594,41 @@ CREATE TABLE requerimiento_act_caract(
     id_caracteristica       int8              NOT NULL,
     valor_min               numeric(10, 2),
     valor_max               numeric(10, 2),
-    CONSTRAINT "PK_requerimiento_act_caracteristica" PRIMARY KEY (id_req_act_caract)
+    CONSTRAINT "PK_requerimiento_act_caracteristica" PRIMARY KEY (id_req_act_caract),
+    CONSTRAINT "chk_valor_max_no_neg" CHECK (valor_max >= 0),
+    CONSTRAINT "chk_valor_min_no_neg" CHECK (valor_min >= 0),
+    CONSTRAINT "chk_req_act_caract_rango_positivo" CHECK (COALESCE(valor_min,0) >= 0 AND COALESCE(valor_max,0) >= 0),
+    CONSTRAINT "chk_req_act_caract_rango" CHECK (valor_min IS NULL OR valor_max IS NULL OR valor_min <= valor_max)
 )
 ;
 
+CREATE OR REPLACE FUNCTION fn_req_caract_rango_solo_numerico() RETURNS trigger AS $$
+DECLARE
+    v_tipo_dato VARCHAR(50);
+BEGIN
+    SELECT tipo_dato INTO v_tipo_dato
+    FROM caracteristica_tecnica
+    WHERE id_caracteristica = NEW.id_caracteristica;
+
+    IF v_tipo_dato IS NULL THEN
+        RAISE EXCEPTION 'La caracteristica % no existe.', NEW.id_caracteristica
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    IF v_tipo_dato <> 'NUMERICO'
+       AND (NEW.valor_min IS NOT NULL OR NEW.valor_max IS NOT NULL) THEN
+        RAISE EXCEPTION 'valor_min/valor_max solo aplican a caracteristicas NUMERICAS (caracteristica %, tipo %).',
+            NEW.id_caracteristica, v_tipo_dato
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_req_act_caract_rango ON requerimiento_act_caract;
+CREATE TRIGGER trg_req_act_caract_rango
+    BEFORE INSERT OR UPDATE ON requerimiento_act_caract
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_rango_solo_numerico();
 
 
 -- 
@@ -1380,6 +1642,44 @@ CREATE TABLE requerimiento_act_caract_valor(
     CONSTRAINT "PK_requerimiento_act_caract_valor" PRIMARY KEY (id_req_act_caract, id_caracteristica, id_valor)
 )
 ;
+
+CREATE OR REPLACE FUNCTION fn_req_caract_valor_solo_enumerado() RETURNS trigger AS $$
+DECLARE
+    v_id_caract_padre BIGINT;
+    v_tipo_dato VARCHAR(50);
+BEGIN
+    IF TG_TABLE_NAME = 'requerimiento_act_caract_valor' THEN
+        SELECT id_caracteristica INTO v_id_caract_padre
+        FROM requerimiento_act_caract
+        WHERE id_req_act_caract = NEW.id_req_act_caract;
+    ELSE
+        SELECT id_caracteristica INTO v_id_caract_padre
+        FROM requerimiento_gral_caract
+        WHERE id_req_gral_caract = NEW.id_req_gral_caract;
+    END IF;
+
+    IF v_id_caract_padre IS DISTINCT FROM NEW.id_caracteristica THEN
+        RAISE EXCEPTION 'id_caracteristica no coincide con la caracteristica del requerimiento padre.'
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    SELECT tipo_dato INTO v_tipo_dato
+    FROM caracteristica_tecnica
+    WHERE id_caracteristica = v_id_caract_padre;
+
+    IF v_tipo_dato <> 'ENUMERADO' THEN
+        RAISE EXCEPTION 'Solo caracteristicas ENUMERADAS admiten valores de catalogo en requerimientos (caracteristica %, tipo %).',
+            v_id_caract_padre, v_tipo_dato
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_req_act_caract_valor ON requerimiento_act_caract_valor;
+CREATE TRIGGER trg_req_act_caract_valor
+    BEFORE INSERT OR UPDATE ON requerimiento_act_caract_valor
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_valor_solo_enumerado();
 
 
 
@@ -1423,10 +1723,18 @@ CREATE TABLE requerimiento_gral_caract(
     valor_max                numeric(10, 2),
     id_requerimiento_gral    int8              NOT NULL,
     id_caracteristica        int8              NOT NULL,
-    CONSTRAINT "PK_requerimiento_gral_caracteristica" PRIMARY KEY (id_req_gral_caract)
+    CONSTRAINT "PK_requerimiento_gral_caracteristica" PRIMARY KEY (id_req_gral_caract),
+    CONSTRAINT "chk_valor_max_no_neg" CHECK (valor_max >= 0),
+    CONSTRAINT "chk_valor_min_no_neg" CHECK (valor_min >= 0),
+    CONSTRAINT "chk_req_gral_caract_rango_positivo" CHECK (COALESCE(valor_min,0) >= 0 AND COALESCE(valor_max,0) >= 0),
+    CONSTRAINT "chk_req_gral_caract_rango" CHECK (valor_min IS NULL OR valor_max IS NULL OR valor_min <= valor_max)
 )
 ;
 
+DROP TRIGGER IF EXISTS trg_req_gral_caract_rango ON requerimiento_gral_caract;
+CREATE TRIGGER trg_req_gral_caract_rango
+    BEFORE INSERT OR UPDATE ON requerimiento_gral_caract
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_rango_solo_numerico();
 
 
 -- 
@@ -1441,7 +1749,10 @@ CREATE TABLE requerimiento_gral_caract_valor(
 )
 ;
 
-
+DROP TRIGGER IF EXISTS trg_req_gral_caract_valor ON requerimiento_gral_caract_valor;
+CREATE TRIGGER trg_req_gral_caract_valor
+    BEFORE INSERT OR UPDATE ON requerimiento_gral_caract_valor
+    FOR EACH ROW EXECUTE FUNCTION fn_req_caract_valor_solo_enumerado();
 
 -- 
 -- TABLE: requerimiento_gral_habilidad 
@@ -1951,6 +2262,80 @@ CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, 
 
 CREATE INDEX "IDX_bloqueo_agenda_rango" ON bloqueo_agenda(id_agenda, fecha_hora_inicio, fecha_hora_fin);
 
+-- INDEXES PARA MEJORAR EL RENDIMIENTO DE CONSULTAS SOBRE CARACTERISTICAS Y REQUERIMIENTOS
+
+CREATE INDEX "IDX_caracteristica_perfil_caract"       ON caracteristica_perfil(id_caracteristica);
+CREATE INDEX "IDX_req_act_caract_caract"              ON requerimiento_act_caract(id_caracteristica);
+CREATE INDEX "IDX_req_gral_caract_caract"             ON requerimiento_gral_caract(id_caracteristica);
+
+-- 
+-- INDEX: "UQ_req_act_caract_req_caract" 
+--
+
+CREATE UNIQUE INDEX "UQ_req_act_caract_req_caract" ON requerimiento_act_caract(id_requerimiento_act, id_caracteristica);
+
+-- 
+-- INDEX: "UQ_req_gral_caract_req_caract" 
+--
+
+CREATE UNIQUE INDEX "UQ_req_gral_caract_req_caract" ON requerimiento_gral_caract(id_requerimiento_gral, id_caracteristica);
+
+--
+-- INDEX: "UQ_req_act_caract_id_car"
+--
+
+CREATE UNIQUE INDEX "UQ_req_act_caract_id_car" ON requerimiento_act_caract(id_req_act_caract, id_caracteristica);
+
+--
+-- INDEX: "UQ_req_gral_caract_id_car"
+--
+
+CREATE UNIQUE INDEX "UQ_req_gral_caract_id_car" ON requerimiento_gral_caract(id_req_gral_caract, id_caracteristica);
+
+--
+-- INDEX: idx_notif_usuario_fecha
+--
+
+CREATE INDEX idx_notif_usuario_fecha ON notificacion(id_usuario_destino, fecha_generada DESC, id_notificacion DESC);
+
+--
+-- INDEX: idx_notif_usuario_no_leida
+--
+
+CREATE INDEX idx_notif_usuario_no_leida ON notificacion(id_usuario_destino, fecha_generada DESC) WHERE leida = false;
+
+--
+-- INDEX: idx_notif_entidad
+--
+
+CREATE INDEX idx_notif_entidad ON notificacion(entidad_tipo, entidad_id);
+
+--
+-- INDEX: idx_notif_usuario_perfil_fecha
+--
+CREATE INDEX idx_notif_usuario_perfil_fecha
+    ON notificacion (id_usuario_destino, id_perfil_contexto, fecha_generada DESC);
+
+--
+-- INDEX: idx_notif_purga
+--
+
+CREATE INDEX idx_notif_purga ON notificacion(fecha_generada) WHERE leida = true;
+
+--
+-- INDEX: uq_entrega_canal
+--
+
+CREATE UNIQUE INDEX uq_entrega_canal ON notificacion_entrega(id_notificacion, canal);
+
+--
+-- INDEX: idx_entrega_pendientes
+--
+
+CREATE INDEX idx_entrega_pendientes ON notificacion_entrega(estado, proximo_intento) WHERE estado IN ('PENDIENTE', 'FALLIDO');
+
+
+
 -- 
 -- TABLE: actividad 
 --
@@ -2296,6 +2681,33 @@ ALTER TABLE notificacion ADD CONSTRAINT "Refusuario1531"
     REFERENCES usuario(id_usuario)
 ;
 
+ALTER TABLE notificacion ADD CONSTRAINT "FK_notif_perfil_contexto"
+    FOREIGN KEY (id_perfil_contexto)
+    REFERENCES perfil(id_perfil)
+;
+
+ALTER TABLE notificacion ADD CONSTRAINT fk_notificacion_tipo 
+    FOREIGN KEY (tipo)
+    REFERENCES notificacion_tipo(codigo)
+;
+
+ALTER TABLE notificacion_entrega ADD CONSTRAINT fk_entrega_notificacion 
+    FOREIGN KEY (id_notificacion)
+    REFERENCES notificacion(id_notificacion)
+    ON DELETE CASCADE
+;
+
+ALTER TABLE notificacion_preferencia ADD CONSTRAINT fk_pref_usuario 
+    FOREIGN KEY (id_usuario)
+    REFERENCES usuario(id_usuario)
+    ON DELETE CASCADE
+;
+
+ALTER TABLE notificacion_preferencia ADD CONSTRAINT fk_pref_tipo 
+    FOREIGN KEY (tipo)
+    REFERENCES notificacion_tipo(codigo)
+;
+
 
 -- 
 -- TABLE: objetivo 
@@ -2441,7 +2853,6 @@ ALTER TABLE requerimiento_act_caract ADD CONSTRAINT "Refcaracteristica_tecnica17
     REFERENCES caracteristica_tecnica(id_caracteristica)
 ;
 
-
 -- 
 -- TABLE: requerimiento_act_caract_valor 
 --
@@ -2455,6 +2866,11 @@ ALTER TABLE requerimiento_act_caract_valor ADD CONSTRAINT "Refvalor_caracteristi
     FOREIGN KEY (id_valor, id_caracteristica)
     REFERENCES valor_caracteristica(id_valor, id_caracteristica)
 ;
+
+ALTER TABLE requerimiento_act_caract_valor ADD CONSTRAINT "FK_req_act_caract_valor_padre" 
+    FOREIGN KEY (id_req_act_caract, id_caracteristica) 
+    REFERENCES requerimiento_act_caract(id_req_act_caract, id_caracteristica);
+
 
 
 -- 
@@ -2515,6 +2931,10 @@ ALTER TABLE requerimiento_gral_caract_valor ADD CONSTRAINT "Refrequerimiento_gra
     FOREIGN KEY (id_req_gral_caract)
     REFERENCES requerimiento_gral_caract(id_req_gral_caract)
 ;
+
+ALTER TABLE requerimiento_gral_caract_valor ADD CONSTRAINT "FK_req_gral_caract_valor_padre" 
+    FOREIGN KEY (id_req_gral_caract, id_caracteristica) 
+    REFERENCES requerimiento_gral_caract(id_req_gral_caract, id_caracteristica);
 
 
 -- 
@@ -2657,11 +3077,47 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios'),
     ('CATALOGO_GEOREF_PAIS_ISO',        'AR',          'Codigo ISO del pais para georeferenciacion de ubicaciones con API Georef'),
-    ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen en minutos aplicado a cada lado de las actividades del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen')
+    ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen en minutos aplicado a cada lado de las actividades del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen'),
+    ('IMAGEN_MAX_LADO_PX',   '8000',           'Tamaño máximo en píxeles del lado más largo de una imagen'),
+    ('IMAGEN_MAX_MEGAPIXELES', '24',             'Tamaño máximo en megapíxeles de una imagen'),
+    ('IMAGEN_CALIDAD_WEBP', '80',             'Calidad de compresión de imágenes WebP (0-100)'),
+    ('IMAGEN_LADO_SALIDA_PX', '600',             'Lado de salida de las imágenes en píxeles'),
+    ('IMAGEN_MAX_TAMANO_BYTES',  '10485760',              'Tamaño máximo en bytes de una imagen'),
+    ('IMAGEN_LIMPIEZA_INTERVALO_HORAS', '24',             'Intervalo en horas para limpieza de imágenes huerfanas'),
+    ('IMAGEN_LIMPIEZA_GRACIA_MINUTOS', '60',             'Periodo de gracia en minutos para limpieza de imágenes huerfanas'),
+    ('NOTIFICACION_RETENCION_DIAS', '90',                'Días que se conservan las notificaciones leídas antes de purgarlas'),
+    ('NOTIFICACION_PURGA_HORA', '3',                     'Hora (0-23) en la que se ejecuta el job de purga de notificaciones'),
+    ('NOTIFICACION_PURGA_MINUTO', '30',                  'Minuto (0-59) en el que se ejecuta el job de purga de notificaciones'),
+    ('NOTIFICACION_PURGA_LOTE', '1000',                  'Cantidad máxima de notificaciones leídas a eliminar por lote'),
+    ('NOTIFICACION_PAGINA_MAX', '50',                    'Tope del parámetro size en el listado de notificaciones'),
+    ('NOTIFICACION_POLLING_SEGUNDOS', '45',              'Intervalo de polling del frontend para notificaciones no leídas'),
+    ('NOTIFICACION_EMAIL_REINTENTOS_MAX', '5',           'Reintentos máximos de envío por email'),
+    ('NOTIFICACION_EMAIL_BACKOFF_MINUTOS', '15',         'Espera base en minutos entre reintentos de email')
+
 
 ON CONFLICT (clave) DO UPDATE 
     SET valor       = EXCLUDED.valor,
         descripcion = EXCLUDED.descripcion;
+
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
+    ('HITO_CUMPLIDO',         'Hito cumplido',         'PROYECTO',    'MEDIA'),
+    ('ACTIVIDAD_ASIGNADA',    'Actividad asignada',    'ACTIVIDAD',   'MEDIA'),
+    ('PROYECTO_CANCELADO',    'Proyecto cancelado',    'PROYECTO',    'ALTA'),
+    ('POSTULACION_RECHAZADA', 'Postulación rechazada', 'POSTULACION', 'ALTA'),
+    ('INVITACION_RECHAZADA',  'Invitación rechazada',  'INVITACION',  'ALTA'),
+    ('ACTIVIDAD_MODIFICADA',  'Actividad modificada',  'ACTIVIDAD',   'MEDIA'),
+    ('ACTIVIDAD_ELIMINADA',   'Actividad eliminada',   'ACTIVIDAD',   'ALTA'),
+    ('POSTULACION_ACEPTADA',  'Postulación aceptada',  'POSTULACION', 'ALTA'),
+    ('INVITACION_ACEPTADA',   'Invitación aceptada',   'INVITACION',  'ALTA'),
+    ('PROYECTO_FINALIZADO',   'Proyecto finalizado',   'PROYECTO',    'ALTA'),
+    ('PROYECTO_PUBLICADO',    'Proyecto publicado',    'PROYECTO',    'ALTA'),
+    ('PROYECTO_CONFIRMADO',   'Proyecto confirmado',   'PROYECTO',    'ALTA')
+
+ON CONFLICT (codigo) DO UPDATE 
+    SET nombre    = EXCLUDED.nombre,
+        categoria = EXCLUDED.categoria,
+        prioridad = EXCLUDED.prioridad,
+        activo    = true;
 
 INSERT INTO genero (id_genero, codigo, nombre) VALUES
     (1, 'MUJER',      'Mujer'),

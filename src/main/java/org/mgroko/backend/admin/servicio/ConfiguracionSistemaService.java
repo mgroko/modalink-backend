@@ -27,6 +27,13 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_BAJA_CRON = "SCHEDULER_BAJA_CRON";
     public static final String CLAVE_MARGEN_ACTIVIDAD_MIN = "AGENDA_MARGEN_ACTIVIDAD_MIN";
     public static final String CLAVE_DIAS_BAJA = "DIAS_BAJA";
+    public static final String CLAVE_IMAGEN_MAX_LADO_PX = "IMAGEN_MAX_LADO_PX";
+    public static final String CLAVE_IMAGEN_MAX_MEGAPIXELES = "IMAGEN_MAX_MEGAPIXELES";
+    public static final String CLAVE_IMAGEN_CALIDAD_WEBP = "IMAGEN_CALIDAD_WEBP";
+    public static final String CLAVE_IMAGEN_LADO_SALIDA_PX = "IMAGEN_LADO_SALIDA_PX";
+    public static final String CLAVE_IMAGEN_MAX_TAMANO_BYTES = "IMAGEN_MAX_TAMANO_BYTES";
+    public static final String CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS = "IMAGEN_LIMPIEZA_INTERVALO_HORAS";
+    public static final String CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS = "IMAGEN_LIMPIEZA_GRACIA_MINUTOS";
 
     private static final int DEFAULT_HORA = 2;
     private static final int DEFAULT_MINUTO = 0;
@@ -116,6 +123,44 @@ public class ConfiguracionSistemaService {
     public int obtenerDiasBaja() {
         int dias = obtenerValorEntero(CLAVE_DIAS_BAJA, DEFAULT_DIAS_BAJA);
         return dias > 0 ? dias : DEFAULT_DIAS_BAJA;
+    }
+
+    /**
+     * Horas entre ejecuciones del job de limpieza de imágenes huérfanas.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS}) en cada ciclo, por lo que
+     * un cambio de valor no exige reiniciar el servidor.
+     *
+     * @return intervalo en horas, siempre &gt; 0
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt; 0
+     */
+    @Transactional(readOnly = true)
+    public int obtenerIntervaloLimpiezaImagenesHoras() {
+        int horas = obtenerValorEnteroObligatorio(CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS);
+        if (horas <= 0) {
+            throw new IllegalStateException("El valor de '" + CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS
+                    + "' en configuracion_sistema debe ser mayor que cero: " + horas);
+        }
+        return horas;
+    }
+
+    /**
+     * Periodo de gracia, en minutos, que debe tener de antigüedad una imagen o
+     * un archivo antes de entrar en la limpieza. Se lee de
+     * {@code configuracion_sistema} (clave
+     * {@link #CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS}).
+     *
+     * @return gracia en minutos, siempre &gt;= 0
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 0
+     */
+    @Transactional(readOnly = true)
+    public int obtenerGraciaLimpiezaImagenesMinutos() {
+        int minutos = obtenerValorEnteroObligatorio(CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS);
+        if (minutos < 0) {
+            throw new IllegalStateException("El valor de '" + CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS
+                    + "' en configuracion_sistema no puede ser negativo: " + minutos);
+        }
+        return minutos;
     }
 
     @Transactional
@@ -209,6 +254,27 @@ public class ConfiguracionSistemaService {
                 .orElse(valorDefecto);
     }
 
+    /**
+     * Lee una clave de {@code configuracion_sistema} sin valor por defecto:
+     * si la fila falta o el valor no es un entero, se lanza el error explícito.
+     *
+     * @param clave clave a leer
+     * @return valor entero de la clave
+     * @throws IllegalStateException si la clave falta o su valor no es entero
+     */
+    private int obtenerValorEnteroObligatorio(String clave) {
+        String valor = configuracionSistemaRepository.findByClave(clave)
+                .map(ConfiguracionSistema::getValor)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Falta el valor de '" + clave + "' en configuracion_sistema."));
+        try {
+            return Integer.parseInt(valor.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("El valor de '" + clave
+                    + "' en configuracion_sistema no es un número entero: " + valor);
+        }
+    }
+
     private void guardarOActualizar(String clave, String valor, String descripcion) {
         ConfiguracionSistema config = configuracionSistemaRepository.findByClave(clave)
                 .orElseGet(() -> ConfiguracionSistema.builder().clave(clave).build());
@@ -220,12 +286,15 @@ public class ConfiguracionSistemaService {
     }
 
     private LocalDateTime calcularProximaEjecucion(String cron) {
-        try {
-            CronExpression expression = CronExpression.parse(cron);
-            return expression.next(LocalDateTime.now().atZone(ZoneId.systemDefault()))
-                    .toLocalDateTime();
-        } catch (Exception e) {
-            return null;
+        if (!CronExpression.isValidExpression(cron)) {
+            throw new IllegalStateException("Expresión cron inválida: " + cron);
         }
+        CronExpression expression = CronExpression.parse(cron);
+        LocalDateTime siguiente = expression.next(LocalDateTime.now().atZone(ZoneId.systemDefault()))
+                .toLocalDateTime();
+        if (siguiente == null) {
+            throw new IllegalStateException("No se pudo calcular la próxima ejecución para: " + cron);
+        }
+        return siguiente;
     }
 }

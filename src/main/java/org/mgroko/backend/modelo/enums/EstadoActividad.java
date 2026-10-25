@@ -14,4 +14,20 @@ public enum EstadoActividad {
     public static final EstadoActividad EnCurso = EN_CURSO;
     public static final EstadoActividad Finalizada = FINALIZADA;
     public static final EstadoActividad Cancelada = CANCELADA;
+
+    public boolean permiteTransicionA(EstadoActividad destino) {
+        if (destino == null) {
+            return false;
+        }
+
+        return switch (this) {
+            case PENDIENTE -> destino == PENDIENTE
+                    || destino == EN_CURSO
+                    || destino == CANCELADA;
+            case EN_CURSO -> destino == EN_CURSO
+                    || destino == FINALIZADA
+                    || destino == CANCELADA;
+            case FINALIZADA, CANCELADA -> false;
+        };
+    }
 }

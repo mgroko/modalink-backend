@@ -23,7 +23,7 @@ public class Proyecto {
     @Column(name = "descripcion", nullable = false, length = 200)
     private String descripcion;
 
-    @Column(name = "fecha_inicio", nullable = false)
+    @Column(name = "fecha_inicio")
     private LocalDateTime fechaInicio;
 
     public void setFechaInicio(LocalDate fecha) {
@@ -58,6 +58,9 @@ public class Proyecto {
     @Column(name = "acepta_postulacion_gral", nullable = false)
     @Builder.Default
     private Boolean aceptaPostulacionGral = false;
+
+    @Column(name = "motivo_cancelacion", length = 200)
+    private String motivoCancelacion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ubicacion")

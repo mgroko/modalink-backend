@@ -20,9 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExpirarPerfilService {
 
     private final PerfilRepository perfilRepository;
+    private final EliminarImagenesPerfilService eliminarImagenesPerfilService;
 
-    public ExpirarPerfilService(PerfilRepository perfilRepository) {
+    public ExpirarPerfilService(PerfilRepository perfilRepository,
+            EliminarImagenesPerfilService eliminarImagenesPerfilService) {
         this.perfilRepository = perfilRepository;
+        this.eliminarImagenesPerfilService = eliminarImagenesPerfilService;
     }
 
     @Transactional
@@ -33,7 +36,9 @@ public class ExpirarPerfilService {
 
         for (Perfil perfil : vencidos) {
             perfil.setEstado(EstadoPerfil.Baja);
-            // TODO: Eliminar publicaciones independientes del perfil.
+            // Las imágenes del perfil (y, cuando existan, las publicaciones
+            // independientes) se eliminan en el método dedicado.
+            eliminarImagenesPerfilService.eliminarImagenesDePerfil(perfil);
         }
         if (!vencidos.isEmpty()) {
             perfilRepository.saveAll(vencidos);

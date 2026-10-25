@@ -3,16 +3,13 @@ package org.mgroko.backend.perfiles.servicio;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
-import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.dto.EditarPerfilRequest;
 import org.mgroko.backend.perfiles.dto.PerfilResponse;
-import org.mgroko.backend.perfiles.exception.ImagenNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.mapper.PerfilMapper;
-import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -23,25 +20,23 @@ public class EditarPerfilService {
 
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
-    private final ImagenRepository imagenRepository;
     private final CaracteristicaPerfilHelper caracteristicaPerfilHelper;
     private final ConfiguracionSistemaService configuracionSistemaService;
 
     public EditarPerfilService(UsuarioRepository usuarioRepository,
             PerfilRepository perfilRepository,
-            ImagenRepository imagenRepository,
             CaracteristicaPerfilHelper caracteristicaPerfilHelper,
             ConfiguracionSistemaService configuracionSistemaService) {
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
-        this.imagenRepository = imagenRepository;
         this.caracteristicaPerfilHelper = caracteristicaPerfilHelper;
         this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional
     public PerfilResponse editar(Long idUsuario, Long idPerfil, EditarPerfilRequest request) {
-        Usuario usuario = buscarUsuarioActivo(idUsuario);
+        // Solo valida que el usuario exista y tenga acceso: el perfil se busca por usuario
+        buscarUsuarioActivo(idUsuario);
 
         Perfil perfil = perfilRepository.findByIdPerfilAndUsuarioIdUsuario(idPerfil, idUsuario)
                 .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));
@@ -52,7 +47,6 @@ public class EditarPerfilService {
 
         perfil.setNombreArtistico(request.nombreArtistico());
         perfil.setBiografia(request.biografia());
-        perfil.setImagen(resolverImagen(request.idImagen()));
 
         perfil.getCaracteristicas().clear();
         perfilRepository.flush(); 
@@ -71,13 +65,5 @@ public class EditarPerfilService {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
         return usuario;
-    }
-
-    private Imagen resolverImagen(Long idImagen) {
-        if (idImagen == null) {
-            return null;
-        }
-        return imagenRepository.findById(idImagen)
-                .orElseThrow(() -> new ImagenNoEncontradaException("Imagen no encontrada: " + idImagen));
     }
 }

@@ -2,7 +2,9 @@ package org.mgroko.backend.modelo;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -39,11 +41,6 @@ public class RequerimientoGralProyecto {
     private Set<Habilidad> habilidades = new HashSet<>();
 
     @Builder.Default
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "requerimiento_gral_caract",
-        joinColumns = @JoinColumn(name = "id_requerimiento_gral"),
-        inverseJoinColumns = @JoinColumn(name = "id_caracteristica")
-    )
-    private Set<CaracteristicaTecnica> caracteristicas = new HashSet<>();
+    @OneToMany(mappedBy = "requerimientoGral", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<RequerimientoGralCaract> caracteristicas = new ArrayList<>();
 }
