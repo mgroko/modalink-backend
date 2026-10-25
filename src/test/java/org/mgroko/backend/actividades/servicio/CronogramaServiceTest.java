@@ -3,12 +3,18 @@ package org.mgroko.backend.actividades.servicio;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
+import org.mgroko.backend.actividades.dto.NodoCpm;
+import org.mgroko.backend.actividades.dto.ProyeccionCpm;
 import org.mgroko.backend.actividades.exception.CronogramaInviableException;
 import org.mgroko.backend.actividades.exception.FechaEntregaNoDefinidaException;
 import org.mgroko.backend.modelo.Actividad;
@@ -19,7 +25,11 @@ import org.mgroko.backend.modelo.enums.EstadoCronograma;
 
 class CronogramaServiceTest {
 
-    private final CronogramaService cronogramaService = new CronogramaService();
+    private static final Clock RELOJ = Clock.fixed(
+            Instant.parse("2026-10-25T12:00:00Z"),
+            ZoneId.of("UTC"));
+
+    private final CronogramaService cronogramaService = new CronogramaService(RELOJ);
 
     @Test
     void recalcular_sinFechaEntrega_lanzaExcepcion() {
@@ -76,6 +86,35 @@ class CronogramaServiceTest {
     }
 
     @Test
+    void recalcular_sinFechaInicio_programaDesdeElInicioDelDiaActual() {
+        Planificacion planificacion = Planificacion.builder()
+                .fechaEntrega(LocalDate.of(2026, 11, 10))
+                .proyecto(Proyecto.builder().build())
+                .build();
+
+        Actividad actividad = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
+
+        cronogramaService.recalcular(planificacion, List.of(actividad));
+
+        assertThat(actividad.getFechaHoraInicio())
+                .isEqualTo(LocalDateTime.of(2026, 10, 25, 0, 0));
+    }
+
+    @Test
+    void recalcular_fechaInicioPasada_replanificaDesdeHoy() {
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 12, 1),
+                LocalDateTime.of(2026, 10, 1, 9, 0));
+
+        Actividad actividad = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
+
+        cronogramaService.recalcular(planificacion, List.of(actividad));
+
+        assertThat(actividad.getFechaHoraInicio())
+                .isEqualTo(LocalDateTime.of(2026, 10, 25, 0, 0));
+    }
+
+    @Test
     void recalcular_superaFechaEntrega_lanzaExcepcion() {
         Planificacion planificacion = planificacion(
                 LocalDate.of(2026, 11, 2),
@@ -105,20 +144,27 @@ class CronogramaServiceTest {
     }
 
     @Test
-    void evaluar_conFinPosteriorALaEntrega_marcaAlerta() {
+    void evaluar_cronogramaNoEntraEnLaEntrega_marcaAlerta() {
         Planificacion planificacion = planificacion(
-                LocalDate.of(2026, 11, 2),
+                LocalDate.of(2026, 11, 1),
                 LocalDateTime.of(2026, 11, 1, 9, 0));
 
-        Actividad actividad = actividad(
-                1L,
-                "A",
-                120,
-                EstadoActividad.PENDIENTE,
-                LocalDateTime.of(2026, 11, 2, 23, 0));
+        Actividad actividad = actividad(1L, "A", 2880, EstadoActividad.PENDIENTE, null);
 
         assertThat(cronogramaService.evaluar(planificacion, List.of(actividad)))
                 .isEqualTo(EstadoCronograma.ALERTA_DESBORDE);
+    }
+
+    @Test
+    void evaluar_cronogramaEntraEnLaEntrega_marcaNormal() {
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 11, 10),
+                LocalDateTime.of(2026, 11, 1, 9, 0));
+
+        Actividad actividad = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
+
+        assertThat(cronogramaService.evaluar(planificacion, List.of(actividad)))
+                .isEqualTo(EstadoCronograma.NORMAL);
     }
 
     @Test
@@ -129,6 +175,116 @@ class CronogramaServiceTest {
 
         assertThat(cronogramaService.evaluar(planificacion, List.of()))
                 .isEqualTo(EstadoCronograma.NORMAL);
+    }
+
+    @Test
+    void calcular_noModificaLasActividades() {
+        LocalDateTime fechaPersistida = LocalDateTime.of(2026, 10, 1, 9, 0);
+        Actividad actividad = actividad(
+                1L, "A", 60, EstadoActividad.PENDIENTE, fechaPersistida);
+
+        CalculoCpm calculo = cronogramaService.calcular(List.of(actividad));
+
+        assertThat(actividad.getFechaHoraInicio()).isEqualTo(fechaPersistida);
+        assertThat(calculo.nodoDe(1L).inicioTemprano()).isZero();
+    }
+
+    @Test
+    void calcular_cadenaConParalelas_calculaHolgurasYCriticas() {
+        Actividad a = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
+        Actividad b = actividad(2L, "B", 120, EstadoActividad.PENDIENTE, null);
+        Actividad c = actividad(3L, "C", 60, EstadoActividad.PENDIENTE, null);
+        c.setPredecesoras(Set.of(a, b));
+
+        CalculoCpm calculo = cronogramaService.calcular(List.of(a, b, c));
+
+        assertThat(calculo.makespan()).isEqualTo(180);
+
+        NodoCpm nodoA = calculo.nodoDe(1L);
+        NodoCpm nodoB = calculo.nodoDe(2L);
+        NodoCpm nodoC = calculo.nodoDe(3L);
+
+        assertThat(nodoA.inicioTemprano()).isZero();
+        assertThat(nodoA.finTemprano()).isEqualTo(60);
+        assertThat(nodoA.inicioTardio()).isEqualTo(60);
+        assertThat(nodoA.finTardio()).isEqualTo(120);
+        assertThat(nodoA.holgura()).isEqualTo(60);
+        assertThat(nodoA.critica()).isFalse();
+        assertThat(nodoA.rangoFactible().inicioMinutos()).isZero();
+        assertThat(nodoA.rangoFactible().finMinutos()).isEqualTo(120);
+
+        assertThat(nodoB.holgura()).isZero();
+        assertThat(nodoB.critica()).isTrue();
+        assertThat(nodoC.inicioTemprano()).isEqualTo(120);
+        assertThat(nodoC.finTemprano()).isEqualTo(180);
+        assertThat(nodoC.holgura()).isZero();
+        assertThat(nodoC.critica()).isTrue();
+    }
+
+    @Test
+    void calcular_ciclo_lanzaExcepcion() {
+        Actividad a = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
+        Actividad b = actividad(2L, "B", 60, EstadoActividad.PENDIENTE, null);
+        a.setPredecesoras(Set.of(b));
+        b.setPredecesoras(Set.of(a));
+
+        assertThatThrownBy(() -> cronogramaService.calcular(List.of(a, b)))
+                .isInstanceOf(CronogramaInviableException.class)
+                .hasMessageContaining("ciclo");
+    }
+
+    @Test
+    void calcular_esIndependienteDelReloj() {
+        CronogramaService otroReloj = new CronogramaService(Clock.fixed(
+                Instant.parse("2030-06-01T12:00:00Z"), ZoneId.of("UTC")));
+
+        Actividad a = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
+        Actividad b = actividad(2L, "B", 120, EstadoActividad.PENDIENTE, null);
+        b.setPredecesoras(Set.of(a));
+
+        CalculoCpm esperado = cronogramaService.calcular(List.of(a, b));
+        CalculoCpm obtenido = otroReloj.calcular(List.of(a, b));
+
+        assertThat(obtenido).isEqualTo(esperado);
+    }
+
+    @Test
+    void proyectar_desplazaOffsetsYMarcaTentativa() {
+        Actividad a = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
+        Actividad b = actividad(2L, "B", 120, EstadoActividad.PENDIENTE, null);
+        b.setPredecesoras(Set.of(a));
+
+        CalculoCpm calculo = cronogramaService.calcular(List.of(a, b));
+        LocalDateTime inicio = LocalDateTime.of(2026, 11, 1, 9, 0);
+
+        ProyeccionCpm proyeccion = cronogramaService.proyectar(calculo, inicio, true);
+
+        assertThat(proyeccion.inicio()).isEqualTo(inicio);
+        assertThat(proyeccion.tentativa()).isTrue();
+        assertThat(proyeccion.fechaDe(1L)).isEqualTo(inicio);
+        assertThat(proyeccion.fechaDe(2L)).isEqualTo(inicio.plusMinutes(60));
+        assertThat(proyeccion.fechas()).containsOnlyKeys(1L, 2L);
+    }
+
+    @Test
+    void inicioEfectivo_sinFechaInicio_devuelveInicioDelDia() {
+        Planificacion planificacion = Planificacion.builder()
+                .proyecto(Proyecto.builder().build())
+                .build();
+
+        assertThat(cronogramaService.inicioEfectivo(planificacion))
+                .isEqualTo(LocalDateTime.of(2026, 10, 25, 0, 0));
+        assertThat(cronogramaService.esTentativa(planificacion)).isTrue();
+    }
+
+    @Test
+    void inicioEfectivo_conFechaInicioFutura_devuelveFechaDelProyecto() {
+        LocalDateTime fechaInicio = LocalDateTime.of(2026, 11, 1, 9, 0);
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 12, 1), fechaInicio);
+
+        assertThat(cronogramaService.inicioEfectivo(planificacion)).isEqualTo(fechaInicio);
+        assertThat(cronogramaService.esTentativa(planificacion)).isFalse();
     }
 
     private Planificacion planificacion(LocalDate fechaEntrega, LocalDateTime fechaInicioProyecto) {
