@@ -16,7 +16,8 @@ CREATE TABLE actividad(
     estado               varchar(50)     NOT NULL,
     nombre               varchar(20)     NOT NULL,
     duracion_minutos     int4            NOT NULL,
-    fecha_hora_inicio    timestamp       NOT NULL,
+    fecha_hora_inicio    timestamp,
+    horario_preferencia_inicio time,
     descripcion          varchar(200),
     id_planificacion     int8            NOT NULL,
     id_ubicacion         int8,
@@ -2260,14 +2261,14 @@ CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, 
 -- INDEX: "UQ_perfil_postulacion_act" 
 --
 
-CREATE UNIQUE INDEX "UQ_perfil_postulacion_act" ON perfil_postulacion_act(id_perfil, id_requerimiento_act)
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_act" ON postulacion_actividad(id_perfil, id_requerimiento_act)
 ;
 
 -- 
 -- INDEX: "UQ_perfil_postulacion_gral" 
 --
 
-CREATE UNIQUE INDEX "UQ_perfil_postulacion_gral" ON perfil_postulacion_gral(id_perfil, id_requerimiento_gral)
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_gral" ON postulacion_gral(id_perfil, id_requerimiento_gral)
 ;
 
 
@@ -3118,6 +3119,7 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('HITO_CUMPLIDO',         'Hito cumplido',         'PROYECTO',    'MEDIA'),
     ('ACTIVIDAD_ASIGNADA',    'Actividad asignada',    'ACTIVIDAD',   'MEDIA'),
     ('PROYECTO_CANCELADO',    'Proyecto cancelado',    'PROYECTO',    'ALTA'),
+    ('POSTULACION_RECIBIDA',  'Postulación recibida',  'POSTULACION', 'ALTA'),
     ('POSTULACION_RECHAZADA', 'Postulación rechazada', 'POSTULACION', 'ALTA'),
     ('INVITACION_RECHAZADA',  'Invitación rechazada',  'INVITACION',  'ALTA'),
     ('ACTIVIDAD_MODIFICADA',  'Actividad modificada',  'ACTIVIDAD',   'MEDIA'),
