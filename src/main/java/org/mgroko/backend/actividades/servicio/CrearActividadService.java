@@ -1,7 +1,5 @@
 package org.mgroko.backend.actividades.servicio;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -14,7 +12,6 @@ import org.mgroko.backend.actividades.dto.CrearRequerimientoActividadRequest;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.actividades.exception.DuracionInvalidaException;
 import org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteActividadesException;
-import org.mgroko.backend.actividades.exception.FechaEntregaNoDefinidaException;
 import org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException;
 import org.mgroko.backend.actividades.exception.PredecesoraInvalidaException;
 import org.mgroko.backend.actividades.mapper.ActividadMapper;
@@ -41,7 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class CrearActividadService {
 
     private static final String PERMISO_CREAR_ACTIVIDAD = "CREAR_ACTIVIDAD";
-    private static final LocalTime HORA_FIN_CRONOGRAMA = LocalTime.of(23, 59);
 
     private final ActividadRepository actividadRepository;
     private final PlanificacionRepository planificacionRepository;
@@ -101,11 +97,6 @@ public class CrearActividadService {
         }
 
         int duracionMinutos = calcularDuracionMinutos(request);
-        LocalDate fechaEntrega = planificacion.getFechaEntrega();
-        if (fechaEntrega == null) {
-            throw new FechaEntregaNoDefinidaException();
-        }
-
         Ubicacion ubicacion = resolverUbicacion(request);
         Set<Actividad> predecesoras = resolverPredecesoras(
                 request.predecesoras(),
@@ -115,17 +106,14 @@ public class CrearActividadService {
                 .nombre(nombre)
                 .descripcion(request.descripcion() != null ? request.descripcion().trim() : null)
                 .duracionMinutos(duracionMinutos)
-                .fechaHoraInicio(fechaEntrega.atTime(HORA_FIN_CRONOGRAMA).minusMinutes(duracionMinutos))
+                .fechaHoraInicio(null)
+                .horarioPreferenciaInicio(request.horarioPreferenciaInicio())
                 .planificacion(planificacion)
                 .ubicacion(ubicacion)
                 .predecesoras(predecesoras)
                 .build();
 
         Actividad guardada = actividadRepository.saveAndFlush(actividad);
-
-        List<Actividad> actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
-        cronogramaService.recalcular(planificacion, actividades);
 
         List<RequerimientoActividadResponse> requerimientos = persistirRequerimientos(
                 guardada, request.requerimientos());

@@ -89,6 +89,7 @@ No es necesario reconstruir datos desde la búsqueda de actividades.
   "descripcion": "Montaje y prueba final del escenario.",
   "duracion": 2,
   "unidadDuracion": "HORAS",
+  "horarioPreferenciaInicio": "18:00",
   "ubicacion": {
     "localidadId": "06049010000",
     "provinciaId": "06"
@@ -122,7 +123,10 @@ Reglas del payload:
 
 - `nombre`, `duracion`, `unidadDuracion`, `estado`, `predecesoras` y `requerimientos` son obligatorios.
 - `predecesoras` y `requerimientos` pueden ser `[]`, pero no `null` ni ausentes.
-- No se envían `fechaHoraInicio` ni `fechaHoraFin`; las calcula el backend.
+- No se envían `fechaHoraInicio` ni `fechaHoraFin`; el horario definitivo se
+  asignará cuando corresponda.
+- `horarioPreferenciaInicio` es opcional, usa formato `HH:mm`, no contiene fecha
+  y `null` elimina la preferencia existente.
 - `idRequerimiento` se envía solo para requerimientos existentes.
 - Para crear un requerimiento nuevo, se omite `idRequerimiento`.
 - Cada requerimiento debe incluir `caracteristicas` y `habilidades`; pueden ser `[]`.
@@ -137,6 +141,7 @@ Reglas del payload:
 | `descripcion` | `string` | No | Máx. 200 caracteres. Se aplica `trim`. `null` o ausente **borra** la descripción. | Siempre reenviar la descripción actual si no se quiere borrar. |
 | `duracion` | `int` | **Sí** | Entero `> 0`. La conversión a minutos debe caber en un `int`. | Number input, mínimo `1`, sin decimales. |
 | `unidadDuracion` | `enum` | **Sí** | `DIAS` o `HORAS` en mayúsculas. `1 DIA = 1440` min; `1 HORA = 60` min. | Select o segmented control. |
+| `horarioPreferenciaInicio` | `string` `HH:mm` | No | Hora sin fecha, con precisión de minutos. `null` o ausente borra la preferencia. | Input de hora. |
 | `ubicacion` | `object \| null` | No | Si el objeto está presente, `localidadId` es obligatorio y no blanco. `null` o ausente **borra** la ubicación. | Si la ubicación no cambia, reenviar el objeto completo actual. |
 | `ubicacion.localidadId` | `string` | Condicional | Debe existir en el catálogo Georef. | Select dependiente de provincia. |
 | `ubicacion.provinciaId` | `string` | No | Si se envía, debe corresponder a la localidad. | Select de provincia. |

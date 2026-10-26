@@ -152,8 +152,9 @@ public class ModificarActividadService {
 
         Actividad guardada = guardarActividad(actividad);
 
-        EstadoCronograma estadoCronograma = cronogramaService
-                .recalcularTolerandoDesborde(planificacion, actividades);
+        EstadoCronograma estadoCronograma = actividad.getFechaHoraInicio() == null
+                ? EstadoCronograma.NORMAL
+                : cronogramaService.recalcularTolerandoDesborde(planificacion, actividades);
 
         List<RequerimientoActividadResponse> requerimientos =
                 requerimientoActividadService.listarPorActividad(idActividad);
@@ -225,6 +226,7 @@ public class ModificarActividadService {
         actividad.setDescripcion(
                 request.descripcion() != null ? request.descripcion().trim() : null);
         actividad.setDuracionMinutos(duracionMinutos);
+        actividad.setHorarioPreferenciaInicio(request.horarioPreferenciaInicio());
         actividad.setEstado(request.estado());
     }
 

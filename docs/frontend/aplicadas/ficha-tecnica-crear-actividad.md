@@ -15,7 +15,8 @@ Especificación de la API, formulario, validaciones, reglas de cronograma y mane
 - **Permiso efectivo:** `CREAR_ACTIVIDAD` en el proyecto. Hoy lo posee el rol **Director de proyecto**.
 - **Precondiciones del proyecto:**
   - Estado `BORRADOR`, `PUBLICADO` o `CONFIRMADO`.
-  - Debe existir su planificación y esta debe tener fecha de entrega.
+  - Debe existir su planificación. La fecha de entrega puede ser `null`; el
+    horario definitivo se asignará en una iteración posterior.
   - El perfil activo debe ser miembro activo y no estar dado de baja.
 
 > El backend busca la planificación del proyecto. Si el proyecto no existe o no tiene planificación, responde `404`.
@@ -32,9 +33,7 @@ Antes de habilitar el formulario, usar `GET /proyectos/{idProyecto}` y comprobar
 
 - `permisos` contiene `CREAR_ACTIVIDAD`.
 - `estado` es `Borrador`, `Publicado` o `Confirmado`.
-- `fechaEntregaEstipulada` no es `null`.
-
-Si falta la fecha de entrega, mostrar un aviso con acceso a la edición del proyecto. Si falta el permiso o el estado no lo permite, ocultar o deshabilitar la acción.
+Si falta el permiso o el estado no lo permite, ocultar o deshabilitar la acción.
 
 ### 2.2 Carga inicial
 
@@ -71,6 +70,7 @@ La actividad siempre se crea en estado `PENDIENTE`. El estado no se envía ni se
   "descripcion": "Prueba final con modelos y ajustes.",
   "duracion": 3,
   "unidadDuracion": "DIAS",
+  "horarioPreferenciaInicio": "18:00",
   "ubicacion": {
     "localidadId": "06049010000",
     "provinciaId": "06"
@@ -92,6 +92,9 @@ La actividad siempre se crea en estado `PENDIENTE`. El estado no se envía ni se
 ```
 
 No enviar `fechaHoraInicio`, `fechaHoraFin` ni `estado`: el backend los calcula o los fuerza.
+`horarioPreferenciaInicio` es opcional, representa solo una hora en formato
+`HH:mm` y puede enviarse como `null`. No contiene fecha ni asigna todavía el
+horario definitivo.
 
 ---
 
@@ -103,6 +106,7 @@ No enviar `fechaHoraInicio`, `fechaHoraFin` ni `estado`: el backend los calcula 
 | `descripcion` | `string` | No | Máx. 200 caracteres. | Textarea con contador `(x/200)`. |
 | `duracion` | `int` | **Sí** | Entero `> 0`. Valores demasiado grandes pueden producir `400`. | Number input, mínimo `1`, sin decimales. |
 | `unidadDuracion` | `enum` | **Sí** | `DIAS` o `HORAS` (mayúsculas). | Segmented control o select. |
+| `horarioPreferenciaInicio` | `string` `HH:mm` | No | Hora sin fecha, con precisión de minutos. | Input de hora. `null` significa sin preferencia. |
 | `ubicacion` | `object` | No | Si se envía, `localidadId` es obligatorio y no puede estar en blanco. | Enviar solo si el usuario eligió una localidad. |
 | `ubicacion.localidadId` | `string` | Condicional | Debe existir en el catálogo Georef. | Select dependiente de la provincia. |
 | `ubicacion.provinciaId` | `string` | No | Si se envía, debe corresponder a la localidad. | Select de provincia. |

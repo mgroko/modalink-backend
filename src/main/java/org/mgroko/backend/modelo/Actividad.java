@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -31,8 +32,11 @@ public class Actividad {
     @Column(name = "duracion_minutos", nullable = false)
     private Integer duracionMinutos;
 
-    @Column(name = "fecha_hora_inicio", nullable = false)
+    @Column(name = "fecha_hora_inicio")
     private LocalDateTime fechaHoraInicio;
+
+    @Column(name = "horario_preferencia_inicio")
+    private LocalTime horarioPreferenciaInicio;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_planificacion", nullable = false)

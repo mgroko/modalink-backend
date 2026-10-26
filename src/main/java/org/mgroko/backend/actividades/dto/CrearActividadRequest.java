@@ -1,6 +1,7 @@
 package org.mgroko.backend.actividades.dto;
 
 import java.util.List;
+import java.time.LocalTime;
 
 import org.mgroko.backend.actividades.enums.UnidadDuracion;
 import org.mgroko.backend.ubicacion.dto.UbicacionRequest;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 public record CrearActividadRequest(
         @NotBlank(message = "El nombre de la actividad es obligatorio.")
@@ -26,6 +28,9 @@ public record CrearActividadRequest(
         @NotNull(message = "La unidad de duracion es obligatoria.")
         UnidadDuracion unidadDuracion,
 
+        @JsonFormat(pattern = "HH:mm")
+        LocalTime horarioPreferenciaInicio,
+
         @Valid
         UbicacionRequest ubicacion,
 
@@ -33,4 +38,16 @@ public record CrearActividadRequest(
 
         List<@Valid CrearRequerimientoActividadRequest> requerimientos
 ) {
+
+    public CrearActividadRequest(
+            String nombre,
+            String descripcion,
+            Integer duracion,
+            UnidadDuracion unidadDuracion,
+            UbicacionRequest ubicacion,
+            List<Long> predecesoras,
+            List<@Valid CrearRequerimientoActividadRequest> requerimientos) {
+        this(nombre, descripcion, duracion, unidadDuracion, null,
+                ubicacion, predecesoras, requerimientos);
+    }
 }

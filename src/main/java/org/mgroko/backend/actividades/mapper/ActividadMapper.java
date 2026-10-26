@@ -39,6 +39,7 @@ public final class ActividadMapper {
                 actividad.getDuracionMinutos(),
                 actividad.getFechaHoraInicio(),
                 actividad.getFechaHoraFin(),
+                actividad.getHorarioPreferenciaInicio(),
                 actividad.getEstado() != null ? actividad.getEstado().name() : null,
                 requerimientos != null ? requerimientos : List.of(),
                 predecesoras != null ? predecesoras : List.of()
@@ -103,6 +104,7 @@ public final class ActividadMapper {
                 actividad.getDuracionMinutos(),
                 actividad.getFechaHoraInicio(),
                 actividad.getFechaHoraFin(),
+                actividad.getHorarioPreferenciaInicio(),
                 actividad.getEstado() != null ? actividad.getEstado().name() : null,
                 (estadoCronograma != null ? estadoCronograma : EstadoCronograma.NORMAL).name(),
                 UbicacionMapper.toResponse(actividad.getUbicacion()),
