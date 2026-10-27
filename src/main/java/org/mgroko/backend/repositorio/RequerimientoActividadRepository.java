@@ -2,6 +2,7 @@ package org.mgroko.backend.repositorio;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -48,4 +49,24 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
     boolean existsByProyectoExcluyendoEstado(
             @Param("idProyecto") Long idProyecto,
             @Param("estadoExcluido") EstadoActividad estadoExcluido);
+
+    /**
+     * Recupera un requerimiento de actividad junto con su profesión, la
+     * actividad, la planificación y el proyecto. Se usa al dar de alta una
+     * postulación (UC-26) para validar profesión, estado del proyecto y
+     * disponibilidad sin disparar consultas perezosas adicionales.
+     *
+     * @param idRequerimiento identificador del requerimiento
+     * @return el requerimiento con sus relaciones principales inicializadas
+     */
+    @Query("""
+        SELECT r FROM RequerimientoActividad r
+        JOIN FETCH r.profesion
+        JOIN FETCH r.actividad a
+        JOIN FETCH a.planificacion p
+        JOIN FETCH p.proyecto
+        WHERE r.idRequerimiento = :idRequerimiento
+    """)
+    Optional<RequerimientoActividad> findByIdConActividadYProyecto(
+            @Param("idRequerimiento") Long idRequerimiento);
 }

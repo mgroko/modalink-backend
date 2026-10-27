@@ -15,6 +15,30 @@ public interface PostulacionActividadRepository extends JpaRepository<Postulacio
 
     boolean existsByRequerimiento_IdRequerimiento(Long idRequerimiento);
 
+    /**
+     * Indica si el perfil ya se postuló al requerimiento, sin importar el
+     * estado de la postulación. La base también lo garantiza con el índice
+     * único sobre (id_perfil, id_requerimiento_act).
+     *
+     * @param idPerfil         perfil postulante
+     * @param idRequerimiento  requerimiento de actividad
+     * @return true si ya existe una postulación
+     */
+    boolean existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
+            Long idPerfil, Long idRequerimiento);
+
+    /**
+     * Cuenta las postulaciones del requerimiento en el estado indicado. Se usa
+     * para detectar requerimientos ya satisfechos antes de aceptar una nueva
+     * postulación.
+     *
+     * @param idRequerimiento requerimiento de actividad
+     * @param estado          estado a contar
+     * @return cantidad de postulaciones en ese estado
+     */
+    long countByRequerimiento_IdRequerimientoAndEstado(
+            Long idRequerimiento, EstadoSolicitud estado);
+
     @Query("""
         SELECT p FROM PostulacionActividad p
         JOIN FETCH p.perfil perfil
