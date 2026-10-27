@@ -5,7 +5,7 @@
 **Proyecto:** ModaLink  
 **Backend:** Spring Boot  
 **Fecha de referencia:** 2026-10-27  
-**Estado:** implementación backend hasta fase 3, sin confirmación de proyecto (fase 4)
+**Estado:** backend CPM/disponibilidad hasta fase 3; **UC-34 (aceptación de postulaciones) implementado**; UC-60 (confirmación de proyecto) pendiente.
 
 ---
 
@@ -258,8 +258,33 @@ La disponibilidad puede ser provisional cuando el proyecto todavía no tiene
 fecha de inicio confirmada. La respuesta de postulación incluye el indicador
 `tentativa`.
 
-Importante: una postulación no equivale a una asignación. La disponibilidad
-debe verificarse nuevamente al aceptar o asignar el perfil.
+Importante: una postulación no equivale a una asignación. La aceptación de la
+postulación (UC-34) revalida la disponibilidad y crea la `AsignacionActividad`.
+Si no hay disponibilidad al aceptar, el backend responde `409` y la postulación
+queda `PENDIENTE`. UC-70 volverá a verificar la disponibilidad cuando se asigne
+una actividad fuera del flujo de postulación.
+
+### 5.1. Aceptación de postulación de actividad
+
+```http
+POST /proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}/aceptar
+```
+
+Comportamiento del backend:
+
+1. valida que el actor sea director activo con `GESTIONAR_POSTULACIONES`;
+2. revalida la disponibilidad del postulante sobre el rango factible;
+3. si el postulante ya es miembro `MIEMBRO`, reutiliza su membresía; si no,
+   crea una membresía activa;
+4. crea la `AsignacionActividad` vinculada al requerimiento;
+5. cambia la postulación a `ACEPTADA`;
+6. notifica `POSTULACION_ACEPTADA` y, por trigger, `ACTIVIDAD_ASIGNADA`.
+
+Si no hay disponibilidad, el endpoint responde `409` y no crea membresía ni
+asignación. Un director no puede ser aceptado como postulante de actividad.
+
+Para el contrato completo de aceptación/rechazo y la UI de gestión, ver
+[`ficha-tecnica-gestionar-postulaciones.md`](./ficha-tecnica-gestionar-postulaciones.md).
 
 ---
 
@@ -369,7 +394,10 @@ Por eso el frontend no debe agregar márgenes manualmente ni desplazar el
 - consulta interna de disponibilidad individual;
 - consulta interna de disponibilidad multi-miembro;
 - detalle de huecos y motivos en el servicio;
-- postulación UC-26 con validación de disponibilidad.
+- postulación UC-26 con validación de disponibilidad;
+- aceptación de postulaciones de actividad (UC-34) con revalidación de
+  disponibilidad y creación de `AsignacionActividad`;
+- notificaciones `POSTULACION_ACEPTADA` y `ACTIVIDAD_ASIGNADA`.
 
 ### Pendiente de exponer o cerrar
 
@@ -380,9 +408,9 @@ GET /proyectos/{idProyecto}/actividades/{idActividad}/disponibilidad
 ```
 
 - integración del endpoint con el router/servicio frontend;
-- aceptación de postulaciones y creación de `AsignacionActividad`;
-- revalidación definitiva durante UC-70;
-- confirmación de proyecto de fase 4;
+- revalidación definitiva durante UC-70 para asignaciones fuera del flujo de
+  postulación;
+- confirmación de proyecto de fase 4 (UC-60);
 - contrato final de serialización HTTP para el detalle de disponibilidad.
 
 Hasta que el endpoint específico esté disponible, el frontend no debe inventar
@@ -399,11 +427,16 @@ una ruta ni duplicar el cálculo de disponibilidad en JavaScript.
 4. Mostrar `motivoConflicto` y `motivo` cuando existan.
 5. No calcular CPM, holguras ni márgenes en el frontend.
 6. No persistir proyecciones desde la SPA.
-7. No convertir una postulación en una asignación localmente.
+7. No convertir una postulación en una asignación localmente: la asignación la
+   crea el backend al aceptar la postulación de actividad.
 8. Reconsultar disponibilidad después de cualquier cambio de proyecto,
    actividad, agenda o asignación.
 9. Considerar que `miembros` puede venir vacío en la consulta individual.
 10. Preparar los componentes para que `inicioSeleccionado` y
     `finSeleccionado` sean `null`.
+11. Tras aceptar una postulación de actividad, refrescar actividades y
+    asignaciones: el backend revalida disponibilidad y puede responder `409`.
+12. No ofrecer aceptación de actividad a un director ni a un postulante sin
+    disponibilidad; el backend igualmente lo valida.
 
 ---
