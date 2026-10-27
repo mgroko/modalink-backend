@@ -591,6 +591,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadCanceladaException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadCancelada(
+            org.mgroko.backend.actividades.exception.ActividadCanceladaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadNoModificableException.class)
     public ResponseEntity<Map<String, Object>> handleActividadNoModificable(
             org.mgroko.backend.actividades.exception.ActividadNoModificableException ex) {

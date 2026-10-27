@@ -1,5 +1,7 @@
 package org.mgroko.backend.actividades.controlador;
 
+import java.util.List;
+
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
@@ -10,6 +12,8 @@ import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
+import org.mgroko.backend.actividades.servicio.ObtenerDisponibilidadActividadService;
+import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -35,6 +39,7 @@ public class ActividadController {
     private final CrearActividadService crearActividadService;
     private final ModificarActividadService modificarActividadService;
     private final ObtenerActividadService obtenerActividadService;
+    private final ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService;
     private final EliminarActividadService eliminarActividadService;
 
     public ActividadController(
@@ -42,11 +47,13 @@ public class ActividadController {
             CrearActividadService crearActividadService,
             ModificarActividadService modificarActividadService,
             ObtenerActividadService obtenerActividadService,
+            ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService,
             EliminarActividadService eliminarActividadService) {
         this.buscarActividadService = buscarActividadService;
         this.crearActividadService = crearActividadService;
         this.modificarActividadService = modificarActividadService;
         this.obtenerActividadService = obtenerActividadService;
+        this.obtenerDisponibilidadActividadService = obtenerDisponibilidadActividadService;
         this.eliminarActividadService = eliminarActividadService;
     }
 
@@ -138,6 +145,29 @@ public class ActividadController {
         ActividadResponse response = obtenerActividadService.obtener(
                 idUsuario, idPerfilActivo, idProyecto, idActividad);
         return ResponseEntity.ok(response);
+    }
+
+    // UC-26/UC-70: Consultar la disponibilidad de uno o más perfiles para una actividad.
+    @GetMapping("/proyectos/{idProyecto}/actividades/{idActividad}/disponibilidad")
+    public ResponseEntity<ResultadoDisponibilidad> obtenerDisponibilidad(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idActividad,
+            @RequestParam(required = false) List<Long> idPerfil,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        return ResponseEntity.ok(obtenerDisponibilidadActividadService.obtener(
+                idUsuario, idPerfilActivo, idProyecto, idActividad, idPerfil));
     }
 
     // UC-52: Buscar actividades dentro de la planificación de un proyecto
