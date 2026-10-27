@@ -34,6 +34,7 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
           AND a.planificacion.proyecto.estado IN :estados
           AND a.estado IN (org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE,
                             org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
+          AND a.fechaHoraInicio IS NOT NULL
     """)
     List<Actividad> findActividadesDeUsuario(
             @Param("idUsuario") Long idUsuario,

@@ -147,7 +147,7 @@ public class ObtenerProyectoService {
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        boolean elegibleParaPostularse = proyecto.getEstado() != EstadoProyecto.CANCELADO
+        boolean elegibleParaPostularse = proyecto.getEstado() == EstadoProyecto.PUBLICADO
                 && miembroActivo.isEmpty()
                 && Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral())
                 && profesionDelPerfilCoincide;

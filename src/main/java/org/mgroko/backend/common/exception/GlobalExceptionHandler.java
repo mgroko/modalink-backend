@@ -44,6 +44,8 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
+import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
@@ -668,6 +670,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDuracionInvalida(
             org.mgroko.backend.actividades.exception.DuracionInvalidaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(PostulacionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePostulacionNoPermitida(
+            PostulacionNoPermitidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(RequerimientoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoNoEncontrado(
+            RequerimientoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
 }

@@ -118,7 +118,21 @@ public class CrearActividadService {
         List<RequerimientoActividadResponse> requerimientos = persistirRequerimientos(
                 guardada, request.requerimientos());
 
-        return ActividadMapper.toResponse(guardada, requerimientos);
+        List<Actividad> actividades = actividadRepository
+                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
+        var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
+        return ActividadMapper.toResponse(
+                guardada,
+                requerimientos,
+                List.of(),
+                calculo.viable() == null
+                        ? org.mgroko.backend.modelo.enums.EstadoCronograma.SIN_FECHA_ENTREGA
+                        : (Boolean.TRUE.equals(calculo.viable())
+                                ? org.mgroko.backend.modelo.enums.EstadoCronograma.NORMAL
+                                : org.mgroko.backend.modelo.enums.EstadoCronograma.ALERTA_DESBORDE),
+                calculo,
+                cronogramaService.inicioEfectivo(planificacion),
+                cronogramaService.esTentativa(planificacion));
     }
 
     private void validarEstadoProyecto(Proyecto proyecto) {

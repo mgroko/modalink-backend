@@ -152,9 +152,15 @@ public class ModificarActividadService {
 
         Actividad guardada = guardarActividad(actividad);
 
-        EstadoCronograma estadoCronograma = actividad.getFechaHoraInicio() == null
-                ? EstadoCronograma.NORMAL
-                : cronogramaService.recalcularTolerandoDesborde(planificacion, actividades);
+        // Fase 2: siempre se evalúa el cronograma, no condicionalmente sobre el inicio
+        actividades = actividadRepository
+                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
+        var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
+        EstadoCronograma estadoCronograma = calculo.viable() == null
+                ? EstadoCronograma.SIN_FECHA_ENTREGA
+                : (Boolean.TRUE.equals(calculo.viable())
+                        ? EstadoCronograma.NORMAL
+                        : EstadoCronograma.ALERTA_DESBORDE);
 
         List<RequerimientoActividadResponse> requerimientos =
                 requerimientoActividadService.listarPorActividad(idActividad);
@@ -170,7 +176,10 @@ public class ModificarActividadService {
                 asignaciones.stream()
                         .map(ActividadMapper::toProfesionalAsignado)
                         .toList(),
-                estadoCronograma);
+                estadoCronograma,
+                calculo,
+                cronogramaService.inicioEfectivo(planificacion),
+                cronogramaService.esTentativa(planificacion));
     }
 
     private void validarEstadoProyecto(Proyecto proyecto) {

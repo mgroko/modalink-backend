@@ -150,8 +150,9 @@ public class EliminarActividadService {
         asignaciones.forEach(asignacionActividadRepository::delete);
         actividadRepository.delete(actividad);
         actividadRepository.flush();
-
-        recalcularCronograma(planificacion);
+        // Fase 2: no persistir proyecciones al eliminar; el cronograma se mantiene
+        // con los estados actuales de las actividades restantes.
+        // Se omite el recálculo para evitar escribir fechaHoraInicio en PENDIENTE.
         publicarEvento(evento);
     }
 

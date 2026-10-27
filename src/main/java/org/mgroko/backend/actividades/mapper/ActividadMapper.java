@@ -2,10 +2,13 @@ package org.mgroko.backend.actividades.mapper;
 
 import java.util.Comparator;
 import java.util.List;
+import java.time.LocalDateTime;
 
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.ActividadVinculadaResponse;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
+import org.mgroko.backend.actividades.dto.NodoCpm;
 import org.mgroko.backend.actividades.dto.ProfesionalAsignadoResponse;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResumenResponse;
@@ -76,6 +79,24 @@ public final class ActividadMapper {
             List<RequerimientoActividadResponse> requerimientos,
             List<ProfesionalAsignadoResponse> profesionalesAsignados,
             EstadoCronograma estadoCronograma) {
+        return toResponse(
+                actividad,
+                requerimientos,
+                profesionalesAsignados,
+                estadoCronograma,
+                null,
+                null,
+                false);
+    }
+
+    public static ActividadResponse toResponse(
+            Actividad actividad,
+            List<RequerimientoActividadResponse> requerimientos,
+            List<ProfesionalAsignadoResponse> profesionalesAsignados,
+            EstadoCronograma estadoCronograma,
+            CalculoCpm calculo,
+            LocalDateTime inicioProyeccion,
+            boolean tentativa) {
 
         Proyecto proyecto = actividad.getPlanificacion().getProyecto();
 
@@ -95,6 +116,16 @@ public final class ActividadMapper {
                                 Comparator.nullsLast(Long::compareTo)))
                 .toList();
 
+        NodoCpm nodo = calculo == null || actividad.getIdActividad() == null
+                ? null
+                : calculo.nodos().get(actividad.getIdActividad());
+        LocalDateTime inicioProyectado = nodo == null || inicioProyeccion == null
+                ? null
+                : inicioProyeccion.plusMinutes(nodo.inicioTemprano());
+        LocalDateTime finProyectado = nodo == null || inicioProyeccion == null
+                ? null
+                : inicioProyeccion.plusMinutes(nodo.finTemprano());
+
         return new ActividadResponse(
                 actividad.getIdActividad(),
                 proyecto.getIdProyecto(),
@@ -107,10 +138,22 @@ public final class ActividadMapper {
                 actividad.getHorarioPreferenciaInicio(),
                 actividad.getEstado() != null ? actividad.getEstado().name() : null,
                 (estadoCronograma != null ? estadoCronograma : EstadoCronograma.NORMAL).name(),
+                tentativa ? "true" : "false",
+                nodo == null ? null : nodo.critica(),
+                nodo == null ? null : nodo.holguraMakespan(),
+                nodo == null ? null : nodo.holguraEntrega(),
+                nodo == null ? null : nodo.ventanaInicio(),
+                nodo == null ? null : nodo.ventanaEjecucion(),
                 UbicacionMapper.toResponse(actividad.getUbicacion()),
                 predecesoras,
                 requerimientos != null ? requerimientos : List.of(),
-                profesionales
+                profesionales,
+                inicioProyectado,
+                finProyectado,
+                calculo == null ? null : tentativa,
+                nodo == null ? null : nodo.conflicto(),
+                nodo == null ? null : nodo.motivoConflicto(),
+                calculo == null ? null : calculo.parcial()
         );
     }
 

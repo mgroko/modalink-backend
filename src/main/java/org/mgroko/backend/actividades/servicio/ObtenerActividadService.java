@@ -92,8 +92,12 @@ public class ObtenerActividadService {
 
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
-        EstadoCronograma estadoCronograma = cronogramaService.evaluar(
-                planificacion, actividades);
+        var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
+        EstadoCronograma estadoCronograma = calculo.viable() == null
+                ? EstadoCronograma.SIN_FECHA_ENTREGA
+                : (Boolean.TRUE.equals(calculo.viable())
+                        ? EstadoCronograma.NORMAL
+                        : EstadoCronograma.ALERTA_DESBORDE);
 
         return ActividadMapper.toResponse(
                 actividad,
@@ -101,6 +105,9 @@ public class ObtenerActividadService {
                 asignaciones.stream()
                         .map(ActividadMapper::toProfesionalAsignado)
                         .toList(),
-                estadoCronograma);
+                estadoCronograma,
+                calculo,
+                cronogramaService.inicioEfectivo(planificacion),
+                cronogramaService.esTentativa(planificacion));
     }
 }
