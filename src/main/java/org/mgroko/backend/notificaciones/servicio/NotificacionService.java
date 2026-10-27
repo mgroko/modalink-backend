@@ -3,6 +3,7 @@ package org.mgroko.backend.notificaciones.servicio;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Notificacion;
@@ -39,12 +40,15 @@ public class NotificacionService {
 
     private final NotificacionRepository notificacionRepository;
     private final PerfilRepository perfilRepository;
+    private final NotificacionDestinoResolver notificacionDestinoResolver;
 
     public NotificacionService(
             NotificacionRepository notificacionRepository,
-            PerfilRepository perfilRepository) {
+            PerfilRepository perfilRepository,
+            NotificacionDestinoResolver notificacionDestinoResolver) {
         this.notificacionRepository = notificacionRepository;
         this.perfilRepository = perfilRepository;
+        this.notificacionDestinoResolver = notificacionDestinoResolver;
     }
 
     public Notificacion crear(
@@ -92,7 +96,13 @@ public class NotificacionService {
                 : notificacionRepository.findByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfil(
                         idUsuario, idPerfilContexto, pageable);
 
-        return PaginaResponse.fromPage(resultado.map(NotificacionMapper::toResponse));
+        Map<Long, Long> proyectoPorNotificacion =
+                notificacionDestinoResolver.resolverProyectos(resultado.getContent());
+
+        return PaginaResponse.fromPage(resultado.map(notificacion ->
+                NotificacionMapper.toResponse(
+                        notificacion,
+                        proyectoPorNotificacion.get(notificacion.getIdNotificacion()))));
     }
 
     @Transactional(readOnly = true)
@@ -128,7 +138,9 @@ public class NotificacionService {
             notificacion = notificacionRepository.save(notificacion);
         }
 
-        return NotificacionMapper.toResponse(notificacion);
+        return NotificacionMapper.toResponse(
+                notificacion,
+                notificacionDestinoResolver.resolverProyecto(notificacion));
     }
 
     @Transactional

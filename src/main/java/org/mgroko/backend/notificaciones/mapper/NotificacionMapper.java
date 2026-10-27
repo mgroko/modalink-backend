@@ -8,7 +8,7 @@ public final class NotificacionMapper {
     private NotificacionMapper() {
     }
 
-    public static NotificacionResponse toResponse(Notificacion notificacion) {
+    public static NotificacionResponse toResponse(Notificacion notificacion, Long idProyecto) {
         return new NotificacionResponse(
                 notificacion.getIdNotificacion(),
                 notificacion.getTipo(),
@@ -21,6 +21,7 @@ public final class NotificacionMapper {
                 notificacion.getFechaGenerada(),
                 notificacion.getPerfilContexto() != null
                         ? notificacion.getPerfilContexto().getIdPerfil()
-                        : null);
+                        : null,
+                idProyecto);
     }
 }

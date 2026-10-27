@@ -2,6 +2,7 @@ package org.mgroko.backend.notificaciones.servicio;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +40,9 @@ class NotificacionServiceTest {
 
     @Mock
     private PerfilRepository perfilRepository;
+
+    @Mock
+    private NotificacionDestinoResolver notificacionDestinoResolver;
 
     @InjectMocks
     private NotificacionService notificacionService;
@@ -96,6 +100,30 @@ class NotificacionServiceTest {
     }
 
     @Test
+    void listar_incluyeIdProyectoResuelto() {
+        when(notificacionRepository.findByUsuarioDestino_IdUsuario(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(notificacion)));
+        when(notificacionDestinoResolver.resolverProyectos(any()))
+                .thenReturn(Map.of(30L, 50L));
+
+        PaginaResponse<NotificacionResponse> respuesta =
+                notificacionService.listar(10L, null, 0, 20);
+
+        assertThat(respuesta.contenido().get(0).idProyecto()).isEqualTo(50L);
+    }
+
+    @Test
+    void listar_sinProyectoResuelto_devuelveNull() {
+        when(notificacionRepository.findByUsuarioDestino_IdUsuario(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(notificacion)));
+
+        PaginaResponse<NotificacionResponse> respuesta =
+                notificacionService.listar(10L, null, 0, 20);
+
+        assertThat(respuesta.contenido().get(0).idProyecto()).isNull();
+    }
+
+    @Test
     void listar_conPerfilAjeno_lanzaExcepcion() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(99L, 10L))
                 .thenReturn(Optional.empty());
@@ -144,6 +172,19 @@ class NotificacionServiceTest {
         assertThat(respuesta.leida()).isTrue();
         assertThat(respuesta.fechaLeida()).isNotNull();
         verify(notificacionRepository).save(notificacion);
+    }
+
+    @Test
+    void marcarLeida_incluyeIdProyectoResuelto() {
+        when(notificacionRepository.findByIdNotificacionAndUsuarioDestino_IdUsuario(30L, 10L))
+                .thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.save(notificacion))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificacionDestinoResolver.resolverProyecto(notificacion)).thenReturn(50L);
+
+        NotificacionResponse respuesta = notificacionService.marcarLeida(10L, 30L);
+
+        assertThat(respuesta.idProyecto()).isEqualTo(50L);
     }
 
     @Test

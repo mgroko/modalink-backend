@@ -127,6 +127,22 @@ class NotificacionIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void listar_proyectoCancelado_derivaIdProyectoDesdeEntidadId() {
+        Usuario usuario = crearUsuario("09");
+        Perfil perfil = crearPerfil(usuario, 0, "Perfil Proyecto");
+
+        Notificacion notificacion = notificacionService.crear(
+                usuario, perfil, "PROYECTO_CANCELADO", "Proyecto cancelado", "PROYECTO", 55L);
+        notificacionService.registrarTodas(List.of(notificacion));
+
+        PaginaResponse<NotificacionResponse> pagina = notificacionService.listar(
+                usuario.getIdUsuario(), perfil.getIdPerfil(), 0, 20);
+
+        assertThat(pagina.contenido()).singleElement()
+                .satisfies(n -> assertThat(n.idProyecto()).isEqualTo(55L));
+    }
+
+    @Test
     void marcarLeidaYMarcarTodas_respetanUsuarioYPerfil() {
         Usuario usuarioA = crearUsuario("03");
         Usuario usuarioB = crearUsuario("04");

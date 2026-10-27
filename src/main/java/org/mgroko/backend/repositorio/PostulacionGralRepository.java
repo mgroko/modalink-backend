@@ -1,10 +1,12 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.PostulacionGral;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -76,4 +78,16 @@ public interface PostulacionGralRepository
           AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
     """)
     List<PostulacionGral> findPendientesDeProyectoConPerfil(@Param("idProyecto") Long idProyecto);
+
+    /**
+     * Resuelve el proyecto de cada postulación general indicada. Se usa para
+     * enriquecer las notificaciones sin persistir un dato derivable.
+     */
+    @Query("""
+        SELECT p.idPostulacionGral AS entidadId,
+               p.requerimientoGral.proyecto.idProyecto AS idProyecto
+        FROM PostulacionGral p
+        WHERE p.idPostulacionGral IN :ids
+    """)
+    List<ProyectoDeEntidad> findProyectoPorIds(@Param("ids") Collection<Long> ids);
 }

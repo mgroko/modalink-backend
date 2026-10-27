@@ -1,10 +1,12 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -93,4 +95,16 @@ public interface PostulacionActividadRepository
     """)
     List<PostulacionActividad> findByActividadIdConPerfil(
             @Param("idActividad") Long idActividad);
+
+    /**
+     * Resuelve el proyecto de cada postulación de actividad indicada. Se usa
+     * para enriquecer las notificaciones sin persistir un dato derivable.
+     */
+    @Query("""
+        SELECT p.idPostulacion AS entidadId,
+               p.requerimiento.actividad.planificacion.proyecto.idProyecto AS idProyecto
+        FROM PostulacionActividad p
+        WHERE p.idPostulacion IN :ids
+    """)
+    List<ProyectoDeEntidad> findProyectoPorIds(@Param("ids") Collection<Long> ids);
 }
