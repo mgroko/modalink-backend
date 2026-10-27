@@ -160,18 +160,39 @@ sequenceDiagram
         PostGralRepo-->>Servicio: unaPostulacion
     end
 
-    Servicio->>DirectorRepo: Buscar director activo del proyecto
-    DirectorRepo-->>Servicio: Perfil director
-    Servicio->>Notif: crear(notificación al director)
+    Servicio->>DirectorRepo: Buscar directores activos del proyecto
+    DirectorRepo-->>Servicio: Perfiles directores
+    Servicio->>Notif: crear(notificación a cada director)
     Notif-->>Servicio: Solicitud de notificación
     Servicio-->>API: unaPostulacion
     API-->>Usuario: Postulación registrada
 ```
 
 La postulación debe quedar inicialmente en estado `PENDIENTE`, asociada al
-perfil y al requerimiento correspondiente. La notificación al director
-complementa la postcondición del caso de uso y debe referenciar la postulación
-mediante `entidad_tipo` y `entidad_id`.
+perfil y al requerimiento correspondiente. Se notifica a **todos** los
+directores activos del proyecto con el tipo `POSTULACION_RECIBIDA`; la
+notificación debe referenciar la postulación mediante `entidad_tipo` y
+`entidad_id`.
+
+Sólo los proyectos en estado `PUBLICADO` aceptan postulaciones (UC-60 los
+cierra), el perfil debe estar activo, tener la profesión solicitada y no ser
+miembro activo del proyecto. Un perfil no puede postularse dos veces al mismo
+requerimiento (garantizado además por los índices únicos
+`UQ_perfil_postulacion_act` / `UQ_perfil_postulacion_gral`). Sólo se admite
+postular a actividades `PENDIENTE`.
+
+La verificación de disponibilidad de UC-26 es **provisional**: mientras el
+proyecto no tenga fecha de inicio confirmada se evalúa el rango
+`[ahora, fecha de entrega]` en lugar del rango estricto `[ES, LF]` del CPM, y
+la respuesta lo informa. La comprobación debe repetirse al confirmar el
+proyecto (UC-60) y al asignar la actividad (UC-70).
+
+Endpoints:
+
+- `POST /proyectos/{idProyecto}/postulaciones/actividad` con
+  `{ "idRequerimientoActividad": ... }`.
+- `POST /proyectos/{idProyecto}/postulaciones/general` con
+  `{ "idRequerimientoGral": ... }`.
 
 ## UC-28 — Aceptar solicitud de incorporación
 

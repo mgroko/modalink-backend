@@ -115,8 +115,8 @@
 | **Responsabilidades** | Esta operación da de alta una postulación para un requerimiento general de proyecto |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-26 |
-| **Notas** | \- |
-| **Excepciones** | \- |
+| **Notas** | El proyecto debe estar en estado “Publicado” (lo cierra UC-60) y aceptar postulaciones generales. Un perfil no puede postularse dos veces al mismo requerimiento. Se notifica a todos los directores activos del proyecto. Si el requerimiento ya alcanzó su cantidad de postulaciones aceptadas, no admite nuevas. |
+| **Excepciones** | Si el proyecto no está “Publicado”, no acepta postulaciones generales o el requerimiento ya está satisfecho. Si el perfil ya es miembro activo del proyecto, no tiene la profesión solicitada o ya se postuló a ese requerimiento. |
 | **Salida** | unaPostulacion |
 | **Precondición** | El perfil del usuario debe tener al menos la misma profesión que se solicita en el requerimiento. |
 | **Postcondición** | Se creó una instancia de Postulacion unaPostulacion Se asignó a unaPostulacion.estadoPostulacion el valor “Pendiente” Se asoció unaPostulacion a unPerfil Se asoció unaPostulacion a unRequerimientoGeneral |
@@ -126,8 +126,8 @@
 | **Responsabilidades** | Esta operación da de alta una postulación para un requerimiento de una actividad de un proyecto |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-26 |
-| **Notas** | \- |
-| **Excepciones** | Si el usuario no tiene disponibilidad frente al rango factible de la actividad. |
+| **Notas** | El proyecto debe estar en estado “Publicado” (lo cierra UC-60). Sólo se admite postular a actividades “Pendiente”. Un perfil no puede postularse dos veces al mismo requerimiento. Se notifica a todos los directores activos del proyecto. La disponibilidad se verifica de forma **provisional**: mientras el proyecto no tenga fecha de inicio confirmada, el rango evaluado es [ahora, fecha de entrega]; al confirmarse el proyecto (UC-60) y al asignarse la actividad (UC-70) debe repetirse la verificación contra el rango factible [ES, LF] calculado por CPM. |
+| **Excepciones** | Si el usuario no tiene disponibilidad frente al rango factible de la actividad, la actividad no está “Pendiente”, el proyecto no está “Publicado”, el perfil no tiene la profesión solicitada, ya es miembro activo o ya se postuló a ese requerimiento. |
 | **Salida** | unaPostulacion |
 | **Precondición** | El perfil del usuario debe tener al menos la misma profesión que se solicita en el requerimiento. |
 | **Postcondición** | Se creó una instancia de Postulacion unaPostulacion Se asignó a unaPostulacion.estadoPostulacion el valor “Pendiente” Se asoció unaPostulacion a unPerfil Se asoció unaPostulacion a unRequerimientoActividad |
@@ -148,9 +148,9 @@
 | **Responsabilidades** | Esta operación tiene la función de verificar la disponibilidad de un usuario frente al rango factible de la actividad  |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-26, UC-70, UC-28 |
-| **Notas** | El rango factible de la actividad es calculado con el método de la ruta crítica (cpm) |
-| **Excepciones** | \- |
-| **Salida** | \- |
+| **Notas** | El rango factible de la actividad es calculado con el método de la ruta crítica (cpm). La regla es que exista un hueco libre continuo de al menos la duración de la actividad dentro del rango, descontando la jornada laboral, los bloqueos manuales y las actividades ya asignadas (con su margen). El resultado indica si la verificación es **provisional**: si el proyecto todavía no tiene fecha de inicio, el rango evaluado es [ahora, fecha de entrega] y debe repetirse al confirmar el proyecto (UC-60) y al asignar la actividad (UC-70) contra el rango [ES, LF]. |
+| **Excepciones** | Si el usuario no existe o no está activo; si la actividad no tiene planificación asociada. |
+| **Salida** | unResultadoDisponibilidad (disponible, provisional, inicio y fin del rango evaluado) |
 | **Precondición** | unUsuario y unaActividad existen. |
 | **Postcondición** | \- |
 
