@@ -1596,7 +1596,7 @@
 | **Comentarios** | \- |  |
 
 
-| UC–74 | Gestionar unidades de medida |  |
+| UC–75 | Gestionar unidades de medida |  |
 | ----- | ----- | ----- |
 | **Actor** | Administrador |  |
 | **Objetivos asociados**  | OBJ-01 OBJ-04 |  |
