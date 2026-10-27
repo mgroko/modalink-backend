@@ -136,6 +136,7 @@ public class RequerimientoGralService {
                 .sorted()
                 .toList();
 
+        int cantidad = guardado.getCantidad() != null ? guardado.getCantidad() : 0;
         return new RequerimientoGralResponse(
                 guardado.getIdRequerimientoGral(),
                 guardado.getCantidad(),
@@ -144,7 +145,9 @@ public class RequerimientoGralService {
                 guardado.getProfesion().getNombre(),
                 caractsResponse,
                 idsHabilidades,
-                Boolean.FALSE);
+                Boolean.FALSE,
+                0L,
+                cantidad);
     }
 
     private List<RequerimientoGralCaract> construirCaracteristicas(

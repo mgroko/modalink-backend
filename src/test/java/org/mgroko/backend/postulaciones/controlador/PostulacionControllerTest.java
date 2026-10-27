@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,12 +15,22 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
+import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
+import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
+import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
+import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
+import org.mgroko.backend.postulaciones.servicio.AceptarPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.BuscarPostulacionesProyectoService;
 import org.mgroko.backend.postulaciones.servicio.CrearPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.RechazarPostulacionService;
+import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -43,6 +54,166 @@ class PostulacionControllerTest {
 
     @MockitoBean
     private CrearPostulacionService crearPostulacionService;
+
+    @MockitoBean
+    private BuscarPostulacionesProyectoService buscarPostulacionesProyectoService;
+
+    @MockitoBean
+    private AceptarPostulacionService aceptarPostulacionService;
+
+    @MockitoBean
+    private RechazarPostulacionService rechazarPostulacionService;
+
+    @Test
+    void aceptarGeneral_conPerfilActivo_devuelve200() throws Exception {
+        var auth = autenticacion(1L, 10L);
+
+        when(aceptarPostulacionService.aceptarGeneral(1L, 10L, 5L, 77L))
+                .thenReturn(new PostulacionGestionadaResponse(
+                        77L, TipoPostulacion.GENERAL, EstadoSolicitud.ACEPTADA,
+                        5L, 30L, 12L, 88L, null));
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/general/77/aceptar")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPostulacion").value(77))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"))
+                .andExpect(jsonPath("$.idMiembro").value(88));
+    }
+
+    @Test
+    void aceptarActividad_conPerfilActivo_devuelve200() throws Exception {
+        var auth = autenticacion(1L, 10L);
+
+        when(aceptarPostulacionService.aceptarActividad(1L, 10L, 5L, 88L))
+                .thenReturn(new PostulacionGestionadaResponse(
+                        88L, TipoPostulacion.ACTIVIDAD, EstadoSolicitud.ACEPTADA,
+                        5L, 20L, 12L, 77L, 99L));
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/actividad/88/aceptar")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("ACTIVIDAD"))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"))
+                .andExpect(jsonPath("$.idMiembro").value(77))
+                .andExpect(jsonPath("$.idAsignacionActividad").value(99));
+    }
+
+    @Test
+    void rechazarGeneral_conPerfilActivo_devuelve200() throws Exception {
+        when(rechazarPostulacionService.rechazarGeneral(1L, 10L, 5L, 77L))
+                .thenReturn(new PostulacionGestionadaResponse(
+                        77L, TipoPostulacion.GENERAL, EstadoSolicitud.RECHAZADA,
+                        5L, 30L, 12L, null, null));
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/general/77/rechazar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"))
+                .andExpect(jsonPath("$.idMiembro").doesNotExist());
+    }
+
+    @Test
+    void rechazarActividad_conPerfilActivo_devuelve200() throws Exception {
+        when(rechazarPostulacionService.rechazarActividad(1L, 10L, 5L, 88L))
+                .thenReturn(new PostulacionGestionadaResponse(
+                        88L, TipoPostulacion.ACTIVIDAD, EstadoSolicitud.RECHAZADA,
+                        5L, 20L, 12L, null, null));
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/actividad/88/rechazar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("ACTIVIDAD"))
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"))
+                .andExpect(jsonPath("$.idAsignacionActividad").doesNotExist());
+    }
+
+    @Test
+    void rechazarGeneral_yaGestionada_devuelve409() throws Exception {
+        when(rechazarPostulacionService.rechazarGeneral(1L, 10L, 5L, 77L))
+                .thenThrow(new PostulacionYaGestionadaException());
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/general/77/rechazar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void aceptarGeneral_sinPermisoDeDirector_devuelve403() throws Exception {
+        when(aceptarPostulacionService.aceptarGeneral(1L, 10L, 5L, 77L))
+                .thenThrow(new AccesoDenegadoProyectoException("Sin permiso"));
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/general/77/aceptar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void aceptarGeneral_postulacionInexistente_devuelve404() throws Exception {
+        when(aceptarPostulacionService.aceptarGeneral(1L, 10L, 5L, 77L))
+                .thenThrow(new PostulacionNoEncontradaException());
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/general/77/aceptar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void aceptarGeneral_yaGestionada_devuelve409() throws Exception {
+        when(aceptarPostulacionService.aceptarGeneral(1L, 10L, 5L, 77L))
+                .thenThrow(new PostulacionYaGestionadaException());
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/general/77/aceptar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void aceptarGeneral_sinPerfilActivo_noInvocaAlServicio() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+        mockMvc.perform(post("/proyectos/5/postulaciones/general/77/aceptar")
+                        .principal(auth))
+                .andExpect(status().isNotFound());
+
+        verify(aceptarPostulacionService, never())
+                .aceptarGeneral(any(), any(), any(), any());
+    }
+
+    @Test
+    void buscar_conPerfilActivo_devuelvePaginaYFiltros() throws Exception {
+        var auth = autenticacion(1L, 10L);
+
+        when(buscarPostulacionesProyectoService.buscar(
+                eq(10L), eq(5L), any(BuscarPostulacionesFiltro.class), eq(0), eq(20), eq(false)))
+                .thenReturn(new PaginaResponse<>(List.of(), 0, 20, 0L, 0, true, true));
+
+        mockMvc.perform(get("/proyectos/5/postulaciones/buscar")
+                        .principal(auth)
+                        .param("estado", "PENDIENTE")
+                        .param("tipo", "GENERAL")
+                        .param("nombrePerfil", "Luna")
+                        .param("idProfesion", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(0))
+                .andExpect(jsonPath("$.paginaActual").value(0));
+
+        verify(buscarPostulacionesProyectoService).buscar(
+                eq(10L), eq(5L), any(BuscarPostulacionesFiltro.class), eq(0), eq(20), eq(false));
+    }
+
+    @Test
+    void buscar_rangoDeFechasInvalido_devuelve400() throws Exception {
+        when(buscarPostulacionesProyectoService.buscar(
+                eq(10L), eq(5L), any(BuscarPostulacionesFiltro.class), eq(0), eq(20), eq(false)))
+                .thenThrow(new RangoFechasPostulacionInvalidoException());
+
+        mockMvc.perform(get("/proyectos/5/postulaciones/buscar")
+                        .principal(autenticacion(1L, 10L))
+                        .param("fechaDesde", "2026-10-30")
+                        .param("fechaHasta", "2026-10-01"))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void postularAActividad_conPerfilActivo_devuelve201() throws Exception {

@@ -6,10 +6,13 @@ Incluye cómo obtener los datos necesarios, contratos de request/response,
 reglas de negocio, disponibilidad provisional, errores y recomendaciones de
 integración para la vista de detalle del proyecto (`/proyectos/:id`).
 
-> **Alcance:** UC-26 sólo da de alta la postulación en estado `PENDIENTE` y
-> notifica a los directores. Aceptar/rechazar postulaciones es UC-28/UC-34
-> (todavía no implementados) y **no existe endpoint para listar las
-> postulaciones de un proyecto ni para saber si el perfil activo ya se postuló**.
+> **Alcance:** UC-26 da de alta la postulación en estado `PENDIENTE` y notifica
+> a los directores. La gestión de postulaciones está implementada en UC-34 y el
+> listado del proyecto en UC-74:
+> [`ficha-tecnica-gestionar-postulaciones.md`](./ficha-tecnica-gestionar-postulaciones.md)
+> y [`ficha-tecnica-buscar-postulaciones.md`](./ficha-tecnica-buscar-postulaciones.md).
+> Sigue sin existir un endpoint para que el **postulante** consulte el estado de
+> sus propias postulaciones.
 
 ---
 
@@ -174,41 +177,50 @@ Cada actividad:
 
 | Estado | ¿Acepta postulaciones? | Resultado |
 | :--- | :---: | :--- |
-| `Publicado` | **Sí** | `201 Created` si el resto de las reglas se cumple |
+| `Publicado` | **Sí** | `201 Created` si el requerimiento está insatisfecho |
 | `Borrador` | No | `409 Conflict` |
-| `Confirmado` | No | `409 Conflict` (UC-60 cierra las postulaciones) |
+| `Confirmado` | **Sí, si el requerimiento está insatisfecho** | `201 Created`; permite reforzar el equipo tras una baja |
 | `Finalizado` | No | `409 Conflict` |
 | `Cancelado` | No | `409 Conflict` |
 
 > El backend compara el estado real, no el texto mostrado. El frontend debe
-> tratar `"Publicado"` como el único estado habilitado.
+> habilitar postulaciones en `"Publicado"` y `"Confirmado"` siempre que el
+> requerimiento tenga `faltantes > 0`.
 
 ### 4.2 Reglas comunes a ambos flujos
 
 1. El perfil activo debe existir, pertenecer al usuario autenticado y estar
    `ACTIVO`.
-2. El perfil **no** debe ser miembro activo del proyecto.
+2. **Requerimiento general:** el perfil **no** debe ser miembro activo del
+   proyecto. **Actividad:** un miembro activo `MIEMBRO` **sí** puede postularse;
+   un `DIRECTOR` no puede postularse nunca.
 3. La profesión del perfil debe coincidir con la del requerimiento.
-4. El requerimiento no debe estar satisfecho (cupo de `ACEPTADA` >= `cantidad`).
+4. El requerimiento no debe estar satisfecho. El cupo se mide por miembros o
+   asignaciones **activos** vinculados al requerimiento, no por postulaciones
+   aceptadas. Usar `satisfecho`/`faltantes`.
 5. El perfil no debe haberse postulado antes a ese requerimiento, **sin importar
    el estado de la postulación anterior** (regla garantizada por índice único en
    la base). Un segundo intento responde `409`.
-6. El proyecto debe estar `Publicado`.
+6. El proyecto debe estar `Publicado` o `Confirmado`.
 
 ### 4.3 Reglas específicas
 
 | Flujo | Regla adicional |
 | :--- | :--- |
 | General | El proyecto debe tener `aceptaPostulacionGral = true`. |
+| General | Un miembro activo del proyecto no puede postularse. |
 | Actividad | La actividad debe estar `PENDIENTE`. |
+| Actividad | Un `MIEMBRO` activo puede postularse si la profesión coincide. |
+| Actividad | Un `DIRECTOR` no puede postularse. |
 | Actividad | Se verifica disponibilidad del perfil en el rango factible de la actividad (ver sección 5). |
 
 ### 4.4 Matriz de decisión para habilitar la acción
 
 | Caso | Condición frontend |
 | :--- | :--- |
-| Postular a requerimiento general | `proyecto.elegibleParaPostularse === true` (ya incluye estado, membresía, flag y profesión). |
-| Postular a actividad | `proyecto.estado === 'Publicado' && !proyecto.esMiembro && actividad.estado === 'PENDIENTE'`. La profesión, el cupo, el duplicado y la disponibilidad los valida el backend. |
+| Postular a requerimiento general | `proyecto.elegibleParaPostularse === true && requerimiento.satisfecho === false`. |
+| Postular a actividad | `(proyecto.estado === 'Publicado' \|\| proyecto.estado === 'Confirmado') && actividad.estado === 'PENDIENTE' && requerimiento.satisfecho === false && (!proyecto.esMiembro \|\| proyecto.rolUsuario === 'MIEMBRO')`. La profesión, el cupo, el duplicado y la disponibilidad los valida el backend. |
+| No mostrar la acción | `proyecto.rolUsuario === 'DIRECTOR'` o el requerimiento está satisfecho. |
 
 ---
 
@@ -320,9 +332,10 @@ aviso informativo:
 | `404` | Perfil no encontrado o de otro usuario | `El perfil no fue encontrado` | Aviso y volver a seleccionar perfil. |
 | `404` | Requerimiento inexistente | `El requerimiento general {id} no existe.` / `El requerimiento de actividad {id} no existe.` | Refrescar el proyecto/actividades; el requerimiento pudo eliminarse. |
 | `404` | Requerimiento de otro proyecto | `El requerimiento no pertenece al proyecto indicado.` | Bug de integración: verificar que se envía el `idProyecto` correcto. |
-| `409` | Proyecto no publicado | `El proyecto ya no acepta postulaciones.` | Refrescar el proyecto y ocultar la acción. |
+| `409` | Proyecto en estado no habilitado | `El proyecto ya no acepta postulaciones.` | Refrescar el proyecto y ocultar la acción. |
 | `409` | Proyecto sin postulaciones generales | `El proyecto no acepta postulaciones a requerimientos generales.` | Refrescar el proyecto. |
-| `409` | Perfil ya es miembro activo | `Ya sos miembro activo de este proyecto.` | Refrescar el proyecto (cambió `esMiembro`). |
+| `409` | Perfil ya es miembro activo en postulación general | `Ya sos miembro activo de este proyecto.` | Refrescar el proyecto (cambió `esMiembro`). |
+| `409` | Director intenta postularse a actividad | `Un director no puede postularse a una actividad.` | Ocultar la acción para directores. |
 | `409` | Profesión distinta | `Tu perfil no tiene la profesión solicitada por el requerimiento.` | Mostrar el mensaje; no ofrecer reintento. |
 | `409` | Cupo general completo | `El requerimiento general ya está satisfecho.` | Refrescar el proyecto. |
 | `409` | Cupo de actividad completo | `El requerimiento de actividad ya está satisfecho.` | Refrescar las actividades. |
@@ -346,13 +359,15 @@ aviso informativo:
 En el detalle del proyecto (`/proyectos/:id`), en la sección de requerimientos:
 
 * **Requerimientos generales:** un botón **Postularme** por requerimiento, visible
-  sólo si `proyecto.elegibleParaPostularse === true`.
+  sólo si `proyecto.elegibleParaPostularse === true` y el requerimiento tiene
+  `satisfecho === false`.
 * **Actividades:** en el listado de actividades (o en el detalle de cada una), un
   botón **Postularme** por cada requerimiento de actividades `PENDIENTE`, visible
-  si `proyecto.estado === 'Publicado' && !proyecto.esMiembro`.
+  si el proyecto está `Publicado` o `Confirmado`, el requerimiento no está
+  satisfecho y el perfil no es director. Un miembro `MIEMBRO` sí puede verlo.
 
-No mostrar ninguna acción de postulación si `esMiembro === true` o el proyecto no
-está `Publicado`.
+No mostrar ninguna acción de postulación para un `DIRECTOR`, si el proyecto está
+`Borrador`/`Finalizado`/`Cancelado` o si el requerimiento está satisfecho.
 
 ### 8.2 Flujo recomendado
 
@@ -379,13 +394,14 @@ está `Publicado`.
 * No es necesario recargar el proyecto: la respuesta no cambia campos visibles.
   Si la vista muestra contadores propios, refrescar `GET /proyectos/{id}` y/o el
   listado de actividades.
-* **No** navegar a una pantalla de "mis postulaciones": UC-34 no está
-  implementado y no hay endpoint de listado.
+* Si el usuario es director, puede ir al apartado de postulaciones del proyecto
+  (UC-74). No existe todavía un listado de “mis postulaciones” para el
+  postulante.
 
-> Limitación conocida: como no existe un endpoint que indique si el perfil ya se
-> postuló, al recargar la página el botón volverá a mostrarse. Un segundo intento
-> responde `409` con el mensaje de duplicado; conviene tratarlo como estado
-> esperado y deshabilitar el botón localmente.
+> Limitación conocida: como no existe un endpoint para que el postulante consulte
+> sus propias postulaciones, al recargar la página el botón puede volver a
+> mostrarse. Un segundo intento responde `409` con el mensaje de duplicado;
+> conviene tratarlo como estado esperado y deshabilitar el botón localmente.
 
 ### 8.4 Después de un `409`
 
@@ -463,9 +479,10 @@ Utilidades existentes a reutilizar:
 ## 10. Checklist de Aceptación
 
 - [ ] El botón de postulación general sólo aparece con
-      `proyecto.elegibleParaPostularse === true`.
-- [ ] El botón de postulación a actividad sólo aparece con proyecto `Publicado`,
-      perfil no miembro y actividad `PENDIENTE`.
+      `proyecto.elegibleParaPostularse === true` y el requerimiento insatisfecho.
+- [ ] El botón de postulación a actividad aparece con proyecto `Publicado` o
+      `Confirmado`, actividad `PENDIENTE`, requerimiento insatisfecho y perfil
+      no director. Un miembro `MIEMBRO` puede verlo.
 - [ ] El request general usa exactamente `{ "idRequerimientoGral": <id> }`.
 - [ ] El request de actividad usa exactamente
       `{ "idRequerimientoActividad": <id> }`.
@@ -479,7 +496,7 @@ Utilidades existentes a reutilizar:
 - [ ] La vista contempla que `estado` del proyecto viene capitalizado
       (`"Publicado"`) y el de actividades/postulaciones en mayúsculas
       (`"PENDIENTE"`).
-- [ ] No se agregó navegación a un listado de postulaciones (UC-34 pendiente).
+- [ ] Un director puede navegar al apartado de postulaciones del proyecto (UC-74).
 - [ ] No se consulta `/notificaciones`: el backend aún no expone lectura de
       notificaciones.
 
@@ -487,14 +504,17 @@ Utilidades existentes a reutilizar:
 
 ## 11. Notas y Pendientes
 
-* **UC-34 (Gestionar postulaciones):** cuando exista, reemplazará la limitación
-  de no poder consultar el estado de las postulaciones del perfil.
-* **UC-60 (Confirmar proyecto):** al confirmar, el proyecto pasa a `Confirmado` y
-  deja de aceptar postulaciones; además debe re-verificar la disponibilidad
+* **UC-34 (Gestionar postulaciones):** implementado. Ver
+  [`ficha-tecnica-gestionar-postulaciones.md`](./ficha-tecnica-gestionar-postulaciones.md).
+* **UC-74 (Buscar postulaciones):** implementado para el director del proyecto.
+  Ver [`ficha-tecnica-buscar-postulaciones.md`](./ficha-tecnica-buscar-postulaciones.md).
+* **UC-60 (Confirmar proyecto):** al confirmar, el proyecto pasa a `Confirmado`.
+  Puede seguir aceptando postulaciones si un requerimiento queda insatisfecho
+  por una baja o eliminación; además debe re-verificar la disponibilidad
   provisional de las postulaciones de actividad.
 * **UC-70 (Asignar actividad):** vuelve a verificar disponibilidad al asignar.
 * **Notificaciones:** UC-26 registra `POSTULACION_RECIBIDA` para todos los
-  directores activos, pero el frontend no puede leerlas todavía.
-* **Cupo:** `satisfecho` indica que existe al menos una postulación aceptada. El
-  backend sólo bloquea cuando las aceptadas alcanzan `cantidad`; ante la duda,
-  dejar que el `409` sea la fuente de verdad.
+  directores activos.
+* **Cupo:** `satisfecho` significa **cupo completo** (`cubiertos >= cantidad`)
+  según miembros/asignaciones activos. Usar `cubiertos` y `faltantes`; no inferir
+  el cupo por postulaciones aceptadas.

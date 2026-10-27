@@ -5,8 +5,11 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface RequerimientoGralProyectoRepository extends JpaRepository<RequerimientoGralProyecto, Long> {
 
@@ -27,5 +30,15 @@ public interface RequerimientoGralProyectoRepository extends JpaRepository<Reque
         WHERE r.idRequerimientoGral = :idRequerimientoGral
     """)
     Optional<RequerimientoGralProyecto> findByIdConProyecto(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT r FROM RequerimientoGralProyecto r
+        JOIN FETCH r.profesion
+        JOIN FETCH r.proyecto
+        WHERE r.idRequerimientoGral = :idRequerimientoGral
+    """)
+    Optional<RequerimientoGralProyecto> findByIdParaGestion(
             @Param("idRequerimientoGral") Long idRequerimientoGral);
 }

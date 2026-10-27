@@ -31,6 +31,7 @@ import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
@@ -39,11 +40,12 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
-import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -74,7 +76,7 @@ class ObtenerProyectoServiceTest {
     private RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
 
     @Mock
-    private PostulacionGralRepository postulacionGralRepository;
+    private CupoRequerimientoService cupoRequerimientoService;
 
     @Mock
     private MoodboardRepository moodboardRepository;
@@ -123,6 +125,9 @@ class ObtenerProyectoServiceTest {
                 .privacidad(Privacidad.PUBLICO)
                 .ubicacion(ubicacion)
                 .build();
+
+        lenient().when(cupoRequerimientoService.calcularGeneral(any()))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
     }
 
     private void prepararPerfil() {

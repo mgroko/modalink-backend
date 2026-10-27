@@ -17,10 +17,10 @@ import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
-import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
@@ -29,6 +29,8 @@ import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
@@ -59,6 +61,7 @@ public class CrearPostulacionService {
     private final PostulacionActividadRepository postulacionActividadRepository;
     private final PostulacionGralRepository postulacionGralRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final NotificacionService notificacionService;
     private final CalendarioService calendarioService;
     private final Clock reloj;
@@ -70,6 +73,7 @@ public class CrearPostulacionService {
             PostulacionActividadRepository postulacionActividadRepository,
             PostulacionGralRepository postulacionGralRepository,
             MiembroProyectoRepository miembroProyectoRepository,
+            CupoRequerimientoService cupoRequerimientoService,
             NotificacionService notificacionService,
             CalendarioService calendarioService,
             Clock reloj) {
@@ -79,6 +83,7 @@ public class CrearPostulacionService {
         this.postulacionActividadRepository = postulacionActividadRepository;
         this.postulacionGralRepository = postulacionGralRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.notificacionService = notificacionService;
         this.calendarioService = calendarioService;
         this.reloj = reloj;
@@ -110,7 +115,11 @@ public class CrearPostulacionService {
                     "El proyecto no acepta postulaciones a requerimientos generales.");
         }
 
-        validarPerfilApto(perfil, proyecto, requerimiento.getProfesion().getIdProfesion());
+        validarPerfilApto(
+                perfil,
+                proyecto,
+                requerimiento.getProfesion().getIdProfesion(),
+                TipoPostulacion.GENERAL);
         validarCupoGeneral(requerimiento);
         validarNoDuplicadoGeneral(perfil, requerimiento);
 
@@ -174,7 +183,11 @@ public class CrearPostulacionService {
                     "Sólo se puede postular a actividades pendientes.");
         }
 
-        validarPerfilApto(perfil, proyecto, requerimiento.getProfesion().getIdProfesion());
+        validarPerfilApto(
+                perfil,
+                proyecto,
+                requerimiento.getProfesion().getIdProfesion(),
+                TipoPostulacion.ACTIVIDAD);
         validarCupoActividad(requerimiento);
         validarNoDuplicadoActividad(perfil, requerimiento);
 
@@ -238,7 +251,8 @@ public class CrearPostulacionService {
             throw new RequerimientoNoEncontradoException(
                     "El requerimiento no pertenece al proyecto indicado.");
         }
-        if (proyecto.getEstado() != EstadoProyecto.PUBLICADO) {
+        if (proyecto.getEstado() != EstadoProyecto.PUBLICADO
+                && proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
             throw new PostulacionNoPermitidaException(
                     "El proyecto ya no acepta postulaciones.");
         }
@@ -247,15 +261,23 @@ public class CrearPostulacionService {
     private void validarPerfilApto(
             Perfil perfil,
             Proyecto proyecto,
-            Long idProfesionRequerimiento) {
+            Long idProfesionRequerimiento,
+            TipoPostulacion tipo) {
 
-        if (miembroProyectoRepository
-                .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
-                        proyecto.getIdProyecto(),
-                        perfil.getIdPerfil(),
-                        EstadoParticipacion.ACTIVO)) {
-            throw new PostulacionNoPermitidaException(
-                    "Ya sos miembro activo de este proyecto.");
+        var miembroActivo = miembroProyectoRepository
+                .findMiembroActivoConRol(proyecto.getIdProyecto(), perfil.getIdPerfil());
+
+        if (miembroActivo.isPresent()) {
+            if (tipo == TipoPostulacion.GENERAL) {
+                throw new PostulacionNoPermitidaException(
+                        "Ya sos miembro activo de este proyecto.");
+            }
+
+            if (RolProyectoUsuario.desde(miembroActivo.get().getRolProyecto())
+                    == RolProyectoUsuario.DIRECTOR) {
+                throw new PostulacionNoPermitidaException(
+                        "Un director no puede postularse a una actividad.");
+            }
         }
 
         if (perfil.getProfesion() == null
@@ -266,22 +288,18 @@ public class CrearPostulacionService {
     }
 
     private void validarCupoActividad(RequerimientoActividad requerimiento) {
-        long aceptadas = postulacionActividadRepository
-                .countByRequerimiento_IdRequerimientoAndEstado(
-                        requerimiento.getIdRequerimiento(), EstadoSolicitud.ACEPTADA);
+        CupoRequerimiento cupo = cupoRequerimientoService.calcularActividad(requerimiento);
 
-        if (requerimiento.getCantidad() != null && aceptadas >= requerimiento.getCantidad()) {
+        if (cupo.satisfecho()) {
             throw new PostulacionNoPermitidaException(
                     "El requerimiento de actividad ya está satisfecho.");
         }
     }
 
     private void validarCupoGeneral(RequerimientoGralProyecto requerimiento) {
-        long aceptadas = postulacionGralRepository
-                .countByRequerimientoGral_IdRequerimientoGralAndEstado(
-                        requerimiento.getIdRequerimientoGral(), EstadoSolicitud.ACEPTADA);
+        CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(requerimiento);
 
-        if (requerimiento.getCantidad() != null && aceptadas >= requerimiento.getCantidad()) {
+        if (cupo.satisfecho()) {
             throw new PostulacionNoPermitidaException(
                     "El requerimiento general ya está satisfecho.");
         }

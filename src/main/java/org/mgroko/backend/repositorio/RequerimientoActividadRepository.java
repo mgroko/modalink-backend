@@ -7,8 +7,11 @@ import java.util.Optional;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface RequerimientoActividadRepository extends JpaRepository<RequerimientoActividad, Long> {
 
@@ -68,5 +71,17 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
         WHERE r.idRequerimiento = :idRequerimiento
     """)
     Optional<RequerimientoActividad> findByIdConActividadYProyecto(
+            @Param("idRequerimiento") Long idRequerimiento);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT r FROM RequerimientoActividad r
+        JOIN FETCH r.profesion
+        JOIN FETCH r.actividad actividad
+        JOIN FETCH actividad.planificacion planificacion
+        JOIN FETCH planificacion.proyecto
+        WHERE r.idRequerimiento = :idRequerimiento
+    """)
+    Optional<RequerimientoActividad> findByIdParaGestion(
             @Param("idRequerimiento") Long idRequerimiento);
 }

@@ -25,11 +25,11 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.CrearMoodboardRequest;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ModificarRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
@@ -44,7 +44,6 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
-import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
@@ -96,7 +95,7 @@ class ModificarProyectoServiceTest {
     private RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
 
     @Mock
-    private PostulacionGralRepository postulacionGralRepository;
+    private CupoRequerimientoService cupoRequerimientoService;
 
     @Mock
     private UbicacionService ubicacionService;
@@ -313,8 +312,8 @@ class ModificarProyectoServiceTest {
         RequerimientoGralProyecto satisfecho = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(satisfecho));
-        when(postulacionGralRepository.existsByRequerimientoGralIdRequerimientoGralAndEstado(20L, EstadoSolicitud.ACEPTADA))
-                .thenReturn(true);
+        when(cupoRequerimientoService.calcularGeneral(satisfecho))
+                .thenReturn(new CupoRequerimiento(1, 1, 0, true));
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
                 "Desc", Privacidad.PUBLICO, false, null, null, null,
@@ -337,10 +336,10 @@ class ModificarProyectoServiceTest {
                 .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L))
                 .thenReturn(List.of(noSatisfecho, satisfecho));
-        when(postulacionGralRepository.existsByRequerimientoGralIdRequerimientoGralAndEstado(10L, EstadoSolicitud.ACEPTADA))
-                .thenReturn(false);
-        when(postulacionGralRepository.existsByRequerimientoGralIdRequerimientoGralAndEstado(20L, EstadoSolicitud.ACEPTADA))
-                .thenReturn(true);
+        when(cupoRequerimientoService.calcularGeneral(noSatisfecho))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        when(cupoRequerimientoService.calcularGeneral(satisfecho))
+                .thenReturn(new CupoRequerimiento(1, 1, 0, true));
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
                 "Desc", Privacidad.PUBLICO, false, null, null, null,
@@ -360,8 +359,8 @@ class ModificarProyectoServiceTest {
         RequerimientoGralProyecto existente = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(10L).proyecto(proyecto).cantidad(1).build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(existente));
-        when(postulacionGralRepository.existsByRequerimientoGralIdRequerimientoGralAndEstado(10L, EstadoSolicitud.ACEPTADA))
-                .thenReturn(false);
+        when(cupoRequerimientoService.calcularGeneral(existente))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
 
         modificarProyectoService.modificar(1L, 10L, 100L, requestBasico());
 

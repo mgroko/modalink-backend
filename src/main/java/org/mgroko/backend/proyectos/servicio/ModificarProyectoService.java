@@ -25,7 +25,6 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
@@ -33,6 +32,7 @@ import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
 import org.mgroko.backend.proyectos.dto.CrearObjetivoRequest;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ModificarRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
@@ -50,7 +50,6 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
-import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
@@ -85,7 +84,7 @@ public class ModificarProyectoService {
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
-    private final PostulacionGralRepository postulacionGralRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final UbicacionService ubicacionService;
     private final RequerimientoGralService requerimientoGralService;
     private final ProyectoSecurityService proyectoSecurityService;
@@ -100,7 +99,7 @@ public class ModificarProyectoService {
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
-            PostulacionGralRepository postulacionGralRepository,
+            CupoRequerimientoService cupoRequerimientoService,
             UbicacionService ubicacionService,
             RequerimientoGralService requerimientoGralService,
             ProyectoSecurityService proyectoSecurityService) {
@@ -113,7 +112,7 @@ public class ModificarProyectoService {
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
-        this.postulacionGralRepository = postulacionGralRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.ubicacionService = ubicacionService;
         this.requerimientoGralService = requerimientoGralService;
         this.proyectoSecurityService = proyectoSecurityService;
@@ -257,13 +256,13 @@ public class ModificarProyectoService {
                         "El requerimiento de personal " + idRequerimiento
                                 + " no pertenece a este proyecto.");
             }
-            if (esSatisfecho(idRequerimiento)) {
+            if (esSatisfecho(existente)) {
                 throw new RequerimientoSatisfechoException(idRequerimiento);
             }
         }
 
         for (RequerimientoGralProyecto existente : existentes) {
-            if (!esSatisfecho(existente.getIdRequerimientoGral())) {
+            if (!esSatisfecho(existente)) {
                 requerimientoGralService.eliminar(existente);
             }
         }
@@ -324,12 +323,11 @@ public class ModificarProyectoService {
                 tieneRequerimientoGral || tieneRequerimientoActividad);
     }
 
-    private boolean esSatisfecho(Long idRequerimientoGral) {
-        if (idRequerimientoGral == null) {
+    private boolean esSatisfecho(RequerimientoGralProyecto requerimiento) {
+        if (requerimiento == null || requerimiento.getIdRequerimientoGral() == null) {
             return false;
         }
-        return postulacionGralRepository.existsByRequerimientoGralIdRequerimientoGralAndEstado(
-                idRequerimientoGral, EstadoSolicitud.ACEPTADA);
+        return cupoRequerimientoService.calcularGeneral(requerimiento).satisfecho();
     }
 
     private ProyectoResponse armarResponse(Proyecto proyecto, Perfil perfilConsultante) {
@@ -413,6 +411,8 @@ public class ModificarProyectoService {
                 .sorted()
                 .toList();
 
+        CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(rg);
+
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
                 rg.getCantidad(),
@@ -421,6 +421,8 @@ public class ModificarProyectoService {
                 rg.getProfesion() != null ? rg.getProfesion().getNombre() : null,
                 caracts,
                 habilidades,
-                esSatisfecho(rg.getIdRequerimientoGral()));
+                cupo.satisfecho(),
+                cupo.cubiertos(),
+                cupo.faltantes());
     }
 }

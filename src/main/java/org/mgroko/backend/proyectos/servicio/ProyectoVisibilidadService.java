@@ -41,8 +41,8 @@ public class ProyectoVisibilidadService {
             return false;
         }
         return miembroProyectoRepository
-                .findByProyectoIdProyectoAndPerfilIdPerfil(proyecto.getIdProyecto(), idPerfil)
-                .isPresent();
+                .existsByProyectoIdProyectoAndPerfilIdPerfil(
+                        proyecto.getIdProyecto(), idPerfil);
     }
 
     public boolean esVisibleParaNoMiembro(Proyecto proyecto) {

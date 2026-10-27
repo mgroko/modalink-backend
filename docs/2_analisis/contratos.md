@@ -272,8 +272,17 @@
 | **Notas** | \- |
 | **Excepciones** | El usuario es participante del proyecto |
 | **Salida** | \- |
-| **Precondición** | La postulación está en estado “Pendiente” |
-| **Postcondición** | Se actualizó unaPostulacion.estado a “Rechazada” |
+| **Precondición** | La postulación está en estado "Pendiente" |
+| **Postcondición** | Se actualizó unaPostulacion.estado a "Rechazada" |
+
+> **Nota de implementación (UC-34):** el rechazo es lógico: la postulación pasa
+> a `RECHAZADA` y no se borra físicamente. Un perfil rechazado no puede volver a
+> postularse al mismo requerimiento; la reincorporación futura se realizará por
+> invitación (UC-31). La aceptación general crea una membresía activa vinculada
+> al requerimiento; la de actividad revalida disponibilidad y crea una
+> `AsignacionActividad`. El cupo se mide por miembros/asignaciones activos, no
+> por postulaciones aceptadas. El auto-rechazo de las demás pendientes al
+> completar el cupo lo realiza la base de datos.
 
 | Nombre | darseDeBaja(unProyecto, motivo) |
 | :---- | :---- |

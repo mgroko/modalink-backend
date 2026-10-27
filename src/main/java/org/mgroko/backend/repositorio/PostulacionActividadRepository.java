@@ -1,14 +1,51 @@
 package org.mgroko.backend.repositorio;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface PostulacionActividadRepository extends JpaRepository<PostulacionActividad, Long> {
+import jakarta.persistence.LockModeType;
+
+public interface PostulacionActividadRepository
+        extends JpaRepository<PostulacionActividad, Long>, JpaSpecificationExecutor<PostulacionActividad> {
+
+    @Override
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.usuario",
+            "perfil.profesion",
+            "requerimiento",
+            "requerimiento.profesion",
+            "requerimiento.actividad",
+            "requerimiento.actividad.planificacion",
+            "requerimiento.actividad.planificacion.proyecto"
+    })
+    List<PostulacionActividad> findAll(Specification<PostulacionActividad> spec);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT p FROM PostulacionActividad p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH perfil.profesion
+        JOIN FETCH p.requerimiento requerimiento
+        JOIN FETCH requerimiento.profesion
+        JOIN FETCH requerimiento.actividad actividad
+        JOIN FETCH actividad.planificacion planificacion
+        JOIN FETCH planificacion.proyecto
+        WHERE p.idPostulacion = :idPostulacion
+    """)
+    Optional<PostulacionActividad> findByIdParaGestion(
+            @Param("idPostulacion") Long idPostulacion);
 
     boolean existsByRequerimiento_IdRequerimientoAndEstado(
             Long idRequerimiento, EstadoSolicitud estado);

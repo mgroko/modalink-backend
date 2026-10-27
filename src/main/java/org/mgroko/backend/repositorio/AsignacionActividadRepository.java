@@ -57,4 +57,28 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
     int deleteByActividadIdAndPerfil(
             @Param("idActividad") Long idActividad,
             @Param("idPerfil") Long idPerfil);
+
+    boolean existsByMiembro_IdMiembroAndActividad_IdActividad(
+            Long idMiembro, Long idActividad);
+
+    @Query("""
+        SELECT COUNT(aa) FROM AsignacionActividad aa
+        JOIN aa.miembro mp
+        WHERE aa.requerimientoActividad.idRequerimiento = :idRequerimiento
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    long countActivasPorRequerimientoActividad(
+            @Param("idRequerimiento") Long idRequerimiento);
+
+    @Query("""
+        SELECT aa FROM AsignacionActividad aa
+        JOIN FETCH aa.miembro mp
+        JOIN FETCH aa.requerimientoActividad ra
+        JOIN FETCH ra.actividad a
+        JOIN FETCH a.planificacion pl
+        WHERE pl.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<AsignacionActividad> findActivasDeProyectoConRequerimiento(
+            @Param("idProyecto") Long idProyecto);
 }

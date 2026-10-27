@@ -35,7 +35,7 @@ el historial de git sirva de bitácora adicional.
 | UC-58 | Buscar características técnicas                  | Implementado y testeado | `GET /profesiones/{id}/caracteristicas-tecnicas`                                                                                                 | Sí    | Primera iteracion                                                                                      |
 | UC-59 | Buscar profesiones                               | Implementado y testeado | `GET /profesiones`                                                                                                                               | Sí    | Primera iteracion                                                                                      |
 | UC-67 | Generar informe de auditoría                     | No iniciado             |                                                                                                                                                  |       | Segunda iteracion                                                                                      |
-| UC-74 | Gestionar unidades de medida                     | Implementado y testeado | `GET/POST /admin/unidades-medida`, `GET/PUT/DELETE /admin/unidades-medida/{id}`                                                                   | Sí    | Segunda iteracion. Borrado físico (solo si no está asociada a una característica técnica); `tipoDatoPermitido` NUMERICO o TEXTO. **Pendiente:** notificación a los perfiles afectados al modificar la unidad (postcondición 2.1) |
+| UC-75 | Gestionar unidades de medida                     | Implementado y testeado | `GET/POST /admin/unidades-medida`, `GET/PUT/DELETE /admin/unidades-medida/{id}`                                                                   | Sí    | Segunda iteracion. Borrado físico (solo si no está asociada a una característica técnica); `tipoDatoPermitido` NUMERICO o TEXTO. **Pendiente:** notificación a los perfiles afectados al modificar la unidad (postcondición 2.1) |
 
 ## Gestión de perfiles y disponibilidad (13 UC)
 
@@ -71,7 +71,7 @@ el historial de git sirva de bitácora adicional.
 | UC-66 | Interactuar con publicación        | No iniciado |                  |       | Segunda iteracion |
 | UC-69 | Reportar publicación               | No iniciado |                  |       | Segunda iteracion |
 
-## Gestión de proyectos (25 UC)
+## Gestión de proyectos (26 UC)
 
 | UC    | Nombre                               | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | ------------------------------------ | ----------- | ---------------- | ----- | ----------------- |
@@ -86,7 +86,7 @@ el historial de git sirva de bitácora adicional.
 | UC-31 | Invitar a proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-32 | Eliminar invitación a proyecto       | No iniciado |                  |       | Primera iteracion |
 | UC-33 | Visualizar cronograma de proyecto    | No iniciado |                  |       | Primera iteracion |
-| UC-34 | Gestionar postulaciones              | No iniciado |                  |       | Primera iteracion |
+| UC-34 | Gestionar postulaciones              | Implementado y testeado | `GET /proyectos/{idProyecto}/postulaciones/buscar` (UC-74), `POST /proyectos/{idProyecto}/postulaciones/general/{idPostulacion}/aceptar`, `POST /proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}/aceptar`, `POST /proyectos/{idProyecto}/postulaciones/general/{idPostulacion}/rechazar`, `POST /proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}/rechazar` | Sí (unitario + integración + concurrencia) | Cupo por miembros/asignaciones activos, historial de membresías, triggers corregidos, búsqueda UC-74, aceptación general/actividad, rechazo lógico y ajustes de UC-26 (miembro en actividad, director bloqueado, altas en `CONFIRMADO`). Concurrencia verificada: dos aceptaciones simultáneas no duplican membresías. |
 | UC-35 | Cancelar proyecto                    | Implementado y testeado | `POST /proyectos/{idProyecto}/cancelar` | Sí    | Estados Publicado/Confirmado; permiso `CANCELAR_PROYECTO`; motivo obligatorio (máx. 200); cancela actividades PENDIENTE/EN_CURSO, rechaza postulaciones e invitaciones pendientes y notifica al equipo y afectados; el cancelado sale de la búsqueda global, permanece en proyectos propios y es visible para exmiembros |
 | UC-36 | Modificar proyecto                   | Implementado y testeado | `PUT /proyectos/{idProyecto}` | Sí    | Estados Borrador/Publicado/Confirmado; permiso `MODIFICAR_PROYECTO`; nombre inmutable; requerimientos con postulación ACEPTADA no modificables (se conservan si se omiten); reemplazo de objetivos y requerimientos no satisfechos; en Publicado/Confirmado exige ubicación y toda la información básica; `satisfecho` expuesto en `requerimientosGral` |
 | UC-37 | Finalizar proyecto                   | No iniciado |                  |       | Primera iteracion |
@@ -101,6 +101,7 @@ el historial de git sirva de bitácora adicional.
 | UC-70 | Asignar actividad a miembro          | No iniciado |                  |       | Segunda iteracion |
 | UC-72 | Buscar requerimiento general         | No iniciado |                  |       | Segunda iteracion |
 | UC-73 | Buscar requerimiento actividad       | No iniciado |                  |       | Segunda iteracion |
+| UC-74 | Buscar postulaciones                 | Implementado y testeado | `GET /proyectos/{idProyecto}/postulaciones/buscar` | Sí (unitario + integración) | Búsqueda por proyecto con filtros opcionales por estado, tipo, nombre de perfil, profesión y rango de fechas; orden `PENDIENTE`, `ACEPTADA`, `RECHAZADA`; devuelve cupo (`cubiertos`, `faltantes`, `satisfecho`), `aportaCupo` y acciones sugeridas. Requiere director activo con `GESTIONAR_POSTULACIONES`. |
 
 ## Gestión de contratos (5 UC)
 
@@ -131,18 +132,18 @@ el historial de git sirva de bitácora adicional.
 | Gestión de usuarios y administración | 15     | 12                      | 0            | 0           | 3           |
 | Gestión de perfiles y disponibilidad | 13     | 9                       | 0            | 0           | 4           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
-| Gestión de proyectos               | 25       | 4                       | 0            | 0           | 21          |
+| Gestión de proyectos               | 26       | 6                       | 0            | 0           | 20          |
 | Gestión de contratos               | 5        | 0                       | 0            | 0           | 5           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **74**   | **25**                  | **0**        | **0**       | **49**      |
+| **Total**                          | **75**   | **27**                  | **0**        | **0**       | **48**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
-> comprende **74 casos de uso** (`UC-01` a `UC-74`). Con el avance del desarrollo se incorporaron
+> comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
 > `UC-70` *Asignar actividad a miembro*, `UC-71` *Configurar jornada laboral*, `UC-72` *Buscar requerimiento general*,
-> `UC-73` *Buscar requerimiento actividad* y `UC-74` *Gestionar unidades de medida*, pasando de 69 a 74.
+> `UC-73` *Buscar requerimiento actividad*, `UC-74` *Buscar postulaciones* y `UC-75` *Gestionar unidades de medida*, pasando de 69 a 75.
 >
 > El escenario **`UC-29 bis` *Buscar proyectos propios*** es un caso derivado del desarrollo (ficha técnica propia)
 > que no forma parte del catálogo numerado; se listan sus filas en el módulo de proyectos solo a efectos de
 > seguimiento y **no se computa** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 25 de 74 casos de uso implementados y testeados = **33,8 %** del catálogo de requisitos.
+**Avance global:** 27 de 75 casos de uso implementados y testeados = **36,0 %** del catálogo de requisitos.

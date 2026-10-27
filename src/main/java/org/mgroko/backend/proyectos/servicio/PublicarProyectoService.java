@@ -22,13 +22,13 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
@@ -40,7 +40,6 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
-import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
@@ -72,7 +71,7 @@ public class PublicarProyectoService {
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
     private final ObjetivoRepository objetivoRepository;
-    private final PostulacionGralRepository postulacionGralRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
 
     public PublicarProyectoService(
@@ -85,7 +84,7 @@ public class PublicarProyectoService {
             RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             ObjetivoRepository objetivoRepository,
-            PostulacionGralRepository postulacionGralRepository,
+            CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
@@ -96,7 +95,7 @@ public class PublicarProyectoService {
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
         this.objetivoRepository = objetivoRepository;
-        this.postulacionGralRepository = postulacionGralRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
     }
 
@@ -233,9 +232,7 @@ public class PublicarProyectoService {
                 .sorted()
                 .toList();
 
-        boolean satisfecho = postulacionGralRepository
-                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
-                        rg.getIdRequerimientoGral(), EstadoSolicitud.ACEPTADA);
+        CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(rg);
 
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
@@ -245,6 +242,8 @@ public class PublicarProyectoService {
                 rg.getProfesion() != null ? rg.getProfesion().getNombre() : null,
                 caracts,
                 habilidades,
-                satisfecho);
+                cupo.satisfecho(),
+                cupo.cubiertos(),
+                cupo.faltantes());
     }
 }

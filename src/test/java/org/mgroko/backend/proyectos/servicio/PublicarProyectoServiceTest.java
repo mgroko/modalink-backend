@@ -31,6 +31,7 @@ import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoInvalidoException;
@@ -41,7 +42,6 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
-import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
@@ -51,6 +51,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -87,7 +88,7 @@ class PublicarProyectoServiceTest {
     private ObjetivoRepository objetivoRepository;
 
     @Mock
-    private PostulacionGralRepository postulacionGralRepository;
+    private CupoRequerimientoService cupoRequerimientoService;
 
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
@@ -138,6 +139,9 @@ class PublicarProyectoServiceTest {
                 .rolProyecto(rolDirector)
                 .estadoParticipacion(EstadoParticipacion.ACTIVO)
                 .build();
+
+        lenient().when(cupoRequerimientoService.calcularGeneral(any()))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
     }
 
     private void prepararCaminoFeliz() {

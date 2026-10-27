@@ -16,19 +16,35 @@ import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.mgroko.backend.modelo.Genero;
+import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RolGlobal;
+import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
 import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
+import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
+import org.mgroko.backend.postulaciones.dto.PostulacionBusquedaResponse;
+import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
+import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
+import org.mgroko.backend.postulaciones.servicio.AceptarPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.BuscarPostulacionesProyectoService;
 import org.mgroko.backend.postulaciones.servicio.CrearPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.RechazarPostulacionService;
+import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.dto.CancelarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.CrearMoodboardRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
@@ -74,7 +90,21 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private CrearPostulacionService crearPostulacionService;
     @Autowired
+    private BuscarPostulacionesProyectoService buscarPostulacionesProyectoService;
+    @Autowired
+    private AceptarPostulacionService aceptarPostulacionService;
+    @Autowired
+    private RechazarPostulacionService rechazarPostulacionService;
+    @Autowired
     private ProyectoRepository proyectoRepository;
+    @Autowired
+    private PerfilRepository perfilRepository;
+    @Autowired
+    private RolProyectoRepository rolProyectoRepository;
+    @Autowired
+    private MiembroProyectoRepository miembroProyectoRepository;
+    @Autowired
+    private PostulacionActividadRepository postulacionActividadRepository;
     @Autowired
     private RequerimientoActividadRepository requerimientoActividadRepository;
     @Autowired
@@ -123,6 +153,563 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                   AND entidad_id = ?
                 """, Long.class, director.idUsuario(), respuesta.idPostulacion());
         assertThat(notificaciones).isEqualTo(1L);
+    }
+
+    @Test
+    void buscarPostulaciones_devuelveLasDelProyectoConCupoYFiltros() {
+        PerfilCreado director = crearPerfil("uc74.dir1@example.com", "88874001", "Directora UC74", "modelo");
+        PerfilCreado postulanteA = crearPerfil("uc74.pos1@example.com", "88874002", "Postulante A UC74", "modelo");
+        PerfilCreado postulanteB = crearPerfil("uc74.pos2@example.com", "88874003", "Postulante B UC74", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC74");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteA.idUsuario(), postulanteA.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+        crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteB.idUsuario(), postulanteB.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        PaginaResponse<PostulacionBusquedaResponse> pagina =
+                buscarPostulacionesProyectoService.buscar(
+                        director.idPerfil(),
+                        publicado.idProyecto(),
+                        new BuscarPostulacionesFiltro(null, null, null, null, null, null),
+                        0, 20, false);
+
+        assertThat(pagina.contenido()).hasSize(2);
+        assertThat(pagina.contenido())
+                .allSatisfy(postulacion -> {
+                    assertThat(postulacion.tipo()).isEqualTo(TipoPostulacion.GENERAL);
+                    assertThat(postulacion.estado().name()).isEqualTo("PENDIENTE");
+                    assertThat(postulacion.idRequerimiento()).isEqualTo(idRequerimiento);
+                    assertThat(postulacion.cubiertos()).isZero();
+                    assertThat(postulacion.faltantes()).isEqualTo(1);
+                    assertThat(postulacion.satisfecho()).isFalse();
+                    assertThat(postulacion.puedeAceptar()).isTrue();
+                    assertThat(postulacion.puedeRechazar()).isTrue();
+                });
+
+        PaginaResponse<PostulacionBusquedaResponse> filtrada =
+                buscarPostulacionesProyectoService.buscar(
+                        director.idPerfil(),
+                        publicado.idProyecto(),
+                        new BuscarPostulacionesFiltro(
+                                null, TipoPostulacion.GENERAL,
+                                "Postulante A", null, null, null),
+                        0, 20, false);
+
+        assertThat(filtrada.contenido()).hasSize(1);
+        assertThat(filtrada.contenido().get(0).nombreArtistico())
+                .isEqualTo("Postulante A UC74");
+    }
+
+    @Test
+    void buscarPostulaciones_sinPermisoDeDirector_lanzaExcepcion() {
+        PerfilCreado director = crearPerfil("uc74.dir2@example.com", "88874004", "Directora UC74 Dos", "modelo");
+        PerfilCreado postulante = crearPerfil("uc74.pos3@example.com", "88874005", "Postulante UC74 Tres", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC74 Dos");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        assertThatThrownBy(() -> buscarPostulacionesProyectoService.buscar(
+                postulante.idPerfil(),
+                publicado.idProyecto(),
+                new BuscarPostulacionesFiltro(null, null, null, null, null, null),
+                0, 20, false))
+                .isInstanceOf(AccesoDenegadoProyectoException.class);
+    }
+
+    @Test
+    void aceptarGeneral_creaMiembroYRechazaLasDemasPendientes() {
+        PerfilCreado director = crearPerfil("uc34.dir1@example.com", "88834001", "Directora UC34", "modelo");
+        PerfilCreado postulanteA = crearPerfil("uc34.pos1@example.com", "88834002", "Postulante A UC34", "modelo");
+        PerfilCreado postulanteB = crearPerfil("uc34.pos2@example.com", "88834003", "Postulante B UC34", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC34 Aceptar");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        PostulacionResponse postulacionA = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteA.idUsuario(), postulanteA.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+        PostulacionResponse postulacionB = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteB.idUsuario(), postulanteB.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacionA.idPostulacion());
+
+        assertThat(respuesta.tipo()).isEqualTo(TipoPostulacion.GENERAL);
+        assertThat(respuesta.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idMiembro()).isNotNull();
+        assertThat(respuesta.idAsignacionActividad()).isNull();
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), postulanteA.idPerfil(), idRequerimiento);
+        assertThat(miembros).isEqualTo(1L);
+
+        String estadoA = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_gral WHERE id_postulacion_gral = ?
+                """, String.class, postulacionA.idPostulacion());
+        assertThat(estadoA).isEqualTo("ACEPTADA");
+
+        String estadoB = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_gral WHERE id_postulacion_gral = ?
+                """, String.class, postulacionB.idPostulacion());
+        assertThat(estadoB).isEqualTo("RECHAZADA");
+
+        Long notificacionA = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'POSTULACION_ACEPTADA'
+                  AND entidad_tipo = 'POSTULACION_GRAL' AND entidad_id = ?
+                """, Long.class, postulanteA.idUsuario(), postulacionA.idPostulacion());
+        assertThat(notificacionA).isEqualTo(1L);
+
+        Long notificacionB = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'POSTULACION_RECHAZADA'
+                  AND entidad_tipo = 'POSTULACION_GRAL' AND entidad_id = ?
+                """, Long.class, postulanteB.idUsuario(), postulacionB.idPostulacion());
+        assertThat(notificacionB).isEqualTo(1L);
+
+        assertThatThrownBy(() -> aceptarPostulacionService.aceptarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacionA.idPostulacion()))
+                .isInstanceOf(PostulacionYaGestionadaException.class);
+    }
+
+    @Test
+    void aceptarGeneral_sinSerDirector_lanzaAccesoDenegado() {
+        PerfilCreado director = crearPerfil("uc34.dir2@example.com", "88834004", "Directora UC34 Dos", "modelo");
+        PerfilCreado postulante = crearPerfil("uc34.pos3@example.com", "88834005", "Postulante UC34 Tres", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC34 Sin Permiso");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        assertThatThrownBy(() -> aceptarPostulacionService.aceptarGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion()))
+                .isInstanceOf(AccesoDenegadoProyectoException.class);
+
+        Long estado = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), postulante.idPerfil());
+        assertThat(estado).isZero();
+    }
+
+    @Test
+    void aceptarGeneral_enProyectoConfirmado_permiteAceptar() {
+        PerfilCreado director = crearPerfil("uc34.dir3@example.com", "88834006", "Directora UC34 Tres", "modelo");
+        PerfilCreado postulante = crearPerfil("uc34.pos4@example.com", "88834007", "Postulante UC34 Cuatro", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC34 Confirmado");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        Proyecto proyecto = proyectoRepository.findById(publicado.idProyecto()).orElseThrow();
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyectoRepository.saveAndFlush(proyecto);
+
+        PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion());
+
+        assertThat(respuesta.estado())
+                .isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idMiembro()).isNotNull();
+    }
+
+    @Test
+    void aceptarActividad_creaAsignacionYNotifica() {
+        PerfilCreado director = crearPerfil("uc34.act.dir1@example.com", "88834010", "Directora Actividad UC34", "modelo");
+        PerfilCreado postulante = crearPerfil("uc34.act.pos1@example.com", "88834011", "Postulante Actividad UC34", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC34 Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+        Long idActividad = idActividadDe(publicado.idProyecto());
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionActividad(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion());
+
+        assertThat(respuesta.tipo()).isEqualTo(TipoPostulacion.ACTIVIDAD);
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idMiembro()).isNotNull();
+        assertThat(respuesta.idAsignacionActividad()).isNotNull();
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad
+                WHERE id_requerimiento_act = ? AND id_miembro = ? AND id_actividad = ?
+                """, Long.class, idRequerimiento, respuesta.idMiembro(), idActividad);
+        assertThat(asignaciones).isEqualTo(1L);
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND estado_participacion = 'ACTIVO'
+                  AND id_requerimiento_gral IS NULL
+                """, Long.class, publicado.idProyecto(), postulante.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+
+        String estado = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_actividad WHERE id_postulacion = ?
+                """, String.class, postulacion.idPostulacion());
+        assertThat(estado).isEqualTo("ACEPTADA");
+
+        Long notificacionAceptada = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'POSTULACION_ACEPTADA'
+                  AND entidad_tipo = 'POSTULACION_ACTIVIDAD' AND entidad_id = ?
+                """, Long.class, postulante.idUsuario(), postulacion.idPostulacion());
+        assertThat(notificacionAceptada).isEqualTo(1L);
+
+        Long notificacionAsignacion = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'ACTIVIDAD_ASIGNADA'
+                  AND entidad_tipo = 'ACTIVIDAD' AND entidad_id = ?
+                """, Long.class, postulante.idUsuario(), idActividad);
+        assertThat(notificacionAsignacion).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarActividad_llenaCupoYRechazaOtraPendiente() {
+        PerfilCreado director = crearPerfil("uc34.act.dir5@example.com", "88834017", "Directora Actividad UC34 Cinco", "modelo");
+        PerfilCreado postulanteA = crearPerfil("uc34.act.pos5@example.com", "88834018", "Postulante Actividad A UC34", "modelo");
+        PerfilCreado postulanteB = crearPerfil("uc34.act.pos6@example.com", "88834019", "Postulante Actividad B UC34", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC34 Actividad Cupo");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        PostulacionResponse postulacionA = crearPostulacionService.darDeAltaPostulacionActividad(
+                postulanteA.idUsuario(), postulanteA.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+        PostulacionResponse postulacionB = crearPostulacionService.darDeAltaPostulacionActividad(
+                postulanteB.idUsuario(), postulanteB.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        aceptarPostulacionService.aceptarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacionA.idPostulacion());
+
+        String estadoB = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_actividad WHERE id_postulacion = ?
+                """, String.class, postulacionB.idPostulacion());
+        assertThat(estadoB).isEqualTo("RECHAZADA");
+
+        Long notificacionB = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'POSTULACION_RECHAZADA'
+                  AND entidad_tipo = 'POSTULACION_ACTIVIDAD' AND entidad_id = ?
+                """, Long.class, postulanteB.idUsuario(), postulacionB.idPostulacion());
+        assertThat(notificacionB).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarActividad_sinDisponibilidad_noCreaMiembroNiAsignacion() {
+        PerfilCreado director = crearPerfil("uc34.act.dir2@example.com", "88834012", "Directora Actividad UC34 Dos", "modelo");
+        PerfilCreado postulante = crearPerfil("uc34.act.pos2@example.com", "88834013", "Postulante Actividad UC34 Dos", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC34 Actividad Bloqueada");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionActividad(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        Agenda agenda = agendaRepository.findByUsuario_IdUsuario(postulante.idUsuario()).orElseThrow();
+        LocalDateTime desde = LocalDateTime.now().minusDays(1);
+        LocalDateTime hasta = LocalDateTime.now().plusDays(60);
+
+        bloqueoAgendaRepository.saveAndFlush(BloqueoAgenda.builder()
+                .agenda(agenda)
+                .fechaHoraInicio(desde)
+                .fechaHoraFin(hasta)
+                .motivo("Bloqueo UC34")
+                .build());
+
+        assertThatThrownBy(() -> aceptarPostulacionService.aceptarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion()))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("disponibilidad");
+
+        String estado = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_actividad WHERE id_postulacion = ?
+                """, String.class, postulacion.idPostulacion());
+        assertThat(estado).isEqualTo("PENDIENTE");
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad
+                WHERE id_requerimiento_act = ?
+                """, Long.class, idRequerimiento);
+        assertThat(asignaciones).isZero();
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), postulante.idPerfil());
+        assertThat(miembros).isZero();
+    }
+
+    @Test
+    void aceptarActividad_miembroExistente_reutilizaMembresia() {
+        PerfilCreado director = crearPerfil("uc34.act.dir3@example.com", "88834014", "Directora Actividad UC34 Tres", "modelo");
+        PerfilCreado miembroPerfil = crearPerfil("uc34.act.mem1@example.com", "88834015", "Miembro Actividad UC34", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC34 Actividad Miembro");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        Proyecto proyecto = proyectoRepository.findById(publicado.idProyecto()).orElseThrow();
+        Perfil perfil = perfilRepository
+                .findByIdPerfilAndUsuarioIdUsuario(miembroPerfil.idPerfil(), miembroPerfil.idUsuario())
+                .orElseThrow();
+        RolProyecto rolMiembro = rolProyectoRepository.findByCodigo("MIEMBRO").orElseThrow();
+
+        MiembroProyecto existente = miembroProyectoRepository.saveAndFlush(
+                MiembroProyecto.builder()
+                        .proyecto(proyecto)
+                        .perfil(perfil)
+                        .rolProyecto(rolMiembro)
+                        .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                        .fechaAlta(LocalDateTime.now())
+                        .build());
+
+        RequerimientoActividad requerimiento = requerimientoActividadRepository
+                .findById(idRequerimiento).orElseThrow();
+        PostulacionActividad postulacion = postulacionActividadRepository.saveAndFlush(
+                PostulacionActividad.builder()
+                        .perfil(perfil)
+                        .requerimiento(requerimiento)
+                        .estado(EstadoSolicitud.PENDIENTE)
+                        .fechaPostulacion(LocalDateTime.now())
+                        .build());
+
+        PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.getIdPostulacion());
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idMiembro()).isEqualTo(existente.getIdMiembro());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), miembroPerfil.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad
+                WHERE id_requerimiento_act = ? AND id_miembro = ?
+                """, Long.class, idRequerimiento, existente.getIdMiembro());
+        assertThat(asignaciones).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarActividad_directorNoPuedePostularse() {
+        PerfilCreado director = crearPerfil("uc34.act.dir4@example.com", "88834016", "Directora Actividad UC34 Cuatro", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC34 Actividad Director");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        Perfil perfilDirector = perfilRepository
+                .findByIdPerfilAndUsuarioIdUsuario(director.idPerfil(), director.idUsuario())
+                .orElseThrow();
+        RequerimientoActividad requerimiento = requerimientoActividadRepository
+                .findById(idRequerimiento).orElseThrow();
+
+        PostulacionActividad postulacion = postulacionActividadRepository.saveAndFlush(
+                PostulacionActividad.builder()
+                        .perfil(perfilDirector)
+                        .requerimiento(requerimiento)
+                        .estado(EstadoSolicitud.PENDIENTE)
+                        .fechaPostulacion(LocalDateTime.now())
+                        .build());
+
+        assertThatThrownBy(() -> aceptarPostulacionService.aceptarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.getIdPostulacion()))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("director");
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad
+                WHERE id_requerimiento_act = ?
+                """, Long.class, idRequerimiento);
+        assertThat(asignaciones).isZero();
+    }
+
+    @Test
+    void rechazarGeneral_cambiaEstadoYNotificaSinCrearMiembro() {
+        PerfilCreado director = crearPerfil("uc34.rej.dir1@example.com", "88834020", "Directora Rechazo UC34", "modelo");
+        PerfilCreado postulante = crearPerfil("uc34.rej.pos1@example.com", "88834021", "Postulante Rechazo UC34", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC34 Rechazo");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        PostulacionGestionadaResponse respuesta = rechazarPostulacionService.rechazarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion());
+
+        assertThat(respuesta.tipo()).isEqualTo(TipoPostulacion.GENERAL);
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.RECHAZADA);
+        assertThat(respuesta.idMiembro()).isNull();
+        assertThat(respuesta.idAsignacionActividad()).isNull();
+
+        String estado = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_gral WHERE id_postulacion_gral = ?
+                """, String.class, postulacion.idPostulacion());
+        assertThat(estado).isEqualTo("RECHAZADA");
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), postulante.idPerfil());
+        assertThat(miembros).isZero();
+
+        Long notificacion = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'POSTULACION_RECHAZADA'
+                  AND entidad_tipo = 'POSTULACION_GRAL' AND entidad_id = ?
+                """, Long.class, postulante.idUsuario(), postulacion.idPostulacion());
+        assertThat(notificacion).isEqualTo(1L);
+
+        assertThatThrownBy(() -> rechazarPostulacionService.rechazarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion()))
+                .isInstanceOf(PostulacionYaGestionadaException.class);
+    }
+
+    @Test
+    void rechazarActividad_cambiaEstadoYNotificaSinCrearAsignacion() {
+        PerfilCreado director = crearPerfil("uc34.rej.dir2@example.com", "88834022", "Directora Rechazo Actividad UC34", "modelo");
+        PerfilCreado postulante = crearPerfil("uc34.rej.pos2@example.com", "88834023", "Postulante Rechazo Actividad UC34", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC34 Rechazo Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionActividad(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        PostulacionGestionadaResponse respuesta = rechazarPostulacionService.rechazarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion());
+
+        assertThat(respuesta.tipo()).isEqualTo(TipoPostulacion.ACTIVIDAD);
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.RECHAZADA);
+        assertThat(respuesta.idMiembro()).isNull();
+        assertThat(respuesta.idAsignacionActividad()).isNull();
+
+        String estado = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_actividad WHERE id_postulacion = ?
+                """, String.class, postulacion.idPostulacion());
+        assertThat(estado).isEqualTo("RECHAZADA");
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad WHERE id_requerimiento_act = ?
+                """, Long.class, idRequerimiento);
+        assertThat(asignaciones).isZero();
+
+        Long notificacion = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'POSTULACION_RECHAZADA'
+                  AND entidad_tipo = 'POSTULACION_ACTIVIDAD' AND entidad_id = ?
+                """, Long.class, postulante.idUsuario(), postulacion.idPostulacion());
+        assertThat(notificacion).isEqualTo(1L);
+    }
+
+    @Test
+    void postularActividad_comoMiembroActivo_permite() {
+        PerfilCreado director = crearPerfil("uc26.mem.dir1@example.com", "88827001", "Directora Miembro UC26", "modelo");
+        PerfilCreado miembro = crearPerfil("uc26.mem.pos1@example.com", "88827002", "Miembro UC26", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC26 Miembro Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        agregarMiembro(publicado, miembro);
+
+        PostulacionResponse respuesta = crearPostulacionService.darDeAltaPostulacionActividad(
+                miembro.idUsuario(), miembro.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+        assertThat(respuesta.tipo()).isEqualTo(TipoPostulacion.ACTIVIDAD);
+    }
+
+    @Test
+    void postularActividad_comoDirector_lanzaExcepcion() {
+        PerfilCreado director = crearPerfil("uc26.dir.act@example.com", "88827003", "Director UC26 Actividad", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile UC26 Director Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        assertThatThrownBy(() -> crearPostulacionService.darDeAltaPostulacionActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idRequerimiento))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("director");
+    }
+
+    @Test
+    void postularGeneral_comoMiembroActivo_lanzaExcepcion() {
+        PerfilCreado director = crearPerfil("uc26.mem.dir2@example.com", "88827004", "Directora Miembro General UC26", "modelo");
+        PerfilCreado miembro = crearPerfil("uc26.mem.pos2@example.com", "88827005", "Miembro General UC26", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC26 Miembro General");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        agregarMiembro(publicado, miembro);
+
+        assertThatThrownBy(() -> crearPostulacionService.darDeAltaPostulacionGeneral(
+                miembro.idUsuario(), miembro.idPerfil(),
+                publicado.idProyecto(), idRequerimiento))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("miembro activo");
+    }
+
+    @Test
+    void postularGeneral_enProyectoConfirmado_permite() {
+        PerfilCreado director = crearPerfil("uc26.conf.dir@example.com", "88827006", "Directora Confirmado UC26", "modelo");
+        PerfilCreado postulante = crearPerfil("uc26.conf.pos@example.com", "88827007", "Postulante Confirmado UC26", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile UC26 Confirmado");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        Proyecto proyecto = proyectoRepository.findById(publicado.idProyecto()).orElseThrow();
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyectoRepository.saveAndFlush(proyecto);
+
+        PostulacionResponse respuesta = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+        assertThat(respuesta.tipo()).isEqualTo(TipoPostulacion.GENERAL);
     }
 
     @Test
@@ -273,6 +860,25 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
     // ---------------------------------------------------------------
     // Datos de prueba
     // ---------------------------------------------------------------
+
+    private MiembroProyecto agregarMiembro(
+            ProyectoResponse publicado,
+            PerfilCreado perfilCreado) {
+
+        Proyecto proyecto = proyectoRepository.findById(publicado.idProyecto()).orElseThrow();
+        Perfil perfil = perfilRepository
+                .findByIdPerfilAndUsuarioIdUsuario(perfilCreado.idPerfil(), perfilCreado.idUsuario())
+                .orElseThrow();
+        RolProyecto rolMiembro = rolProyectoRepository.findByCodigo("MIEMBRO").orElseThrow();
+
+        return miembroProyectoRepository.saveAndFlush(MiembroProyecto.builder()
+                .proyecto(proyecto)
+                .perfil(perfil)
+                .rolProyecto(rolMiembro)
+                .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .fechaAlta(LocalDateTime.now())
+                .build());
+    }
 
     private PerfilCreado crearPerfil(
             String correo,

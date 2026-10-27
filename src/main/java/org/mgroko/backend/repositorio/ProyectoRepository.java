@@ -1,6 +1,7 @@
 package org.mgroko.backend.repositorio;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.admin.dto.AdminDashboardProvinciaRow;
 import org.mgroko.backend.modelo.Proyecto;
@@ -10,8 +11,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSpecificationExecutor<Proyecto> {
 
@@ -53,4 +57,8 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSp
             @Param("idRolProyecto") Long idRolProyecto,
             @Param("estado") EstadoParticipacion estado
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Proyecto p WHERE p.idProyecto = :idProyecto")
+    Optional<Proyecto> findByIdParaGestion(@Param("idProyecto") Long idProyecto);
 }

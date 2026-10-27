@@ -22,13 +22,13 @@ import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
@@ -40,7 +40,6 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
-import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
@@ -57,7 +56,7 @@ public class ObtenerProyectoService {
     private final ObjetivoRepository objetivoRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
-    private final PostulacionGralRepository postulacionGralRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final MoodboardRepository moodboardRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
 
@@ -69,7 +68,7 @@ public class ObtenerProyectoService {
             ObjetivoRepository objetivoRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
-            PostulacionGralRepository postulacionGralRepository,
+            CupoRequerimientoService cupoRequerimientoService,
             MoodboardRepository moodboardRepository,
             ProyectoVisibilidadService proyectoVisibilidadService) {
         this.proyectoRepository = proyectoRepository;
@@ -79,7 +78,7 @@ public class ObtenerProyectoService {
         this.objetivoRepository = objetivoRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
-        this.postulacionGralRepository = postulacionGralRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.moodboardRepository = moodboardRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
     }
@@ -147,7 +146,8 @@ public class ObtenerProyectoService {
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        boolean elegibleParaPostularse = proyecto.getEstado() == EstadoProyecto.PUBLICADO
+        boolean elegibleParaPostularse = (proyecto.getEstado() == EstadoProyecto.PUBLICADO
+                || proyecto.getEstado() == EstadoProyecto.CONFIRMADO)
                 && miembroActivo.isEmpty()
                 && Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral())
                 && profesionDelPerfilCoincide;
@@ -218,9 +218,7 @@ public class ObtenerProyectoService {
                 .sorted()
                 .toList();
 
-        boolean satisfecho = postulacionGralRepository
-                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
-                        rg.getIdRequerimientoGral(), EstadoSolicitud.ACEPTADA);
+        CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(rg);
 
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
@@ -230,6 +228,8 @@ public class ObtenerProyectoService {
                 rg.getProfesion() != null ? rg.getProfesion().getNombre() : null,
                 caracts,
                 habilidades,
-                satisfecho);
+                cupo.satisfecho(),
+                cupo.cubiertos(),
+                cupo.faltantes());
     }
 }

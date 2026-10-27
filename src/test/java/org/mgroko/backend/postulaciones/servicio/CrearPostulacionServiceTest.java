@@ -34,6 +34,7 @@ import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
+import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -47,6 +48,8 @@ import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
@@ -85,6 +88,8 @@ class CrearPostulacionServiceTest {
     @Mock
     private MiembroProyectoRepository miembroProyectoRepository;
     @Mock
+    private CupoRequerimientoService cupoRequerimientoService;
+    @Mock
     private NotificacionService notificacionService;
     @Mock
     private CalendarioService calendarioService;
@@ -100,6 +105,7 @@ class CrearPostulacionServiceTest {
                 postulacionActividadRepository,
                 postulacionGralRepository,
                 miembroProyectoRepository,
+                cupoRequerimientoService,
                 notificacionService,
                 calendarioService,
                 RELOJ);
@@ -118,8 +124,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil));
         when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
                 .thenReturn(Optional.of(requerimiento));
-        when(postulacionGralRepository.countByRequerimientoGral_IdRequerimientoGralAndEstado(
-                ID_REQUERIMIENTO_GRAL, EstadoSolicitud.ACEPTADA)).thenReturn(0L);
+        when(cupoRequerimientoService.calcularGeneral(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionGralRepository
                 .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGral(
                         ID_PERFIL, ID_REQUERIMIENTO_GRAL)).thenReturn(false);
@@ -255,11 +261,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
                 .thenReturn(Optional.of(requerimientoGral(proyectoPublicado(true))));
-        when(miembroProyectoRepository
-                .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
-                        ID_PROYECTO, ID_PERFIL,
-                        org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO))
-                .thenReturn(true);
+        when(miembroProyectoRepository.findMiembroActivoConRol(ID_PROYECTO, ID_PERFIL))
+                .thenReturn(Optional.of(miembro("MIEMBRO")));
 
         assertThatThrownBy(() -> servicio.darDeAltaPostulacionGeneral(
                 ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL))
@@ -289,8 +292,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
                 .thenReturn(Optional.of(requerimiento));
-        when(postulacionGralRepository.countByRequerimientoGral_IdRequerimientoGralAndEstado(
-                ID_REQUERIMIENTO_GRAL, EstadoSolicitud.ACEPTADA)).thenReturn(2L);
+        when(cupoRequerimientoService.calcularGeneral(requerimiento))
+                .thenReturn(new CupoRequerimiento(2, 2, 0, true));
 
         assertThatThrownBy(() -> servicio.darDeAltaPostulacionGeneral(
                 ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL))
@@ -304,6 +307,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
                 .thenReturn(Optional.of(requerimientoGral(proyectoPublicado(true))));
+        when(cupoRequerimientoService.calcularGeneral(any(RequerimientoGralProyecto.class)))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionGralRepository
                 .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGral(
                         ID_PERFIL, ID_REQUERIMIENTO_GRAL)).thenReturn(true);
@@ -320,6 +325,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
                 .thenReturn(Optional.of(requerimientoGral(proyectoPublicado(true))));
+        when(cupoRequerimientoService.calcularGeneral(any(RequerimientoGralProyecto.class)))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionGralRepository.saveAndFlush(any(PostulacionGral.class)))
                 .thenAnswer(invocacion -> {
                     PostulacionGral p = invocacion.getArgument(0);
@@ -347,8 +354,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
                 .thenReturn(Optional.of(requerimiento));
-        when(postulacionActividadRepository.countByRequerimiento_IdRequerimientoAndEstado(
-                ID_REQUERIMIENTO_ACT, EstadoSolicitud.ACEPTADA)).thenReturn(0L);
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionActividadRepository
                 .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
                         ID_PERFIL, ID_REQUERIMIENTO_ACT)).thenReturn(false);
@@ -388,6 +395,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
                 .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
                 .thenReturn(new ResultadoDisponibilidad(false, false, AHORA, AHORA.plusHours(2)));
 
@@ -407,6 +416,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
                 .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
                 .thenReturn(new ResultadoDisponibilidad(true, true, AHORA, AHORA.plusHours(2)));
         when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
@@ -449,6 +460,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
                 .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionActividadRepository
                 .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
                         ID_PERFIL, ID_REQUERIMIENTO_ACT)).thenReturn(true);
@@ -469,6 +482,8 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
         when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
                 .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
                 .thenReturn(new ResultadoDisponibilidad(true, false, AHORA, AHORA.plusHours(2)));
         when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
@@ -480,6 +495,72 @@ class CrearPostulacionServiceTest {
                 .hasMessageContaining("Ya existe una postulación");
 
         verify(notificacionService, never()).registrarTodas(anyCollection());
+    }
+
+    @Test
+    void general_proyectoConfirmado_permitePostular() {
+        RequerimientoGralProyecto requerimiento = requerimientoGral(
+                proyecto(EstadoProyecto.CONFIRMADO, true));
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
+                .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularGeneral(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        when(postulacionGralRepository.saveAndFlush(any(PostulacionGral.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(ID_PROYECTO)))
+                .thenReturn(List.of());
+
+        PostulacionResponse respuesta = servicio.darDeAltaPostulacionGeneral(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+    }
+
+    @Test
+    void actividad_miembroActivoMiembro_permitePostular() {
+        RequerimientoActividad requerimiento = requerimientoActividad(EstadoActividad.PENDIENTE);
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
+                .thenReturn(Optional.of(requerimiento));
+        when(miembroProyectoRepository.findMiembroActivoConRol(ID_PROYECTO, ID_PERFIL))
+                .thenReturn(Optional.of(miembro("MIEMBRO")));
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
+                .thenReturn(new ResultadoDisponibilidad(true, false, AHORA, AHORA.plusHours(2)));
+        when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(ID_PROYECTO)))
+                .thenReturn(List.of());
+
+        PostulacionResponse respuesta = servicio.darDeAltaPostulacionActividad(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_ACT);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+    }
+
+    @Test
+    void actividad_directorActivo_lanzaExcepcion() {
+        RequerimientoActividad requerimiento = requerimientoActividad(EstadoActividad.PENDIENTE);
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
+                .thenReturn(Optional.of(requerimiento));
+        when(miembroProyectoRepository.findMiembroActivoConRol(ID_PROYECTO, ID_PERFIL))
+                .thenReturn(Optional.of(miembro("DIRECTOR")));
+
+        assertThatThrownBy(() -> servicio.darDeAltaPostulacionActividad(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_ACT))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("director");
+
+        verify(calendarioService, never()).verificarDisponibilidad(any(), any());
     }
 
     // ---------------------------------------------------------------
@@ -548,5 +629,14 @@ class CrearPostulacionServiceTest {
                 .usuario(usuario)
                 .build();
         return MiembroProyecto.builder().perfil(perfil).build();
+    }
+
+    private MiembroProyecto miembro(String rolCodigo) {
+        return MiembroProyecto.builder()
+                .rolProyecto(RolProyecto.builder()
+                        .codigo(rolCodigo)
+                        .nombre(rolCodigo)
+                        .build())
+                .build();
     }
 }

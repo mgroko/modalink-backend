@@ -13,7 +13,13 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
 
     List<MiembroProyecto> findByProyectoIdProyecto(Long idProyecto);
 
-    Optional<MiembroProyecto> findByProyectoIdProyectoAndPerfilIdPerfil(Long idProyecto, Long idPerfil);
+    boolean existsByProyectoIdProyectoAndPerfilIdPerfil(Long idProyecto, Long idPerfil);
+
+    Optional<MiembroProyecto> findFirstByProyectoIdProyectoAndPerfilIdPerfilOrderByFechaAltaDesc(
+            Long idProyecto, Long idPerfil);
+
+    List<MiembroProyecto> findByProyectoIdProyectoAndPerfilIdPerfilOrderByFechaAltaAsc(
+            Long idProyecto, Long idPerfil);
 
     @Query("""
         SELECT mp FROM MiembroProyecto mp
@@ -70,4 +76,23 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     Optional<MiembroProyecto> findMiembroActivoConPermisos(
             @Param("idProyecto") Long idProyecto,
             @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.rolProyecto
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.perfil.idPerfil = :idPerfil
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    Optional<MiembroProyecto> findMiembroActivoConRol(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT COUNT(mp) FROM MiembroProyecto mp
+        WHERE mp.requerimientoGral.idRequerimientoGral = :idRequerimientoGral
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    long countActivosPorRequerimientoGral(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
 }

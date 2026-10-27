@@ -236,7 +236,9 @@ class ProyectoControllerTest {
                 List.of(new org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse(
                         5L, "COLOR_OJOS", "ENUMERADO", null, null, List.of(1L))),
                 List.of(1L, 4L),
-                false);
+                false,
+                0L,
+                2);
         var moodboardResp = new org.mgroko.backend.proyectos.dto.MoodboardResponse(
                 77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0), List.of());
 

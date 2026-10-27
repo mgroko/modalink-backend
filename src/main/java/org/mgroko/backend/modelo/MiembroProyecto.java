@@ -3,6 +3,7 @@ package org.mgroko.backend.modelo;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "miembros_proyecto")
@@ -43,4 +44,21 @@ public class MiembroProyecto {
 
     @Column(name = "id_tyc_aceptado")
     private Long idTycAceptado;
+
+    @Column(name = "fecha_alta", nullable = false, updatable = false)
+    private LocalDateTime fechaAlta;
+
+    @Column(name = "fecha_baja")
+    private LocalDateTime fechaBaja;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_requerimiento_gral")
+    private RequerimientoGralProyecto requerimientoGral;
+
+    @PrePersist
+    private void prepararFechaAlta() {
+        if (fechaAlta == null) {
+            fechaAlta = LocalDateTime.now();
+        }
+    }
 }
