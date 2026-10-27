@@ -379,8 +379,8 @@ class EliminarActividadServiceTest {
         verify(asignacionActividadRepository).delete(asignacion);
         verify(actividadRepository).delete(actividad);
         verify(actividadRepository, atLeastOnce()).flush();
-        verify(cronogramaService).recalcularTolerandoDesborde(
-                any(Planificacion.class), any());
+        // Fase 2: no se llama a recalcularTolerandoDesborde; las proyecciones no se persisten.
+        verify(cronogramaService, never()).recalcularTolerandoDesborde(any(), any());
 
         ArgumentCaptor<ActividadEliminadaEvent> evento =
                 ArgumentCaptor.forClass(ActividadEliminadaEvent.class);

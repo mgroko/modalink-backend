@@ -55,9 +55,9 @@ class CronogramaServiceTest {
                 planificacion, List.of(a, b));
 
         assertThat(estado).isEqualTo(EstadoCronograma.NORMAL);
-        assertThat(a.getFechaHoraInicio())
+        assertThat(fechaProyectada(planificacion, List.of(a, b), 1L))
                 .isEqualTo(LocalDateTime.of(2026, 11, 1, 9, 0));
-        assertThat(b.getFechaHoraInicio())
+        assertThat(fechaProyectada(planificacion, List.of(a, b), 2L))
                 .isEqualTo(LocalDateTime.of(2026, 11, 1, 10, 0));
     }
 
@@ -81,7 +81,7 @@ class CronogramaServiceTest {
         cronogramaService.recalcular(planificacion, List.of(enCurso, pendiente));
 
         assertThat(enCurso.getFechaHoraInicio()).isEqualTo(inicioOriginal);
-        assertThat(pendiente.getFechaHoraInicio())
+        assertThat(fechaProyectada(planificacion, List.of(enCurso, pendiente), 2L))
                 .isEqualTo(LocalDateTime.of(2026, 11, 5, 12, 0));
     }
 
@@ -96,8 +96,8 @@ class CronogramaServiceTest {
 
         cronogramaService.recalcular(planificacion, List.of(actividad));
 
-        assertThat(actividad.getFechaHoraInicio())
-                .isEqualTo(LocalDateTime.of(2026, 10, 25, 0, 0));
+        assertThat(fechaProyectada(planificacion, List.of(actividad), 1L))
+                .isEqualTo(LocalDateTime.of(2026, 10, 25, 12, 0));
     }
 
     @Test
@@ -110,8 +110,8 @@ class CronogramaServiceTest {
 
         cronogramaService.recalcular(planificacion, List.of(actividad));
 
-        assertThat(actividad.getFechaHoraInicio())
-                .isEqualTo(LocalDateTime.of(2026, 10, 25, 0, 0));
+        assertThat(fechaProyectada(planificacion, List.of(actividad), 1L))
+                .isEqualTo(LocalDateTime.of(2026, 10, 25, 12, 0));
     }
 
     @Test
@@ -139,7 +139,7 @@ class CronogramaServiceTest {
                 planificacion, List.of(actividad));
 
         assertThat(estado).isEqualTo(EstadoCronograma.ALERTA_DESBORDE);
-        assertThat(actividad.getFechaHoraInicio())
+        assertThat(fechaProyectada(planificacion, List.of(actividad), 1L))
                 .isEqualTo(LocalDateTime.of(2026, 11, 1, 9, 0));
     }
 
@@ -174,7 +174,7 @@ class CronogramaServiceTest {
                 .build();
 
         assertThat(cronogramaService.evaluar(planificacion, List.of()))
-                .isEqualTo(EstadoCronograma.NORMAL);
+                .isEqualTo(EstadoCronograma.SIN_FECHA_ENTREGA);
     }
 
     @Test
@@ -206,18 +206,18 @@ class CronogramaServiceTest {
 
         assertThat(nodoA.inicioTemprano()).isZero();
         assertThat(nodoA.finTemprano()).isEqualTo(60);
-        assertThat(nodoA.inicioTardio()).isEqualTo(60);
-        assertThat(nodoA.finTardio()).isEqualTo(120);
-        assertThat(nodoA.holgura()).isEqualTo(60);
+        assertThat(nodoA.inicioTardioMakespan()).isEqualTo(60);
+        assertThat(nodoA.finTardioMakespan()).isEqualTo(120);
+        assertThat(nodoA.holguraMakespan()).isEqualTo(60);
         assertThat(nodoA.critica()).isFalse();
-        assertThat(nodoA.rangoFactible().inicioMinutos()).isZero();
-        assertThat(nodoA.rangoFactible().finMinutos()).isEqualTo(120);
+        assertThat(nodoA.ventanaInicio().inicioMinutos()).isZero();
+        assertThat(nodoA.ventanaInicio().finMinutos()).isEqualTo(60);
 
-        assertThat(nodoB.holgura()).isZero();
+        assertThat(nodoB.holguraMakespan()).isZero();
         assertThat(nodoB.critica()).isTrue();
         assertThat(nodoC.inicioTemprano()).isEqualTo(120);
         assertThat(nodoC.finTemprano()).isEqualTo(180);
-        assertThat(nodoC.holgura()).isZero();
+        assertThat(nodoC.holguraMakespan()).isZero();
         assertThat(nodoC.critica()).isTrue();
     }
 
@@ -285,6 +285,18 @@ class CronogramaServiceTest {
 
         assertThat(cronogramaService.inicioEfectivo(planificacion)).isEqualTo(fechaInicio);
         assertThat(cronogramaService.esTentativa(planificacion)).isFalse();
+    }
+
+    private LocalDateTime fechaProyectada(
+            Planificacion planificacion,
+            List<Actividad> actividades,
+            Long idActividad) {
+        CalculoCpm calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
+        return cronogramaService.proyectar(
+                calculo,
+                cronogramaService.inicioEfectivo(planificacion),
+                cronogramaService.esTentativa(planificacion))
+                .fechaDe(idActividad);
     }
 
     private Planificacion planificacion(LocalDate fechaEntrega, LocalDateTime fechaInicioProyecto) {

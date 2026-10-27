@@ -156,8 +156,8 @@ class ModificarActividadServiceTest {
                 .thenReturn(List.of());
         when(asignacionActividadRepository.findActivasByActividadId(55L))
                 .thenReturn(List.of());
-        when(cronogramaService.recalcularTolerandoDesborde(planificacion, List.of(actividad)))
-                .thenReturn(EstadoCronograma.NORMAL);
+        // Fase 2: mock de evaluar en lugar de recalcularTolerandoDesborde
+        when(cronogramaService.evaluar(any(), any())).thenReturn(EstadoCronograma.NORMAL);
     }
 
     @Test
@@ -183,7 +183,7 @@ class ModificarActividadServiceTest {
             assertThat(profesional.nombreArtistico()).isEqualTo("Luna");
             assertThat(profesional.nombreProfesion()).isEqualTo("Modelo");
         });
-        verify(cronogramaService).recalcularTolerandoDesborde(eq(planificacion), any());
+        verify(cronogramaService).evaluar(eq(planificacion), any());
 
         ArgumentCaptor<ActividadModificadaEvent> evento =
                 ArgumentCaptor.forClass(ActividadModificadaEvent.class);
@@ -196,7 +196,7 @@ class ModificarActividadServiceTest {
 
     @Test
     void modificar_conDesborde_devuelveActividadPersistidaYAlerta() {
-        when(cronogramaService.recalcularTolerandoDesborde(planificacion, List.of(actividad)))
+        when(cronogramaService.evaluar(planificacion, List.of(actividad)))
                 .thenReturn(EstadoCronograma.ALERTA_DESBORDE);
 
         ActividadResponse response = modificarActividadService.modificar(
@@ -205,7 +205,7 @@ class ModificarActividadServiceTest {
 
         assertThat(response.estadoCronograma()).isEqualTo("ALERTA_DESBORDE");
         verify(actividadRepository).saveAndFlush(actividad);
-        verify(cronogramaService).recalcularTolerandoDesborde(eq(planificacion), any());
+        verify(cronogramaService).evaluar(eq(planificacion), any());
     }
 
     @Test

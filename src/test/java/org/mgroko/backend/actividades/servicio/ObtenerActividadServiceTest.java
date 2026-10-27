@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -16,8 +17,8 @@ import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
-import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -54,10 +55,10 @@ class ObtenerActividadServiceTest {
     private RequerimientoActividadService requerimientoActividadService;
 
     @Mock
-    private AsignacionActividadRepository asignacionActividadRepository;
+    private CronogramaService cronogramaService;
 
     @Mock
-    private CronogramaService cronogramaService;
+    private AsignacionActividadRepository asignacionActividadRepository;
 
     @InjectMocks
     private ObtenerActividadService obtenerActividadService;
@@ -83,6 +84,7 @@ class ObtenerActividadServiceTest {
         Planificacion planificacion = Planificacion.builder()
                 .idPlanificacion(50L)
                 .proyecto(proyecto)
+                .fechaEntrega(LocalDate.of(2026, 11, 10))
                 .build();
 
         actividad = Actividad.builder()
@@ -113,8 +115,7 @@ class ObtenerActividadServiceTest {
                 .thenReturn(List.of(asignacion));
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(actividad));
-        when(cronogramaService.evaluar(any(), any()))
-                .thenReturn(EstadoCronograma.NORMAL);
+        when(cronogramaService.evaluar(any(), any())).thenReturn(EstadoCronograma.NORMAL);
     }
 
     @Test
