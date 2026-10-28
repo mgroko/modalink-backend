@@ -11,6 +11,10 @@ public record RequerimientoActividadResponse(
         Long idProfesion,
         String nombreProfesion,
         List<CaracteristicaRequerimientoResponse> caracteristicas,
-        List<Long> habilidades
+        List<Long> habilidades,
+        Long cubiertos,
+        Integer faltantes,
+        Boolean satisfecho,
+        Boolean puedePostularse
 ) {
 }

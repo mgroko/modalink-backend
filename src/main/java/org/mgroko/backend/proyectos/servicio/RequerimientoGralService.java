@@ -147,7 +147,8 @@ public class RequerimientoGralService {
                 idsHabilidades,
                 Boolean.FALSE,
                 0L,
-                cantidad);
+                cantidad,
+                Boolean.FALSE);
     }
 
     private List<RequerimientoGralCaract> construirCaracteristicas(

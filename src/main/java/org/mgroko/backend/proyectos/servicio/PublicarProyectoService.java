@@ -244,6 +244,7 @@ public class PublicarProyectoService {
                 habilidades,
                 cupo.satisfecho(),
                 cupo.cubiertos(),
-                cupo.faltantes());
+                cupo.faltantes(),
+                Boolean.FALSE);
     }
 }

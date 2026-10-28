@@ -115,7 +115,7 @@
 | **Responsabilidades** | Esta operación da de alta una postulación para un requerimiento general de proyecto |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-26 |
-| **Notas** | El proyecto debe estar en estado “Publicado” (lo cierra UC-60) y aceptar postulaciones generales. Un perfil no puede postularse dos veces al mismo requerimiento. Se notifica a todos los directores activos del proyecto. Si el requerimiento ya alcanzó su cantidad de postulaciones aceptadas, no admite nuevas. |
+| **Notas** | El proyecto debe estar en estado “Publicado” (lo cierra UC-60) y aceptar postulaciones generales. Un perfil no puede postularse dos veces al mismo requerimiento. Se notifica a todos los directores activos del proyecto. Si el requerimiento ya alcanzó su cantidad de postulaciones aceptadas, no admite nuevas. La elegibilidad de lectura por requerimiento se expone como `puedePostularse` en la respuesta del proyecto; es sólo una ayuda de UI y no reemplaza estas validaciones de escritura. |
 | **Excepciones** | Si el proyecto no está “Publicado”, no acepta postulaciones generales o el requerimiento ya está satisfecho. Si el perfil ya es miembro activo del proyecto, no tiene la profesión solicitada o ya se postuló a ese requerimiento. |
 | **Salida** | unaPostulacion |
 | **Precondición** | El perfil del usuario debe tener al menos la misma profesión que se solicita en el requerimiento. |
@@ -126,7 +126,7 @@
 | **Responsabilidades** | Esta operación da de alta una postulación para un requerimiento de una actividad de un proyecto |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-26 |
-| **Notas** | El proyecto debe estar en estado “Publicado” (lo cierra UC-60). Sólo se admite postular a actividades “Pendiente”. Un perfil no puede postularse dos veces al mismo requerimiento. Se notifica a todos los directores activos del proyecto. La disponibilidad se verifica de forma **provisional**: mientras el proyecto no tenga fecha de inicio confirmada, el rango evaluado es [ahora, fecha de entrega]; al confirmarse el proyecto (UC-60) y al asignarse la actividad (UC-70) debe repetirse la verificación contra el rango factible [ES, LF] calculado por CPM. |
+| **Notas** | El proyecto debe estar en estado “Publicado” (lo cierra UC-60). Sólo se admite postular a actividades “Pendiente”. Un perfil no puede postularse dos veces al mismo requerimiento. Se notifica a todos los directores activos del proyecto. La disponibilidad se verifica de forma **provisional**: mientras el proyecto no tenga fecha de inicio confirmada, el rango evaluado es [ahora, fecha de entrega]; al confirmarse el proyecto (UC-60) y al asignarse la actividad (UC-70) debe repetirse la verificación contra el rango factible [ES, LF] calculado por CPM. La elegibilidad de lectura por requerimiento se expone como `puedePostularse` en la búsqueda de actividades; no incluye duplicados ni disponibilidad y no reemplaza estas validaciones de escritura. |
 | **Excepciones** | Si el usuario no tiene disponibilidad frente al rango factible de la actividad, la actividad no está “Pendiente”, el proyecto no está “Publicado”, el perfil no tiene la profesión solicitada, ya es miembro activo o ya se postuló a ese requerimiento. |
 | **Salida** | unaPostulacion |
 | **Precondición** | El perfil del usuario debe tener al menos la misma profesión que se solicita en el requerimiento. |

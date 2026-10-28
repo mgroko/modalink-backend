@@ -441,7 +441,9 @@ GET /proyectos/{idProyecto}/actividades
 - Las actividades canceladas se listan con `estado = "CANCELADA"`.
 - La búsqueda de candidatos sigue siendo
   `GET /proyectos/{idProyecto}/actividades/buscar` (visibilidad, sin
-  responsables).
+  responsables). Expone `cubiertos`, `faltantes`, `satisfecho` y
+  `puedePostularse` por requerimiento; el front debe usar
+  `requerimiento.puedePostularse` para habilitar la acción.
 
 Ver [`ficha-tecnica-planificacion-actividades.md`](./aplicadas/ficha-tecnica-planificacion-actividades.md).
 

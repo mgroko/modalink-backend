@@ -24,8 +24,10 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.HabilidadRepository;
 import org.mgroko.backend.repositorio.ProfesionRepository;
@@ -43,6 +45,7 @@ public class RequerimientoActividadService {
     private final HabilidadRepository habilidadRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
 
     public RequerimientoActividadService(
             ProfesionRepository profesionRepository,
@@ -50,13 +53,15 @@ public class RequerimientoActividadService {
             ValorCaracteristicaRepository valorCaracteristicaRepository,
             HabilidadRepository habilidadRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
-            RequerimientoActCaractValorRepository requerimientoActCaractValorRepository) {
+            RequerimientoActCaractValorRepository requerimientoActCaractValorRepository,
+            CupoRequerimientoService cupoRequerimientoService) {
         this.profesionRepository = profesionRepository;
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.valorCaracteristicaRepository = valorCaracteristicaRepository;
         this.habilidadRepository = habilidadRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoActCaractValorRepository = requerimientoActCaractValorRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
     }
 
     public RequerimientoActividadResponse persistir(
@@ -86,7 +91,11 @@ public class RequerimientoActividadService {
 
         persistirValoresCaracteristicas(caracteristicasEntidad, idsValoresPorCaracteristica);
 
-        return toResponse(guardado, idsValoresPorCaracteristica);
+        return toResponse(
+                guardado,
+                idsValoresPorCaracteristica,
+                cupoRequerimientoService.calcularActividad(guardado),
+                false);
     }
 
     public RequerimientoActividadResponse actualizar(
@@ -123,7 +132,11 @@ public class RequerimientoActividadService {
 
         persistirValoresCaracteristicas(caracteristicasEntidad, idsValoresPorCaracteristica);
 
-        return toResponse(guardado, idsValoresPorCaracteristica);
+        return toResponse(
+                guardado,
+                idsValoresPorCaracteristica,
+                cupoRequerimientoService.calcularActividad(guardado),
+                false);
     }
 
     public void eliminar(RequerimientoActividad requerimiento) {
@@ -134,6 +147,11 @@ public class RequerimientoActividadService {
         requerimientoActividadRepository.delete(requerimiento);
     }
 
+    /**
+     * Lista los requerimientos para la vista de detalle/edición. Incluye el
+     * cupo, pero {@code puedePostularse} siempre es {@code false}: la
+     * elegibilidad del candidato se consulta en la búsqueda de actividades.
+     */
     public List<RequerimientoActividadResponse> listarPorActividad(Long idActividad) {
         List<RequerimientoActividad> requerimientos =
                 requerimientoActividadRepository.findByActividad_IdActividad(idActividad);
@@ -141,6 +159,9 @@ public class RequerimientoActividadService {
         if (requerimientos.isEmpty()) {
             return List.of();
         }
+
+        Map<Long, CupoRequerimiento> cupos =
+                cupoRequerimientoService.calcularActividades(requerimientos);
 
         List<Long> idsCaracteristicas = requerimientos.stream()
                 .flatMap(requerimiento -> requerimiento.getCaracteristicas().stream())
@@ -171,7 +192,18 @@ public class RequerimientoActividadService {
                         caracteristica.getCaracteristica().getIdCaracteristica(),
                         idsValores);
             }
-            resultado.add(toResponse(requerimiento, idsValoresPorCaracteristica));
+            CupoRequerimiento cupo = cupos.get(requerimiento.getIdRequerimiento());
+            if (cupo == null) {
+                int cantidad = requerimiento.getCantidad() != null
+                        ? requerimiento.getCantidad()
+                        : 0;
+                cupo = new CupoRequerimiento(cantidad, 0, cantidad, false);
+            }
+            resultado.add(toResponse(
+                    requerimiento,
+                    idsValoresPorCaracteristica,
+                    cupo,
+                    false));
         }
 
         return resultado;
@@ -179,7 +211,9 @@ public class RequerimientoActividadService {
 
     private RequerimientoActividadResponse toResponse(
             RequerimientoActividad guardado,
-            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+            Map<Long, List<Long>> idsValoresPorCaracteristica,
+            CupoRequerimiento cupo,
+            boolean puedePostularse) {
 
         List<CaracteristicaRequerimientoResponse> caracteristicas = new ArrayList<>();
         for (RequerimientoActCaract caracteristicaRequerimiento : guardado.getCaracteristicas()) {
@@ -206,7 +240,11 @@ public class RequerimientoActividadService {
                 guardado.getProfesion().getIdProfesion(),
                 guardado.getProfesion().getNombre(),
                 caracteristicas,
-                habilidades);
+                habilidades,
+                cupo.cubiertos(),
+                cupo.faltantes(),
+                cupo.satisfecho(),
+                puedePostularse);
     }
 
     private List<RequerimientoActCaract> construirCaracteristicas(

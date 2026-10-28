@@ -114,7 +114,11 @@ Ejemplo completo (proyecto visto por su **director**):
           "valores": [1, 3]
         }
       ],
-      "habilidades": [1, 4]
+      "habilidades": [1, 4],
+      "cubiertos": 1,
+      "faltantes": 1,
+      "satisfecho": false,
+      "puedePostularse": false
     }
   ],
   "moodboard": {
@@ -169,7 +173,7 @@ publicado que acepta postulaciones y cuya profesión coincide con la del perfil)
 | `rolUsuario` | `"DIRECTOR"` \| `"MIEMBRO"` \| `null` | Rol del perfil activo en el proyecto. **`null` = no es miembro.** Coincide con los valores de `ROLES_PROYECTO` en `proyectoConstants.js`. |
 | `esMiembro` | `boolean` | `true` si el perfil es **miembro activo** del proyecto (incluye al director). |
 | `permisos` | `string[]` | Permisos del rol en este proyecto (nombres del enum del backend, p. ej. `MODIFICAR_PROYECTO`). **Ordenados alfabéticamente. Vacío si no es miembro.** |
-| `elegibleParaPostularse` | `boolean` | `true` solo si **no es miembro**, el proyecto tiene `aceptaPostulacionGral = true` y la **profesión del perfil activo** coincide con la de algún requerimiento general. Para miembros siempre es `false`. |
+| `elegibleParaPostularse` | `boolean` | **Resumen global histórico, deprecado para el gating.** `true` solo si **no es miembro**, el proyecto tiene `aceptaPostulacionGral = true` y la **profesión del perfil activo** coincide con la de algún requerimiento general. Para miembros siempre es `false`. No evalúa cupo ni reemplaza a `requerimientosGral[].puedePostularse`. |
 
 ### 3.2 Campos del proyecto (ya existentes, record de formatos)
 
@@ -182,6 +186,10 @@ publicado que acepta postulaciones y cuya profesión coincide con la del perfil)
 | `ubicacion` | objeto \| `null` | Anidada: `ciudad.provincia.pais`. Para mostrar: `ubicacion.ciudad.nombre` + `ubicacion.provincia.nombre`. |
 | `idDirector` / `nombreDirector` | `long` \| `string` \| `null` | `null` si el proyecto no tiene director activo. |
 | `objetivos` | `ObjetivoResponse[]` | `[]` si no hay. `moodboard` puede ser `null` si nunca se subieron imágenes ni descripción. |
+| `requerimientosGral[].cubiertos` | `int` | Miembros/asignaciones activas vinculadas al requerimiento. |
+| `requerimientosGral[].faltantes` | `int` | `max(0, cantidad - cubiertos)`. |
+| `requerimientosGral[].satisfecho` | `boolean` | `true` si el cupo está completo. |
+| `requerimientosGral[].puedePostularse` | `boolean` | **Fuente de verdad por requerimiento.** Usar `=== true` para mostrar el botón. Incluye estado del proyecto, membresía, profesión y cupo. |
 | `requerimientosGral[].caracteristicas[].valores` | `long[]` | **Ids** de valores enumerados; para mostrar etiquetas, reutilizar el catálogo que ya consume `RequerimientoForm.vue`. |
 | `requerimientosGral[].habilidades` | `long[]` | **Ids** de habilidades; traducir con `habilidadService` (mismo catálogo del paso 3 de creación). |
 | `moodboard.imagenes[].url` | `string` | Ruta relativa a `API_BASE_URL` (servida por `/uploads/**`). |
@@ -224,12 +232,15 @@ Usar `etiquetaRolProyecto(rolUsuario)` de `proyectoConstants.js` para el nombre 
   incompleta) mostrar el detalle de campos faltantes; si es `409` (estado ≠ Borrador),
   refrescar los datos del proyecto. En `200`, reemplazar los datos del proyecto con la
   respuesta (el estado pasa a `Publicado` y el botón desaparece).
-* **Postularme** — visible solo si `!esMiembro && aceptaPostulacionGral && elegibleParaPostularse`.
-  **`disabled`** con etiqueta *"Próximamente..."*: el backend aún no implementa
-  postulaciones (UC-26/27/34). No es error si el proyecto acepta postulaciones pero el
-  perfil no cumple la profesión: simplemente **no se muestra** el botón.
-* Única acción mutante con endpoint hoy: **Publicar** (UC-25). Editar (UC-36) y
-  Postularme (UC-26/27/34) siguen deshabilitadas; el resto de la vista es **solo lectura**.
+* **Postularme** — un botón por requerimiento, visible solo si
+  `requerimiento.puedePostularse === true` (UC-26 implementado). No usar
+  `elegibleParaPostularse` para el gating. Si `puedePostularse = false` por
+  profesión y no por cupo, no mostrar “Cupo completo”; usar un mensaje genérico
+  como “No disponible para tu perfil”. El `409` de duplicado o disponibilidad
+  sigue siendo posible.
+* Acciones mutantes con endpoint: **Publicar** (UC-25), **Postularme** (UC-26)
+  y las acciones de gestión de postulaciones del director (UC-34). El resto de
+  la vista es de solo lectura según permisos.
 
 ---
 

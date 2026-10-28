@@ -131,25 +131,34 @@ public class ObtenerProyectoService {
         Long idProfesionPerfil = perfil.getProfesion() != null
                 ? perfil.getProfesion().getIdProfesion()
                 : null;
+        boolean proyectoHabilitado = proyecto.getEstado() == EstadoProyecto.PUBLICADO
+                || proyecto.getEstado() == EstadoProyecto.CONFIRMADO;
+        boolean esMiembroActivo = miembroActivo.isPresent();
+        boolean aceptaPostulacionGral = Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral());
         boolean profesionDelPerfilCoincide = false;
 
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
         for (RequerimientoGralProyecto rg : requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto)) {
-            requerimientos.add(armarRequerimientoResponse(rg));
-            if (idProfesionPerfil != null && rg.getProfesion() != null
-                    && idProfesionPerfil.equals(rg.getProfesion().getIdProfesion())) {
-                profesionDelPerfilCoincide = true;
-            }
+            boolean profesionCoincide = idProfesionPerfil != null
+                    && rg.getProfesion() != null
+                    && idProfesionPerfil.equals(rg.getProfesion().getIdProfesion());
+            profesionDelPerfilCoincide = profesionDelPerfilCoincide || profesionCoincide;
+
+            requerimientos.add(armarRequerimientoResponse(
+                    rg,
+                    proyectoHabilitado,
+                    esMiembroActivo,
+                    aceptaPostulacionGral,
+                    profesionCoincide));
         }
 
         MoodboardResponse moodboardResponse = moodboardRepository.findByProyectoIdProyecto(idProyecto)
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        boolean elegibleParaPostularse = (proyecto.getEstado() == EstadoProyecto.PUBLICADO
-                || proyecto.getEstado() == EstadoProyecto.CONFIRMADO)
-                && miembroActivo.isEmpty()
-                && Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral())
+        boolean elegibleParaPostularse = proyectoHabilitado
+                && !esMiembroActivo
+                && aceptaPostulacionGral
                 && profesionDelPerfilCoincide;
 
         ContextoConsultaProyecto contexto = armarContexto(miembroActivo, elegibleParaPostularse);
@@ -195,7 +204,13 @@ public class ObtenerProyectoService {
                 .orElse(null);
     }
 
-    private RequerimientoGralResponse armarRequerimientoResponse(RequerimientoGralProyecto rg) {
+    private RequerimientoGralResponse armarRequerimientoResponse(
+            RequerimientoGralProyecto rg,
+            boolean proyectoHabilitado,
+            boolean esMiembroActivo,
+            boolean aceptaPostulacionGral,
+            boolean profesionCoincide) {
+
         List<CaracteristicaRequerimientoResponse> caracts = new ArrayList<>();
         for (RequerimientoGralCaract caract : rg.getCaracteristicas()) {
             CaracteristicaTecnica ct = caract.getCaracteristica();
@@ -220,6 +235,12 @@ public class ObtenerProyectoService {
 
         CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(rg);
 
+        boolean puedePostularse = proyectoHabilitado
+                && !esMiembroActivo
+                && aceptaPostulacionGral
+                && profesionCoincide
+                && cupo.faltantes() > 0;
+
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
                 rg.getCantidad(),
@@ -230,6 +251,7 @@ public class ObtenerProyectoService {
                 habilidades,
                 cupo.satisfecho(),
                 cupo.cubiertos(),
-                cupo.faltantes());
+                cupo.faltantes(),
+                puedePostularse);
     }
 }

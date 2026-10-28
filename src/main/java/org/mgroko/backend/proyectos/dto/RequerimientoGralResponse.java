@@ -13,5 +13,6 @@ public record RequerimientoGralResponse(
         List<Long> habilidades,
         Boolean satisfecho,
         Long cubiertos,
-        Integer faltantes
+        Integer faltantes,
+        Boolean puedePostularse
 ) {}

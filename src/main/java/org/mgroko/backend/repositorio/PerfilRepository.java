@@ -56,6 +56,20 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
     Optional<Perfil> findByIdPerfilAndUsuarioIdUsuario(Long idPerfil, Long idUsuario);
 
     /**
+     * Busca un perfil por su ID con la profesión inicializada. Se usa para
+     * calcular elegibilidad sin consultas perezosas adicionales.
+     *
+     * @param idPerfil identificador del perfil
+     * @return el perfil con su profesión, si existe
+     */
+    @Query("""
+        SELECT p FROM Perfil p
+        LEFT JOIN FETCH p.profesion
+        WHERE p.idPerfil = :idPerfil
+    """)
+    Optional<Perfil> findByIdConProfesion(@Param("idPerfil") Long idPerfil);
+
+    /**
      * Busca los perfiles en un estado cuya fecha de solicitud de baja sea
      * anterior a la fecha pasada por parámetro. Se usa para expirar perfiles
      * pendientes de baja pasados los 30 días (UC-12).

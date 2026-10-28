@@ -27,6 +27,7 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
     @Query("""
         SELECT r FROM RequerimientoActividad r
         JOIN FETCH r.profesion
+        JOIN FETCH r.actividad
         WHERE r.actividad.idActividad IN :idsActividades
         ORDER BY r.actividad.idActividad ASC, r.idRequerimiento ASC
     """)

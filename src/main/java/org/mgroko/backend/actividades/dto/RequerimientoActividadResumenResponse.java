@@ -5,5 +5,9 @@ public record RequerimientoActividadResumenResponse(
         Integer cantidad,
         String descripcion,
         Long idProfesion,
-        String nombreProfesion
+        String nombreProfesion,
+        Long cubiertos,
+        Integer faltantes,
+        Boolean satisfecho,
+        Boolean puedePostularse
 ) {}

@@ -423,6 +423,7 @@ public class ModificarProyectoService {
                 habilidades,
                 cupo.satisfecho(),
                 cupo.cubiertos(),
-                cupo.faltantes());
+                cupo.faltantes(),
+                Boolean.FALSE);
     }
 }
