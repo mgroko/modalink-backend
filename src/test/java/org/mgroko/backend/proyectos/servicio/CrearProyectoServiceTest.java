@@ -356,6 +356,7 @@ class CrearProyectoServiceTest {
         assertThat(response.requerimientosGral()).hasSize(1);
         assertThat(response.requerimientosGral().get(0).cantidad()).isEqualTo(2);
         assertThat(response.requerimientosGral().get(0).idProfesion()).isEqualTo(2L);
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
         verify(requerimientoGralProyectoRepository).save(any(org.mgroko.backend.modelo.RequerimientoGralProyecto.class));
     }
 

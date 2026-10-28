@@ -346,7 +346,10 @@ class ModificarProyectoServiceTest {
                 List.of(new ModificarRequerimientoGralRequest(10L, 3, 2L, "recreado", null, null)),
                 null);
 
-        modificarProyectoService.modificar(1L, 10L, 100L, request);
+        ProyectoResponse response = modificarProyectoService.modificar(1L, 10L, 100L, request);
+
+        assertThat(response.requerimientosGral())
+                .allSatisfy(requerimiento -> assertThat(requerimiento.puedePostularse()).isFalse());
 
         verify(requerimientoGralService).eliminar(noSatisfecho);
         verify(requerimientoGralService, never()).eliminar(satisfecho);

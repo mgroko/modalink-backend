@@ -10,12 +10,14 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
 import org.mgroko.backend.actividades.enums.UnidadDuracion;
 import org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException;
@@ -101,6 +103,8 @@ class CrearActividadServiceTest {
                     actividad.setIdActividad(55L);
                     return actividad;
                 });
+        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
 
         CrearActividadRequest request = new CrearActividadRequest(
                 "  Montaje  ",
@@ -150,6 +154,8 @@ class CrearActividadServiceTest {
                     actividad.setIdActividad(56L);
                     return actividad;
                 });
+        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, null, null, List.of()));
 
         CrearActividadRequest request = new CrearActividadRequest(
                 "Montaje", null, 1, UnidadDuracion.HORAS, null, null, null);

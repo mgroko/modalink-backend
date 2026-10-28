@@ -136,7 +136,11 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 "SELECT fecha_hora_inicio FROM actividad WHERE id_actividad = ?",
                 Timestamp.class,
                 escenario.idActividadSucesora()).toLocalDateTime();
-        assertThat(inicioSucesora).isEqualTo(inicioPrevia.plusMinutes(60));
+        // Fase 2: eliminar no persiste proyecciones; las fechas ya persistidas
+        // se conservan aunque se reconecten las dependencias. PostgreSQL guarda
+        // microsegundos, por eso se comparan sin nanosegundos.
+        assertThat(inicioPrevia).isEqualToIgnoringNanos(escenario.inicioActividadPrevia());
+        assertThat(inicioSucesora).isEqualToIgnoringNanos(escenario.inicioActividadSucesora());
 
         verificarNotificacion(
                 escenario.idUsuarioDirector(),
@@ -364,7 +368,9 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 requerimiento.getIdRequerimiento(),
                 postulacion.getIdPostulacion(),
                 invitacion.getIdInvitacion(),
-                idHito);
+                idHito,
+                previa.getFechaHoraInicio(),
+                sucesora.getFechaHoraInicio());
     }
 
     private Usuario crearUsuario(
@@ -451,6 +457,8 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
             Long idRequerimiento,
             Long idPostulacion,
             Long idInvitacion,
-            Long idHito) {
+            Long idHito,
+            LocalDateTime inicioActividadPrevia,
+            LocalDateTime inicioActividadSucesora) {
     }
 }

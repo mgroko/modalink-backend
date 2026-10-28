@@ -193,6 +193,7 @@ class PublicarProyectoServiceTest {
         assertThat(response.moodboard()).isNotNull();
         assertThat(response.moodboard().idMoodboard()).isEqualTo(7L);
         assertThat(response.requerimientosGral()).hasSize(1);
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
         assertThat(response.rolUsuario()).isEqualTo(RolProyectoUsuario.DIRECTOR);
         assertThat(response.esMiembro()).isTrue();
         assertThat(response.permisos()).contains("PUBLICAR_PROYECTO", "VER_PROYECTO");

@@ -305,6 +305,7 @@ class ObtenerProyectoServiceTest {
         assertThat(response.requerimientosGral().get(0).idProfesion()).isEqualTo(2L);
         assertThat(response.requerimientosGral().get(0).nombreProfesion()).isEqualTo("Modelo");
         assertThat(response.requerimientosGral().get(0).cantidad()).isEqualTo(2);
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
 
         assertThat(response.rolUsuario()).isEqualTo(RolProyectoUsuario.MIEMBRO);
         assertThat(response.esMiembro()).isTrue();
@@ -340,6 +341,7 @@ class ObtenerProyectoServiceTest {
         assertThat(response.esMiembro()).isFalse();
         assertThat(response.rolUsuario()).isNull();
         assertThat(response.permisos()).isEmpty();
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isTrue();
         assertThat(response.elegibleParaPostularse()).isTrue();
     }
 
@@ -369,6 +371,165 @@ class ObtenerProyectoServiceTest {
 
         ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
 
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
         assertThat(response.elegibleParaPostularse()).isFalse();
+    }
+
+    @Test
+    void obtener_dosRequerimientosDistintaProfesion_soloCoincidentePuedePostularse() {
+        perfil.setProfesion(Profesion.builder().idProfesion(2L).build());
+        proyectoPublicado.setAceptaPostulacionGral(true);
+
+        RequerimientoGralProyecto modelo = requerimientoGral(
+                10L, Profesion.builder().idProfesion(2L).nombre("Modelo").build(), 1);
+        RequerimientoGralProyecto estilista = requerimientoGral(
+                11L, Profesion.builder().idProfesion(3L).nombre("Estilista").build(), 1);
+        prepararNoMiembroProyectoPublicado(List.of(modelo, estilista));
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.requerimientosGral()).hasSize(2);
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isTrue();
+        assertThat(response.requerimientosGral().get(1).puedePostularse()).isFalse();
+        assertThat(response.elegibleParaPostularse()).isTrue();
+    }
+
+    @Test
+    void obtener_requerimientoSatisfecho_noPuedePostularseAunqueElGlobalSigaElegible() {
+        perfil.setProfesion(Profesion.builder().idProfesion(2L).build());
+        proyectoPublicado.setAceptaPostulacionGral(true);
+
+        RequerimientoGralProyecto rg = requerimientoGral(
+                10L, Profesion.builder().idProfesion(2L).nombre("Modelo").build(), 1);
+        when(cupoRequerimientoService.calcularGeneral(rg))
+                .thenReturn(new CupoRequerimiento(1, 1, 0, true));
+        prepararNoMiembroProyectoPublicado(List.of(rg));
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.requerimientosGral().get(0).satisfecho()).isTrue();
+        assertThat(response.requerimientosGral().get(0).faltantes()).isZero();
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
+        // Compatibilidad: el flag global mantiene su semántica anterior en esta entrega.
+        assertThat(response.elegibleParaPostularse()).isTrue();
+    }
+
+    @Test
+    void obtener_requerimientoParcialmenteCubierto_puedePostularse() {
+        perfil.setProfesion(Profesion.builder().idProfesion(2L).build());
+        proyectoPublicado.setAceptaPostulacionGral(true);
+
+        RequerimientoGralProyecto rg = requerimientoGral(
+                10L, Profesion.builder().idProfesion(2L).nombre("Modelo").build(), 2);
+        when(cupoRequerimientoService.calcularGeneral(rg))
+                .thenReturn(new CupoRequerimiento(2, 1, 1, false));
+        prepararNoMiembroProyectoPublicado(List.of(rg));
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.requerimientosGral().get(0).satisfecho()).isFalse();
+        assertThat(response.requerimientosGral().get(0).faltantes()).isEqualTo(1);
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isTrue();
+    }
+
+    @Test
+    void obtener_miembroActivo_noPuedePostularseAunqueHayaCupo() {
+        perfil.setProfesion(Profesion.builder().idProfesion(2L).build());
+        proyectoPublicado.setAceptaPostulacionGral(true);
+
+        RequerimientoGralProyecto rg = requerimientoGral(
+                10L, Profesion.builder().idProfesion(2L).nombre("Modelo").build(), 1);
+        prepararMiembroActivoProyectoPublicado(List.of(rg));
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
+        assertThat(response.elegibleParaPostularse()).isFalse();
+    }
+
+    @Test
+    void obtener_proyectoConfirmadoConCupo_puedePostularse() {
+        perfil.setProfesion(Profesion.builder().idProfesion(2L).build());
+        proyectoPublicado.setEstado(EstadoProyecto.CONFIRMADO);
+        proyectoPublicado.setAceptaPostulacionGral(true);
+
+        RequerimientoGralProyecto rg = requerimientoGral(
+                10L, Profesion.builder().idProfesion(2L).nombre("Modelo").build(), 1);
+        prepararNoMiembroProyectoPublicado(List.of(rg));
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isTrue();
+    }
+
+    @Test
+    void obtener_proyectoNoAceptaPostulacionGral_noPuedePostularse() {
+        perfil.setProfesion(Profesion.builder().idProfesion(2L).build());
+        proyectoPublicado.setAceptaPostulacionGral(false);
+
+        RequerimientoGralProyecto rg = requerimientoGral(
+                10L, Profesion.builder().idProfesion(2L).nombre("Modelo").build(), 1);
+        prepararNoMiembroProyectoPublicado(List.of(rg));
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
+        assertThat(response.elegibleParaPostularse()).isFalse();
+    }
+
+    private RequerimientoGralProyecto requerimientoGral(
+            Long idRequerimientoGral,
+            Profesion profesion,
+            int cantidad) {
+
+        return RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(idRequerimientoGral)
+                .proyecto(proyectoPublicado)
+                .profesion(profesion)
+                .cantidad(cantidad)
+                .descripcion("Requerimiento " + idRequerimientoGral)
+                .build();
+    }
+
+    private void prepararNoMiembroProyectoPublicado(
+            List<RequerimientoGralProyecto> requerimientos) {
+
+        prepararPerfil();
+        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
+        when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
+                .thenReturn(Optional.empty());
+        when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
+        when(planificacionRepository.findByProyectoIdProyecto(200L)).thenReturn(Optional.empty());
+        when(objetivoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
+        when(moodboardRepository.findByProyectoIdProyecto(200L)).thenReturn(Optional.empty());
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(200L))
+                .thenReturn(requerimientos);
+    }
+
+    private void prepararMiembroActivoProyectoPublicado(
+            List<RequerimientoGralProyecto> requerimientos) {
+
+        prepararPerfil();
+        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+
+        MiembroProyecto miembro = MiembroProyecto.builder()
+                .proyecto(proyectoPublicado)
+                .perfil(perfil)
+                .rolProyecto(RolProyecto.builder()
+                        .codigo("MIEMBRO")
+                        .nombre("Miembro de proyecto")
+                        .build())
+                .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .build();
+
+        when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
+                .thenReturn(Optional.of(miembro));
+        when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of(miembro));
+        when(planificacionRepository.findByProyectoIdProyecto(200L)).thenReturn(Optional.empty());
+        when(objetivoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
+        when(moodboardRepository.findByProyectoIdProyecto(200L)).thenReturn(Optional.empty());
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(200L))
+                .thenReturn(requerimientos);
     }
 }

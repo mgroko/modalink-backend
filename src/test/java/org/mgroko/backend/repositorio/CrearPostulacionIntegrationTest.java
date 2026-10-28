@@ -33,6 +33,8 @@ import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.notificaciones.dto.NotificacionResponse;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.PostulacionBusquedaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
@@ -112,6 +114,8 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private BloqueoAgendaRepository bloqueoAgendaRepository;
     @Autowired
+    private NotificacionService notificacionService;
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     private record PerfilCreado(Long idUsuario, Long idPerfil) {}
@@ -153,6 +157,60 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                   AND entidad_id = ?
                 """, Long.class, director.idUsuario(), respuesta.idPostulacion());
         assertThat(notificaciones).isEqualTo(1L);
+    }
+
+    @Test
+    void notificacionDePostulacionGral_incluyeIdProyecto() {
+        PerfilCreado director = crearPerfil(
+                "uc26.notif.dir1@example.com", "88826101", "Directora Notif Gral", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc26.notif.pos1@example.com", "88826102", "Postulante Notif Gral", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(director, "Desfile Notif Gral");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        PaginaResponse<NotificacionResponse> pagina = notificacionService.listar(
+                director.idUsuario(), director.idPerfil(), 0, 20);
+
+        assertThat(pagina.contenido())
+                .filteredOn(n -> NotificacionService.TIPO_POSTULACION_RECIBIDA.equals(n.tipo()))
+                .singleElement()
+                .satisfies(n -> {
+                    assertThat(n.entidadTipo()).isEqualTo("POSTULACION_GRAL");
+                    assertThat(n.idProyecto()).isEqualTo(publicado.idProyecto());
+                });
+    }
+
+    @Test
+    void notificacionDePostulacionActividad_incluyeIdProyecto() {
+        PerfilCreado director = crearPerfil(
+                "uc26.notif.dir2@example.com", "88826103", "Directora Notif Act", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc26.notif.pos2@example.com", "88826104", "Postulante Notif Act", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(director, "Desfile Notif Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        confirmarInicioDelProyecto(publicado.idProyecto());
+
+        crearPostulacionService.darDeAltaPostulacionActividad(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        PaginaResponse<NotificacionResponse> pagina = notificacionService.listar(
+                director.idUsuario(), director.idPerfil(), 0, 20);
+
+        assertThat(pagina.contenido())
+                .filteredOn(n -> NotificacionService.TIPO_POSTULACION_RECIBIDA.equals(n.tipo()))
+                .singleElement()
+                .satisfies(n -> {
+                    assertThat(n.entidadTipo()).isEqualTo("POSTULACION_ACTIVIDAD");
+                    assertThat(n.idProyecto()).isEqualTo(publicado.idProyecto());
+                });
     }
 
     @Test
@@ -842,7 +900,10 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
         Long idRequerimiento = requerimientoDeActividad(publicado);
 
         LocalDateTime inicio = confirmarInicioDelProyecto(publicado.idProyecto());
-        bloquearTodaLaJornada(postulante, inicio);
+        LocalDate fechaEntrega = jdbcTemplate.queryForObject("""
+                SELECT p.fecha_entrega FROM planificacion p WHERE p.id_proyecto = ?
+                """, LocalDate.class, publicado.idProyecto());
+        bloquearTodoElRangoFactible(postulante, inicio, fechaEntrega.atTime(LocalTime.of(23, 59)));
 
         assertThatThrownBy(() -> crearPostulacionService.darDeAltaPostulacionActividad(
                 postulante.idUsuario(), postulante.idPerfil(),
@@ -1002,13 +1063,22 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
         return inicio;
     }
 
-    private void bloquearTodaLaJornada(PerfilCreado perfil, LocalDateTime inicio) {
+    /**
+     * Bloquea toda la ventana factible (desde el inicio confirmado hasta la
+     * fecha de entrega) para que no quede ningún hueco en la jornada. La regla
+     * de disponibilidad acepta cualquier hueco dentro del rango factible, no
+     * solo el primer día.
+     */
+    private void bloquearTodoElRangoFactible(
+            PerfilCreado perfil,
+            LocalDateTime inicio,
+            LocalDateTime fin) {
         Agenda agenda = agendaRepository.findByUsuario_IdUsuario(perfil.idUsuario()).orElseThrow();
 
         bloqueoAgendaRepository.saveAndFlush(BloqueoAgenda.builder()
                 .agenda(agenda)
                 .fechaHoraInicio(inicio)
-                .fechaHoraFin(inicio.plusHours(9))
+                .fechaHoraFin(fin)
                 .motivo("Jornada completa ocupada")
                 .build());
     }

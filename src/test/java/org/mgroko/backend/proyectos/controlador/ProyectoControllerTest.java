@@ -238,7 +238,8 @@ class ProyectoControllerTest {
                 List.of(1L, 4L),
                 false,
                 0L,
-                2);
+                2,
+                false);
         var moodboardResp = new org.mgroko.backend.proyectos.dto.MoodboardResponse(
                 77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0), List.of());
 
@@ -279,6 +280,7 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.requerimientosGral[0].caracteristicas[0].idCaracteristica").value(5))
                 .andExpect(jsonPath("$.requerimientosGral[0].caracteristicas[0].valores[0]").value(1))
                 .andExpect(jsonPath("$.requerimientosGral[0].habilidades[0]").value(1))
+                .andExpect(jsonPath("$.requerimientosGral[0].puedePostularse").value(false))
                 .andExpect(jsonPath("$.moodboard.idMoodboard").value(77L))
                 .andExpect(jsonPath("$.moodboard.descripcion").value("Paleta fría"));
     }
