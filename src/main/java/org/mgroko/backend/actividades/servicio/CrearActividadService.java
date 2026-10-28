@@ -125,11 +125,7 @@ public class CrearActividadService {
                 guardada,
                 requerimientos,
                 List.of(),
-                calculo.viable() == null
-                        ? org.mgroko.backend.modelo.enums.EstadoCronograma.SIN_FECHA_ENTREGA
-                        : (Boolean.TRUE.equals(calculo.viable())
-                                ? org.mgroko.backend.modelo.enums.EstadoCronograma.NORMAL
-                                : org.mgroko.backend.modelo.enums.EstadoCronograma.ALERTA_DESBORDE),
+                cronogramaService.estadoDe(calculo),
                 calculo,
                 cronogramaService.inicioEfectivo(planificacion),
                 cronogramaService.esTentativa(planificacion));

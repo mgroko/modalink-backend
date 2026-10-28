@@ -5,6 +5,8 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
+import org.mgroko.backend.actividades.dto.ActividadCronogramaResponse;
+import org.mgroko.backend.actividades.dto.ActividadPlanificacionResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.ActividadVinculadaResponse;
 import org.mgroko.backend.actividades.dto.CalculoCpm;
@@ -21,6 +23,7 @@ import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 
 public final class ActividadMapper {
@@ -50,13 +53,19 @@ public final class ActividadMapper {
     }
 
     public static RequerimientoActividadResumenResponse toRequerimientoResumen(
-            RequerimientoActividad requerimiento) {
+            RequerimientoActividad requerimiento,
+            CupoRequerimiento cupo,
+            boolean puedePostularse) {
         return new RequerimientoActividadResumenResponse(
                 requerimiento.getIdRequerimiento(),
                 requerimiento.getCantidad(),
                 requerimiento.getDescripcion(),
                 requerimiento.getProfesion() != null ? requerimiento.getProfesion().getIdProfesion() : null,
-                requerimiento.getProfesion() != null ? requerimiento.getProfesion().getNombre() : null
+                requerimiento.getProfesion() != null ? requerimiento.getProfesion().getNombre() : null,
+                cupo.cubiertos(),
+                cupo.faltantes(),
+                cupo.satisfecho(),
+                puedePostularse
         );
     }
 
@@ -174,5 +183,55 @@ public final class ActividadMapper {
                 profesion != null ? profesion.getIdProfesion() : null,
                 profesion != null ? profesion.getNombre() : null
         );
+    }
+
+    public static ActividadPlanificacionResponse toPlanificacionResponse(
+            Actividad actividad,
+            List<ActividadVinculadaResponse> predecesoras,
+            List<ProfesionalAsignadoResponse> responsables) {
+
+        return new ActividadPlanificacionResponse(
+                actividad.getIdActividad(),
+                actividad.getNombre(),
+                actividad.getDescripcion(),
+                actividad.getDuracionMinutos(),
+                actividad.getEstado() != null ? actividad.getEstado().name() : null,
+                actividad.getFechaHoraInicio(),
+                actividad.getFechaHoraFin(),
+                predecesoras,
+                responsables);
+    }
+
+    public static ActividadCronogramaResponse toCronogramaResponse(
+            Actividad actividad,
+            NodoCpm nodo,
+            LocalDateTime inicioProyeccion,
+            boolean tentativo,
+            List<ActividadVinculadaResponse> predecesoras) {
+
+        LocalDateTime inicioProyectado = inicioProyeccion.plusMinutes(nodo.inicioTemprano());
+        LocalDateTime finProyectado = inicioProyeccion.plusMinutes(nodo.finTemprano());
+        LocalDateTime finConHolgura = inicioProyeccion.plusMinutes(nodo.finTardioMakespan());
+
+        return new ActividadCronogramaResponse(
+                actividad.getIdActividad(),
+                actividad.getNombre(),
+                actividad.getDescripcion(),
+                actividad.getEstado() != null ? actividad.getEstado().name() : null,
+                actividad.getDuracionMinutos(),
+                predecesoras,
+                inicioProyectado,
+                finProyectado,
+                finConHolgura,
+                nodo.critica(),
+                nodo.enRutaCritica(),
+                nodo.holguraMakespan(),
+                nodo.holguraEntrega(),
+                nodo.ventanaInicio(),
+                nodo.ventanaEjecucion(),
+                nodo.conflicto(),
+                nodo.motivoConflicto(),
+                nodo.fijo(),
+                tentativo);
     }
 }

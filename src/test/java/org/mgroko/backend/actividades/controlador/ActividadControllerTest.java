@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
+import org.mgroko.backend.actividades.dto.ActividadPlanificacionResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
@@ -26,6 +27,7 @@ import org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalid
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
+import org.mgroko.backend.actividades.servicio.ListarActividadesPlanificacionService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerDisponibilidadActividadService;
@@ -70,6 +72,9 @@ class ActividadControllerTest {
 
     @MockitoBean
     private ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService;
+
+    @MockitoBean
+    private ListarActividadesPlanificacionService listarActividadesPlanificacionService;
 
     @MockitoBean
     private EliminarActividadService eliminarActividadService;
@@ -317,6 +322,41 @@ class ActividadControllerTest {
 
         verify(obtenerDisponibilidadActividadService, never()).obtener(
                 any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void listarPlanificacion_conPerfilActivo_devuelveTablaConResponsables() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        ProfesionalAsignadoResponse responsable = new ProfesionalAsignadoResponse(
+                77L, 88L, 10L, 1L, "Luna", 2L, "Modelo");
+        ActividadPlanificacionResponse fila = new ActividadPlanificacionResponse(
+                55L,
+                "Montaje",
+                "Montar escenario",
+                90,
+                "PENDIENTE",
+                LocalDateTime.of(2026, 11, 1, 22, 29),
+                LocalDateTime.of(2026, 11, 1, 23, 59),
+                List.of(),
+                List.of(responsable));
+
+        org.mgroko.backend.common.dto.PaginaResponse<ActividadPlanificacionResponse> pagina =
+                new org.mgroko.backend.common.dto.PaginaResponse<>(
+                        List.of(fila), 0, 20, 1, 1, true, true);
+
+        when(listarActividadesPlanificacionService.listar(
+                eq(1L), eq(10L), eq(100L), any(BuscarActividadesFiltro.class),
+                eq(0), eq(20), eq(false)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/proyectos/100/actividades").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].idActividad").value(55L))
+                .andExpect(jsonPath("$.contenido[0].responsables[0].nombreArtistico").value("Luna"))
+                .andExpect(jsonPath("$.contenido[0].critica").doesNotExist())
+                .andExpect(jsonPath("$.contenido[0].holguraMakespan").doesNotExist());
     }
 
     @Test

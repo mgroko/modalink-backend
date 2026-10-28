@@ -1,8 +1,10 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.mgroko.backend.modelo.AsignacionActividad;
+import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +22,18 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
           AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
     """)
     List<AsignacionActividad> findActivasByActividadId(@Param("idActividad") Long idActividad);
+
+    @Query("""
+        SELECT a FROM AsignacionActividad a
+        JOIN FETCH a.miembro m
+        JOIN FETCH m.perfil p
+        JOIN FETCH p.usuario
+        JOIN FETCH p.profesion
+        WHERE a.actividad.idActividad IN :idsActividades
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<AsignacionActividad> findActivasByActividadIds(
+            @Param("idsActividades") Collection<Long> idsActividades);
 
     @Query("""
         SELECT a FROM AsignacionActividad a
@@ -69,6 +83,23 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
     """)
     long countActivasPorRequerimientoActividad(
             @Param("idRequerimiento") Long idRequerimiento);
+
+    /**
+     * Cuenta las asignaciones activas de cada requerimiento indicado en una
+     * sola consulta. Los requerimientos sin asignaciones no aparecen en el
+     * resultado; el consumidor debe asumir cero.
+     */
+    @Query("""
+        SELECT aa.requerimientoActividad.idRequerimiento AS idRequerimiento,
+               COUNT(aa) AS cubiertos
+        FROM AsignacionActividad aa
+        JOIN aa.miembro m
+        WHERE aa.requerimientoActividad.idRequerimiento IN :ids
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        GROUP BY aa.requerimientoActividad.idRequerimiento
+    """)
+    List<CubiertosPorRequerimiento> countActivasPorRequerimientoIds(
+            @Param("ids") Collection<Long> ids);
 
     @Query("""
         SELECT aa FROM AsignacionActividad aa

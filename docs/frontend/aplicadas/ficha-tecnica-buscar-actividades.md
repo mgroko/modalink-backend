@@ -1,11 +1,18 @@
 # Ficha Técnica Frontend: Buscar Actividades (UC-52)
 
+> **Nota (2026-10-27):** este endpoint sigue siendo la búsqueda de actividades
+> para candidatos y otras vistas. La pestaña **Planificación** usa
+> `GET /proyectos/{idProyecto}/actividades` (tabla liviana con responsables) y la
+> pestaña **Cronograma** usa `GET /proyectos/{idProyecto}/cronograma`.
+> Ver `ficha-tecnica-planificacion-actividades.md` y
+> `ficha-tecnica-visualizar-cronograma.md`.
+
 Especificación de la API para buscar actividades dentro de la planificación de un
 proyecto, aplicando filtros opcionales, paginación y la misma regla de visibilidad
 que el detalle del proyecto (UC-25).
 
 **Estado backend:** implementado y testeado.  
-**Última actualización:** 2026-10-21.
+**Última actualización:** 2026-10-27.
 
 ---
 

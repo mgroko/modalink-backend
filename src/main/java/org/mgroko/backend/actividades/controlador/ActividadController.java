@@ -3,6 +3,7 @@ package org.mgroko.backend.actividades.controlador;
 import java.util.List;
 
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
+import org.mgroko.backend.actividades.dto.ActividadPlanificacionResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
@@ -10,6 +11,7 @@ import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
+import org.mgroko.backend.actividades.servicio.ListarActividadesPlanificacionService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerDisponibilidadActividadService;
@@ -40,6 +42,7 @@ public class ActividadController {
     private final ModificarActividadService modificarActividadService;
     private final ObtenerActividadService obtenerActividadService;
     private final ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService;
+    private final ListarActividadesPlanificacionService listarActividadesPlanificacionService;
     private final EliminarActividadService eliminarActividadService;
 
     public ActividadController(
@@ -48,12 +51,14 @@ public class ActividadController {
             ModificarActividadService modificarActividadService,
             ObtenerActividadService obtenerActividadService,
             ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService,
+            ListarActividadesPlanificacionService listarActividadesPlanificacionService,
             EliminarActividadService eliminarActividadService) {
         this.buscarActividadService = buscarActividadService;
         this.crearActividadService = crearActividadService;
         this.modificarActividadService = modificarActividadService;
         this.obtenerActividadService = obtenerActividadService;
         this.obtenerDisponibilidadActividadService = obtenerDisponibilidadActividadService;
+        this.listarActividadesPlanificacionService = listarActividadesPlanificacionService;
         this.eliminarActividadService = eliminarActividadService;
     }
 
@@ -168,6 +173,31 @@ public class ActividadController {
 
         return ResponseEntity.ok(obtenerDisponibilidadActividadService.obtener(
                 idUsuario, idPerfilActivo, idProyecto, idActividad, idPerfil));
+    }
+
+    // UC-52: Tabla de Planificación (actividades + responsables, sin CPM).
+    @GetMapping("/proyectos/{idProyecto}/actividades")
+    public ResponseEntity<PaginaResponse<ActividadPlanificacionResponse>> listarPlanificacion(
+            @PathVariable Long idProyecto,
+            @ModelAttribute BuscarActividadesFiltro filtro,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean todos,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        return ResponseEntity.ok(listarActividadesPlanificacionService.listar(
+                idUsuario, idPerfilActivo, idProyecto, filtro, page, size, todos));
     }
 
     // UC-52: Buscar actividades dentro de la planificación de un proyecto

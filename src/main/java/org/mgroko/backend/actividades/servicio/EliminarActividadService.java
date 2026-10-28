@@ -4,7 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent;
@@ -141,7 +140,7 @@ public class EliminarActividadService {
                 postulacionesAfectadas(postulaciones),
                 invitacionesAfectadas(invitaciones));
 
-        reconectarSucesoras(actividad, actividades);
+        ActividadDependencias.reconectarSucesoras(actividadRepository, actividad, actividades);
         actividadRepository.deleteDependenciasByActividadId(idActividad);
         actividadRepository.deleteHitoActividadByActividadId(idActividad);
         postulaciones.forEach(postulacionActividadRepository::delete);
@@ -186,29 +185,6 @@ public class EliminarActividadService {
         }
 
         return normalizado;
-    }
-
-    private void reconectarSucesoras(Actividad actividad, List<Actividad> actividades) {
-        List<Actividad> sucesoras = actividades.stream()
-                .filter(candidata -> !Objects.equals(
-                        candidata.getIdActividad(), actividad.getIdActividad()))
-                .filter(candidata -> candidata.getPredecesoras().stream()
-                        .anyMatch(predecesora -> Objects.equals(
-                                predecesora.getIdActividad(), actividad.getIdActividad())))
-                .toList();
-
-        if (sucesoras.isEmpty()) {
-            return;
-        }
-
-        Set<Actividad> predecesoras = new LinkedHashSet<>(actividad.getPredecesoras());
-        for (Actividad sucesora : sucesoras) {
-            sucesora.getPredecesoras().removeIf(predecesora -> Objects.equals(
-                    predecesora.getIdActividad(), actividad.getIdActividad()));
-            sucesora.getPredecesoras().addAll(predecesoras);
-        }
-
-        actividadRepository.flush();
     }
 
     private List<Long> perfilesAsignados(List<AsignacionActividad> asignaciones) {

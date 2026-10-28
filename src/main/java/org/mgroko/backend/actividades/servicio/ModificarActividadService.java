@@ -133,6 +133,7 @@ public class ModificarActividadService {
                 .orElseThrow(() -> new ActividadNoEncontradaException(idActividad));
 
         validarTransicionEstado(actividad, request.estado());
+        EstadoActividad estadoAnterior = actividad.getEstado();
 
         String nombre = request.nombre().trim();
         if (actividadRepository.existeNombreEnPlanificacionExcluyendo(
@@ -152,15 +153,19 @@ public class ModificarActividadService {
 
         Actividad guardada = guardarActividad(actividad);
 
+        if (estadoAnterior != EstadoActividad.CANCELADA
+                && guardada.getEstado() == EstadoActividad.CANCELADA) {
+            List<Actividad> paraReconectar = actividadRepository
+                    .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
+            ActividadDependencias.reconectarSucesoras(
+                    actividadRepository, guardada, paraReconectar);
+        }
+
         // Fase 2: siempre se evalúa el cronograma, no condicionalmente sobre el inicio
         actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
         var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
-        EstadoCronograma estadoCronograma = calculo.viable() == null
-                ? EstadoCronograma.SIN_FECHA_ENTREGA
-                : (Boolean.TRUE.equals(calculo.viable())
-                        ? EstadoCronograma.NORMAL
-                        : EstadoCronograma.ALERTA_DESBORDE);
+        EstadoCronograma estadoCronograma = cronogramaService.estadoDe(calculo);
 
         List<RequerimientoActividadResponse> requerimientos =
                 requerimientoActividadService.listarPorActividad(idActividad);

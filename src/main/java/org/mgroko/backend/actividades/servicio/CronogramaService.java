@@ -114,10 +114,22 @@ public class CronogramaService {
             return EstadoCronograma.SIN_FECHA_ENTREGA;
         }
 
-        CalculoCpm calculo = calcularProyeccion(planificacion, actividades);
-        return !Boolean.TRUE.equals(calculo.viable())
-                ? EstadoCronograma.ALERTA_DESBORDE
-                : EstadoCronograma.NORMAL;
+        return estadoDe(calcularProyeccion(planificacion, actividades));
+    }
+
+    /**
+     * Deriva el estado del cronograma a partir de un cálculo CPM.
+     *
+     * <p>{@code viable == null} significa que no hay fecha de entrega y no se
+     * puede afirmar si el cronograma entra o no.</p>
+     */
+    public EstadoCronograma estadoDe(CalculoCpm calculo) {
+        if (calculo == null || calculo.viable() == null) {
+            return EstadoCronograma.SIN_FECHA_ENTREGA;
+        }
+        return Boolean.TRUE.equals(calculo.viable())
+                ? EstadoCronograma.NORMAL
+                : EstadoCronograma.ALERTA_DESBORDE;
     }
 
     /**

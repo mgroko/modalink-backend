@@ -77,7 +77,7 @@ public class ObtenerActividadService {
         proyectoSecurityService.validarPermiso(
                 idProyecto,
                 idPerfilActivo,
-                ModificarActividadService.PERMISO_MODIFICAR_ACTIVIDAD);
+                ProyectoSecurityService.PERMISO_VER_PROYECTO);
 
         Actividad actividad = actividadRepository
                 .findByIdActividadAndPlanificacionIdPlanificacion(
@@ -93,11 +93,7 @@ public class ObtenerActividadService {
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
         var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
-        EstadoCronograma estadoCronograma = calculo.viable() == null
-                ? EstadoCronograma.SIN_FECHA_ENTREGA
-                : (Boolean.TRUE.equals(calculo.viable())
-                        ? EstadoCronograma.NORMAL
-                        : EstadoCronograma.ALERTA_DESBORDE);
+        EstadoCronograma estadoCronograma = cronogramaService.estadoDe(calculo);
 
         return ActividadMapper.toResponse(
                 actividad,

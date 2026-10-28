@@ -1,10 +1,10 @@
 package org.mgroko.backend.actividades.servicio;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
 import org.mgroko.backend.actividades.dto.ActividadVinculadaResponse;
@@ -15,11 +15,22 @@ import org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException;
 import org.mgroko.backend.actividades.mapper.ActividadMapper;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Actividad;
+import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.mgroko.backend.repositorio.MiembroProyectoRepository;
+import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.springframework.data.domain.Page;
@@ -33,6 +44,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * UC-52: búsqueda de actividades dentro de la planificación de un proyecto.
+ *
+ * <p>Cada requerimiento expone su cupo y si el perfil activo puede postularse.
+ * La elegibilidad es estructural (estado del proyecto y de la actividad,
+ * profesión, cupo y rol); no incluye disponibilidad de calendario ni valida
+ * postulaciones duplicadas.</p>
  */
 @Service
 public class BuscarActividadService {
@@ -41,16 +57,25 @@ public class BuscarActividadService {
     private final ProyectoRepository proyectoRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
+    private final PerfilRepository perfilRepository;
+    private final MiembroProyectoRepository miembroProyectoRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
 
     public BuscarActividadService(
             ActividadRepository actividadRepository,
             ProyectoRepository proyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
-            ProyectoVisibilidadService proyectoVisibilidadService) {
+            ProyectoVisibilidadService proyectoVisibilidadService,
+            PerfilRepository perfilRepository,
+            MiembroProyectoRepository miembroProyectoRepository,
+            CupoRequerimientoService cupoRequerimientoService) {
         this.actividadRepository = actividadRepository;
         this.proyectoRepository = proyectoRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
+        this.perfilRepository = perfilRepository;
+        this.miembroProyectoRepository = miembroProyectoRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +104,13 @@ public class BuscarActividadService {
         List<Actividad> actividades = resultados.getContent();
 
         Map<Long, List<RequerimientoActividadResumenResponse>> requerimientos =
-                buscarRequerimientos(actividades);
+                actividades.isEmpty()
+                        ? Map.of()
+                        : buscarRequerimientos(
+                                actividades,
+                                proyecto,
+                                cargarContextoElegibilidad(idProyecto, idPerfilActivo));
+
         Map<Long, List<ActividadVinculadaResponse>> predecesoras =
                 buscarPredecesoras(actividades);
 
@@ -97,7 +128,29 @@ public class BuscarActividadService {
         return PaginaResponse.fromPage(pagina);
     }
 
-    private void validarRangoDuracion(BuscarActividadesFiltro filtro) {
+    private ContextoElegibilidad cargarContextoElegibilidad(
+            Long idProyecto,
+            Long idPerfilActivo) {
+
+        Perfil perfil = perfilRepository.findByIdConProfesion(idPerfilActivo)
+                .orElseThrow(PerfilNoEncontradoException::new);
+
+        Long idProfesionPerfil = perfil.getProfesion() != null
+                ? perfil.getProfesion().getIdProfesion()
+                : null;
+
+        MiembroProyecto membresia = miembroProyectoRepository
+                .findMiembroActivoConRol(idProyecto, idPerfilActivo)
+                .orElse(null);
+
+        boolean puedeSerPostulante = membresia == null
+                || RolProyectoUsuario.desde(membresia.getRolProyecto())
+                        == RolProyectoUsuario.MIEMBRO;
+
+        return new ContextoElegibilidad(idProfesionPerfil, puedeSerPostulante);
+    }
+
+    static void validarRangoDuracion(BuscarActividadesFiltro filtro) {
         if (filtro == null) {
             return;
         }
@@ -127,7 +180,9 @@ public class BuscarActividadService {
     }
 
     private Map<Long, List<RequerimientoActividadResumenResponse>> buscarRequerimientos(
-            List<Actividad> actividades) {
+            List<Actividad> actividades,
+            Proyecto proyecto,
+            ContextoElegibilidad contexto) {
 
         List<Long> ids = actividades.stream()
                 .map(Actividad::getIdActividad)
@@ -137,13 +192,52 @@ public class BuscarActividadService {
             return Map.of();
         }
 
-        return requerimientoActividadRepository.findConProfesionByActividadIds(ids).stream()
-                .collect(Collectors.groupingBy(
-                        requerimiento -> requerimiento.getActividad().getIdActividad(),
-                        HashMap::new,
-                        Collectors.mapping(
-                                ActividadMapper::toRequerimientoResumen,
-                                Collectors.toList())));
+        List<RequerimientoActividad> requerimientos =
+                requerimientoActividadRepository.findConProfesionByActividadIds(ids);
+
+        if (requerimientos.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, CupoRequerimiento> cupos =
+                cupoRequerimientoService.calcularActividades(requerimientos);
+
+        boolean proyectoHabilitado = proyecto.getEstado() == EstadoProyecto.PUBLICADO
+                || proyecto.getEstado() == EstadoProyecto.CONFIRMADO;
+
+        Map<Long, List<RequerimientoActividadResumenResponse>> resultado = new HashMap<>();
+
+        for (RequerimientoActividad requerimiento : requerimientos) {
+            CupoRequerimiento cupo = cupos.get(requerimiento.getIdRequerimiento());
+            if (cupo == null) {
+                int cantidad = requerimiento.getCantidad() != null
+                        ? requerimiento.getCantidad()
+                        : 0;
+                cupo = new CupoRequerimiento(cantidad, 0, cantidad, false);
+            }
+
+            boolean profesionCoincide = contexto.idProfesionPerfil() != null
+                    && requerimiento.getProfesion() != null
+                    && contexto.idProfesionPerfil().equals(
+                            requerimiento.getProfesion().getIdProfesion());
+
+            boolean actividadPendiente = requerimiento.getActividad() != null
+                    && EstadoActividad.PENDIENTE.equals(requerimiento.getActividad().getEstado());
+
+            boolean puedePostularse = proyectoHabilitado
+                    && actividadPendiente
+                    && profesionCoincide
+                    && cupo.faltantes() > 0
+                    && contexto.puedeSerPostulante();
+
+            resultado.computeIfAbsent(
+                            requerimiento.getActividad().getIdActividad(),
+                            id -> new ArrayList<>())
+                    .add(ActividadMapper.toRequerimientoResumen(
+                            requerimiento, cupo, puedePostularse));
+        }
+
+        return resultado;
     }
 
     private Map<Long, List<ActividadVinculadaResponse>> buscarPredecesoras(
@@ -169,5 +263,8 @@ public class BuscarActividadService {
         }
 
         return resultado;
+    }
+
+    private record ContextoElegibilidad(Long idProfesionPerfil, boolean puedeSerPostulante) {
     }
 }

@@ -10,7 +10,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.actividades.dto.CrearRequerimientoActividadRequest;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.dto.ModificarRequerimientoActividadRequest;
@@ -39,7 +42,6 @@ import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
-import org.mgroko.backend.modelo.enums.EstadoCronograma;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
@@ -156,8 +158,18 @@ class ModificarActividadServiceTest {
                 .thenReturn(List.of());
         when(asignacionActividadRepository.findActivasByActividadId(55L))
                 .thenReturn(List.of());
-        // Fase 2: mock de evaluar en lugar de recalcularTolerandoDesborde
-        when(cronogramaService.evaluar(any(), any())).thenReturn(EstadoCronograma.NORMAL);
+        // Fase 2: la respuesta se arma con el cálculo CPM, no con evaluar()
+        when(cronogramaService.calcularProyeccion(any(), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+        when(cronogramaService.estadoDe(any())).thenAnswer(invocation -> {
+            CalculoCpm calculo = invocation.getArgument(0);
+            if (calculo.viable() == null) {
+                return org.mgroko.backend.modelo.enums.EstadoCronograma.SIN_FECHA_ENTREGA;
+            }
+            return Boolean.TRUE.equals(calculo.viable())
+                    ? org.mgroko.backend.modelo.enums.EstadoCronograma.NORMAL
+                    : org.mgroko.backend.modelo.enums.EstadoCronograma.ALERTA_DESBORDE;
+        });
     }
 
     @Test
@@ -183,7 +195,7 @@ class ModificarActividadServiceTest {
             assertThat(profesional.nombreArtistico()).isEqualTo("Luna");
             assertThat(profesional.nombreProfesion()).isEqualTo("Modelo");
         });
-        verify(cronogramaService).evaluar(eq(planificacion), any());
+        verify(cronogramaService).calcularProyeccion(eq(planificacion), any());
 
         ArgumentCaptor<ActividadModificadaEvent> evento =
                 ArgumentCaptor.forClass(ActividadModificadaEvent.class);
@@ -196,8 +208,8 @@ class ModificarActividadServiceTest {
 
     @Test
     void modificar_conDesborde_devuelveActividadPersistidaYAlerta() {
-        when(cronogramaService.evaluar(planificacion, List.of(actividad)))
-                .thenReturn(EstadoCronograma.ALERTA_DESBORDE);
+        when(cronogramaService.calcularProyeccion(planificacion, List.of(actividad)))
+                .thenReturn(new CalculoCpm(Map.of(), 600L, 300L, false, List.of()));
 
         ActividadResponse response = modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
@@ -205,7 +217,7 @@ class ModificarActividadServiceTest {
 
         assertThat(response.estadoCronograma()).isEqualTo("ALERTA_DESBORDE");
         verify(actividadRepository).saveAndFlush(actividad);
-        verify(cronogramaService).evaluar(eq(planificacion), any());
+        verify(cronogramaService).calcularProyeccion(eq(planificacion), any());
     }
 
     @Test
@@ -427,6 +439,41 @@ class ModificarActividadServiceTest {
 
         assertThat(response.estado()).isEqualTo("CANCELADA");
         verify(actividadRepository).saveAndFlush(actividad);
+    }
+
+    @Test
+    void modificar_alCancelar_reconectaSucesorasAPredecesoras() {
+        Actividad predecesora = Actividad.builder()
+                .idActividad(1L)
+                .nombre("Bocetos")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.PENDIENTE)
+                .planificacion(planificacion)
+                .build();
+
+        Actividad sucesora = Actividad.builder()
+                .idActividad(60L)
+                .nombre("Fitting")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.PENDIENTE)
+                .planificacion(planificacion)
+                .predecesoras(new HashSet<>(Set.of(actividad)))
+                .build();
+
+        when(actividadRepository.findByIdsAndPlanificacion(any(), eq(50L)))
+                .thenReturn(List.of(predecesora));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(predecesora, actividad, sucesora));
+
+        modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.CANCELADA,
+                        List.of(1L), null));
+
+        assertThat(sucesora.getPredecesoras())
+                .extracting(Actividad::getIdActividad)
+                .containsExactly(1L);
+        verify(actividadRepository).flush();
     }
 
     @Test

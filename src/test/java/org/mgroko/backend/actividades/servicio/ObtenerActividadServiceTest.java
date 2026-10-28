@@ -8,12 +8,14 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
@@ -22,7 +24,6 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
-import org.mgroko.backend.modelo.enums.EstadoCronograma;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.ActividadRepository;
@@ -115,7 +116,8 @@ class ObtenerActividadServiceTest {
                 .thenReturn(List.of(asignacion));
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(actividad));
-        when(cronogramaService.evaluar(any(), any())).thenReturn(EstadoCronograma.NORMAL);
+        when(cronogramaService.calcularProyeccion(any(), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
     }
 
     @Test
@@ -130,6 +132,6 @@ class ObtenerActividadServiceTest {
             assertThat(profesional.nombreProfesion()).isEqualTo("Modelo");
         });
         verify(proyectoSecurityService).validarPermiso(
-                100L, 10L, ModificarActividadService.PERMISO_MODIFICAR_ACTIVIDAD);
+                100L, 10L, ProyectoSecurityService.PERMISO_VER_PROYECTO);
     }
 }

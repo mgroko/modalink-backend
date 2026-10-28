@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service("proyectoSecurity")
 public class ProyectoSecurityService {
 
+    public static final String PERMISO_VER_PROYECTO = "VER_PROYECTO";
+
     private final MiembroProyectoRepository miembroProyectoRepository;
 
     public ProyectoSecurityService(MiembroProyectoRepository miembroProyectoRepository) {

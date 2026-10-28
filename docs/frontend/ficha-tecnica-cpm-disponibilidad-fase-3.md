@@ -5,7 +5,7 @@
 **Proyecto:** ModaLink  
 **Backend:** Spring Boot  
 **Fecha de referencia:** 2026-10-27  
-**Estado:** backend CPM/disponibilidad hasta fase 3; **endpoint HTTP de consulta de disponibilidad implementado**; **UC-34 (aceptación de postulaciones) implementado**; UC-60 (confirmación de proyecto) pendiente.
+**Estado:** backend CPM/disponibilidad hasta fase 3; **endpoint HTTP de consulta de disponibilidad implementado**; **pestañas Planificación y Cronograma implementadas en backend**; **UC-34 (aceptación de postulaciones) implementado**; UC-60 (confirmación de proyecto) pendiente.
 
 ---
 
@@ -284,7 +284,7 @@ Si no hay disponibilidad, el endpoint responde `409` y no crea membresía ni
 asignación. Un director no puede ser aceptado como postulante de actividad.
 
 Para el contrato completo de aceptación/rechazo y la UI de gestión, ver
-[`ficha-tecnica-gestionar-postulaciones.md`](./ficha-tecnica-gestionar-postulaciones.md).
+[`ficha-tecnica-gestionar-postulaciones.md`](./aplicadas/ficha-tecnica-gestionar-postulaciones.md).
 
 ---
 
@@ -424,6 +424,49 @@ Reglas del endpoint:
 La respuesta es el `ResultadoDisponibilidad` descrito en la sección 6. Los
 huecos de `miembros[].huecos` se serializan como `{ "inicio": "...", "fin":
 "..." }`; no se expone el campo derivado `minutos`.
+
+#### Pestaña Planificación
+
+```http
+GET /proyectos/{idProyecto}/actividades
+```
+
+- Acceso: `VER_PROYECTO` (miembros activos del proyecto).
+- Tabla liviana: datos básicos, fechas persistidas, predecesoras y
+  `responsables` (perfiles activos en `asignacion_actividad`).
+- No calcula CPM. No incluye `critica`, `holgura`, `inicioProyectado` ni
+  `finProyectado`.
+- Filtros y paginación en servidor. Orden topológico por dependencias con
+  desempate por id de actividad.
+- Las actividades canceladas se listan con `estado = "CANCELADA"`.
+- La búsqueda de candidatos sigue siendo
+  `GET /proyectos/{idProyecto}/actividades/buscar` (visibilidad, sin
+  responsables).
+
+Ver [`ficha-tecnica-planificacion-actividades.md`](./aplicadas/ficha-tecnica-planificacion-actividades.md).
+
+#### Pestaña Cronograma
+
+```http
+GET /proyectos/{idProyecto}/cronograma
+```
+
+- Acceso: `VER_PROYECTO`.
+- Devuelve `resumen`, `actividades` para el Gantt y la tabla CPM, y
+  `conflictos`.
+- Calcula el CPM sobre todas las actividades de la planificación excepto
+  `CANCELADA`; las canceladas no aparecen en este endpoint.
+- `resumen.rutaCritica` viene ordenado por inicio temprano.
+- `resumen.margenMinutos` es la fuente del margen hasta la entrega; no
+  recalcularlo desde fechas.
+- `actividades[].finConHolgura` es el fin de la barra clara del Gantt
+  (`finProyectado + holguraMakespan`). No usar `rangoEjecucion` para esa barra.
+- Los tooltips pueden usar `holguraEntrega`, `rangoInicio`, `rangoEjecucion`,
+  `conflicto`, `motivoConflicto`, `fijo` y `tentativo`.
+- El detalle completo al hacer click en una barra se obtiene con
+  `GET /proyectos/{idProyecto}/actividades/{idActividad}` (`VER_PROYECTO`).
+
+Ver [`ficha-tecnica-visualizar-cronograma.md`](./aplicadas/ficha-tecnica-visualizar-cronograma.md).
 
 ### Pendiente de exponer o cerrar
 
