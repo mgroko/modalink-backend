@@ -24,7 +24,7 @@ public class Actividad {
     @Builder.Default
     private EstadoActividad estado = EstadoActividad.PENDIENTE;
 
-    @Column(name = "nombre", nullable = false, length = 20)
+    @Column(name = "nombre", nullable = false, length = 100)
     private String nombre;
 
     @Column(name = "descripcion", length = 200)

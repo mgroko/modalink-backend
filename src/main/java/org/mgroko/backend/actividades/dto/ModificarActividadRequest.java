@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 public record ModificarActividadRequest(
         @NotBlank(message = "El nombre de la actividad es obligatorio.")
-        @Size(max = 20, message = "El nombre no puede superar los 20 caracteres.")
+        @Size(max = 100, message = "El nombre no puede superar los 100 caracteres.")
         String nombre,
 
         @Size(max = 200, message = "La descripcion no puede superar los 200 caracteres.")
