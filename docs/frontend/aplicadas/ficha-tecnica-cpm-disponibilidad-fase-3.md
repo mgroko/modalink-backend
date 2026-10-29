@@ -5,7 +5,7 @@
 **Proyecto:** ModaLink  
 **Backend:** Spring Boot  
 **Fecha de referencia:** 2026-10-27  
-**Estado:** backend CPM/disponibilidad hasta fase 3; **endpoint HTTP de consulta de disponibilidad implementado**; **pestañas Planificación y Cronograma implementadas en backend**; **UC-34 (aceptación de postulaciones) implementado**; UC-60 (confirmación de proyecto) pendiente.
+**Estado:** backend CPM/disponibilidad hasta fase 3; **endpoint HTTP de consulta de disponibilidad implementado**; **pestañas Planificación y Cronograma implementadas en backend**; **UC-34 (aceptación de postulaciones) implementado**; **UC-60 (confirmación de proyecto) implementado**.
 
 ---
 
@@ -475,7 +475,8 @@ Ver [`ficha-tecnica-visualizar-cronograma.md`](./aplicadas/ficha-tecnica-visuali
 - integración del endpoint con el router/servicio frontend;
 - revalidación definitiva durante UC-70 para asignaciones fuera del flujo de
   postulación;
-- confirmación de proyecto de fase 4 (UC-60).
+- integración del contrato de UC-60 en el frontend (ver
+  [`ficha-tecnica-confirmar-proyecto.md`](./aplicadas/ficha-tecnica-confirmar-proyecto.md)).
 
 El frontend no debe duplicar el cálculo de disponibilidad en JavaScript: usa
 este endpoint y refresca la consulta después de cambios de proyecto, actividad,
