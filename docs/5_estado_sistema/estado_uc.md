@@ -97,7 +97,7 @@ el historial de git sirva de bitácora adicional.
 | UC-50 | Modificar actividad de planificación | No iniciado |                  |       | Primera iteracion |
 | UC-51 | Eliminar actividad de planificación  | Implementado y testeado | `DELETE /proyectos/{idProyecto}/actividades/{idActividad}?motivo=...` | Sí (unitario + integración) | Primera iteracion. Eliminación física con motivo obligatorio (máx. 200); permiso `ELIMINAR_ACTIVIDAD`; permitido en proyectos Borrador/Publicado/Confirmado; borra dependencias, hitos vinculados, requerimientos, postulaciones, invitaciones y asignaciones; reconecta predecesoras/sucesoras; conserva miembros; notifica a asignados y afectados |
 | UC-52 | Buscar actividades                   | Implementado y testeado | `GET /proyectos/{idProyecto}/actividades` (tabla de Planificación) y `GET /proyectos/{idProyecto}/actividades/buscar` (búsqueda de candidatos) | Sí    | Primera iteracion. La tabla de Planificación es liviana: datos persistidos, responsables activos y predecesoras, sin CPM; acceso `VER_PROYECTO`; filtros en servidor y orden topológico. La búsqueda mantiene visibilidad de proyecto, requerimientos y `puedePostularse`. |
-| UC-60 | Confirmar proyecto                   | No iniciado |                  |       | Primera iteracion |
+| UC-60 | Confirmar proyecto                   | Implementado y testeado | `GET /proyectos/{idProyecto}/confirmacion`, `POST /proyectos/{idProyecto}/confirmar` | Sí (unitario + MVC + integración) | Primera iteracion. Valida requerimientos generales y de actividad, exige al menos una actividad y asignaciones activas, fija `fechaInicio` con el `Clock`, ejecuta CPM + planificador de recursos, persiste horarios, pasa a `Confirmado` y notifica after-commit a los miembros activos. Cierre de postulaciones por requerimiento: un requerimiento satisfecho no acepta postulaciones; si queda insatisfecho por una baja, vuelve a aceptarlas. Trigger diferido: todo proyecto confirmado debe tener todas sus actividades no canceladas con inicio. |
 | UC-70 | Asignar actividad a miembro          | No iniciado |                  |       | Segunda iteracion |
 | UC-72 | Buscar requerimiento general         | No iniciado |                  |       | Segunda iteracion |
 | UC-73 | Buscar requerimiento actividad       | No iniciado |                  |       | Segunda iteracion |
@@ -132,10 +132,10 @@ el historial de git sirva de bitácora adicional.
 | Gestión de usuarios y administración | 15     | 12                      | 0            | 0           | 3           |
 | Gestión de perfiles y disponibilidad | 13     | 9                       | 0            | 0           | 4           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
-| Gestión de proyectos               | 26       | 6                       | 0            | 0           | 20          |
+| Gestión de proyectos               | 26       | 7                       | 0            | 0           | 19          |
 | Gestión de contratos               | 5        | 0                       | 0            | 0           | 5           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **75**   | **27**                  | **0**        | **0**       | **48**      |
+| **Total**                          | **75**   | **28**                  | **0**        | **0**       | **47**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -146,4 +146,4 @@ el historial de git sirva de bitácora adicional.
 > que no forma parte del catálogo numerado; se listan sus filas en el módulo de proyectos solo a efectos de
 > seguimiento y **no se computa** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 27 de 75 casos de uso implementados y testeados = **36,0 %** del catálogo de requisitos.
+**Avance global:** 28 de 75 casos de uso implementados y testeados = **37,3 %** del catálogo de requisitos.

@@ -105,6 +105,53 @@ public class CupoRequerimientoService {
         return resultado;
     }
 
+    /**
+     * Calcula el cupo de varios requerimientos generales con una sola consulta
+     * de conteo. Los requerimientos sin miembros quedan con
+     * {@code cubiertos = 0}.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, CupoRequerimiento> calcularGenerales(
+            Collection<RequerimientoGralProyecto> requerimientos) {
+
+        if (requerimientos == null || requerimientos.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> ids = requerimientos.stream()
+                .filter(Objects::nonNull)
+                .map(RequerimientoGralProyecto::getIdRequerimientoGral)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, Long> cubiertosPorRequerimiento = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (CubiertosPorRequerimiento fila
+                    : miembroProyectoRepository.countActivosPorRequerimientoGralIds(ids)) {
+                if (fila.getIdRequerimiento() != null) {
+                    cubiertosPorRequerimiento.put(
+                            fila.getIdRequerimiento(),
+                            fila.getCubiertos() != null ? fila.getCubiertos() : 0L);
+                }
+            }
+        }
+
+        Map<Long, CupoRequerimiento> resultado = new HashMap<>();
+        for (RequerimientoGralProyecto requerimiento : requerimientos) {
+            if (requerimiento == null || requerimiento.getIdRequerimientoGral() == null) {
+                continue;
+            }
+            resultado.put(
+                    requerimiento.getIdRequerimientoGral(),
+                    construir(
+                            requerimiento.getCantidad(),
+                            cubiertosPorRequerimiento.getOrDefault(
+                                    requerimiento.getIdRequerimientoGral(), 0L)));
+        }
+        return resultado;
+    }
+
     private CupoRequerimiento construir(Integer cantidad, long cubiertos) {
         int requeridos = cantidad != null ? cantidad : 0;
         long cubiertosNormalizados = Math.max(0, cubiertos);

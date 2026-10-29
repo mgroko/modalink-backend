@@ -90,10 +90,15 @@ public class ObtenerActividadService {
         List<AsignacionActividad> asignaciones = asignacionActividadRepository
                 .findActivasByActividadId(idActividad);
 
-        List<Actividad> actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
-        var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
-        EstadoCronograma estadoCronograma = cronogramaService.estadoDe(calculo);
+        var calculo = planificacion.getFechaEntrega() == null
+                ? null
+                : cronogramaService.calcularProyeccion(
+                        planificacion,
+                        actividadRepository.findConPredecesorasByPlanificacion(
+                                planificacion.getIdPlanificacion()));
+        EstadoCronograma estadoCronograma = calculo == null
+                ? EstadoCronograma.SIN_FECHA_ENTREGA
+                : cronogramaService.estadoDe(calculo);
 
         return ActividadMapper.toResponse(
                 actividad,
@@ -103,7 +108,7 @@ public class ObtenerActividadService {
                         .toList(),
                 estadoCronograma,
                 calculo,
-                cronogramaService.inicioEfectivo(planificacion),
-                cronogramaService.esTentativa(planificacion));
+                calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
+                calculo == null || cronogramaService.esTentativa(planificacion));
     }
 }

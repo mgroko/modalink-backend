@@ -3,6 +3,7 @@ package org.mgroko.backend.modelo;
 import jakarta.persistence.*;
 import lombok.*;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.modelo.enums.OrigenInicio;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashSet;
@@ -34,6 +35,10 @@ public class Actividad {
 
     @Column(name = "fecha_hora_inicio")
     private LocalDateTime fechaHoraInicio;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origen_inicio", length = 20)
+    private OrigenInicio origenInicio;
 
     @Column(name = "horario_preferencia_inicio")
     private LocalTime horarioPreferenciaInicio;

@@ -1,10 +1,12 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
+import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -95,4 +97,20 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     long countActivosPorRequerimientoGral(
             @Param("idRequerimientoGral") Long idRequerimientoGral);
+
+    /**
+     * Cuenta los miembros activos vinculados a cada requerimiento general en
+     * una sola consulta. Los requerimientos sin miembros no aparecen; el
+     * consumidor debe asumir cero.
+     */
+    @Query("""
+        SELECT mp.requerimientoGral.idRequerimientoGral AS idRequerimiento,
+               COUNT(mp) AS cubiertos
+        FROM MiembroProyecto mp
+        WHERE mp.requerimientoGral.idRequerimientoGral IN :ids
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        GROUP BY mp.requerimientoGral.idRequerimientoGral
+    """)
+    List<CubiertosPorRequerimiento> countActivosPorRequerimientoGralIds(
+            @Param("ids") Collection<Long> ids);
 }

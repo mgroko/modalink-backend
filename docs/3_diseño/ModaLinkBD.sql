@@ -17,11 +17,13 @@ CREATE TABLE actividad(
     nombre               varchar(20)     NOT NULL,
     duracion_minutos     int4            NOT NULL,
     fecha_hora_inicio    timestamp,
+    origen_inicio         varchar(20),
     horario_preferencia_inicio time,
     descripcion          varchar(200),
     id_planificacion     int8            NOT NULL,
     id_ubicacion         int8,
     CONSTRAINT chk_actividad_duracion CHECK (duracion_minutos > 0),
+    CONSTRAINT chk_actividad_origen_inicio CHECK (origen_inicio IS NULL OR origen_inicio IN ('PROYECTADA', 'CONFIRMADA', 'REAL')),
     CONSTRAINT chk_estado_actividad CHECK (estado IN ('PENDIENTE', 'EN_CURSO', 'FINALIZADA', 'CANCELADA')),
     CONSTRAINT "PK_actividad" PRIMARY KEY (id_actividad)
 )
@@ -257,20 +259,193 @@ CREATE TRIGGER trg_bloqueo_no_solape
     BEFORE INSERT OR UPDATE ON bloqueo_agenda
     FOR EACH ROW EXECUTE FUNCTION fn_validar_solape_bloqueo();
     
--- Impedir liberar un bloqueo cubierto por una actividad confirmada/publicada
--- Adaptado a: margen_actividad_min, calculo de fin por duracion_minutos y estados en mayusculas
-CREATE OR REPLACE FUNCTION fn_validar_bloqueo_no_actividad() RETURNS trigger AS $$
+-- Margen efectivo de una agenda. No hay valor hardcodeado: si la agenda no
+-- tiene margen, se lee la configuracion del sistema.
+CREATE OR REPLACE FUNCTION fn_margen_agenda(p_id_agenda BIGINT) RETURNS INT AS $$
 DECLARE
     v_margen INT;
-    v_id_usuario BIGINT;
+    v_valor VARCHAR;
 BEGIN
     SELECT margen_actividad_min INTO v_margen
-    FROM agenda WHERE id_agenda = OLD.id_agenda;
+    FROM agenda WHERE id_agenda = p_id_agenda;
 
-    v_margen := COALESCE(v_margen, 30);
+    IF v_margen IS NULL THEN
+        SELECT valor INTO v_valor
+        FROM configuracion_sistema
+        WHERE clave = 'AGENDA_MARGEN_ACTIVIDAD_MIN';
 
-    SELECT a.id_usuario INTO v_id_usuario
-    FROM agenda a WHERE a.id_agenda = OLD.id_agenda;
+        IF v_valor IS NULL THEN
+            RAISE EXCEPTION 'Falta AGENDA_MARGEN_ACTIVIDAD_MIN en configuracion_sistema.';
+        END IF;
+
+        BEGIN
+            v_margen := v_valor::INT;
+        EXCEPTION WHEN invalid_text_representation THEN
+            RAISE EXCEPTION 'AGENDA_MARGEN_ACTIVIDAD_MIN no es un entero válido: %', v_valor;
+        END;
+    END IF;
+
+    IF v_margen < 0 THEN
+        RAISE EXCEPTION 'El margen de la agenda no puede ser negativo: %', v_margen;
+    END IF;
+
+    RETURN v_margen;
+END $$ LANGUAGE plpgsql;
+
+-- Valida que un bloque de horario de una persona no se superponga con otra
+-- actividad suya ni con un bloqueo manual. El margen se aplica a la actividad
+-- nueva, igual que en la verificación de disponibilidad del backend.
+CREATE OR REPLACE FUNCTION fn_validar_solape_horario_usuario(
+    p_id_usuario BIGINT,
+    p_id_actividad BIGINT,
+    p_inicio TIMESTAMP,
+    p_duracion INT,
+    p_margen INT
+) RETURNS void AS $$
+BEGIN
+    IF p_inicio IS NULL OR p_duracion IS NULL THEN
+        RETURN;
+    END IF;
+    IF p_duracion <= 0 THEN
+        RAISE EXCEPTION 'La duración de la actividad debe ser mayor que cero.';
+    END IF;
+    IF p_margen < 0 THEN
+        RAISE EXCEPTION 'El margen de la agenda no puede ser negativo: %', p_margen;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM asignacion_actividad aa
+        JOIN actividad act ON act.id_actividad = aa.id_actividad
+        JOIN planificacion pl ON pl.id_planificacion = act.id_planificacion
+        JOIN proyecto p ON p.id_proyecto = pl.id_proyecto
+        JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
+        JOIN perfil pf ON pf.id_perfil = mp.id_perfil
+        WHERE p.estado IN ('PUBLICADO', 'CONFIRMADO')
+          AND mp.estado_participacion = 'ACTIVO'
+          AND pf.id_usuario = p_id_usuario
+          AND act.id_actividad <> p_id_actividad
+          AND act.fecha_hora_inicio IS NOT NULL
+          AND act.estado IN ('PENDIENTE', 'EN_CURSO')
+          AND (p_inicio - (p_margen * INTERVAL '1 minute'))
+              < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (p_margen * INTERVAL '1 minute'))
+          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (p_margen * INTERVAL '1 minute'))
+              > (act.fecha_hora_inicio - (p_margen * INTERVAL '1 minute'))
+    ) THEN
+        RAISE EXCEPTION 'El horario se superpone con otra actividad del mismo profesional.';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM bloqueo_agenda b
+        JOIN agenda ag ON ag.id_agenda = b.id_agenda
+        WHERE ag.id_usuario = p_id_usuario
+          AND (p_inicio - (p_margen * INTERVAL '1 minute')) < b.fecha_hora_fin
+          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (p_margen * INTERVAL '1 minute')) > b.fecha_hora_inicio
+    ) THEN
+        RAISE EXCEPTION 'El horario se superpone con un bloqueo manual del profesional.';
+    END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Se dispara al escribir el horario de una actividad. Como la actividad puede
+-- tener varios asignados, valida el calendario de cada uno.
+CREATE OR REPLACE FUNCTION fn_validar_solape_actividad() RETURNS trigger AS $$
+DECLARE
+    r RECORD;
+    v_margen INT;
+BEGIN
+    IF NEW.fecha_hora_inicio IS NULL OR NEW.duracion_minutos IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    FOR r IN
+        SELECT DISTINCT pf.id_usuario, ag.id_agenda
+        FROM asignacion_actividad aa
+        JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
+        JOIN perfil pf ON pf.id_perfil = mp.id_perfil
+        JOIN agenda ag ON ag.id_usuario = pf.id_usuario
+        JOIN planificacion pl ON pl.id_planificacion = NEW.id_planificacion
+        JOIN proyecto p ON p.id_proyecto = pl.id_proyecto
+        WHERE aa.id_actividad = NEW.id_actividad
+          AND mp.estado_participacion = 'ACTIVO'
+          AND p.estado IN ('PUBLICADO', 'CONFIRMADO')
+    LOOP
+        v_margen := fn_margen_agenda(r.id_agenda);
+        PERFORM fn_validar_solape_horario_usuario(
+            r.id_usuario,
+            NEW.id_actividad,
+            NEW.fecha_hora_inicio,
+            NEW.duracion_minutos,
+            v_margen);
+    END LOOP;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+-- Se dispara al asignar una persona a una actividad que ya tiene horario.
+CREATE OR REPLACE FUNCTION fn_validar_solape_asignacion() RETURNS trigger AS $$
+DECLARE
+    v_inicio TIMESTAMP;
+    v_duracion INT;
+    v_id_usuario BIGINT;
+    v_id_agenda BIGINT;
+    v_margen INT;
+BEGIN
+    SELECT a.fecha_hora_inicio, a.duracion_minutos
+      INTO v_inicio, v_duracion
+      FROM actividad a
+     WHERE a.id_actividad = NEW.id_actividad;
+
+    IF v_inicio IS NULL OR v_duracion IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT pf.id_usuario, ag.id_agenda
+      INTO v_id_usuario, v_id_agenda
+      FROM miembros_proyecto mp
+      JOIN perfil pf ON pf.id_perfil = mp.id_perfil
+      JOIN agenda ag ON ag.id_usuario = pf.id_usuario
+     WHERE mp.id_miembro = NEW.id_miembro;
+
+    IF v_id_usuario IS NULL OR v_id_agenda IS NULL THEN
+        RAISE EXCEPTION 'No se encontró la agenda del profesional asignado.';
+    END IF;
+
+    v_margen := fn_margen_agenda(v_id_agenda);
+    PERFORM fn_validar_solape_horario_usuario(
+        v_id_usuario,
+        NEW.id_actividad,
+        v_inicio,
+        v_duracion,
+        v_margen);
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+-- Bloqueo manual: no puede insertarse, modificarse ni eliminarse si deja un
+-- bloqueo cubriendo una actividad agendada.
+CREATE OR REPLACE FUNCTION fn_validar_bloqueo_no_actividad() RETURNS trigger AS $$
+DECLARE
+    v_id_agenda BIGINT;
+    v_inicio TIMESTAMP;
+    v_fin TIMESTAMP;
+    v_id_usuario BIGINT;
+    v_margen INT;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        v_id_agenda := OLD.id_agenda;
+        v_inicio := OLD.fecha_hora_inicio;
+        v_fin := OLD.fecha_hora_fin;
+    ELSE
+        v_id_agenda := NEW.id_agenda;
+        v_inicio := NEW.fecha_hora_inicio;
+        v_fin := NEW.fecha_hora_fin;
+    END IF;
+
+    SELECT id_usuario INTO v_id_usuario
+    FROM agenda WHERE id_agenda = v_id_agenda;
+
+    v_margen := fn_margen_agenda(v_id_agenda);
 
     IF EXISTS (
         SELECT 1
@@ -283,18 +458,24 @@ BEGIN
         WHERE p.estado IN ('PUBLICADO', 'CONFIRMADO')
           AND mp.estado_participacion = 'ACTIVO'
           AND pf.id_usuario = v_id_usuario
-          -- Fin de actividad calculado a partir de fecha_hora_inicio + duracion_minutos
-          AND OLD.fecha_hora_inicio < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (v_margen * INTERVAL '1 minute'))
-          AND OLD.fecha_hora_fin > (act.fecha_hora_inicio - (v_margen * INTERVAL '1 minute'))
+          AND act.fecha_hora_inicio IS NOT NULL
+          AND act.estado IN ('PENDIENTE', 'EN_CURSO')
+          AND v_inicio < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (v_margen * INTERVAL '1 minute'))
+          AND v_fin > (act.fecha_hora_inicio - (v_margen * INTERVAL '1 minute'))
     ) THEN
-        RAISE EXCEPTION 'No se puede liberar un horario comprometido por una actividad de proyecto.';
+        RAISE EXCEPTION 'El bloqueo se superpone con una actividad agendada del profesional.';
     END IF;
-    RETURN OLD;
+
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
 END $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_bloqueo_no_liberar_actividad ON bloqueo_agenda;
-CREATE TRIGGER trg_bloqueo_no_liberar_actividad
-    BEFORE DELETE ON bloqueo_agenda
+DROP TRIGGER IF EXISTS trg_bloqueo_no_actividad ON bloqueo_agenda;
+CREATE TRIGGER trg_bloqueo_no_actividad
+    BEFORE INSERT OR UPDATE OR DELETE ON bloqueo_agenda
     FOR EACH ROW EXECUTE FUNCTION fn_validar_bloqueo_no_actividad();
 
 -- 
@@ -1480,6 +1661,7 @@ CREATE TABLE proyecto(
     motivo_cancelacion         varchar(200),
     id_ubicacion               int8,
     CONSTRAINT chk_proyecto_estado CHECK (estado IN ('BORRADOR', 'PUBLICADO', 'CONFIRMADO', 'FINALIZADO', 'CANCELADO')),
+    CONSTRAINT chk_proyecto_confirmado_fecha_inicio CHECK (estado <> 'CONFIRMADO' OR fecha_inicio IS NOT NULL),
     CONSTRAINT chk_proyecto_privacidad CHECK (privacidad IN ('PUBLICO', 'PRIVADO')),
     CONSTRAINT "PK_proyecto" PRIMARY KEY (id_proyecto)
 )
@@ -1514,6 +1696,30 @@ CREATE CONSTRAINT TRIGGER trg_proyecto_requiere_director
     AFTER INSERT OR UPDATE ON proyecto
     DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION fn_validar_proyecto_tiene_director();
+
+-- Un proyecto confirmado no puede quedar con actividades pendientes sin inicio.
+CREATE OR REPLACE FUNCTION fn_validar_actividades_confirmadas_con_inicio() RETURNS trigger AS $$
+BEGIN
+    IF NEW.estado = 'CONFIRMADO' THEN
+        IF EXISTS (
+            SELECT 1
+            FROM actividad a
+            JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
+            WHERE pl.id_proyecto = NEW.id_proyecto
+              AND a.estado <> 'CANCELADA'
+              AND a.fecha_hora_inicio IS NULL
+        ) THEN
+            RAISE EXCEPTION 'El proyecto "%" (ID %) está CONFIRMADO pero tiene actividades sin fecha de inicio.', NEW.nombre, NEW.id_proyecto;
+        END IF;
+    END IF;
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_proyecto_confirmado_actividades_inicio ON proyecto;
+CREATE CONSTRAINT TRIGGER trg_proyecto_confirmado_actividades_inicio
+    AFTER INSERT OR UPDATE OF estado ON proyecto
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION fn_validar_actividades_confirmadas_con_inicio();
     
 -- Auditoria sobre tabla proyecto    
     CREATE OR REPLACE FUNCTION fn_auditar_cambio_proyecto() RETURNS trigger AS $$
@@ -1986,24 +2192,26 @@ CREATE TRIGGER trg_usuario_dni_no_negativo
 CREATE OR REPLACE FUNCTION fn_crear_agenda() RETURNS trigger AS $$
 DECLARE
      v_id_agenda BIGINT;
-    v_margen INT := 30;
+    v_margen INT;
     v_valor VARCHAR;
 BEGIN
-    -- Margen en config del sistema. Si no es valido, se utiliza por defecto 30
+    -- Margen en config del sistema. Sin valor hardcodeado.
     SELECT valor INTO v_valor
     FROM configuracion_sistema
     WHERE clave = 'AGENDA_MARGEN_ACTIVIDAD_MIN';
 
+    IF v_valor IS NULL THEN
+        RAISE EXCEPTION 'Falta AGENDA_MARGEN_ACTIVIDAD_MIN en configuracion_sistema.';
+    END IF;
 
-    IF v_valor IS NOT NULL THEN
-        BEGIN
-            v_margen := v_valor::INT;
-        EXCEPTION WHEN invalid_text_representation THEN
-            v_margen := 30;
-        END;
-        IF v_margen < 0 THEN
-            v_margen := 30;
-        END IF;
+    BEGIN
+        v_margen := v_valor::INT;
+    EXCEPTION WHEN invalid_text_representation THEN
+        RAISE EXCEPTION 'AGENDA_MARGEN_ACTIVIDAD_MIN no es un entero válido: %', v_valor;
+    END;
+
+    IF v_margen < 0 THEN
+        RAISE EXCEPTION 'El margen de la agenda no puede ser negativo: %', v_margen;
     END IF;
 
     INSERT INTO agenda (margen_actividad_min, id_usuario)
@@ -2115,6 +2323,17 @@ CREATE TABLE valor_caracteristica(
 
 CREATE UNIQUE INDEX "UQ_asignacion_miembro_actividad" ON asignacion_actividad(id_miembro, id_actividad)
 ;
+-- Validar solapamiento al escribir el horario de una actividad o al asignar
+-- una persona a una actividad que ya tiene horario.
+DROP TRIGGER IF EXISTS trg_actividad_sin_solape ON actividad;
+CREATE TRIGGER trg_actividad_sin_solape
+    BEFORE INSERT OR UPDATE OF fecha_hora_inicio, duracion_minutos ON actividad
+    FOR EACH ROW EXECUTE FUNCTION fn_validar_solape_actividad();
+
+DROP TRIGGER IF EXISTS trg_asignacion_sin_solape ON asignacion_actividad;
+CREATE TRIGGER trg_asignacion_sin_solape
+    BEFORE INSERT ON asignacion_actividad
+    FOR EACH ROW EXECUTE FUNCTION fn_validar_solape_asignacion();
 -- 
 -- INDEX: "UQ_perfil_caracteristica" 
 --
@@ -3133,6 +3352,7 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios'),
     ('CATALOGO_GEOREF_PAIS_ISO',        'AR',          'Codigo ISO del pais para georeferenciacion de ubicaciones con API Georef'),
     ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen en minutos aplicado a cada lado de las actividades del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen'),
+    ('DISPONIBILIDAD_TOLERANCIA_PREFERENCIA_MIN', '120', 'Minutos de tolerancia para adelantar o atrasar el inicio de una actividad respecto del horario de preferencia'),
     ('IMAGEN_MAX_LADO_PX',   '8000',           'Tamaño máximo en píxeles del lado más largo de una imagen'),
     ('IMAGEN_MAX_MEGAPIXELES', '24',             'Tamaño máximo en megapíxeles de una imagen'),
     ('IMAGEN_CALIDAD_WEBP', '80',             'Calidad de compresión de imágenes WebP (0-100)'),
@@ -3167,7 +3387,9 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('INVITACION_ACEPTADA',   'Invitación aceptada',   'INVITACION',  'ALTA'),
     ('PROYECTO_FINALIZADO',   'Proyecto finalizado',   'PROYECTO',    'ALTA'),
     ('PROYECTO_PUBLICADO',    'Proyecto publicado',    'PROYECTO',    'ALTA'),
-    ('PROYECTO_CONFIRMADO',   'Proyecto confirmado',   'PROYECTO',    'ALTA')
+    ('PROYECTO_CONFIRMADO',   'Proyecto confirmado',   'PROYECTO',    'ALTA'),
+    ('AJUSTE_HORARIO',        'Ajuste horario',        'ACTIVIDAD',   'MEDIA'),
+    ('SOBRECOMPROMISO',       'Posible sobrecompromiso','ACTIVIDAD',   'ALTA')
 
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -130,6 +131,7 @@ class ModificarActividadServiceTest {
         planificacion = Planificacion.builder()
                 .idPlanificacion(50L)
                 .proyecto(proyecto)
+                .fechaEntrega(LocalDate.of(2026, 11, 30))
                 .build();
 
         actividad = Actividad.builder()
@@ -474,6 +476,19 @@ class ModificarActividadServiceTest {
                 .extracting(Actividad::getIdActividad)
                 .containsExactly(1L);
         verify(actividadRepository).flush();
+    }
+
+    @Test
+    void modificar_proyectoConfirmadoConCambioDeDuracion_lanzaExcepcion() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+
+        assertThatThrownBy(() -> modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 2, EstadoActividad.PENDIENTE, null, null)))
+                .isInstanceOf(org.mgroko.backend.actividades.exception
+                        .EstadoProyectoNoPermiteModificarActividadesException.class);
+
+        verify(actividadRepository, never()).saveAndFlush(any());
     }
 
     @Test

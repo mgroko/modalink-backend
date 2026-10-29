@@ -289,6 +289,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoConfirmable(
+            org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", ex.getCodigo());
+        response.put("bloqueos", ex.getBloqueos());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoModificable(
             org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException ex) {

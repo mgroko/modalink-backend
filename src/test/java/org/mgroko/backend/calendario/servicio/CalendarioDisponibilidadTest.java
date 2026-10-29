@@ -1,6 +1,7 @@
 package org.mgroko.backend.calendario.servicio;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -14,14 +15,18 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.actividades.exception.FechaEntregaNoDefinidaException;
 import org.mgroko.backend.actividades.servicio.CronogramaService;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
+import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
+import org.mgroko.backend.calendario.servicio.DisponibilidadCalculator.Intervalo;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.BloqueoAgenda;
@@ -258,6 +263,115 @@ class CalendarioDisponibilidadTest {
         assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusMinutes(90));
         assertThat(resultado.finSeleccionado()).isEqualTo(INICIO.plusMinutes(150));
         assertThat(resultado.miembros()).hasSize(2);
+    }
+
+    @Test
+    void verificarDisponibilidad_sinFechaEntrega_lanzaExcepcion() {
+        Planificacion planificacion = planificacion(INICIO);
+        planificacion.setFechaEntrega(null);
+        Actividad actividad = actividad(1L, "A", 120, planificacion);
+
+        when(actividadRepository.findConPredecesorasByPlanificacion(100L))
+                .thenReturn(List.of(actividad));
+
+        assertThatThrownBy(() -> calendarioService.verificarDisponibilidad(1L, actividad))
+                .isInstanceOf(FechaEntregaNoDefinidaException.class);
+    }
+
+    @Test
+    void verificarDisponibilidad_conPreferenciaExacta_devuelveExacto() {
+        Planificacion planificacion = planificacion(INICIO);
+        Actividad actividad = actividad(1L, "A", 120, planificacion);
+        actividad.setHorarioPreferenciaInicio(LocalTime.of(15, 0));
+
+        when(configuracionSistemaService.obtenerToleranciaPreferenciaMinutos()).thenReturn(120);
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(jornadaCorrida(1, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+        when(actividadRepository.findConPredecesorasByPlanificacion(100L))
+                .thenReturn(List.of(actividad));
+
+        ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidad(1L, actividad);
+
+        assertThat(resultado.disponible()).isTrue();
+        assertThat(resultado.resultadoPreferencia()).isEqualTo(ResultadoPreferencia.EXACTO);
+        assertThat(resultado.desvioMinutos()).isZero();
+        assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.withHour(15));
+    }
+
+    @Test
+    void verificarDisponibilidad_conPreferenciaFueraDeTolerancia_devuelveSinLugar() {
+        Planificacion planificacion = planificacion(INICIO);
+        Actividad actividad = actividad(1L, "A", 120, planificacion);
+        actividad.setHorarioPreferenciaInicio(LocalTime.of(9, 0));
+
+        when(configuracionSistemaService.obtenerToleranciaPreferenciaMinutos()).thenReturn(30);
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(jornadaCorrida(1, LocalTime.of(11, 0), LocalTime.of(18, 0))));
+        when(actividadRepository.findConPredecesorasByPlanificacion(100L))
+                .thenReturn(List.of(actividad));
+
+        ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidad(1L, actividad);
+
+        assertThat(resultado.disponible()).isFalse();
+        assertThat(resultado.resultadoPreferencia()).isEqualTo(ResultadoPreferencia.SIN_LUGAR);
+        assertThat(resultado.motivo()).isEqualTo("FUERA_TOLERANCIA_PREFERENCIA");
+    }
+
+    @Test
+    void verificarDisponibilidadMiembros_sinHuecoComun_marcaBloqueantes() {
+        Planificacion planificacion = planificacion(INICIO);
+        Actividad actividad = actividad(1L, "A", 60, planificacion);
+        Usuario segundoUsuario = Usuario.builder()
+                .idUsuario(2L)
+                .estado(EstadoUsuario.Activo)
+                .build();
+        Agenda segundaAgenda = Agenda.builder()
+                .idAgenda(20L)
+                .margenActividadMinutos(30)
+                .build();
+
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(segundoUsuario));
+        when(agendaRepository.findByUsuario_IdUsuario(2L))
+                .thenReturn(Optional.of(segundaAgenda));
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(jornadaCorrida(1, LocalTime.of(9, 0), LocalTime.of(12, 0))));
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(20L))
+                .thenReturn(List.of(jornadaCorrida(1, LocalTime.of(14, 0), LocalTime.of(17, 0))));
+        when(actividadRepository.findConPredecesorasByPlanificacion(100L))
+                .thenReturn(List.of(actividad));
+
+        ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidadMiembros(
+                List.of(1L, 2L), actividad);
+
+        assertThat(resultado.disponible()).isFalse();
+        assertThat(resultado.motivo()).isEqualTo("SIN_HUECO_COMUN");
+        assertThat(resultado.miembrosBloqueantes()).containsExactly(1L, 2L);
+    }
+
+    @Test
+    void verificarDisponibilidadEnRango_bloqueosExtraReservanHorario() {
+        Planificacion planificacion = planificacion(INICIO);
+        Actividad actividad = actividad(1L, "A", 60, planificacion);
+
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(jornadaCorrida(1, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+
+        Map<Long, List<Intervalo>> extras = Map.of(
+                1L,
+                List.of(new Intervalo(
+                        INICIO.plusHours(1),
+                        INICIO.plusHours(2))));
+
+        ResultadoDisponibilidad resultado =
+                calendarioService.verificarDisponibilidadMiembrosEnRango(
+                        List.of(1L),
+                        actividad,
+                        INICIO,
+                        INICIO.plusHours(9),
+                        extras);
+
+        assertThat(resultado.disponible()).isTrue();
+        assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusHours(3));
     }
 
     private Agenda agenda() {

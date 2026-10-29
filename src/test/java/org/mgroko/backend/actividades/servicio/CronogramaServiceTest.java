@@ -249,6 +249,33 @@ class CronogramaServiceTest {
     }
 
     @Test
+    void recalcular_pendienteConfirmadaEnProyectoConfirmado_seMantieneFija() {
+        Proyecto proyecto = Proyecto.builder()
+                .fechaInicio(LocalDateTime.of(2026, 11, 1, 9, 0))
+                .estado(org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO)
+                .build();
+        Planificacion planificacion = Planificacion.builder()
+                .fechaEntrega(LocalDate.of(2026, 11, 10))
+                .proyecto(proyecto)
+                .build();
+
+        Actividad fija = actividad(
+                1L, "Fija", 60, EstadoActividad.PENDIENTE,
+                LocalDateTime.of(2026, 11, 1, 15, 0));
+        fija.setOrigenInicio(org.mgroko.backend.modelo.enums.OrigenInicio.CONFIRMADA);
+
+        Actividad sucesora = actividad(2L, "Sucesora", 60, EstadoActividad.PENDIENTE, null);
+        sucesora.setPredecesoras(Set.of(fija));
+
+        cronogramaService.recalcular(planificacion, List.of(fija, sucesora));
+
+        assertThat(fechaProyectada(planificacion, List.of(fija, sucesora), 1L))
+                .isEqualTo(LocalDateTime.of(2026, 11, 1, 15, 0));
+        assertThat(fechaProyectada(planificacion, List.of(fija, sucesora), 2L))
+                .isEqualTo(LocalDateTime.of(2026, 11, 1, 16, 0));
+    }
+
+    @Test
     void proyectar_desplazaOffsetsYMarcaTentativa() {
         Actividad a = actividad(1L, "A", 60, EstadoActividad.PENDIENTE, null);
         Actividad b = actividad(2L, "B", 120, EstadoActividad.PENDIENTE, null);

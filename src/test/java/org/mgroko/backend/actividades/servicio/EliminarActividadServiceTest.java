@@ -226,6 +226,18 @@ class EliminarActividadServiceTest {
     }
 
     @Test
+    void eliminar_proyectoConfirmado_lanzaExcepcion() {
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+
+        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+                .isInstanceOf(EstadoProyectoNoPermiteEliminarActividadesException.class);
+
+        verify(actividadRepository, never())
+                .findByIdActividadAndPlanificacionIdPlanificacion(anyLong(), anyLong());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
     void eliminar_actividadInexistente_lanzaExcepcion() {
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(55L, 50L))
                 .thenReturn(Optional.empty());

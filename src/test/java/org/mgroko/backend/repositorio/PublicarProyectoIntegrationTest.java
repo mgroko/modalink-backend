@@ -320,6 +320,7 @@ class PublicarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
 
         var proyecto = proyectoRepository.findById(borrador.idProyecto()).orElseThrow();
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyecto.setFechaInicio(java.time.LocalDate.now());
         proyectoRepository.saveAndFlush(proyecto);
 
         assertThatThrownBy(() -> publicarProyectoService.publicar(

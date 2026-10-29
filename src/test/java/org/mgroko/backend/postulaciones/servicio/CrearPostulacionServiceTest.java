@@ -520,6 +520,24 @@ class CrearPostulacionServiceTest {
     }
 
     @Test
+    void general_proyectoConfirmadoConRequerimientoSatisfecho_lanzaExcepcion() {
+        RequerimientoGralProyecto requerimiento = requerimientoGral(
+                proyecto(EstadoProyecto.CONFIRMADO, true));
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
+                .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularGeneral(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 1, 0, true));
+
+        assertThatThrownBy(() -> servicio.darDeAltaPostulacionGeneral(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("satisfecho");
+    }
+
+    @Test
     void actividad_miembroActivoMiembro_permitePostular() {
         RequerimientoActividad requerimiento = requerimientoActividad(EstadoActividad.PENDIENTE);
 

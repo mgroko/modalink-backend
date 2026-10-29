@@ -28,6 +28,8 @@ import org.mgroko.backend.actividades.dto.RangoFactible;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.springframework.stereotype.Service;
 
 /**
@@ -180,16 +182,19 @@ public class CronogramaService {
     public CalculoCpm calcularProyeccion(
             Planificacion planificacion,
             List<Actividad> actividades) {
+
+        if (planificacion.getFechaEntrega() == null) {
+            throw new FechaEntregaNoDefinidaException();
+        }
+
         LocalDateTime inicio = inicioEfectivo(planificacion);
-        Long entrega = planificacion.getFechaEntrega() == null
-                ? null
-                : minutosHastaEntrega(planificacion, inicio);
+        Long entrega = minutosHastaEntrega(planificacion, inicio);
         long releaseTime = Math.max(
                 0L,
                 Duration.between(inicio, LocalDateTime.now(reloj)).toMinutes());
         return calcular(
                 actividades,
-                iniciosFijos(actividades, inicio),
+                iniciosFijos(planificacion, actividades, inicio),
                 entrega,
                 releaseTime);
     }
@@ -364,6 +369,7 @@ public class CronogramaService {
         LocalDateTime fechaFinMaxima = inicio.plusMinutes(ventanaEjecucion.finMinutos());
         boolean tentativa = esTentativa(planificacion);
         boolean parcial = calculo.parcial();
+        String motivoNoFactible = nodo.conflicto() ? nodo.motivoConflicto() : null;
 
         if (tentativa) {
             LocalDateTime ahora = LocalDateTime.now(reloj);
@@ -382,6 +388,22 @@ public class CronogramaService {
             if (fechaFinMaxima.isBefore(fechaFinMinima)) {
                 fechaFinMaxima = fechaFinMinima;
             }
+        } else {
+            // Un cronograma inviable puede dejar LS^E < ES o LF^E < EF.
+            // Se normaliza el rango para no romper el contrato del DTO y se
+            // conserva el motivo para que disponibilidad lo reporte.
+            if (fechaInicioMaxima.isBefore(fechaInicioMinima)) {
+                fechaInicioMaxima = fechaInicioMinima;
+                motivoNoFactible = motivoNoFactible != null
+                        ? motivoNoFactible
+                        : "No hay ventana de inicio: la holgura de entrega es negativa.";
+            }
+            if (fechaFinMaxima.isBefore(fechaFinMinima)) {
+                fechaFinMaxima = fechaFinMinima;
+                motivoNoFactible = motivoNoFactible != null
+                        ? motivoNoFactible
+                        : "No hay ventana de ejecución: la holgura de entrega es negativa.";
+            }
         }
 
         return new RangoFactibleAbsoluto(
@@ -392,7 +414,7 @@ public class CronogramaService {
                 nodo.fijo(),
                 tentativa,
                 parcial,
-                nodo.conflicto() ? nodo.motivoConflicto() : null);
+                motivoNoFactible);
     }
 
     /**
@@ -434,7 +456,7 @@ public class CronogramaService {
                 Duration.between(inicio, LocalDateTime.now(reloj)).toMinutes());
         CalculoCpm calculo = calcular(
                 actividades,
-                iniciosFijos(actividades, inicio),
+                iniciosFijos(planificacion, actividades, inicio),
                 minutosDisponibles,
                 releaseTime);
 
@@ -456,21 +478,39 @@ public class CronogramaService {
     }
 
     /**
-     * Offset fijo de las actividades que no están {@code PENDIENTE}. Si una
-     * actividad no pendiente no tiene fecha, se fija en {@code t0}, igual que
-     * el comportamiento anterior. La fase 2 convierte ese caso en un error de
-     * datos explícito (D-08).
+     * Offset fijo de las actividades que no se pueden reprogramar.
+     *
+     * <p>Una actividad está fija cuando ya se ejecutó o está en ejecución, o
+     * cuando es una {@code PENDIENTE} de un proyecto confirmado cuyo inicio
+     * tiene origen {@link OrigenInicio#CONFIRMADA} o
+     * {@link OrigenInicio#REAL}. Las proyecciones de proyectos no confirmados
+     * no se fijan: son datos de lectura y deben recalcularse.</p>
      */
     private Map<Long, Long> iniciosFijos(
+            Planificacion planificacion,
             List<Actividad> actividades,
             LocalDateTime inicio) {
 
+        boolean proyectoConfirmado = planificacion.getProyecto() != null
+                && planificacion.getProyecto().getEstado() == EstadoProyecto.CONFIRMADO;
+
         Map<Long, Long> fijos = new HashMap<>();
         for (Actividad actividad : actividades) {
-            if (actividad.getEstado() == EstadoActividad.PENDIENTE
-                    || actividad.getEstado() == EstadoActividad.CANCELADA) {
+            if (actividad.getEstado() == EstadoActividad.CANCELADA) {
                 continue;
             }
+
+            boolean fija = actividad.getEstado() == EstadoActividad.EN_CURSO
+                    || actividad.getEstado() == EstadoActividad.FINALIZADA
+                    || (proyectoConfirmado
+                            && actividad.getEstado() == EstadoActividad.PENDIENTE
+                            && (actividad.getOrigenInicio() == OrigenInicio.CONFIRMADA
+                                    || actividad.getOrigenInicio() == OrigenInicio.REAL));
+
+            if (!fija) {
+                continue;
+            }
+
             LocalDateTime fecha = actividad.getFechaHoraInicio();
             if (fecha == null) {
                 throw new IllegalStateException(

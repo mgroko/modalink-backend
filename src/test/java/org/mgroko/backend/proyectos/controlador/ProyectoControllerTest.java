@@ -23,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -59,6 +60,12 @@ class ProyectoControllerTest {
 
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.CancelarProyectoService cancelarProyectoService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.ConfirmarProyectoService confirmarProyectoService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService previsualizarConfirmacionService;
 
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
@@ -851,5 +858,61 @@ class ProyectoControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value(
                         "Solo se puede cancelar un proyecto en estado Publicado o Confirmado. Estado actual: Borrador."));
+    }
+
+    @Test
+    void confirmar_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna DiseA�os"));
+
+        when(confirmarProyectoService.confirmar(1L, 10L, 100L))
+                .thenReturn(new org.mgroko.backend.proyectos.dto.ConfirmarProyectoResponse(
+                        null, LocalDate.now().atTime(9, 0), null));
+
+        mockMvc.perform(post("/proyectos/100/confirmar").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fechaInicioConfirmada").exists());
+    }
+
+    @Test
+    void confirmar_conBloqueos_devuelve409ConCodigo() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna DiseA�os"));
+
+        when(confirmarProyectoService.confirmar(1L, 10L, 100L))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException(
+                        "REQUERIMIENTOS_INCOMPLETOS",
+                        "Falta personal.",
+                        List.of(new org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse(
+                                "REQUERIMIENTOS_INCOMPLETOS",
+                                "Falta personal.",
+                                "PROYECTO",
+                                100L))));
+
+        mockMvc.perform(post("/proyectos/100/confirmar").principal(auth))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("REQUERIMIENTOS_INCOMPLETOS"))
+                .andExpect(jsonPath("$.bloqueos[0].entidadTipo").value("PROYECTO"));
+    }
+
+    @Test
+    void previsualizarConfirmacion_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna DiseA�os"));
+
+        when(previsualizarConfirmacionService.previsualizar(1L, 10L, 100L))
+                .thenReturn(new org.mgroko.backend.proyectos.dto.PrevisualizacionConfirmacionResponse(
+                        true,
+                        "Publicado",
+                        LocalDate.now().atTime(9, 0),
+                        LocalDate.now().plusDays(10),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of()));
+
+        mockMvc.perform(get("/proyectos/100/confirmacion").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.puedeConfirmar").value(true));
     }
 }

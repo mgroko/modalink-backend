@@ -383,6 +383,7 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
 
         Proyecto proyecto = proyectoRepository.findById(publicado.idProyecto()).orElseThrow();
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyecto.setFechaInicio(java.time.LocalDate.now());
         proyectoRepository.saveAndFlush(proyecto);
 
         PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarGeneral(
@@ -760,6 +761,7 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
 
         Proyecto proyecto = proyectoRepository.findById(publicado.idProyecto()).orElseThrow();
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyecto.setFechaInicio(java.time.LocalDate.now());
         proyectoRepository.saveAndFlush(proyecto);
 
         PostulacionResponse respuesta = crearPostulacionService.darDeAltaPostulacionGeneral(

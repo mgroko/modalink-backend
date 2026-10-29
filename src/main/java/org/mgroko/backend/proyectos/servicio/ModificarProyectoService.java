@@ -139,6 +139,7 @@ public class ModificarProyectoService {
         proyectoSecurityService.validarPermiso(idProyecto, idPerfilActivo, PERMISO_MODIFICAR_PROYECTO);
 
         validarEstadoModificable(proyecto);
+        validarEstructuraConfirmada(idProyecto, proyecto, request);
 
         actualizarDatosBasicos(proyecto, request);
         actualizarUbicacion(proyecto, request);
@@ -161,6 +162,61 @@ public class ModificarProyectoService {
                 && estado != EstadoProyecto.CONFIRMADO) {
             throw new EstadoProyectoNoModificableException(
                     estado != null ? estado.getNombre() : null);
+        }
+    }
+
+    /**
+     * En un proyecto confirmado no se pueden cambiar la fecha de entrega ni
+     * los requerimientos generales: ambos forman parte del plan persistido.
+     * El resto de los datos descriptivos se puede seguir editando.
+     */
+    private void validarEstructuraConfirmada(
+            Long idProyecto,
+            Proyecto proyecto,
+            ModificarProyectoRequest request) {
+
+        if (proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
+            return;
+        }
+
+        LocalDate fechaEntregaActual = planificacionRepository
+                .findByProyectoIdProyecto(idProyecto)
+                .map(Planificacion::getFechaEntrega)
+                .orElse(null);
+
+        if (request.fechaEntregaEstipulada() != null
+                && !Objects.equals(request.fechaEntregaEstipulada(), fechaEntregaActual)) {
+            throw new EstadoProyectoNoModificableException(
+                    EstadoProyecto.CONFIRMADO.getNombre());
+        }
+
+        Map<Long, Integer> requerimientosActuales = new HashMap<>();
+        for (RequerimientoGralProyecto requerimiento
+                : requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto)) {
+            if (requerimiento.getIdRequerimientoGral() != null) {
+                requerimientosActuales.put(
+                        requerimiento.getIdRequerimientoGral(),
+                        requerimiento.getCantidad());
+            }
+        }
+
+        Map<Long, Integer> requerimientosNuevos = new HashMap<>();
+        if (request.requerimientosGral() != null) {
+            for (ModificarRequerimientoGralRequest requerimiento
+                    : request.requerimientosGral()) {
+                if (requerimiento.idRequerimientoGral() == null
+                        || requerimientosNuevos.put(
+                                requerimiento.idRequerimientoGral(),
+                                requerimiento.cantidad()) != null) {
+                    throw new EstadoProyectoNoModificableException(
+                            EstadoProyecto.CONFIRMADO.getNombre());
+                }
+            }
+        }
+
+        if (!requerimientosActuales.equals(requerimientosNuevos)) {
+            throw new EstadoProyectoNoModificableException(
+                    EstadoProyecto.CONFIRMADO.getNombre());
         }
     }
 

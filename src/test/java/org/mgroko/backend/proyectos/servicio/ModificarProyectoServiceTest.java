@@ -329,6 +329,25 @@ class ModificarProyectoServiceTest {
     }
 
     @Test
+    void modificar_proyectoConfirmadoConCambioDeFechaEntrega_lanzaExcepcion() {
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        ModificarProyectoRequest request = new ModificarProyectoRequest(
+                "Nueva descripción",
+                Privacidad.PRIVADO,
+                true,
+                LocalDate.now().plusDays(30),
+                null,
+                null,
+                List.of(),
+                null);
+
+        assertThatThrownBy(() -> modificarProyectoService.modificar(1L, 10L, 100L, request))
+                .isInstanceOf(EstadoProyectoNoModificableException.class);
+
+        verify(proyectoRepository, never()).save(any(Proyecto.class));
+    }
+
+    @Test
     void modificar_requerimientos_reemplazaNoSatisfechosYConservaSatisfechos() {
         RequerimientoGralProyecto noSatisfecho = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(10L).proyecto(proyecto).cantidad(1).build();

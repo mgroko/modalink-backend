@@ -130,6 +130,19 @@ class CrearActividadServiceTest {
     }
 
     @Test
+    void crear_proyectoConfirmado_lanzaExcepcion() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+        CrearActividadRequest request = new CrearActividadRequest(
+                "Montaje", null, 1, UnidadDuracion.HORAS, null, null, null);
+
+        assertThatThrownBy(() -> crearActividadService.crear(1L, 10L, 100L, request))
+                .isInstanceOf(org.mgroko.backend.actividades.exception
+                        .EstadoProyectoNoPermiteActividadesException.class);
+
+        verify(actividadRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void crear_nombreDuplicado_lanzaExcepcion() {
         when(actividadRepository.existeNombreEnPlanificacion(50L, "Montaje"))
                 .thenReturn(true);
@@ -154,15 +167,16 @@ class CrearActividadServiceTest {
                     actividad.setIdActividad(56L);
                     return actividad;
                 });
-        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
-                .thenReturn(new CalculoCpm(Map.of(), 0L, null, null, List.of()));
-
         CrearActividadRequest request = new CrearActividadRequest(
                 "Montaje", null, 1, UnidadDuracion.HORAS, null, null, null);
 
-        assertThat(crearActividadService.crear(1L, 10L, 100L, request).fechaHoraInicio())
-                .isNull();
+        var response = crearActividadService.crear(1L, 10L, 100L, request);
+
+        assertThat(response.fechaHoraInicio()).isNull();
+        assertThat(response.estadoCronograma()).isEqualTo("SIN_FECHA_ENTREGA");
+        assertThat(response.inicioProyectado()).isNull();
         verify(actividadRepository).saveAndFlush(any());
+        verify(cronogramaService, never()).calcularProyeccion(any(Planificacion.class), any());
     }
 
     @Test

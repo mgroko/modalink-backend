@@ -20,6 +20,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Ubicacion;
+import org.mgroko.backend.modelo.enums.EstadoCronograma;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -118,24 +119,29 @@ public class CrearActividadService {
         List<RequerimientoActividadResponse> requerimientos = persistirRequerimientos(
                 guardada, request.requerimientos());
 
-        List<Actividad> actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
-        var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
+        var calculo = planificacion.getFechaEntrega() == null
+                ? null
+                : cronogramaService.calcularProyeccion(
+                        planificacion,
+                        actividadRepository.findConPredecesorasByPlanificacion(
+                                planificacion.getIdPlanificacion()));
+        EstadoCronograma estadoCronograma = calculo == null
+                ? EstadoCronograma.SIN_FECHA_ENTREGA
+                : cronogramaService.estadoDe(calculo);
         return ActividadMapper.toResponse(
                 guardada,
                 requerimientos,
                 List.of(),
-                cronogramaService.estadoDe(calculo),
+                estadoCronograma,
                 calculo,
-                cronogramaService.inicioEfectivo(planificacion),
-                cronogramaService.esTentativa(planificacion));
+                calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
+                calculo == null || cronogramaService.esTentativa(planificacion));
     }
 
     private void validarEstadoProyecto(Proyecto proyecto) {
         EstadoProyecto estado = proyecto.getEstado();
         if (estado != EstadoProyecto.BORRADOR
-                && estado != EstadoProyecto.PUBLICADO
-                && estado != EstadoProyecto.CONFIRMADO) {
+                && estado != EstadoProyecto.PUBLICADO) {
             throw new EstadoProyectoNoPermiteActividadesException(estado.name());
         }
     }

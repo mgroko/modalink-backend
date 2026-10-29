@@ -5,17 +5,21 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.proyectos.dto.BuscarProyectosFiltro;
 import org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro;
 import org.mgroko.backend.proyectos.dto.CancelarProyectoRequest;
+import org.mgroko.backend.proyectos.dto.ConfirmarProyectoResponse;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
+import org.mgroko.backend.proyectos.dto.PrevisualizacionConfirmacionResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoPropioResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectoService;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
 import org.mgroko.backend.proyectos.servicio.CancelarProyectoService;
+import org.mgroko.backend.proyectos.servicio.ConfirmarProyectoService;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
 import org.mgroko.backend.proyectos.servicio.ModificarProyectoService;
 import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
+import org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService;
 import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -42,6 +46,8 @@ public class ProyectoController {
     private final PublicarProyectoService publicarProyectoService;
     private final ModificarProyectoService modificarProyectoService;
     private final CancelarProyectoService cancelarProyectoService;
+    private final ConfirmarProyectoService confirmarProyectoService;
+    private final PrevisualizarConfirmacionService previsualizarConfirmacionService;
 
     public ProyectoController(CrearProyectoService crearProyectoService,
             ObtenerProyectoService obtenerProyectoService,
@@ -49,7 +55,9 @@ public class ProyectoController {
             BuscarProyectosPropiosService buscarProyectosPropiosService,
             PublicarProyectoService publicarProyectoService,
             ModificarProyectoService modificarProyectoService,
-            CancelarProyectoService cancelarProyectoService) {
+            CancelarProyectoService cancelarProyectoService,
+            ConfirmarProyectoService confirmarProyectoService,
+            PrevisualizarConfirmacionService previsualizarConfirmacionService) {
         this.crearProyectoService = crearProyectoService;
         this.obtenerProyectoService = obtenerProyectoService;
         this.buscarProyectoService = buscarProyectoService;
@@ -57,6 +65,8 @@ public class ProyectoController {
         this.publicarProyectoService = publicarProyectoService;
         this.modificarProyectoService = modificarProyectoService;
         this.cancelarProyectoService = cancelarProyectoService;
+        this.confirmarProyectoService = confirmarProyectoService;
+        this.previsualizarConfirmacionService = previsualizarConfirmacionService;
     }
 
     // UC-24: Crear proyecto
@@ -164,6 +174,51 @@ public class ProyectoController {
         }
 
         ProyectoResponse response = publicarProyectoService.publicar(idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // UC-60: Previsualizar confirmación de proyecto
+    @GetMapping("/proyectos/{idProyecto}/confirmacion")
+    public ResponseEntity<PrevisualizacionConfirmacionResponse> previsualizarConfirmacion(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        PrevisualizacionConfirmacionResponse response =
+                previsualizarConfirmacionService.previsualizar(
+                        idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // UC-60: Confirmar proyecto (Publicado -> Confirmado)
+    @PostMapping("/proyectos/{idProyecto}/confirmar")
+    public ResponseEntity<ConfirmarProyectoResponse> confirmar(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        ConfirmarProyectoResponse response = confirmarProyectoService.confirmar(
+                idUsuario, idPerfilActivo, idProyecto);
         return ResponseEntity.ok(response);
     }
 

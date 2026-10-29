@@ -26,6 +26,7 @@ import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.JornadaDiaRequest;
 import org.mgroko.backend.calendario.dto.MarcarNoDisponibleRequest;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
+import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
 import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
 import org.mgroko.backend.calendario.exception.AgendaNoEncontradaException;
 import org.mgroko.backend.calendario.exception.BloqueoNoEncontradoException;
@@ -195,6 +196,88 @@ public class CalendarioService {
         CalculoCpm calculo = cronogramaService.calcular(planificacion, actividades);
         RangoFactibleAbsoluto rango = cronogramaService.rangoFactibleAbsoluto(
                 planificacion, calculo, actividad.getIdActividad());
+        if (rango.motivoNoFactible() != null) {
+            LocalTime preferencia = actividad.getHorarioPreferenciaInicio();
+            return new ResultadoDisponibilidad(
+                    false,
+                    rango.tentativa(),
+                    rango.inicio(),
+                    rango.fin(),
+                    null,
+                    null,
+                    rango.motivoNoFactible(),
+                    List.of(),
+                    preferencia == null
+                            ? ResultadoPreferencia.SIN_PREFERENCIA
+                            : ResultadoPreferencia.SIN_LUGAR,
+                    null,
+                    preferencia == null
+                            ? null
+                            : rango.inicio().toLocalDate().atTime(preferencia),
+                    List.of());
+        }
+        return evaluarDisponibilidadEnRango(
+                idsUsuarios,
+                actividad,
+                rango.inicio(),
+                rango.fin(),
+                rango.tentativa(),
+                Map.of());
+    }
+
+    /**
+     * Evalúa una actividad contra un rango explícito. Se usa desde el
+     * planificador de confirmación, que conoce el inicio mínimo real (por
+     * ejemplo, el fin de las predecesoras ya colocadas) y mantiene en memoria
+     * los intervalos de las actividades que va programando.
+     *
+     * <p>No recalcula el CPM ni lee la fecha del proyecto: el rango y los
+     * bloqueos extra son responsabilidad del llamador.</p>
+     *
+     * @param idsUsuarios    usuarios que deben compartir el hueco
+     * @param actividad      actividad a colocar
+     * @param inicio         inicio mínimo absoluto del rango
+     * @param fin            fin máximo absoluto del rango
+     * @param bloqueosExtra  intervalos ya reservados por la planificación en
+     *                       curso, indexados por usuario
+     * @return disponibilidad y hueco seleccionado
+     */
+    @Transactional(readOnly = true)
+    public ResultadoDisponibilidad verificarDisponibilidadMiembrosEnRango(
+            Collection<Long> idsUsuarios,
+            Actividad actividad,
+            LocalDateTime inicio,
+            LocalDateTime fin,
+            Map<Long, List<Intervalo>> bloqueosExtra) {
+
+        if (idsUsuarios == null || idsUsuarios.isEmpty()) {
+            return new ResultadoDisponibilidad(
+                    false, false, inicio, fin, null, null, "SIN_MIEMBROS", List.of());
+        }
+        idsUsuarios.forEach(this::usuarioActivo);
+
+        if (inicio == null || fin == null || !fin.isAfter(inicio)) {
+            return new ResultadoDisponibilidad(
+                    false, false, inicio, fin, null, null, "SIN_HUECO", List.of());
+        }
+
+        return evaluarDisponibilidadEnRango(
+                idsUsuarios,
+                actividad,
+                inicio,
+                fin,
+                false,
+                bloqueosExtra == null ? Map.of() : bloqueosExtra);
+    }
+
+    private ResultadoDisponibilidad evaluarDisponibilidadEnRango(
+            Collection<Long> idsUsuarios,
+            Actividad actividad,
+            LocalDateTime desde,
+            LocalDateTime hasta,
+            boolean provisional,
+            Map<Long, List<Intervalo>> bloqueosExtra) {
+
         List<DetalleMiembroDisponibilidad> detalles = new ArrayList<>();
         List<List<Intervalo>> huecosPorMiembro = new ArrayList<>();
         int margenActividad = 0;
@@ -203,16 +286,22 @@ public class CalendarioService {
             Agenda agenda = agendaDe(idUsuario);
             int margen = margenDe(agenda);
             margenActividad = Math.max(margenActividad, margen);
-            List<Intervalo> ventanas = ventanasDe(agenda, rango.inicio(), rango.fin());
-            List<Intervalo> bloqueos = bloqueosDe(idUsuario, agenda, rango.inicio(), rango.fin());
+            List<Intervalo> ventanas = ventanasDe(agenda, desde, hasta);
+            List<Intervalo> bloqueos = new ArrayList<>(
+                    bloqueosDe(idUsuario, agenda, desde, hasta));
+            for (Intervalo extra : bloqueosExtra.getOrDefault(idUsuario, List.of())) {
+                bloqueos.add(new Intervalo(
+                        extra.inicio().minusMinutes(margen),
+                        extra.fin().plusMinutes(margen)));
+            }
             List<Intervalo> huecos = disponibilidadCalculator.huecosLibres(ventanas, bloqueos);
             Optional<Intervalo> primerHueco = disponibilidadCalculator.primerHueco(
                     ventanas, bloqueos, actividad.getDuracionMinutos(), margen);
             String motivo = motivoIndividual(ventanas, huecos, primerHueco, actividad);
             detalles.add(new DetalleMiembroDisponibilidad(
                     idUsuario,
-                    rango.inicio(),
-                    rango.fin(),
+                    desde,
+                    hasta,
                     huecos,
                     primerHueco.isPresent(),
                     motivo));
@@ -221,25 +310,102 @@ public class CalendarioService {
 
         List<Intervalo> huecosComunes = disponibilidadCalculator.intersecarHuecos(
                 huecosPorMiembro);
-        Optional<Intervalo> seleccionado = disponibilidadCalculator.primerHuecoEnHuecos(
+
+        Optional<Intervalo> primerHuecoComun = disponibilidadCalculator.primerHuecoEnHuecos(
                 huecosComunes,
                 actividad.getDuracionMinutos(),
                 margenActividad);
-        boolean disponible = seleccionado.isPresent();
-        String motivo = disponible
+
+        LocalTime preferencia = actividad.getHorarioPreferenciaInicio();
+        // El ES calendario-aware es el inicio del primer hueco común. La fecha
+        // de ese hueco es la referencia natural para la hora preferida.
+        LocalDateTime inicioPreferido = preferencia == null
                 ? null
-                : idsUsuarios.size() > 1 ? "SIN_HUECO_COMUN"
-                        : detalles.get(0).motivo();
+                : primerHuecoComun
+                        .map(intervalo -> intervalo.inicio().toLocalDate().atTime(preferencia))
+                        .orElseGet(() -> desde.toLocalDate().atTime(preferencia));
+        long tolerancia = preferencia == null
+                ? 0L
+                : configuracionSistemaService.obtenerToleranciaPreferenciaMinutos();
+
+        Optional<DisponibilidadCalculator.SeleccionHueco> seleccionado =
+                disponibilidadCalculator.seleccionarHueco(
+                        huecosComunes,
+                        actividad.getDuracionMinutos(),
+                        margenActividad,
+                        inicioPreferido,
+                        tolerancia);
+
+        boolean disponible = seleccionado.isPresent();
+        String motivo;
+        if (disponible) {
+            motivo = null;
+        } else if (idsUsuarios.size() > 1 && huecosComunes.isEmpty()) {
+            motivo = "SIN_HUECO_COMUN";
+        } else if (preferencia != null && !huecosComunes.isEmpty()) {
+            motivo = "FUERA_TOLERANCIA_PREFERENCIA";
+        } else {
+            motivo = detalles.get(0).motivo();
+        }
+
+        ResultadoPreferencia resultadoPreferencia;
+        Long desvioMinutos = null;
+        if (preferencia == null) {
+            resultadoPreferencia = ResultadoPreferencia.SIN_PREFERENCIA;
+        } else if (!disponible) {
+            resultadoPreferencia = ResultadoPreferencia.SIN_LUGAR;
+        } else {
+            desvioMinutos = seleccionado.get().desvioMinutos();
+            resultadoPreferencia = desvioMinutos == 0
+                    ? ResultadoPreferencia.EXACTO
+                    : ResultadoPreferencia.DESVIO;
+        }
+
+        List<Long> miembrosBloqueantes = diagnosticarBloqueantes(
+                idsUsuarios, huecosPorMiembro, huecosComunes);
 
         return new ResultadoDisponibilidad(
                 disponible,
-                rango.tentativa(),
-                rango.inicio(),
-                rango.fin(),
-                disponible ? seleccionado.get().inicio() : null,
-                disponible ? seleccionado.get().fin() : null,
+                provisional,
+                desde,
+                hasta,
+                disponible ? seleccionado.get().intervalo().inicio() : null,
+                disponible ? seleccionado.get().intervalo().fin() : null,
                 motivo,
-                detalles);
+                detalles,
+                resultadoPreferencia,
+                desvioMinutos,
+                inicioPreferido,
+                miembrosBloqueantes);
+    }
+
+    /**
+     * Cuando la intersección de varios miembros es vacía, recalcula sin un
+     * miembro por vez para identificar a los que impiden el hueco común.
+     *
+     * <p>Si ningún miembro individual permite la intersección, no se atribuye
+     * la causa a uno solo: se devuelve una lista vacía y el motivo global sigue
+     * siendo {@code SIN_HUECO_COMUN}.</p>
+     */
+    private List<Long> diagnosticarBloqueantes(
+            Collection<Long> idsUsuarios,
+            List<List<Intervalo>> huecosPorMiembro,
+            List<Intervalo> huecosComunes) {
+
+        List<Long> ids = List.copyOf(idsUsuarios);
+        if (ids.size() <= 1 || !huecosComunes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> bloqueantes = new ArrayList<>();
+        for (int i = 0; i < huecosPorMiembro.size(); i++) {
+            List<List<Intervalo>> sinMiembro = new ArrayList<>(huecosPorMiembro);
+            sinMiembro.remove(i);
+            if (!disponibilidadCalculator.intersecarHuecos(sinMiembro).isEmpty()) {
+                bloqueantes.add(ids.get(i));
+            }
+        }
+        return bloqueantes;
     }
 
     private String motivoIndividual(

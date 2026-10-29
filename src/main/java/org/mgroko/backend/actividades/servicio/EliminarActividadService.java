@@ -158,8 +158,7 @@ public class EliminarActividadService {
     private void validarEstadoProyecto(Proyecto proyecto) {
         EstadoProyecto estado = proyecto.getEstado();
         if (estado != EstadoProyecto.BORRADOR
-                && estado != EstadoProyecto.PUBLICADO
-                && estado != EstadoProyecto.CONFIRMADO) {
+                && estado != EstadoProyecto.PUBLICADO) {
             throw new EstadoProyectoNoPermiteEliminarActividadesException(estado.name());
         }
     }
