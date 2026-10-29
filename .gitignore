@@ -54,3 +54,4 @@ src/main/resources/application.properties
 uploads/
 backups/
 docs/planes/
+docs/3_diseño/migraciones/
