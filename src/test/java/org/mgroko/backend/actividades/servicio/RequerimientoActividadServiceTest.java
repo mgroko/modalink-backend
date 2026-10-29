@@ -1,21 +1,31 @@
 package org.mgroko.backend.actividades.servicio;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.actividades.dto.CrearRequerimientoActividadRequest;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.modelo.Actividad;
+import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActCaract;
+import org.mgroko.backend.modelo.RequerimientoActCaractValor;
 import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.ValorCaracteristica;
+import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
@@ -27,6 +37,7 @@ import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -144,5 +155,76 @@ class RequerimientoActividadServiceTest {
 
         assertThat(respuesta).singleElement()
                 .satisfies(r -> assertThat(r.puedePostularse()).isTrue());
+    }
+
+    @Test
+    void actualizar_mismaCaracteristica_actualizaEnLugarYSincronizaValores() {
+        Profesion profesion = Profesion.builder()
+                .idProfesion(2L)
+                .nombre("Modelo")
+                .build();
+        CaracteristicaTecnica talle = CaracteristicaTecnica.builder()
+                .idCaracteristica(5L)
+                .codigo("TALLE")
+                .tipoDato(CaracteristicaTecnica.TIPO_ENUMERADO)
+                .profesion(profesion)
+                .build();
+        RequerimientoActividad requerimiento = RequerimientoActividad.builder()
+                .idRequerimiento(7L)
+                .cantidad(1)
+                .descripcion("Original")
+                .profesion(profesion)
+                .build();
+
+        RequerimientoActCaract existente = RequerimientoActCaract.builder()
+                .idReqActCaract(100L)
+                .requerimientoActividad(requerimiento)
+                .caracteristica(talle)
+                .build();
+        requerimiento.setCaracteristicas(new ArrayList<>(List.of(existente)));
+
+        CrearRequerimientoActividadRequest request = new CrearRequerimientoActividadRequest(
+                2,
+                2L,
+                "Actualizado",
+                List.of(new CrearRequerimientoCaractRequest(
+                        5L, null, null, List.of(3L))),
+                List.of());
+
+        when(profesionRepository.findById(2L)).thenReturn(Optional.of(profesion));
+        when(caracteristicaTecnicaRepository.findById(5L)).thenReturn(Optional.of(talle));
+        when(valorCaracteristicaRepository.findById(new ValorCaracteristicaId(3L, 5L)))
+                .thenReturn(Optional.of(ValorCaracteristica.builder()
+                        .id(new ValorCaracteristicaId(3L, 5L))
+                        .build()));
+        when(requerimientoActividadRepository.saveAndFlush(requerimiento))
+                .thenReturn(requerimiento);
+        cuandoCalculaCupo();
+
+        RequerimientoActividadResponse respuesta =
+                requerimientoActividadService.actualizar(requerimiento, request);
+
+        assertThat(requerimiento.getCaracteristicas())
+                .singleElement()
+                .isSameAs(existente);
+        assertThat(respuesta.caracteristicas()).singleElement()
+                .satisfies(caracteristica -> {
+                    assertThat(caracteristica.codigo()).isEqualTo("TALLE");
+                    assertThat(caracteristica.valores()).containsExactly(3L);
+                });
+
+        verify(requerimientoActCaractValorRepository)
+                .deleteByIdReqActCaract(100L);
+        ArgumentCaptor<RequerimientoActCaractValor> captor =
+                ArgumentCaptor.forClass(RequerimientoActCaractValor.class);
+        verify(requerimientoActCaractValorRepository).save(captor.capture());
+        assertThat(captor.getValue().getIdReqActCaract()).isEqualTo(100L);
+        assertThat(captor.getValue().getIdCaracteristica()).isEqualTo(5L);
+        assertThat(captor.getValue().getIdValor()).isEqualTo(3L);
+    }
+
+    private void cuandoCalculaCupo() {
+        when(cupoRequerimientoService.calcularActividad(any()))
+                .thenReturn(new CupoRequerimiento(2, 0, 2, false));
     }
 }

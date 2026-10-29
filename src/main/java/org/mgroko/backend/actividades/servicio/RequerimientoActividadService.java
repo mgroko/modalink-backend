@@ -124,18 +124,21 @@ public class RequerimientoActividadService {
         requerimiento.setDescripcion(
                 request.descripcion() != null ? request.descripcion().trim() : null);
 
+        // Se borran solo los valores; las filas de requerimiento_act_caract se
+        // actualizan en el lugar para no chocar con el indice unico
+        // (id_requerimiento_act, id_caracteristica) al insertar antes del delete.
         for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
-            requerimientoActCaractValorRepository
-                    .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
+            if (caracteristica.getIdReqActCaract() != null) {
+                requerimientoActCaractValorRepository
+                        .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
+            }
         }
-        requerimiento.getCaracteristicas().clear();
 
         Map<Long, List<Long>> idsValoresPorCaracteristica = new HashMap<>();
-        List<RequerimientoActCaract> caracteristicasEntidad = construirCaracteristicas(
+        sincronizarCaracteristicas(
                 requerimiento,
                 request.caracteristicas(),
                 idsValoresPorCaracteristica);
-        requerimiento.getCaracteristicas().addAll(caracteristicasEntidad);
 
         requerimiento.getHabilidades().clear();
         requerimiento.getHabilidades().addAll(resolverHabilidades(request.habilidades()));
@@ -143,7 +146,8 @@ public class RequerimientoActividadService {
         RequerimientoActividad guardado = requerimientoActividadRepository
                 .saveAndFlush(requerimiento);
 
-        persistirValoresCaracteristicas(caracteristicasEntidad, idsValoresPorCaracteristica);
+        persistirValoresCaracteristicas(
+                requerimiento.getCaracteristicas(), idsValoresPorCaracteristica);
 
         return toResponse(
                 guardado,
@@ -319,32 +323,9 @@ public class RequerimientoActividadService {
 
         Set<Long> vistas = new HashSet<>();
         for (CrearRequerimientoCaractRequest caracteristicaRequest : caracteristicasRequest) {
-            if (!vistas.add(caracteristicaRequest.idCaracteristica())) {
-                throw new RequerimientoInvalidoException(
-                        "La caracteristica tecnica " + caracteristicaRequest.idCaracteristica()
-                                + " esta duplicada en el requerimiento.");
-            }
-
-            CaracteristicaTecnica caracteristica = caracteristicaTecnicaRepository
-                    .findById(caracteristicaRequest.idCaracteristica())
-                    .orElseThrow(() -> new CaracteristicaNoEncontradaException(
-                            "Caracteristica tecnica no encontrada: "
-                                    + caracteristicaRequest.idCaracteristica()));
-
-            if (!caracteristica.getProfesion().getIdProfesion()
-                    .equals(requerimiento.getProfesion().getIdProfesion())) {
-                throw new CaracteristicaProfesionNoCoincideException(
-                        "La caracteristica tecnica " + caracteristicaRequest.idCaracteristica()
-                                + " no corresponde a la profesion del requerimiento.");
-            }
-
-            validarRangoYValores(caracteristica, caracteristicaRequest);
-
-            if (caracteristicaRequest.valores() != null && !caracteristicaRequest.valores().isEmpty()) {
-                idsValoresPorCaracteristica.put(
-                        caracteristica.getIdCaracteristica(),
-                        caracteristicaRequest.valores());
-            }
+            CaracteristicaTecnica caracteristica =
+                    resolverCaracteristica(requerimiento, caracteristicaRequest, vistas);
+            registrarValores(caracteristica, caracteristicaRequest, idsValoresPorCaracteristica);
 
             resultado.add(RequerimientoActCaract.builder()
                     .requerimientoActividad(requerimiento)
@@ -355,6 +336,92 @@ public class RequerimientoActividadService {
         }
 
         return resultado;
+    }
+
+    /**
+     * Sincroniza las características de un requerimiento existente sin borrar y
+     * recrear las filas que se mantienen. Evita el choque con el índice único
+     * {@code (id_requerimiento_act, id_caracteristica)} cuando Hibernate
+     * intenta insertar la nueva fila antes del orphan removal de la anterior.
+     */
+    private void sincronizarCaracteristicas(
+            RequerimientoActividad requerimiento,
+            List<CrearRequerimientoCaractRequest> caracteristicasRequest,
+            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+
+        Map<Long, RequerimientoActCaract> actuales = new HashMap<>();
+        for (RequerimientoActCaract actual : requerimiento.getCaracteristicas()) {
+            actuales.put(actual.getCaracteristica().getIdCaracteristica(), actual);
+        }
+
+        Set<Long> solicitadas = new HashSet<>();
+        Set<Long> vistas = new HashSet<>();
+
+        if (caracteristicasRequest != null) {
+            for (CrearRequerimientoCaractRequest caracteristicaRequest : caracteristicasRequest) {
+                CaracteristicaTecnica caracteristica =
+                        resolverCaracteristica(requerimiento, caracteristicaRequest, vistas);
+                solicitadas.add(caracteristica.getIdCaracteristica());
+                registrarValores(caracteristica, caracteristicaRequest, idsValoresPorCaracteristica);
+
+                RequerimientoActCaract actual =
+                        actuales.get(caracteristica.getIdCaracteristica());
+                if (actual != null) {
+                    actual.setValorMin(caracteristicaRequest.valorMin());
+                    actual.setValorMax(caracteristicaRequest.valorMax());
+                } else {
+                    requerimiento.getCaracteristicas().add(RequerimientoActCaract.builder()
+                            .requerimientoActividad(requerimiento)
+                            .caracteristica(caracteristica)
+                            .valorMin(caracteristicaRequest.valorMin())
+                            .valorMax(caracteristicaRequest.valorMax())
+                            .build());
+                }
+            }
+        }
+
+        requerimiento.getCaracteristicas().removeIf(actual ->
+                !solicitadas.contains(actual.getCaracteristica().getIdCaracteristica()));
+    }
+
+    private CaracteristicaTecnica resolverCaracteristica(
+            RequerimientoActividad requerimiento,
+            CrearRequerimientoCaractRequest request,
+            Set<Long> vistas) {
+
+        if (!vistas.add(request.idCaracteristica())) {
+            throw new RequerimientoInvalidoException(
+                    "La caracteristica tecnica " + request.idCaracteristica()
+                            + " esta duplicada en el requerimiento.");
+        }
+
+        CaracteristicaTecnica caracteristica = caracteristicaTecnicaRepository
+                .findById(request.idCaracteristica())
+                .orElseThrow(() -> new CaracteristicaNoEncontradaException(
+                        "Caracteristica tecnica no encontrada: "
+                                + request.idCaracteristica()));
+
+        if (!caracteristica.getProfesion().getIdProfesion()
+                .equals(requerimiento.getProfesion().getIdProfesion())) {
+            throw new CaracteristicaProfesionNoCoincideException(
+                    "La caracteristica tecnica " + request.idCaracteristica()
+                            + " no corresponde a la profesion del requerimiento.");
+        }
+
+        validarRangoYValores(caracteristica, request);
+        return caracteristica;
+    }
+
+    private void registrarValores(
+            CaracteristicaTecnica caracteristica,
+            CrearRequerimientoCaractRequest request,
+            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+
+        if (request.valores() != null && !request.valores().isEmpty()) {
+            idsValoresPorCaracteristica.put(
+                    caracteristica.getIdCaracteristica(),
+                    request.valores());
+        }
     }
 
     private void validarRangoYValores(
