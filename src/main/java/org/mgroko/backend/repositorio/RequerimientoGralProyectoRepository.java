@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,12 @@ import jakarta.persistence.LockModeType;
 
 public interface RequerimientoGralProyectoRepository extends JpaRepository<RequerimientoGralProyecto, Long> {
 
+    @EntityGraph(attributePaths = {
+            "profesion",
+            "habilidades",
+            "caracteristicas",
+            "caracteristicas.caracteristica"
+    })
     List<RequerimientoGralProyecto> findByProyectoIdProyecto(Long idProyecto);
 
     /**

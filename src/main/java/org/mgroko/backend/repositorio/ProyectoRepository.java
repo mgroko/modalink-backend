@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -61,4 +62,18 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSp
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Proyecto p WHERE p.idProyecto = :idProyecto")
     Optional<Proyecto> findByIdParaGestion(@Param("idProyecto") Long idProyecto);
+
+    /**
+     * Detalle de proyecto con toda la cadena de ubicación inicializada.
+     * Evita las consultas perezosas de ubicación/ciudad/provincia/país al
+     * armar el {@code ProyectoResponse}.
+     */
+    @EntityGraph(attributePaths = {
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    @Query("SELECT p FROM Proyecto p WHERE p.idProyecto = :idProyecto")
+    Optional<Proyecto> findByIdConUbicacion(@Param("idProyecto") Long idProyecto);
 }

@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.mgroko.backend.admin.dto.AdminDashboardProfesionRow;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -53,6 +54,7 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * @param idUsuario el ID del usuario dueño del perfil
      * @return el perfil si existe y pertenece al usuario
      */
+    @EntityGraph(attributePaths = "profesion")
     Optional<Perfil> findByIdPerfilAndUsuarioIdUsuario(Long idPerfil, Long idUsuario);
 
     /**

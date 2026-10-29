@@ -137,7 +137,7 @@ class ObtenerProyectoServiceTest {
     @Test
     void obtener_miembroActivo_devuelveProyectoCompleto() {
         prepararPerfil();
-        when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyectoBorrador));
+        when(proyectoRepository.findByIdConUbicacion(100L)).thenReturn(Optional.of(proyectoBorrador));
 
         RolProyecto rolDirector = RolProyecto.builder()
                 .codigo("DIRECTOR")
@@ -192,7 +192,7 @@ class ObtenerProyectoServiceTest {
     @Test
     void obtener_noMiembroProyectoPublicadoPermitido() {
         prepararPerfil();
-        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
         when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
@@ -215,7 +215,7 @@ class ObtenerProyectoServiceTest {
     @Test
     void obtener_noMiembroProyectoBorrador_lanzaAccesoDenegado() {
         prepararPerfil();
-        when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyectoBorrador));
+        when(proyectoRepository.findByIdConUbicacion(100L)).thenReturn(Optional.of(proyectoBorrador));
         when(miembroProyectoRepository.findMiembroActivoConPermisos(100L, 10L))
                 .thenReturn(Optional.empty());
 
@@ -227,7 +227,7 @@ class ObtenerProyectoServiceTest {
     void obtener_noMiembroProyectoPrivado_lanzaAccesoDenegado() {
         proyectoPublicado.setPrivacidad(Privacidad.PRIVADO);
         prepararPerfil();
-        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
 
@@ -238,7 +238,7 @@ class ObtenerProyectoServiceTest {
     @Test
     void obtener_proyectoInexistente_lanzaExcepcion() {
         prepararPerfil();
-        when(proyectoRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(proyectoRepository.findByIdConUbicacion(anyLong())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> obtenerProyectoService.obtener(1L, 10L, 999L))
                 .isInstanceOf(ProyectoNoEncontradoException.class)
@@ -271,7 +271,7 @@ class ObtenerProyectoServiceTest {
     @Test
     void obtener_requerimientoConProfesion_incluyeDatosEnResponse() {
         prepararPerfil();
-        when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyectoBorrador));
+        when(proyectoRepository.findByIdConUbicacion(100L)).thenReturn(Optional.of(proyectoBorrador));
 
         MiembroProyecto miembro = MiembroProyecto.builder()
                 .proyecto(proyectoBorrador)
@@ -318,7 +318,7 @@ class ObtenerProyectoServiceTest {
         proyectoPublicado.setAceptaPostulacionGral(true);
 
         prepararPerfil();
-        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
         when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
@@ -351,7 +351,7 @@ class ObtenerProyectoServiceTest {
         proyectoPublicado.setAceptaPostulacionGral(true);
 
         prepararPerfil();
-        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
         when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
@@ -495,7 +495,7 @@ class ObtenerProyectoServiceTest {
             List<RequerimientoGralProyecto> requerimientos) {
 
         prepararPerfil();
-        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
         when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
@@ -511,7 +511,7 @@ class ObtenerProyectoServiceTest {
             List<RequerimientoGralProyecto> requerimientos) {
 
         prepararPerfil();
-        when(proyectoRepository.findById(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
 
         MiembroProyecto miembro = MiembroProyecto.builder()
                 .proyecto(proyectoPublicado)

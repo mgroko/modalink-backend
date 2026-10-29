@@ -7,12 +7,14 @@ import java.util.Optional;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto, Long> {
 
+    @EntityGraph(attributePaths = {"perfil", "rolProyecto"})
     List<MiembroProyecto> findByProyectoIdProyecto(Long idProyecto);
 
     boolean existsByProyectoIdProyectoAndPerfilIdPerfil(Long idProyecto, Long idPerfil);
