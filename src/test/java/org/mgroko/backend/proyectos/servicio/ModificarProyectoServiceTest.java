@@ -10,6 +10,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.actividades.servicio.PlanificadorRecursosService;
+import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Moodboard;
@@ -27,6 +29,7 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.CrearMoodboardRequest;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
@@ -37,8 +40,10 @@ import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException;
+import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.RequerimientoSatisfechoException;
 import org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException;
+import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
@@ -106,6 +111,15 @@ class ModificarProyectoServiceTest {
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
 
+    @Mock
+    private ActividadRepository actividadRepository;
+
+    @Mock
+    private PlanificadorRecursosService planificadorRecursosService;
+
+    @Mock
+    private NotificacionService notificacionService;
+
     @InjectMocks
     private ModificarProyectoService modificarProyectoService;
 
@@ -164,12 +178,24 @@ class ModificarProyectoServiceTest {
 
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L)).thenReturn(Optional.of(perfil));
         when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyecto));
+        when(proyectoRepository.findByIdParaGestion(100L)).thenReturn(Optional.of(proyecto));
         when(miembroProyectoRepository.findMiembroActivoConPermisos(100L, 10L)).thenReturn(Optional.of(miembro));
         when(miembroProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(miembro));
+        when(miembroProyectoRepository.buscarMiembrosActivosDeProyecto(100L)).thenReturn(List.of(miembro));
         when(planificacionRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.of(planificacion));
+        when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(1L)).thenReturn(List.of());
+        when(planificadorRecursosService.planificar(any(), any(), any(), eq(false)))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        java.util.Map.of(), java.util.Map.of(), null));
+        when(notificacionService.crear(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new org.mgroko.backend.modelo.Notificacion());
         when(objetivoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
         when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.of(moodboard));
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
+        when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
+                100L, EstadoActividad.CANCELADA)).thenReturn(true);
         when(proyectoRepository.save(any(Proyecto.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(ubicacionService.obtenerOCrear("12345", "06")).thenReturn(proyecto.getUbicacion());
     }
@@ -329,22 +355,57 @@ class ModificarProyectoServiceTest {
     }
 
     @Test
-    void modificar_proyectoConfirmadoConCambioDeFechaEntrega_lanzaExcepcion() {
+    void modificar_proyectoConfirmadoConCambioDeFechaEntrega_reprogramaYNotifica() {
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyecto.setFechaInicio(java.time.LocalDateTime.now().minusDays(1));
+        LocalDate nuevaFecha = LocalDate.now().plusDays(30);
         ModificarProyectoRequest request = new ModificarProyectoRequest(
                 "Nueva descripción",
                 Privacidad.PRIVADO,
                 true,
-                LocalDate.now().plusDays(30),
-                null,
+                nuevaFecha,
+                new UbicacionRequest("12345", "06"),
                 null,
                 List.of(),
+                null,
+                "Ajuste solicitado por el cliente");
+
+        ProyectoResponse response = modificarProyectoService.modificar(1L, 10L, 100L, request);
+
+        assertThat(response.fechaEntregaEstipulada()).isEqualTo(nuevaFecha);
+        assertThat(planificacion.getFechaEntrega()).isEqualTo(nuevaFecha);
+        verify(planificadorRecursosService).planificar(
+                eq(planificacion), any(), eq(proyecto.getFechaInicio()), eq(false));
+        verify(actividadRepository, org.mockito.Mockito.atLeastOnce()).saveAll(any());
+        verify(actividadRepository, org.mockito.Mockito.atLeastOnce()).flush();
+        verify(notificacionService).registrarTodas(any());
+    }
+
+    @Test
+    void modificar_proyectoConfirmadoConCambioInviable_noGuardaNiNotifica() {
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyecto.setFechaInicio(java.time.LocalDateTime.now().minusDays(1));
+        when(planificadorRecursosService.planificar(any(), any(), any(), eq(false)))
+                .thenThrow(new ProyectoNoConfirmableException(
+                        "SIN_DISPONIBILIDAD",
+                        "La actividad no entra en la nueva entrega."));
+
+        ModificarProyectoRequest request = new ModificarProyectoRequest(
+                "Nueva descripción",
+                Privacidad.PRIVADO,
+                true,
+                LocalDate.now().plusDays(5),
+                new UbicacionRequest("12345", "06"),
+                null,
+                List.of(),
+                null,
                 null);
 
         assertThatThrownBy(() -> modificarProyectoService.modificar(1L, 10L, 100L, request))
-                .isInstanceOf(EstadoProyectoNoModificableException.class);
+                .isInstanceOf(ProyectoNoConfirmableException.class);
 
         verify(proyectoRepository, never()).save(any(Proyecto.class));
+        verify(notificacionService, never()).registrarTodas(any());
     }
 
     @Test

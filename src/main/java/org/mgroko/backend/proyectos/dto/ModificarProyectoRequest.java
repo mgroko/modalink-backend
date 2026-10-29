@@ -31,5 +31,33 @@ public record ModificarProyectoRequest(
         List<@Valid ModificarRequerimientoGralRequest> requerimientosGral,
 
         @Valid
-        CrearMoodboardRequest moodboard
-) {}
+        CrearMoodboardRequest moodboard,
+
+        @Size(max = 200, message = "El motivo no puede superar los 200 caracteres.")
+        String motivoCambioFechaEntrega
+) {
+
+    /**
+     * Constructor histórico para consumidores que todavía no envían motivo.
+     */
+    public ModificarProyectoRequest(
+            String descripcion,
+            Privacidad privacidad,
+            Boolean aceptaPostulacionGral,
+            LocalDate fechaEntregaEstipulada,
+            UbicacionRequest ubicacion,
+            List<@Valid CrearObjetivoRequest> objetivos,
+            List<ModificarRequerimientoGralRequest> requerimientosGral,
+            CrearMoodboardRequest moodboard) {
+        this(
+                descripcion,
+                privacidad,
+                aceptaPostulacionGral,
+                fechaEntregaEstipulada,
+                ubicacion,
+                objetivos,
+                requerimientosGral,
+                moodboard,
+                null);
+    }
+}

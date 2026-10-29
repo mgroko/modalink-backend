@@ -358,6 +358,19 @@ BEGIN
         RETURN NEW;
     END IF;
 
+    IF EXISTS (
+        SELECT 1
+        FROM planificacion pl
+        JOIN proyecto p ON p.id_proyecto = pl.id_proyecto
+        WHERE pl.id_planificacion = NEW.id_planificacion
+          AND p.estado = 'CONFIRMADO'
+          AND pl.fecha_entrega IS NOT NULL
+          AND (NEW.fecha_hora_inicio + (NEW.duracion_minutos * INTERVAL '1 minute'))
+              > (pl.fecha_entrega + TIME '23:59')
+    ) THEN
+        RAISE EXCEPTION 'La actividad termina después de la fecha de entrega del proyecto confirmado.';
+    END IF;
+
     FOR r IN
         SELECT DISTINCT pf.id_usuario, ag.id_agenda
         FROM asignacion_actividad aa
@@ -1380,16 +1393,24 @@ CREATE TABLE planificacion(
 CREATE OR REPLACE FUNCTION fn_validar_planificacion_fecha_coherente() RETURNS trigger AS $$
 DECLARE
     v_fecha_inicio TIMESTAMP;
+    v_estado VARCHAR;
 BEGIN
-    IF NEW.fecha_entrega IS NOT NULL THEN
-        SELECT p.fecha_inicio INTO v_fecha_inicio
-        FROM proyecto p WHERE p.id_proyecto = NEW.id_proyecto;
+    SELECT p.fecha_inicio, p.estado
+      INTO v_fecha_inicio, v_estado
+      FROM proyecto p WHERE p.id_proyecto = NEW.id_proyecto;
 
-        IF v_fecha_inicio IS NOT NULL AND NEW.fecha_entrega < v_fecha_inicio::DATE THEN
-            RAISE EXCEPTION 'La fecha de entrega de la planificación (%) no puede ser anterior a la fecha de inicio del proyecto (%).',
-                NEW.fecha_entrega, v_fecha_inicio::DATE;
+    IF NEW.fecha_entrega IS NULL THEN
+        IF v_estado IN ('PUBLICADO', 'CONFIRMADO') THEN
+            RAISE EXCEPTION 'Un proyecto % no puede quedar sin fecha de entrega.', v_estado;
         END IF;
+        RETURN NEW;
     END IF;
+
+    IF v_fecha_inicio IS NOT NULL AND NEW.fecha_entrega < v_fecha_inicio::DATE THEN
+        RAISE EXCEPTION 'La fecha de entrega de la planificación (%) no puede ser anterior a la fecha de inicio del proyecto (%).',
+            NEW.fecha_entrega, v_fecha_inicio::DATE;
+    END IF;
+
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
 
@@ -1397,6 +1418,46 @@ DROP TRIGGER IF EXISTS trg_validar_planificacion_fecha_coherente ON planificacio
 CREATE TRIGGER trg_validar_planificacion_fecha_coherente
     BEFORE INSERT OR UPDATE OF fecha_entrega, id_proyecto ON planificacion
     FOR EACH ROW EXECUTE FUNCTION fn_validar_planificacion_fecha_coherente();
+
+-- Validación diferida: al confirmar un cambio de entrega, todas las
+-- actividades agendadas deben terminar antes del nuevo límite. Se difiere al
+-- commit para que el backend pueda recalcular y persistir los horarios en la
+-- misma transacción.
+CREATE OR REPLACE FUNCTION fn_validar_entrega_confirmada() RETURNS trigger AS $$
+DECLARE
+    v_estado VARCHAR;
+    v_nombre VARCHAR;
+    v_fin TIMESTAMP;
+BEGIN
+    SELECT estado INTO v_estado
+      FROM proyecto WHERE id_proyecto = NEW.id_proyecto;
+
+    IF v_estado = 'CONFIRMADO' AND NEW.fecha_entrega IS NOT NULL THEN
+        SELECT a.nombre,
+               a.fecha_hora_inicio + (a.duracion_minutos * INTERVAL '1 minute')
+          INTO v_nombre, v_fin
+          FROM actividad a
+         WHERE a.id_planificacion = NEW.id_planificacion
+           AND a.fecha_hora_inicio IS NOT NULL
+           AND a.estado IN ('PENDIENTE', 'EN_CURSO')
+           AND (a.fecha_hora_inicio + (a.duracion_minutos * INTERVAL '1 minute'))
+               > (NEW.fecha_entrega + TIME '23:59')
+         LIMIT 1;
+
+        IF v_nombre IS NOT NULL THEN
+            RAISE EXCEPTION 'La actividad "%" termina en % y supera la nueva fecha de entrega %.',
+                v_nombre, v_fin, NEW.fecha_entrega;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validar_entrega_confirmada ON planificacion;
+CREATE CONSTRAINT TRIGGER trg_validar_entrega_confirmada
+    AFTER INSERT OR UPDATE OF fecha_entrega ON planificacion
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION fn_validar_entrega_confirmada();
 
 -- 
 -- TABLE: polaroid_perfil 
@@ -3389,7 +3450,10 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('PROYECTO_PUBLICADO',    'Proyecto publicado',    'PROYECTO',    'ALTA'),
     ('PROYECTO_CONFIRMADO',   'Proyecto confirmado',   'PROYECTO',    'ALTA'),
     ('AJUSTE_HORARIO',        'Ajuste horario',        'ACTIVIDAD',   'MEDIA'),
-    ('SOBRECOMPROMISO',       'Posible sobrecompromiso','ACTIVIDAD',   'ALTA')
+    ('SOBRECOMPROMISO',       'Posible sobrecompromiso','ACTIVIDAD',   'ALTA'),
+    ('PROYECTO_FECHA_ENTREGA_MODIFICADA',
+                              'Fecha de entrega modificada',
+                                                      'PROYECTO',    'ALTA')
 
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,

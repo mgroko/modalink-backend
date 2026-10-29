@@ -49,6 +49,36 @@ public interface PostulacionActividadRepository
     Optional<PostulacionActividad> findByIdParaGestion(
             @Param("idPostulacion") Long idPostulacion);
 
+    /**
+     * Carga la postulación de actividad para darla de baja (UC-27) bloqueando
+     * la fila, de modo que una aceptación o rechazo concurrente del director
+     * no pueda pisar la operación.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT p FROM PostulacionActividad p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH p.requerimiento requerimiento
+        JOIN FETCH requerimiento.profesion
+        JOIN FETCH requerimiento.actividad actividad
+        JOIN FETCH actividad.planificacion planificacion
+        JOIN FETCH planificacion.proyecto
+        WHERE p.idPostulacion = :idPostulacion
+    """)
+    Optional<PostulacionActividad> findByIdParaBaja(
+            @Param("idPostulacion") Long idPostulacion);
+
+    /** Postulaciones de actividad del perfil, para el listado "mis postulaciones". */
+    @EntityGraph(attributePaths = {
+            "requerimiento",
+            "requerimiento.profesion",
+            "requerimiento.actividad",
+            "requerimiento.actividad.planificacion",
+            "requerimiento.actividad.planificacion.proyecto"
+    })
+    List<PostulacionActividad> findByPerfil_IdPerfil(Long idPerfil);
+
     boolean existsByRequerimiento_IdRequerimientoAndEstado(
             Long idRequerimiento, EstadoSolicitud estado);
 

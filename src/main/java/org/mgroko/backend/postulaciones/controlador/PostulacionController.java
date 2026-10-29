@@ -5,17 +5,22 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.CrearPostulacionActividadRequest;
 import org.mgroko.backend.postulaciones.dto.CrearPostulacionGralRequest;
+import org.mgroko.backend.postulaciones.dto.MiPostulacionResponse;
+import org.mgroko.backend.postulaciones.dto.MisPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.PostulacionBusquedaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
 import org.mgroko.backend.postulaciones.servicio.AceptarPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.BuscarMisPostulacionesService;
 import org.mgroko.backend.postulaciones.servicio.BuscarPostulacionesProyectoService;
 import org.mgroko.backend.postulaciones.servicio.CrearPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.DarDeBajaPostulacionService;
 import org.mgroko.backend.postulaciones.servicio.RechazarPostulacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +33,7 @@ import jakarta.validation.Valid;
 
 /**
  * UC-26: dar de alta una postulación a un proyecto.
+ * UC-27: dar de baja una postulación a proyecto.
  */
 @RestController
 public class PostulacionController {
@@ -36,16 +42,61 @@ public class PostulacionController {
     private final BuscarPostulacionesProyectoService buscarPostulacionesProyectoService;
     private final AceptarPostulacionService aceptarPostulacionService;
     private final RechazarPostulacionService rechazarPostulacionService;
+    private final BuscarMisPostulacionesService buscarMisPostulacionesService;
+    private final DarDeBajaPostulacionService darDeBajaPostulacionService;
 
     public PostulacionController(
             CrearPostulacionService crearPostulacionService,
             BuscarPostulacionesProyectoService buscarPostulacionesProyectoService,
             AceptarPostulacionService aceptarPostulacionService,
-            RechazarPostulacionService rechazarPostulacionService) {
+            RechazarPostulacionService rechazarPostulacionService,
+            BuscarMisPostulacionesService buscarMisPostulacionesService,
+            DarDeBajaPostulacionService darDeBajaPostulacionService) {
         this.crearPostulacionService = crearPostulacionService;
         this.buscarPostulacionesProyectoService = buscarPostulacionesProyectoService;
         this.aceptarPostulacionService = aceptarPostulacionService;
         this.rechazarPostulacionService = rechazarPostulacionService;
+        this.buscarMisPostulacionesService = buscarMisPostulacionesService;
+        this.darDeBajaPostulacionService = darDeBajaPostulacionService;
+    }
+
+    // UC-27: postulaciones emitidas por el perfil activo, para elegir cuál dar de baja
+    @GetMapping("/postulaciones/mias")
+    public ResponseEntity<PaginaResponse<MiPostulacionResponse>> misPostulaciones(
+            @ModelAttribute MisPostulacionesFiltro filtro,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean todos,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(buscarMisPostulacionesService.buscar(
+                idPerfilActivo(authentication), filtro, page, size, todos));
+    }
+
+    // UC-27: baja de una postulación a requerimiento general
+    @DeleteMapping("/proyectos/{idProyecto}/postulaciones/general/{idPostulacion}")
+    public ResponseEntity<Void> darDeBajaGeneral(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idPostulacion,
+            Authentication authentication) {
+
+        darDeBajaPostulacionService.darDeBajaPostulacionGeneral(
+                idUsuario(authentication), idPerfilActivo(authentication), idProyecto, idPostulacion);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // UC-27: baja de una postulación a requerimiento de actividad
+    @DeleteMapping("/proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}")
+    public ResponseEntity<Void> darDeBajaActividad(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idPostulacion,
+            Authentication authentication) {
+
+        darDeBajaPostulacionService.darDeBajaPostulacionActividad(
+                idUsuario(authentication), idPerfilActivo(authentication), idProyecto, idPostulacion);
+
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/proyectos/{idProyecto}/postulaciones/general/{idPostulacion}/aceptar")

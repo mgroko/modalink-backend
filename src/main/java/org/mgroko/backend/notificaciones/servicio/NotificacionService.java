@@ -35,6 +35,8 @@ public class NotificacionService {
     public static final String TIPO_POSTULACION_RECHAZADA = "POSTULACION_RECHAZADA";
     public static final String TIPO_AJUSTE_HORARIO = "AJUSTE_HORARIO";
     public static final String TIPO_SOBRECOMPROMISO = "SOBRECOMPROMISO";
+    public static final String TIPO_PROYECTO_FECHA_ENTREGA_MODIFICADA =
+            "PROYECTO_FECHA_ENTREGA_MODIFICADA";
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 

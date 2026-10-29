@@ -44,6 +44,32 @@ public interface PostulacionGralRepository
     Optional<PostulacionGral> findByIdParaGestion(
             @Param("idPostulacion") Long idPostulacion);
 
+    /**
+     * Carga la postulación general para darla de baja (UC-27) bloqueando la
+     * fila, de modo que una aceptación o rechazo concurrente del director no
+     * pueda pisar la operación.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT p FROM PostulacionGral p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH p.requerimientoGral requerimiento
+        JOIN FETCH requerimiento.proyecto
+        JOIN FETCH requerimiento.profesion
+        WHERE p.idPostulacionGral = :idPostulacion
+    """)
+    Optional<PostulacionGral> findByIdParaBaja(
+            @Param("idPostulacion") Long idPostulacion);
+
+    /** Postulaciones generales del perfil, para el listado "mis postulaciones". */
+    @EntityGraph(attributePaths = {
+            "requerimientoGral",
+            "requerimientoGral.proyecto",
+            "requerimientoGral.profesion"
+    })
+    List<PostulacionGral> findByPerfil_IdPerfil(Long idPerfil);
+
     boolean existsByRequerimientoGralIdRequerimientoGralAndEstado(
             Long idRequerimientoGral, EstadoSolicitud estado);
 

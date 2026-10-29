@@ -1,6 +1,7 @@
 package org.mgroko.backend.proyectos.servicio;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,10 +9,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Moodboard;
+import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PermisoProyecto;
@@ -25,10 +28,13 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
 import org.mgroko.backend.proyectos.dto.CrearObjetivoRequest;
@@ -40,11 +46,13 @@ import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
+import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoSatisfechoException;
 import org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
+import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
@@ -88,6 +96,9 @@ public class ModificarProyectoService {
     private final UbicacionService ubicacionService;
     private final RequerimientoGralService requerimientoGralService;
     private final ProyectoSecurityService proyectoSecurityService;
+    private final ActividadRepository actividadRepository;
+    private final PlanificadorRecursosService planificadorRecursosService;
+    private final NotificacionService notificacionService;
 
     public ModificarProyectoService(
             PerfilRepository perfilRepository,
@@ -102,7 +113,10 @@ public class ModificarProyectoService {
             CupoRequerimientoService cupoRequerimientoService,
             UbicacionService ubicacionService,
             RequerimientoGralService requerimientoGralService,
-            ProyectoSecurityService proyectoSecurityService) {
+            ProyectoSecurityService proyectoSecurityService,
+            ActividadRepository actividadRepository,
+            PlanificadorRecursosService planificadorRecursosService,
+            NotificacionService notificacionService) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -116,6 +130,9 @@ public class ModificarProyectoService {
         this.ubicacionService = ubicacionService;
         this.requerimientoGralService = requerimientoGralService;
         this.proyectoSecurityService = proyectoSecurityService;
+        this.actividadRepository = actividadRepository;
+        this.planificadorRecursosService = planificadorRecursosService;
+        this.notificacionService = notificacionService;
     }
 
     @Transactional
@@ -139,10 +156,24 @@ public class ModificarProyectoService {
         proyectoSecurityService.validarPermiso(idProyecto, idPerfilActivo, PERMISO_MODIFICAR_PROYECTO);
 
         validarEstadoModificable(proyecto);
+
+        LocalDate fechaEntregaAnterior = null;
+
+        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+            // Bloquea el proyecto mientras se recalcula y persiste el cronograma.
+            proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
+                    .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+            fechaEntregaAnterior = planificacionRepository
+                    .findByProyectoIdProyectoForUpdate(idProyecto)
+                    .map(Planificacion::getFechaEntrega)
+                    .orElse(null);
+        }
+
         validarEstructuraConfirmada(idProyecto, proyecto, request);
 
         actualizarDatosBasicos(proyecto, request);
         actualizarUbicacion(proyecto, request);
+        reprogramarConfirmadoSiCambiaEntrega(idProyecto, proyecto, request);
         actualizarFechaEntrega(idProyecto, request);
         actualizarObjetivos(idProyecto, proyecto, request.objetivos());
         actualizarRequerimientos(idProyecto, proyecto, request.requerimientosGral());
@@ -151,8 +182,153 @@ public class ModificarProyectoService {
         Proyecto guardado = proyectoRepository.save(proyecto);
 
         validarInformacionBasicaSiCorresponde(idProyecto, guardado);
+        notificarCambioFechaEntregaSiCorresponde(
+                idProyecto, fechaEntregaAnterior, request);
 
         return armarResponse(guardado, perfil);
+    }
+
+    /**
+     * Si el proyecto está confirmado y la fecha cambia, recalcula el CPM y la
+     * disponibilidad de todas las actividades y persiste el nuevo plan.
+     *
+     * <p>Las actividades {@code PENDIENTE} se recalculan siempre. Las
+     * {@code EN_CURSO} y {@code FINALIZADA} conservan su inicio real.</p>
+     */
+    private void reprogramarConfirmadoSiCambiaEntrega(
+            Long idProyecto,
+            Proyecto proyecto,
+            ModificarProyectoRequest request) {
+
+        if (proyecto.getEstado() != EstadoProyecto.CONFIRMADO
+                || request.fechaEntregaEstipulada() == null) {
+            return;
+        }
+
+        LocalDate nuevaFecha = request.fechaEntregaEstipulada();
+        Planificacion planificacion = planificacionRepository
+                .findByProyectoIdProyectoForUpdate(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
+        if (Objects.equals(nuevaFecha, planificacion.getFechaEntrega())) {
+            return;
+        }
+
+        if (nuevaFecha.isBefore(LocalDate.now())) {
+            throw new FechaEntregaInvalidaException(
+                    "La fecha de entrega estipulada no puede ser anterior a la fecha actual.");
+        }
+
+        LocalDateTime fechaInicio = proyecto.getFechaInicio();
+        if (fechaInicio == null) {
+            throw new ProyectoNoConfirmableException(
+                    "DATOS_INCONSISTENTES",
+                    "El proyecto confirmado no tiene fecha de inicio.");
+        }
+        if (nuevaFecha.isBefore(fechaInicio.toLocalDate())) {
+            throw new FechaEntregaInvalidaException(
+                    "La fecha de entrega no puede ser anterior al inicio del proyecto.");
+        }
+
+        // El planificador lee la nueva entrega desde la planificación.
+        planificacion.setFechaEntrega(nuevaFecha);
+
+        List<Actividad> actividades = actividadRepository
+                .findConPredecesorasByPlanificacion(
+                        planificacion.getIdPlanificacion());
+
+        // Las fechas viejas de las actividades PENDIENTE no deben bloquear el
+        // recálculo como si fueran reservas. Se limpian y se flush-ean antes de
+        // planificar; la transacción las restaura si algo falla.
+        for (Actividad actividad : actividades) {
+            if (actividad.getEstado() == EstadoActividad.PENDIENTE) {
+                actividad.setFechaHoraInicio(null);
+                actividad.setOrigenInicio(null);
+            }
+        }
+        actividadRepository.saveAll(actividades);
+        actividadRepository.flush();
+
+        PlanificadorRecursosService.Resultado plan;
+        try {
+            plan = planificadorRecursosService.planificar(
+                    planificacion,
+                    actividades,
+                    fechaInicio,
+                    false);
+        } catch (ProyectoNoConfirmableException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new ProyectoNoConfirmableException(
+                    "CRONOGRAMA_NO_VIABLE",
+                    ex.getMessage() != null
+                            ? ex.getMessage()
+                            : "No se pudo recalcular el cronograma con la nueva fecha de entrega.");
+        }
+
+        for (Actividad actividad : actividades) {
+            if (actividad.getEstado() == EstadoActividad.CANCELADA) {
+                continue;
+            }
+
+            LocalDateTime inicio = plan.inicios().get(actividad.getIdActividad());
+            if (inicio == null) {
+                throw new ProyectoNoConfirmableException(
+                        "DATOS_INCONSISTENTES",
+                        "No se pudo asignar un horario a la actividad '"
+                                + actividad.getNombre() + "'.",
+                        List.of(new BloqueoConfirmacionResponse(
+                                "DATOS_INCONSISTENTES",
+                                "Actividad sin horario luego de la reprogramación.",
+                                "ACTIVIDAD",
+                                actividad.getIdActividad())));
+            }
+
+            actividad.setFechaHoraInicio(inicio);
+            actividad.setOrigenInicio(
+                    actividad.getEstado() == EstadoActividad.PENDIENTE
+                            ? OrigenInicio.CONFIRMADA
+                            : OrigenInicio.REAL);
+        }
+
+        actividadRepository.saveAll(actividades);
+        actividadRepository.flush();
+    }
+
+    private void notificarCambioFechaEntregaSiCorresponde(
+            Long idProyecto,
+            LocalDate fechaAnterior,
+            ModificarProyectoRequest request) {
+
+        if (fechaAnterior == null
+                || request.fechaEntregaEstipulada() == null
+                || Objects.equals(fechaAnterior, request.fechaEntregaEstipulada())) {
+            return;
+        }
+
+        String motivo = request.motivoCambioFechaEntrega() == null
+                ? null
+                : request.motivoCambioFechaEntrega().trim();
+        String mensaje = "La fecha de entrega del proyecto cambió de "
+                + fechaAnterior + " a " + request.fechaEntregaEstipulada() + "."
+                + (motivo == null || motivo.isBlank() ? "" : " Motivo: " + motivo);
+
+        List<Notificacion> notificaciones = new ArrayList<>();
+        for (MiembroProyecto miembro
+                : miembroProyectoRepository.buscarMiembrosActivosDeProyecto(idProyecto)) {
+            if (miembro.getPerfil() == null
+                    || miembro.getPerfil().getUsuario() == null) {
+                continue;
+            }
+            notificaciones.add(notificacionService.crear(
+                    miembro.getPerfil().getUsuario(),
+                    miembro.getPerfil(),
+                    NotificacionService.TIPO_PROYECTO_FECHA_ENTREGA_MODIFICADA,
+                    mensaje,
+                    "PROYECTO",
+                    idProyecto));
+        }
+        notificacionService.registrarTodas(notificaciones);
     }
 
     private void validarEstadoModificable(Proyecto proyecto) {
@@ -166,9 +342,9 @@ public class ModificarProyectoService {
     }
 
     /**
-     * En un proyecto confirmado no se pueden cambiar la fecha de entrega ni
-     * los requerimientos generales: ambos forman parte del plan persistido.
-     * El resto de los datos descriptivos se puede seguir editando.
+     * En un proyecto confirmado no se pueden cambiar los requerimientos
+     * generales: forman parte del plan persistido. La fecha de entrega sí se
+     * puede cambiar, pero dispara una reprogramación completa.
      */
     private void validarEstructuraConfirmada(
             Long idProyecto,
@@ -177,17 +353,6 @@ public class ModificarProyectoService {
 
         if (proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
             return;
-        }
-
-        LocalDate fechaEntregaActual = planificacionRepository
-                .findByProyectoIdProyecto(idProyecto)
-                .map(Planificacion::getFechaEntrega)
-                .orElse(null);
-
-        if (request.fechaEntregaEstipulada() != null
-                && !Objects.equals(request.fechaEntregaEstipulada(), fechaEntregaActual)) {
-            throw new EstadoProyectoNoModificableException(
-                    EstadoProyecto.CONFIRMADO.getNombre());
         }
 
         Map<Long, Integer> requerimientosActuales = new HashMap<>();
@@ -200,17 +365,20 @@ public class ModificarProyectoService {
             }
         }
 
+        // Si el request no trae requerimientos, se conservan los actuales.
+        if (request.requerimientosGral() == null) {
+            return;
+        }
+
         Map<Long, Integer> requerimientosNuevos = new HashMap<>();
-        if (request.requerimientosGral() != null) {
-            for (ModificarRequerimientoGralRequest requerimiento
-                    : request.requerimientosGral()) {
-                if (requerimiento.idRequerimientoGral() == null
-                        || requerimientosNuevos.put(
-                                requerimiento.idRequerimientoGral(),
-                                requerimiento.cantidad()) != null) {
-                    throw new EstadoProyectoNoModificableException(
-                            EstadoProyecto.CONFIRMADO.getNombre());
-                }
+        for (ModificarRequerimientoGralRequest requerimiento
+                : request.requerimientosGral()) {
+            if (requerimiento.idRequerimientoGral() == null
+                    || requerimientosNuevos.put(
+                            requerimiento.idRequerimientoGral(),
+                            requerimiento.cantidad()) != null) {
+                throw new EstadoProyectoNoModificableException(
+                        EstadoProyecto.CONFIRMADO.getNombre());
             }
         }
 

@@ -2,10 +2,14 @@ package org.mgroko.backend.postulaciones.controlador;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,6 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
+import org.mgroko.backend.postulaciones.dto.MiPostulacionResponse;
+import org.mgroko.backend.postulaciones.dto.MisPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
@@ -27,8 +33,10 @@ import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaExcepti
 import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.postulaciones.servicio.AceptarPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.BuscarMisPostulacionesService;
 import org.mgroko.backend.postulaciones.servicio.BuscarPostulacionesProyectoService;
 import org.mgroko.backend.postulaciones.servicio.CrearPostulacionService;
+import org.mgroko.backend.postulaciones.servicio.DarDeBajaPostulacionService;
 import org.mgroko.backend.postulaciones.servicio.RechazarPostulacionService;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -63,6 +71,12 @@ class PostulacionControllerTest {
 
     @MockitoBean
     private RechazarPostulacionService rechazarPostulacionService;
+
+    @MockitoBean
+    private BuscarMisPostulacionesService buscarMisPostulacionesService;
+
+    @MockitoBean
+    private DarDeBajaPostulacionService darDeBajaPostulacionService;
 
     @Test
     void aceptarGeneral_conPerfilActivo_devuelve200() throws Exception {
@@ -314,6 +328,98 @@ class PostulacionControllerTest {
                 .andExpect(jsonPath("$.tentativa").value(true));
 
         verify(crearPostulacionService).darDeAltaPostulacionActividad(1L, 10L, 9L, 20L);
+    }
+
+    @Test
+    void darDeBajaGeneral_conPerfilActivo_devuelve204() throws Exception {
+        mockMvc.perform(delete("/proyectos/5/postulaciones/general/77")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isNoContent());
+
+        verify(darDeBajaPostulacionService)
+                .darDeBajaPostulacionGeneral(1L, 10L, 5L, 77L);
+    }
+
+    @Test
+    void darDeBajaActividad_conPerfilActivo_devuelve204() throws Exception {
+        mockMvc.perform(delete("/proyectos/5/postulaciones/actividad/88")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isNoContent());
+
+        verify(darDeBajaPostulacionService)
+                .darDeBajaPostulacionActividad(1L, 10L, 5L, 88L);
+    }
+
+    @Test
+    void darDeBajaGeneral_postulacionInexistenteODeOtroPerfil_devuelve404() throws Exception {
+        doThrow(new PostulacionNoEncontradaException())
+                .when(darDeBajaPostulacionService)
+                .darDeBajaPostulacionGeneral(1L, 10L, 5L, 77L);
+
+        mockMvc.perform(delete("/proyectos/5/postulaciones/general/77")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void darDeBajaGeneral_yaGestionada_devuelve409() throws Exception {
+        doThrow(new PostulacionYaGestionadaException())
+                .when(darDeBajaPostulacionService)
+                .darDeBajaPostulacionGeneral(1L, 10L, 5L, 77L);
+
+        mockMvc.perform(delete("/proyectos/5/postulaciones/general/77")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void darDeBajaGeneral_sinPerfilActivo_noInvocaAlServicio() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+        mockMvc.perform(delete("/proyectos/5/postulaciones/general/77")
+                        .principal(auth))
+                .andExpect(status().isNotFound());
+
+        verify(darDeBajaPostulacionService, never())
+                .darDeBajaPostulacionGeneral(any(), any(), any(), any());
+    }
+
+    @Test
+    void misPostulaciones_conPerfilActivo_devuelvePaginaYFiltros() throws Exception {
+        var respuesta = new MiPostulacionResponse(
+                77L, TipoPostulacion.GENERAL, EstadoSolicitud.PENDIENTE,
+                LocalDateTime.of(2026, 10, 26, 10, 0),
+                5L, "Desfile", 30L, "Una modelo",
+                null, null, true);
+
+        when(buscarMisPostulacionesService.buscar(
+                eq(10L), any(MisPostulacionesFiltro.class), eq(0), eq(20), eq(false)))
+                .thenReturn(new PaginaResponse<>(List.of(respuesta), 0, 20, 1L, 1, true, true));
+
+        mockMvc.perform(get("/postulaciones/mias")
+                        .principal(autenticacion(1L, 10L))
+                        .param("idProyecto", "5")
+                        .param("estado", "PENDIENTE")
+                        .param("tipo", "GENERAL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].idPostulacion").value(77))
+                .andExpect(jsonPath("$.contenido[0].tipo").value("GENERAL"))
+                .andExpect(jsonPath("$.contenido[0].puedeDarseDeBaja").value(true));
+
+        verify(buscarMisPostulacionesService).buscar(
+                eq(10L), any(MisPostulacionesFiltro.class), eq(0), eq(20), eq(false));
+    }
+
+    @Test
+    void misPostulaciones_sinPerfilActivo_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+        mockMvc.perform(get("/postulaciones/mias").principal(auth))
+                .andExpect(status().isNotFound());
+
+        verify(buscarMisPostulacionesService, never())
+                .buscar(any(), any(), anyInt(), anyInt(), anyBoolean());
     }
 
     private UsernamePasswordAuthenticationToken autenticacion(Long idUsuario, Long idPerfil) {
