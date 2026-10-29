@@ -1149,6 +1149,7 @@ CREATE TABLE notificacion(
     fecha_generada        timestamp      DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id_usuario_destino    int8           NOT NULL,
     id_perfil_contexto    int8,
+    id_proyecto           int8,
     CONSTRAINT chk_notif_entidad CHECK (
         (entidad_tipo IS NULL AND entidad_id IS NULL) OR
         (entidad_tipo IS NOT NULL AND entidad_id IS NOT NULL)

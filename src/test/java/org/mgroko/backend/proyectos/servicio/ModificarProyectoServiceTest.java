@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mgroko.backend.actividades.servicio.PlanificadorRecursosService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.MiembroProyecto;
@@ -189,7 +188,7 @@ class ModificarProyectoServiceTest {
         when(planificadorRecursosService.planificar(any(), any(), any(), eq(false)))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         java.util.Map.of(), java.util.Map.of(), null));
-        when(notificacionService.crear(any(), any(), any(), any(), any(), any()))
+        when(notificacionService.crear(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new org.mgroko.backend.modelo.Notificacion());
         when(objetivoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
         when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.of(moodboard));

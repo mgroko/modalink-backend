@@ -4,6 +4,7 @@ import java.util.List;
 
 public record ActividadEliminadaEvent(
         Long idActividad,
+        Long idProyecto,
         String nombreActividad,
         String nombreProyecto,
         String motivo,

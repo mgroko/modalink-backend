@@ -123,7 +123,7 @@ class RechazarPostulacionServiceTest {
         when(notificacionService.crear(
                 any(Usuario.class), any(Perfil.class),
                 eq(NotificacionService.TIPO_POSTULACION_RECHAZADA),
-                any(String.class), eq("POSTULACION_GRAL"), eq(77L)))
+                any(String.class), eq("POSTULACION_GRAL"), eq(77L), any(Long.class)))
                 .thenReturn(new Notificacion());
 
         PostulacionGestionadaResponse respuesta =
@@ -170,7 +170,7 @@ class RechazarPostulacionServiceTest {
         when(notificacionService.crear(
                 any(Usuario.class), any(Perfil.class),
                 eq(NotificacionService.TIPO_POSTULACION_RECHAZADA),
-                any(String.class), eq("POSTULACION_ACTIVIDAD"), eq(88L)))
+                any(String.class), eq("POSTULACION_ACTIVIDAD"), eq(88L), any(Long.class)))
                 .thenReturn(new Notificacion());
 
         PostulacionGestionadaResponse respuesta =

@@ -137,7 +137,8 @@ class CrearPostulacionServiceTest {
                 });
         when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(ID_PROYECTO)))
                 .thenReturn(List.of(director(50L), director(51L)));
-        when(notificacionService.crear(any(), any(), anyString(), anyString(), anyString(), any()))
+        when(notificacionService.crear(
+                any(), any(), anyString(), anyString(), anyString(), any(), any()))
                 .thenAnswer(invocacion -> Notificacion.builder()
                         .usuarioDestino(invocacion.getArgument(0))
                         .perfilContexto(invocacion.getArgument(1))
@@ -145,6 +146,7 @@ class CrearPostulacionServiceTest {
                         .mensaje(invocacion.getArgument(3))
                         .entidadTipo(invocacion.getArgument(4))
                         .entidadId(invocacion.getArgument(5))
+                        .idProyecto(invocacion.getArgument(6))
                         .build());
 
         PostulacionResponse respuesta = servicio.darDeAltaPostulacionGeneral(
@@ -170,6 +172,8 @@ class CrearPostulacionServiceTest {
                         .isEqualTo(CrearPostulacionService.ENTIDAD_POSTULACION_GRAL));
         assertThat(captor.getValue())
                 .allSatisfy(n -> assertThat(n.getEntidadId()).isEqualTo(77L));
+        assertThat(captor.getValue())
+                .allSatisfy(n -> assertThat(n.getIdProyecto()).isEqualTo(ID_PROYECTO));
     }
 
     @Test
@@ -369,7 +373,8 @@ class CrearPostulacionServiceTest {
                 });
         when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(ID_PROYECTO)))
                 .thenReturn(List.of(director(50L)));
-        when(notificacionService.crear(any(), any(), anyString(), anyString(), anyString(), any()))
+        when(notificacionService.crear(
+                any(), any(), anyString(), anyString(), anyString(), any(), any()))
                 .thenAnswer(invocacion -> Notificacion.builder()
                         .tipo(invocacion.getArgument(2))
                         .build());

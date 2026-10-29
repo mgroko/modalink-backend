@@ -326,6 +326,7 @@ public class ModificarProyectoService {
                     NotificacionService.TIPO_PROYECTO_FECHA_ENTREGA_MODIFICADA,
                     mensaje,
                     "PROYECTO",
+                    idProyecto,
                     idProyecto));
         }
         notificacionService.registrarTodas(notificaciones);

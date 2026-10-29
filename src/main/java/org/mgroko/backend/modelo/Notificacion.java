@@ -61,4 +61,12 @@ public class Notificacion {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_perfil_contexto")
     private Perfil perfilContexto;
+
+    /**
+     * Proyecto asociado capturado al generar la notificación. Es nullable para
+     * notificaciones globales e históricas; en ese caso el proyecto se intenta
+     * derivar de {@code entidadTipo + entidadId}.
+     */
+    @Column(name = "id_proyecto")
+    private Long idProyecto;
 }

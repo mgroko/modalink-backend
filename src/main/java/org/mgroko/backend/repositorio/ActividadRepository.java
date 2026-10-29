@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -152,4 +153,16 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
     @Query(value = "DELETE FROM hito_actividad WHERE id_actividad = :idActividad",
             nativeQuery = true)
     int deleteHitoActividadByActividadId(@Param("idActividad") Long idActividad);
+
+    /**
+     * Resuelve el proyecto de cada actividad indicada. Se usa para enriquecer
+     * las notificaciones sin persistir un dato derivable.
+     */
+    @Query("""
+        SELECT a.idActividad AS entidadId,
+               a.planificacion.proyecto.idProyecto AS idProyecto
+        FROM Actividad a
+        WHERE a.idActividad IN :ids
+    """)
+    List<ProyectoDeEntidad> findProyectoPorIds(@Param("ids") Collection<Long> ids);
 }

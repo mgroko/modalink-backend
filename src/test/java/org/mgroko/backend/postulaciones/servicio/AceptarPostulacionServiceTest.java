@@ -197,7 +197,7 @@ class AceptarPostulacionServiceTest {
         when(notificacionService.crear(
                 any(Usuario.class), any(Perfil.class),
                 eq(NotificacionService.TIPO_POSTULACION_ACEPTADA),
-                any(String.class), eq("POSTULACION_GRAL"), eq(77L)))
+                any(String.class), eq("POSTULACION_GRAL"), eq(77L), any(Long.class)))
                 .thenReturn(new Notificacion());
 
         PostulacionGestionadaResponse respuesta = service.aceptarGeneral(1L, 10L, 5L, 77L);
@@ -407,7 +407,7 @@ class AceptarPostulacionServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(notificacionService.crear(
                 any(Usuario.class), any(Perfil.class), any(String.class),
-                any(String.class), any(String.class), any(Long.class)))
+                any(String.class), any(String.class), any(Long.class), any(Long.class)))
                 .thenReturn(new Notificacion());
         when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(5L)))
                 .thenReturn(List.of(miembroDirector));

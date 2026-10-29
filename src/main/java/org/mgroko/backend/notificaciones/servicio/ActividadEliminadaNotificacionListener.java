@@ -90,7 +90,8 @@ public class ActividadEliminadaNotificacionListener {
                     NotificacionService.TIPO_ACTIVIDAD_ELIMINADA,
                     mensajeActividad,
                     "ACTIVIDAD",
-                    evento.idActividad()));
+                    evento.idActividad(),
+                    evento.idProyecto()));
         }
 
         String mensajePostulacion = "Tu postulación a la actividad \""
@@ -110,7 +111,8 @@ public class ActividadEliminadaNotificacionListener {
                     NotificacionService.TIPO_POSTULACION_RECHAZADA,
                     mensajePostulacion,
                     "POSTULACION_ACTIVIDAD",
-                    postulacion.idPostulacion()));
+                    postulacion.idPostulacion(),
+                    evento.idProyecto()));
         }
 
         String mensajeInvitacion = "Tu invitación a la actividad \""
@@ -130,7 +132,8 @@ public class ActividadEliminadaNotificacionListener {
                     NotificacionService.TIPO_INVITACION_RECHAZADA,
                     mensajeInvitacion,
                     "INVITACION_ACTIVIDAD",
-                    invitacion.idInvitacion()));
+                    invitacion.idInvitacion(),
+                    evento.idProyecto()));
         }
 
         notificacionService.registrarTodas(notificaciones);

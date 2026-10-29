@@ -89,7 +89,8 @@ public class RechazarPostulacionService {
                 "Tu postulación al proyecto '" + proyecto.getNombre()
                         + "' fue rechazada.",
                 "POSTULACION_GRAL",
-                postulacion.getIdPostulacionGral());
+                postulacion.getIdPostulacionGral(),
+                proyecto.getIdProyecto());
 
         return new PostulacionGestionadaResponse(
                 postulacion.getIdPostulacionGral(),
@@ -135,7 +136,8 @@ public class RechazarPostulacionService {
                         + "' del proyecto '" + proyecto.getNombre()
                         + "' fue rechazada.",
                 "POSTULACION_ACTIVIDAD",
-                postulacion.getIdPostulacion());
+                postulacion.getIdPostulacion(),
+                proyecto.getIdProyecto());
 
         return new PostulacionGestionadaResponse(
                 postulacion.getIdPostulacion(),
@@ -186,7 +188,8 @@ public class RechazarPostulacionService {
             Perfil postulante,
             String mensaje,
             String entidadTipo,
-            Long entidadId) {
+            Long entidadId,
+            Long idProyecto) {
 
         if (postulante == null || postulante.getUsuario() == null) {
             return;
@@ -198,7 +201,8 @@ public class RechazarPostulacionService {
                 NotificacionService.TIPO_POSTULACION_RECHAZADA,
                 mensaje,
                 entidadTipo,
-                entidadId);
+                entidadId,
+                idProyecto);
 
         notificacionService.registrarTodas(List.of(notificacion));
     }

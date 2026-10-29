@@ -80,6 +80,7 @@ public class ProyectoConfirmadoNotificacionListener {
                     NotificacionService.TIPO_PROYECTO_CONFIRMADO,
                     mensaje,
                     ENTIDAD_PROYECTO,
+                    evento.idProyecto(),
                     evento.idProyecto()));
         }
 

@@ -36,8 +36,9 @@ class NotificacionControllerTest {
 
     private NotificacionResponse notificacion() {
         return new NotificacionResponse(
-                30L, "HITO_CUMPLIDO", "Hito completado", "HITO", 40L,
-                false, null, "SERVICIO", LocalDateTime.of(2026, 10, 21, 12, 0), 20L, 105L);
+                30L, "HITO_CUMPLIDO", "Hito cumplido", "Hito completado", "HITO", 40L,
+                false, null, "SERVICIO", LocalDateTime.of(2026, 10, 21, 12, 0),
+                20L, 105L, null, 40L, null);
     }
 
     @Test
@@ -55,6 +56,10 @@ class NotificacionControllerTest {
                 .andExpect(jsonPath("$.contenido[0].idNotificacion").value(30))
                 .andExpect(jsonPath("$.contenido[0].idPerfilContexto").value(20))
                 .andExpect(jsonPath("$.contenido[0].idProyecto").value(105))
+                .andExpect(jsonPath("$.contenido[0].titulo").value("Hito cumplido"))
+                .andExpect(jsonPath("$.contenido[0].idHito").value(40))
+                .andExpect(jsonPath("$.contenido[0].idActividad").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.contenido[0].idInvitacion").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.totalElementos").value(1));
     }
 
@@ -85,9 +90,9 @@ class NotificacionControllerTest {
     @Test
     void marcarLeida_devuelveNotificacionActualizada() throws Exception {
         NotificacionResponse leida = new NotificacionResponse(
-                30L, "HITO_CUMPLIDO", "Hito completado", "HITO", 40L,
+                30L, "HITO_CUMPLIDO", "Hito cumplido", "Hito completado", "HITO", 40L,
                 true, LocalDateTime.of(2026, 10, 21, 13, 0), "SERVICIO",
-                LocalDateTime.of(2026, 10, 21, 12, 0), 20L, null);
+                LocalDateTime.of(2026, 10, 21, 12, 0), 20L, null, null, 40L, null);
         when(notificacionService.marcarLeida(10L, 30L)).thenReturn(leida);
 
         mockMvc.perform(patch("/notificaciones/30/leida").principal(auth()))

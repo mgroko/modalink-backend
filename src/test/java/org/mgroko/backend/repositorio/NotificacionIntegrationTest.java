@@ -143,6 +143,33 @@ class NotificacionIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void listar_actividadEliminada_usaIdProyectoPersistidoAunqueLaActividadNoExista() {
+        Usuario usuario = crearUsuario("10");
+        Perfil perfil = crearPerfil(usuario, 0, "Perfil Actividad Eliminada");
+
+        Notificacion notificacion = notificacionService.crear(
+                usuario,
+                perfil,
+                NotificacionService.TIPO_ACTIVIDAD_ELIMINADA,
+                "La actividad fue eliminada.",
+                "ACTIVIDAD",
+                999_999L,
+                55L);
+        notificacionService.registrarTodas(List.of(notificacion));
+
+        PaginaResponse<NotificacionResponse> pagina = notificacionService.listar(
+                usuario.getIdUsuario(), perfil.getIdPerfil(), 0, 20);
+
+        assertThat(pagina.contenido()).singleElement().satisfies(n -> {
+            assertThat(n.titulo()).isEqualTo("Actividad eliminada");
+            assertThat(n.idProyecto()).isEqualTo(55L);
+            assertThat(n.idActividad()).isEqualTo(999_999L);
+            assertThat(n.idHito()).isNull();
+            assertThat(n.idInvitacion()).isNull();
+        });
+    }
+
+    @Test
     void marcarLeidaYMarcarTodas_respetanUsuarioYPerfil() {
         Usuario usuarioA = crearUsuario("03");
         Usuario usuarioB = crearUsuario("04");

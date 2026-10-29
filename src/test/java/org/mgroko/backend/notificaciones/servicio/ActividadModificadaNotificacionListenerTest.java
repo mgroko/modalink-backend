@@ -56,7 +56,8 @@ class ActividadModificadaNotificacionListenerTest {
         Perfil sol = perfil(11L, 2L);
         when(perfilRepository.findAllById(any()))
                 .thenReturn(List.of(luna, sol));
-        when(notificacionService.crear(any(), any(), anyString(), anyString(), anyString(), any()))
+        when(notificacionService.crear(
+                any(), any(), anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(Notificacion.builder().build());
 
         listener.alModificarActividad(evento(List.of(10L, 11L, 10L)));
@@ -67,7 +68,8 @@ class ActividadModificadaNotificacionListenerTest {
                 eq(NotificacionService.TIPO_ACTIVIDAD_MODIFICADA),
                 anyString(),
                 eq("ACTIVIDAD"),
-                eq(55L));
+                eq(55L),
+                eq(7L));
         verify(notificacionService).registrarTodas(argThat(notificaciones ->
                 notificaciones.size() == 2));
     }
@@ -79,7 +81,7 @@ class ActividadModificadaNotificacionListenerTest {
         listener.alModificarActividad(evento(List.of(10L)));
 
         verify(notificacionService, never()).crear(
-                any(), any(), anyString(), anyString(), anyString(), any());
+                any(), any(), anyString(), anyString(), anyString(), any(), any());
         verify(notificacionService, never()).registrarTodas(any());
     }
 
@@ -112,6 +114,7 @@ class ActividadModificadaNotificacionListenerTest {
     private ActividadModificadaEvent evento(List<Long> idsPerfiles) {
         return new ActividadModificadaEvent(
                 55L,
+                7L,
                 "Montaje final",
                 "Desfile Primavera",
                 idsPerfiles);

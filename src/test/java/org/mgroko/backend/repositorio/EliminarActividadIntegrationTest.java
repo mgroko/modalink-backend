@@ -146,22 +146,26 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 escenario.idUsuarioDirector(),
                 NotificacionService.TIPO_ACTIVIDAD_ELIMINADA,
                 "ACTIVIDAD",
-                escenario.idActividadEliminada());
+                escenario.idActividadEliminada(),
+                escenario.idProyecto());
         verificarNotificacion(
                 escenario.idUsuarioMiembro(),
                 NotificacionService.TIPO_ACTIVIDAD_ELIMINADA,
                 "ACTIVIDAD",
-                escenario.idActividadEliminada());
+                escenario.idActividadEliminada(),
+                escenario.idProyecto());
         verificarNotificacion(
                 escenario.idUsuarioPostulante(),
                 NotificacionService.TIPO_POSTULACION_RECHAZADA,
                 "POSTULACION_ACTIVIDAD",
-                escenario.idPostulacion());
+                escenario.idPostulacion(),
+                escenario.idProyecto());
         verificarNotificacion(
                 escenario.idUsuarioInvitado(),
                 NotificacionService.TIPO_INVITACION_RECHAZADA,
                 "INVITACION_ACTIVIDAD",
-                escenario.idInvitacion());
+                escenario.idInvitacion(),
+                escenario.idProyecto());
     }
 
     @Test
@@ -194,17 +198,20 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
             Long idUsuario,
             String tipo,
             String entidadTipo,
-            Long entidadId) {
+            Long entidadId,
+            Long idProyecto) {
 
         Map<String, Object> notificacion = jdbcTemplate.queryForMap(
-                "SELECT tipo, entidad_tipo, entidad_id, mensaje FROM notificacion "
-                        + "WHERE id_usuario_destino = ? AND tipo = ?",
+                "SELECT tipo, entidad_tipo, entidad_id, id_proyecto, mensaje "
+                        + "FROM notificacion WHERE id_usuario_destino = ? AND tipo = ?",
                 idUsuario,
                 tipo);
 
         assertThat(notificacion.get("entidad_tipo")).isEqualTo(entidadTipo);
         assertThat(((Number) notificacion.get("entidad_id")).longValue())
                 .isEqualTo(entidadId);
+        assertThat(((Number) notificacion.get("id_proyecto")).longValue())
+                .isEqualTo(idProyecto);
         assertThat((String) notificacion.get("mensaje"))
                 .contains("Falta de presupuesto");
     }

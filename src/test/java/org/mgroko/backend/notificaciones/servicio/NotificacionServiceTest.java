@@ -247,4 +247,14 @@ class NotificacionServiceTest {
         assertThat(creada.getLeida()).isFalse();
         assertThat(creada.getFechaLeida()).isNull();
     }
+
+    @Test
+    void crear_conProyecto_guardaIdProyecto() {
+        Notificacion creada = notificacionService.crear(
+                usuario, perfil, "ACTIVIDAD_ELIMINADA", "Mensaje", "ACTIVIDAD", 60L, 50L);
+
+        assertThat(creada.getIdProyecto()).isEqualTo(50L);
+        assertThat(creada.getEntidadTipo()).isEqualTo("ACTIVIDAD");
+        assertThat(creada.getEntidadId()).isEqualTo(60L);
+    }
 }

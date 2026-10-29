@@ -541,6 +541,7 @@ public class ModificarActividadService {
 
         eventPublisher.publishEvent(new ActividadModificadaEvent(
                 actividad.getIdActividad(),
+                proyecto.getIdProyecto(),
                 actividad.getNombre(),
                 proyecto.getNombre(),
                 List.copyOf(idsPerfiles)));

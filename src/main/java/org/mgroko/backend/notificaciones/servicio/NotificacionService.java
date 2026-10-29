@@ -38,6 +38,7 @@ public class NotificacionService {
     public static final String TIPO_PROYECTO_FECHA_ENTREGA_MODIFICADA =
             "PROYECTO_FECHA_ENTREGA_MODIFICADA";
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
+    public static final String TIPO_HITO_CUMPLIDO = "HITO_CUMPLIDO";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;
@@ -73,6 +74,30 @@ public class NotificacionService {
             String entidadTipo,
             Long entidadId) {
 
+        return crear(
+                usuarioDestino,
+                perfilContexto,
+                tipo,
+                mensaje,
+                entidadTipo,
+                entidadId,
+                null);
+    }
+
+    /**
+     * Crea una notificación capturando el proyecto asociado. Para
+     * notificaciones históricas o tipos globales puede ser {@code null}; en ese
+     * caso el proyecto se intenta derivar en lectura.
+     */
+    public Notificacion crear(
+            Usuario usuarioDestino,
+            Perfil perfilContexto,
+            String tipo,
+            String mensaje,
+            String entidadTipo,
+            Long entidadId,
+            Long idProyecto) {
+
         return Notificacion.builder()
                 .usuarioDestino(usuarioDestino)
                 .perfilContexto(perfilContexto)
@@ -80,6 +105,7 @@ public class NotificacionService {
                 .mensaje(mensaje)
                 .entidadTipo(entidadTipo)
                 .entidadId(entidadId)
+                .idProyecto(idProyecto)
                 .leida(false)
                 .fechaLeida(null)
                 .origen(ORIGEN_SERVICIO)

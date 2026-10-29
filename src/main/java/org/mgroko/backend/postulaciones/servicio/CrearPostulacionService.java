@@ -355,7 +355,8 @@ public class CrearPostulacionService {
                     NotificacionService.TIPO_POSTULACION_RECIBIDA,
                     mensaje,
                     entidadTipo,
-                    idPostulacion));
+                    idPostulacion,
+                    proyecto.getIdProyecto()));
         }
 
         notificacionService.registrarTodas(notificaciones);

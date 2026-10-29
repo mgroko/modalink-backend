@@ -133,6 +133,7 @@ public class EliminarActividadService {
 
         ActividadEliminadaEvent evento = new ActividadEliminadaEvent(
                 idActividad,
+                proyecto.getIdProyecto(),
                 actividad.getNombre(),
                 proyecto.getNombre(),
                 motivoNormalizado,

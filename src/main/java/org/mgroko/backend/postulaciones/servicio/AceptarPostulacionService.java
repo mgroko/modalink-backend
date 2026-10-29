@@ -453,7 +453,8 @@ public class AceptarPostulacionService {
                     tipo,
                     mensaje,
                     entidadTipo,
-                    entidadId));
+                    entidadId,
+                    proyecto.getIdProyecto()));
         }
         notificacionService.registrarTodas(notificaciones);
     }
@@ -523,7 +524,8 @@ public class AceptarPostulacionService {
                         + "' del proyecto '" + proyecto.getNombre()
                         + "' fue aceptada.",
                 "POSTULACION_ACTIVIDAD",
-                postulacion.getIdPostulacion());
+                postulacion.getIdPostulacion(),
+                proyecto.getIdProyecto());
 
         notificacionService.registrarTodas(List.of(notificacion));
     }
@@ -553,7 +555,8 @@ public class AceptarPostulacionService {
                 "Tu postulación al proyecto '" + proyecto.getNombre()
                         + "' fue aceptada.",
                 "POSTULACION_GRAL",
-                postulacion.getIdPostulacionGral());
+                postulacion.getIdPostulacionGral(),
+                proyecto.getIdProyecto());
 
         notificacionService.registrarTodas(List.of(notificacion));
     }
