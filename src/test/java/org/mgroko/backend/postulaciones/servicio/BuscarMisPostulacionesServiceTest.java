@@ -14,6 +14,7 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
+import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.PostulacionGral;
 import org.mgroko.backend.modelo.Proyecto;
@@ -54,9 +55,13 @@ class BuscarMisPostulacionesServiceTest {
 
         Perfil perfil = Perfil.builder().idPerfil(10L).build();
 
+        Profesion modelo = Profesion.builder().idProfesion(2L).nombre("Modelo").build();
+        Profesion fotografo = Profesion.builder().idProfesion(3L).nombre("Fotógrafo").build();
+
         RequerimientoGralProyecto requerimientoUno = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(30L)
                 .proyecto(proyectoUno)
+                .profesion(modelo)
                 .descripcion("Una modelo")
                 .cantidad(1)
                 .build();
@@ -64,6 +69,7 @@ class BuscarMisPostulacionesServiceTest {
         RequerimientoGralProyecto requerimientoDos = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(31L)
                 .proyecto(proyectoDos)
+                .profesion(fotografo)
                 .descripcion("Un fotógrafo")
                 .cantidad(1)
                 .build();
@@ -98,6 +104,7 @@ class BuscarMisPostulacionesServiceTest {
         RequerimientoActividad requerimientoActividad = RequerimientoActividad.builder()
                 .idRequerimiento(50L)
                 .actividad(actividad)
+                .profesion(modelo)
                 .descripcion("Una modelo para vestuario")
                 .cantidad(1)
                 .build();
@@ -134,8 +141,12 @@ class BuscarMisPostulacionesServiceTest {
                 .containsExactly(88L, 77L, 78L);
         assertThat(pagina.contenido().get(0).tipo()).isEqualTo(TipoPostulacion.ACTIVIDAD);
         assertThat(pagina.contenido().get(0).nombreActividad()).isEqualTo("Prueba de vestuario");
+        assertThat(pagina.contenido().get(0).cantidad()).isEqualTo(1);
+        assertThat(pagina.contenido().get(0).nombreProfesion()).isEqualTo("Modelo");
         assertThat(pagina.contenido().get(1).tipo()).isEqualTo(TipoPostulacion.GENERAL);
         assertThat(pagina.contenido().get(1).nombreProyecto()).isEqualTo("Desfile Uno");
+        assertThat(pagina.contenido().get(1).cantidad()).isEqualTo(1);
+        assertThat(pagina.contenido().get(1).nombreProfesion()).isEqualTo("Modelo");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package org.mgroko.backend.actividades.servicio;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -16,11 +17,15 @@ import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
 import org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Actividad;
+import org.mgroko.backend.modelo.CaracteristicaTecnica;
+import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActCaract;
+import org.mgroko.backend.modelo.RequerimientoActCaractValor;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -36,6 +41,7 @@ import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -63,6 +69,9 @@ class BuscarActividadServiceTest {
 
     @Mock
     private RequerimientoActividadRepository requerimientoActividadRepository;
+
+    @Mock
+    private RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
 
     @Mock
     private ProyectoVisibilidadService proyectoVisibilidadService;
@@ -334,6 +343,71 @@ class BuscarActividadServiceTest {
                     assertThat(r.cubiertos()).isZero();
                     assertThat(r.faltantes()).isEqualTo(1);
                     assertThat(r.puedePostularse()).isTrue();
+                });
+    }
+
+    @Test
+    void buscar_incluyeCaracteristicasYHabilidades() {
+        RequerimientoActividad requerimiento = requerimiento(7L, 2, 2L);
+
+        CaracteristicaTecnica altura = CaracteristicaTecnica.builder()
+                .idCaracteristica(12L)
+                .codigo("ALTURA")
+                .tipoDato(CaracteristicaTecnica.TIPO_NUMERICO)
+                .build();
+        CaracteristicaTecnica talle = CaracteristicaTecnica.builder()
+                .idCaracteristica(15L)
+                .codigo("TALLE")
+                .tipoDato(CaracteristicaTecnica.TIPO_ENUMERADO)
+                .build();
+
+        RequerimientoActCaract alturaReq = RequerimientoActCaract.builder()
+                .idReqActCaract(100L)
+                .requerimientoActividad(requerimiento)
+                .caracteristica(altura)
+                .valorMin(new BigDecimal("170"))
+                .valorMax(new BigDecimal("180"))
+                .build();
+        RequerimientoActCaract talleReq = RequerimientoActCaract.builder()
+                .idReqActCaract(101L)
+                .requerimientoActividad(requerimiento)
+                .caracteristica(talle)
+                .build();
+
+        requerimiento.setCaracteristicas(List.of(alturaReq, talleReq));
+        requerimiento.setHabilidades(Set.of(
+                Habilidad.builder().idHabilidad(9L).nombre("Pose").build(),
+                Habilidad.builder().idHabilidad(7L).nombre("Fotografía").build()));
+
+        prepararBusqueda(
+                perfilConProfesion(2L),
+                null,
+                List.of(requerimiento),
+                Map.of(7L, new CupoRequerimiento(2, 0, 2, false)));
+
+        when(requerimientoActCaractValorRepository.findByIdReqActCaractIn(any()))
+                .thenReturn(List.of(RequerimientoActCaractValor.builder()
+                        .idReqActCaract(101L)
+                        .idCaracteristica(15L)
+                        .idValor(3L)
+                        .build()));
+
+        PaginaResponse<ActividadBusquedaResponse> respuesta = buscarActividadService.buscar(
+                1L, 100L, null, 0, 20, false);
+
+        assertThat(respuesta.contenido().getFirst().requerimientos()).singleElement()
+                .satisfies(r -> {
+                    assertThat(r.caracteristicas()).hasSize(2);
+                    assertThat(r.caracteristicas().get(0).codigo()).isEqualTo("ALTURA");
+                    assertThat(r.caracteristicas().get(0).valorMin())
+                            .isEqualByComparingTo("170");
+                    assertThat(r.caracteristicas().get(0).valorMax())
+                            .isEqualByComparingTo("180");
+                    assertThat(r.caracteristicas().get(0).valores()).isEmpty();
+                    assertThat(r.caracteristicas().get(1).codigo()).isEqualTo("TALLE");
+                    assertThat(r.caracteristicas().get(1).valores())
+                            .containsExactly(3L);
+                    assertThat(r.habilidades()).containsExactly(7L, 9L);
                 });
     }
 

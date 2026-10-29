@@ -20,12 +20,14 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.postulaciones.dto.ConteosPostulacionesResponse;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.MiPostulacionResponse;
 import org.mgroko.backend.postulaciones.dto.MisPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
+import org.mgroko.backend.postulaciones.dto.PostulacionesPaginaResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
@@ -200,7 +202,9 @@ class PostulacionControllerTest {
 
         when(buscarPostulacionesProyectoService.buscar(
                 eq(10L), eq(5L), any(BuscarPostulacionesFiltro.class), eq(0), eq(20), eq(false)))
-                .thenReturn(new PaginaResponse<>(List.of(), 0, 20, 0L, 0, true, true));
+                .thenReturn(new PostulacionesPaginaResponse(
+                        List.of(), 0, 20, 0L, 0, true, true,
+                        new ConteosPostulacionesResponse(2, 3, 1, 6)));
 
         mockMvc.perform(get("/proyectos/5/postulaciones/buscar")
                         .principal(auth)
@@ -210,7 +214,11 @@ class PostulacionControllerTest {
                         .param("idProfesion", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(0))
-                .andExpect(jsonPath("$.paginaActual").value(0));
+                .andExpect(jsonPath("$.paginaActual").value(0))
+                .andExpect(jsonPath("$.conteosPorEstado.PENDIENTE").value(2))
+                .andExpect(jsonPath("$.conteosPorEstado.ACEPTADA").value(3))
+                .andExpect(jsonPath("$.conteosPorEstado.RECHAZADA").value(1))
+                .andExpect(jsonPath("$.conteosPorEstado.TOTAL").value(6));
 
         verify(buscarPostulacionesProyectoService).buscar(
                 eq(10L), eq(5L), any(BuscarPostulacionesFiltro.class), eq(0), eq(20), eq(false));
@@ -389,7 +397,7 @@ class PostulacionControllerTest {
         var respuesta = new MiPostulacionResponse(
                 77L, TipoPostulacion.GENERAL, EstadoSolicitud.PENDIENTE,
                 LocalDateTime.of(2026, 10, 26, 10, 0),
-                5L, "Desfile", 30L, "Una modelo",
+                5L, "Desfile", 30L, 2, "Modelo", "Una modelo",
                 null, null, true);
 
         when(buscarMisPostulacionesService.buscar(
@@ -405,6 +413,8 @@ class PostulacionControllerTest {
                 .andExpect(jsonPath("$.totalElementos").value(1))
                 .andExpect(jsonPath("$.contenido[0].idPostulacion").value(77))
                 .andExpect(jsonPath("$.contenido[0].tipo").value("GENERAL"))
+                .andExpect(jsonPath("$.contenido[0].cantidad").value(2))
+                .andExpect(jsonPath("$.contenido[0].nombreProfesion").value("Modelo"))
                 .andExpect(jsonPath("$.contenido[0].puedeDarseDeBaja").value(true));
 
         verify(buscarMisPostulacionesService).buscar(

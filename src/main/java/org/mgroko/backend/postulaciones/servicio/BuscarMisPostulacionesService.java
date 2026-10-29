@@ -112,6 +112,10 @@ public class BuscarMisPostulacionesService {
                 proyecto.getIdProyecto(),
                 proyecto.getNombre(),
                 requerimiento.getIdRequerimientoGral(),
+                requerimiento.getCantidad(),
+                requerimiento.getProfesion() != null
+                        ? requerimiento.getProfesion().getNombre()
+                        : null,
                 requerimiento.getDescripcion(),
                 null,
                 null,
@@ -131,6 +135,10 @@ public class BuscarMisPostulacionesService {
                 proyecto.getIdProyecto(),
                 proyecto.getNombre(),
                 requerimiento.getIdRequerimiento(),
+                requerimiento.getCantidad(),
+                requerimiento.getProfesion() != null
+                        ? requerimiento.getProfesion().getNombre()
+                        : null,
                 requerimiento.getDescripcion(),
                 actividad.getIdActividad(),
                 actividad.getNombre(),

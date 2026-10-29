@@ -25,9 +25,12 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
      * @return requerimientos ordenados por actividad e identificador
      */
     @Query("""
-        SELECT r FROM RequerimientoActividad r
+        SELECT DISTINCT r FROM RequerimientoActividad r
         JOIN FETCH r.profesion
         JOIN FETCH r.actividad
+        LEFT JOIN FETCH r.caracteristicas caracteristica
+        LEFT JOIN FETCH caracteristica.caracteristica
+        LEFT JOIN FETCH r.habilidades
         WHERE r.actividad.idActividad IN :idsActividades
         ORDER BY r.actividad.idActividad ASC, r.idRequerimiento ASC
     """)

@@ -25,6 +25,7 @@ import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
@@ -43,6 +44,8 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.PostulacionActividadRepository;
+import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
@@ -51,6 +54,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ObtenerProyectoService {
+
+    private static final String PERMISO_GESTIONAR_POSTULACIONES = "GESTIONAR_POSTULACIONES";
 
     private final ProyectoRepository proyectoRepository;
     private final PerfilRepository perfilRepository;
@@ -62,6 +67,8 @@ public class ObtenerProyectoService {
     private final CupoRequerimientoService cupoRequerimientoService;
     private final MoodboardRepository moodboardRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
+    private final PostulacionGralRepository postulacionGralRepository;
+    private final PostulacionActividadRepository postulacionActividadRepository;
 
     public ObtenerProyectoService(
             ProyectoRepository proyectoRepository,
@@ -73,7 +80,9 @@ public class ObtenerProyectoService {
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             CupoRequerimientoService cupoRequerimientoService,
             MoodboardRepository moodboardRepository,
-            ProyectoVisibilidadService proyectoVisibilidadService) {
+            ProyectoVisibilidadService proyectoVisibilidadService,
+            PostulacionGralRepository postulacionGralRepository,
+            PostulacionActividadRepository postulacionActividadRepository) {
         this.proyectoRepository = proyectoRepository;
         this.perfilRepository = perfilRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -84,6 +93,8 @@ public class ObtenerProyectoService {
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.moodboardRepository = moodboardRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
+        this.postulacionGralRepository = postulacionGralRepository;
+        this.postulacionActividadRepository = postulacionActividadRepository;
     }
 
     /**
@@ -184,9 +195,44 @@ public class ObtenerProyectoService {
                 && profesionDelPerfilCoincide;
 
         ContextoConsultaProyecto contexto = armarContexto(miembroActivo, elegibleParaPostularse);
+        Long postulacionesPendientes =
+                contarPendientesSiPuedeGestionar(miembroActivo, idProyecto);
 
         return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos, requerimientos,
-                moodboardResponse, contexto);
+                moodboardResponse, contexto, postulacionesPendientes);
+    }
+
+    /**
+     * Devuelve la cantidad de postulaciones pendientes solo para directores con
+     * {@code GESTIONAR_POSTULACIONES}; para el resto del perfil es {@code null}.
+     */
+    private Long contarPendientesSiPuedeGestionar(
+            Optional<MiembroProyecto> miembroActivo,
+            Long idProyecto) {
+
+        if (miembroActivo.isEmpty()) {
+            return null;
+        }
+
+        RolProyecto rol = miembroActivo.get().getRolProyecto();
+        if (rol == null || rol.getPermisos() == null) {
+            return null;
+        }
+
+        boolean puedeGestionar = rol.getPermisos().stream()
+                .map(PermisoProyecto::getNombre)
+                .anyMatch(nombre -> PERMISO_GESTIONAR_POSTULACIONES.equalsIgnoreCase(nombre));
+
+        if (!puedeGestionar) {
+            return null;
+        }
+
+        return postulacionGralRepository
+                .countByRequerimientoGral_Proyecto_IdProyectoAndEstado(
+                        idProyecto, EstadoSolicitud.PENDIENTE)
+                + postulacionActividadRepository
+                        .countByRequerimiento_Actividad_Planificacion_Proyecto_IdProyectoAndEstado(
+                                idProyecto, EstadoSolicitud.PENDIENTE);
     }
 
     /**

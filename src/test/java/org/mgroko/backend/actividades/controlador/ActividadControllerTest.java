@@ -1,5 +1,6 @@
 package org.mgroko.backend.actividades.controlador;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,6 +36,7 @@ import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.servicio.DisponibilidadCalculator.Intervalo;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -393,7 +395,12 @@ class ActividadControllerTest {
                 LocalDateTime.of(2026, 11, 1, 10, 30),
                 "PENDIENTE",
                 List.of(new RequerimientoActividadResumenResponse(
-                        7L, 2, "Dos modelos", 2L, "Modelo", 1L, 1, false, true)),
+                        7L, 2, "Dos modelos", 2L, "Modelo", 1L, 1, false, true,
+                        List.of(new CaracteristicaRequerimientoResponse(
+                                12L, "ALTURA", "NUMERICO",
+                                new BigDecimal("170"), new BigDecimal("180"),
+                                List.of())),
+                        List.of(7L, 9L))),
                 List.of());
 
         org.mgroko.backend.common.dto.PaginaResponse<ActividadBusquedaResponse> pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
@@ -421,6 +428,10 @@ class ActividadControllerTest {
                 .andExpect(jsonPath("$.contenido[0].requerimientos[0].faltantes").value(1))
                 .andExpect(jsonPath("$.contenido[0].requerimientos[0].satisfecho").value(false))
                 .andExpect(jsonPath("$.contenido[0].requerimientos[0].puedePostularse").value(true))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].caracteristicas[0].codigo").value("ALTURA"))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].caracteristicas[0].valorMin").value(170))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].habilidades[0]").value(7))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].habilidades[1]").value(9))
                 .andExpect(jsonPath("$.totalElementos").value(1));
 
         verify(buscarActividadService).buscar(

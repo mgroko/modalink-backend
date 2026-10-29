@@ -15,7 +15,6 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
@@ -33,6 +32,7 @@ import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.PostulacionBusquedaResponse;
+import org.mgroko.backend.postulaciones.dto.PostulacionesPaginaResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
@@ -110,9 +110,13 @@ class BuscarPostulacionesProyectoServiceTest {
         when(cupoRequerimientoService.calcularActividad(requerimientoActividad))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
 
-        PaginaResponse<PostulacionBusquedaResponse> pagina = service.buscar(
+        PostulacionesPaginaResponse pagina = service.buscar(
                 10L, ID_PROYECTO, filtro(null), 0, 20, false);
 
+        assertThat(pagina.conteosPorEstado().pendiente()).isEqualTo(2);
+        assertThat(pagina.conteosPorEstado().aceptada()).isEqualTo(1);
+        assertThat(pagina.conteosPorEstado().rechazada()).isZero();
+        assertThat(pagina.conteosPorEstado().total()).isEqualTo(3);
         assertThat(pagina.contenido()).extracting(PostulacionBusquedaResponse::estado)
                 .containsExactly(
                         EstadoSolicitud.PENDIENTE,
@@ -124,6 +128,53 @@ class BuscarPostulacionesProyectoServiceTest {
                         TipoPostulacion.GENERAL,
                         TipoPostulacion.GENERAL);
         assertThat(pagina.totalElementos()).isEqualTo(3);
+    }
+
+    @Test
+    void buscar_conteosIgnoranEstadoYPaginacion() {
+        Proyecto proyecto = proyecto();
+        Perfil perfil = perfil(12L, "Luna", 2L);
+        RequerimientoGralProyecto requerimientoGral = requerimientoGral(proyecto, 2);
+        Actividad actividad = actividad(proyecto, EstadoActividad.PENDIENTE);
+        RequerimientoActividad requerimientoActividad = requerimientoActividad(actividad, 1);
+
+        PostulacionGral generalAceptada = postulacionGral(
+                1L, perfil, requerimientoGral, EstadoSolicitud.ACEPTADA,
+                LocalDateTime.of(2026, 10, 25, 10, 0));
+        PostulacionGral generalPendiente = postulacionGral(
+                2L, perfil, requerimientoGral, EstadoSolicitud.PENDIENTE,
+                LocalDateTime.of(2026, 10, 24, 10, 0));
+        PostulacionActividad actividadPendiente = postulacionActividad(
+                3L, perfil, requerimientoActividad, EstadoSolicitud.PENDIENTE,
+                LocalDateTime.of(2026, 10, 26, 10, 0));
+
+        prepararProyecto(proyecto);
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(ID_PROYECTO)))
+                .thenReturn(List.of());
+        when(asignacionActividadRepository.findActivasDeProyectoConRequerimiento(ID_PROYECTO))
+                .thenReturn(List.of());
+        when(postulacionGralRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(generalAceptada, generalPendiente));
+        when(postulacionActividadRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(actividadPendiente));
+        when(cupoRequerimientoService.calcularGeneral(requerimientoGral))
+                .thenReturn(new CupoRequerimiento(2, 1, 1, false));
+        when(cupoRequerimientoService.calcularActividad(requerimientoActividad))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+
+        BuscarPostulacionesFiltro soloPendientes = new BuscarPostulacionesFiltro(
+                List.of(EstadoSolicitud.PENDIENTE), null, null, null, null, null);
+
+        PostulacionesPaginaResponse pagina = service.buscar(
+                10L, ID_PROYECTO, soloPendientes, 0, 1, false);
+
+        assertThat(pagina.contenido()).hasSize(1);
+        assertThat(pagina.contenido().get(0).estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+        assertThat(pagina.totalElementos()).isEqualTo(2);
+        assertThat(pagina.conteosPorEstado().pendiente()).isEqualTo(2);
+        assertThat(pagina.conteosPorEstado().aceptada()).isEqualTo(1);
+        assertThat(pagina.conteosPorEstado().rechazada()).isZero();
+        assertThat(pagina.conteosPorEstado().total()).isEqualTo(3);
     }
 
     @Test
@@ -140,12 +191,15 @@ class BuscarPostulacionesProyectoServiceTest {
         when(cupoRequerimientoService.calcularGeneral(requerimientoGral))
                 .thenReturn(new CupoRequerimiento(2, 0, 2, false));
 
-        PaginaResponse<PostulacionBusquedaResponse> pagina = service.buscar(
+        PostulacionesPaginaResponse pagina = service.buscar(
                 10L, ID_PROYECTO,
                 new BuscarPostulacionesFiltro(null, TipoPostulacion.GENERAL, null, null, null, null),
                 0, 20, false);
 
         assertThat(pagina.contenido()).hasSize(1);
+        assertThat(pagina.conteosPorEstado().pendiente()).isEqualTo(1);
+        assertThat(pagina.conteosPorEstado().aceptada()).isZero();
+        assertThat(pagina.conteosPorEstado().total()).isEqualTo(1);
         verify(postulacionActividadRepository, never()).findAll(any(Specification.class));
     }
 

@@ -7,9 +7,9 @@ import org.mgroko.backend.postulaciones.dto.CrearPostulacionActividadRequest;
 import org.mgroko.backend.postulaciones.dto.CrearPostulacionGralRequest;
 import org.mgroko.backend.postulaciones.dto.MiPostulacionResponse;
 import org.mgroko.backend.postulaciones.dto.MisPostulacionesFiltro;
-import org.mgroko.backend.postulaciones.dto.PostulacionBusquedaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
+import org.mgroko.backend.postulaciones.dto.PostulacionesPaginaResponse;
 import org.mgroko.backend.postulaciones.servicio.AceptarPostulacionService;
 import org.mgroko.backend.postulaciones.servicio.BuscarMisPostulacionesService;
 import org.mgroko.backend.postulaciones.servicio.BuscarPostulacionesProyectoService;
@@ -148,7 +148,7 @@ public class PostulacionController {
     }
 
     @GetMapping("/proyectos/{idProyecto}/postulaciones/buscar")
-    public ResponseEntity<PaginaResponse<PostulacionBusquedaResponse>> buscar(
+    public ResponseEntity<PostulacionesPaginaResponse> buscar(
             @PathVariable Long idProyecto,
             @ModelAttribute BuscarPostulacionesFiltro filtro,
             @RequestParam(defaultValue = "0") int page,

@@ -40,11 +40,14 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.PostulacionActividadRepository;
+import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 import org.mockito.InjectMocks;
@@ -83,6 +86,12 @@ class ObtenerProyectoServiceTest {
 
     @Mock
     private ProyectoVisibilidadService proyectoVisibilidadService;
+
+    @Mock
+    private PostulacionGralRepository postulacionGralRepository;
+
+    @Mock
+    private PostulacionActividadRepository postulacionActividadRepository;
 
     @InjectMocks
     private ObtenerProyectoService obtenerProyectoService;
@@ -187,6 +196,49 @@ class ObtenerProyectoServiceTest {
         assertThat(response.esMiembro()).isTrue();
         assertThat(response.permisos()).containsExactly("MODIFICAR_PROYECTO", "VER_PROYECTO");
         assertThat(response.elegibleParaPostularse()).isFalse();
+        assertThat(response.postulacionesPendientes()).isNull();
+    }
+
+    @Test
+    void obtener_directorConGestionarPostulaciones_incluyePendientes() {
+        prepararPerfil();
+        when(proyectoRepository.findByIdConUbicacion(100L)).thenReturn(Optional.of(proyectoBorrador));
+
+        RolProyecto rolDirector = RolProyecto.builder()
+                .codigo("DIRECTOR")
+                .nombre("Director de proyecto")
+                .permisos(Set.of(
+                        PermisoProyecto.builder().idPermisoProyecto(1L)
+                                .nombre("VER_PROYECTO").build(),
+                        PermisoProyecto.builder().idPermisoProyecto(2L)
+                                .nombre("GESTIONAR_POSTULACIONES").build()))
+                .build();
+        MiembroProyecto miembro = MiembroProyecto.builder()
+                .proyecto(proyectoBorrador)
+                .perfil(perfil)
+                .rolProyecto(rolDirector)
+                .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .build();
+        when(miembroProyectoRepository.findMiembroActivoConPermisos(100L, 10L))
+                .thenReturn(Optional.of(miembro));
+        when(miembroProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(miembro));
+        when(planificacionRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.empty());
+        when(objetivoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L))
+                .thenReturn(List.of());
+        when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.empty());
+        when(postulacionGralRepository
+                .countByRequerimientoGral_Proyecto_IdProyectoAndEstado(
+                        eq(100L), any()))
+                .thenReturn(2L);
+        when(postulacionActividadRepository
+                .countByRequerimiento_Actividad_Planificacion_Proyecto_IdProyectoAndEstado(
+                        eq(100L), any()))
+                .thenReturn(1L);
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 100L);
+
+        assertThat(response.postulacionesPendientes()).isEqualTo(3L);
     }
 
     @Test

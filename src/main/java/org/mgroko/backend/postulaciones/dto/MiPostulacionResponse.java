@@ -21,6 +21,8 @@ public record MiPostulacionResponse(
         Long idProyecto,
         String nombreProyecto,
         Long idRequerimiento,
+        Integer cantidad,
+        String nombreProfesion,
         String descripcionRequerimiento,
         Long idActividad,
         String nombreActividad,

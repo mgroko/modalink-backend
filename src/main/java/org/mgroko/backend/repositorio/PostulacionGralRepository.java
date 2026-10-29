@@ -96,6 +96,13 @@ public interface PostulacionGralRepository
     long countByRequerimientoGral_IdRequerimientoGralAndEstado(
             Long idRequerimientoGral, EstadoSolicitud estado);
 
+    /**
+     * Cuenta las postulaciones generales del proyecto en un estado. Se usa
+     * para el badge de pendientes del encabezado del proyecto.
+     */
+    long countByRequerimientoGral_Proyecto_IdProyectoAndEstado(
+            Long idProyecto, EstadoSolicitud estado);
+
     @Query("""
         SELECT p FROM PostulacionGral p
         JOIN FETCH p.perfil perfil

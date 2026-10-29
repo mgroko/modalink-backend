@@ -2,6 +2,7 @@ package org.mgroko.backend.actividades.servicio;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,7 +26,7 @@ import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
-import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -50,7 +51,7 @@ class ObtenerActividadServiceTest {
     private PerfilRepository perfilRepository;
 
     @Mock
-    private ProyectoSecurityService proyectoSecurityService;
+    private ProyectoVisibilidadService proyectoVisibilidadService;
 
     @Mock
     private RequerimientoActividadService requerimientoActividadService;
@@ -110,7 +111,8 @@ class ObtenerActividadServiceTest {
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(55L, 50L))
                 .thenReturn(Optional.of(actividad));
-        when(requerimientoActividadService.listarPorActividad(55L))
+        when(requerimientoActividadService.listarPorActividad(
+                eq(55L), eq(10L), any(Proyecto.class)))
                 .thenReturn(List.of());
         when(asignacionActividadRepository.findActivasByActividadId(55L))
                 .thenReturn(List.of(asignacion));
@@ -131,7 +133,6 @@ class ObtenerActividadServiceTest {
             assertThat(profesional.nombreArtistico()).isEqualTo("Luna");
             assertThat(profesional.nombreProfesion()).isEqualTo("Modelo");
         });
-        verify(proyectoSecurityService).validarPermiso(
-                100L, 10L, ProyectoSecurityService.PERMISO_VER_PROYECTO);
+        verify(proyectoVisibilidadService).validarAcceso(any(Proyecto.class), eq(10L));
     }
 }

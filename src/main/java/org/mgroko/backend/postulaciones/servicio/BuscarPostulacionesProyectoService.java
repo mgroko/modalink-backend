@@ -20,7 +20,9 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
+import org.mgroko.backend.postulaciones.dto.ConteosPostulacionesResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionBusquedaResponse;
+import org.mgroko.backend.postulaciones.dto.PostulacionesPaginaResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.especificacion.PostulacionSpecifications;
 import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
@@ -78,7 +80,7 @@ public class BuscarPostulacionesProyectoService {
     }
 
     @Transactional(readOnly = true)
-    public PaginaResponse<PostulacionBusquedaResponse> buscar(
+    public PostulacionesPaginaResponse buscar(
             Long idPerfilActivo,
             Long idProyecto,
             BuscarPostulacionesFiltro filtro,
@@ -99,8 +101,13 @@ public class BuscarPostulacionesProyectoService {
                 idProyecto, idPerfilActivo, PERMISO_GESTIONAR_POSTULACIONES);
         proyectoSecurityService.validarDirector(idProyecto, idPerfilActivo);
 
-        boolean incluyeGenerales = incluyeTipo(filtro, TipoPostulacion.GENERAL);
-        boolean incluyeActividades = incluyeTipo(filtro, TipoPostulacion.ACTIVIDAD);
+        // Los conteos necesitan los tres estados: se consulta sin el filtro
+        // estado y luego se aplica ese filtro solo al contenido paginado.
+        BuscarPostulacionesFiltro filtroSinEstado =
+                filtro != null ? filtro.sinEstado() : null;
+
+        boolean incluyeGenerales = incluyeTipo(filtroSinEstado, TipoPostulacion.GENERAL);
+        boolean incluyeActividades = incluyeTipo(filtroSinEstado, TipoPostulacion.ACTIVIDAD);
 
         Map<Long, MiembroProyecto> miembrosActivos = miembrosActivosPorPerfil(idProyecto);
         Set<Long> perfilesDirectores = incluyeActividades
@@ -113,17 +120,20 @@ public class BuscarPostulacionesProyectoService {
         List<PostulacionBusquedaResponse> resultados = new ArrayList<>();
 
         if (incluyeGenerales) {
-            agregarGenerales(resultados, proyecto, filtro, miembrosActivos);
+            agregarGenerales(resultados, proyecto, filtroSinEstado, miembrosActivos);
         }
 
         if (incluyeActividades) {
-            agregarActividades(resultados, proyecto, filtro,
+            agregarActividades(resultados, proyecto, filtroSinEstado,
                     miembrosActivos, perfilesDirectores, asignacionesActivas);
         }
 
+        ConteosPostulacionesResponse conteos = contar(resultados);
+        aplicarFiltroEstado(resultados, filtro);
         resultados.sort(comparador());
 
-        return paginar(resultados, page, size, todos);
+        return PostulacionesPaginaResponse.from(
+                paginar(resultados, page, size, todos), conteos);
     }
 
     private void agregarGenerales(
@@ -243,6 +253,40 @@ public class BuscarPostulacionesProyectoService {
                 .map(asignacion -> asignacion.getRequerimientoActividad().getIdRequerimiento()
                         + ":" + asignacion.getMiembro().getIdMiembro())
                 .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    private ConteosPostulacionesResponse contar(
+            List<PostulacionBusquedaResponse> resultados) {
+
+        long pendiente = 0;
+        long aceptada = 0;
+        long rechazada = 0;
+
+        for (PostulacionBusquedaResponse postulacion : resultados) {
+            if (postulacion.estado() == null) {
+                continue;
+            }
+            switch (postulacion.estado()) {
+                case PENDIENTE -> pendiente++;
+                case ACEPTADA -> aceptada++;
+                case RECHAZADA -> rechazada++;
+            }
+        }
+
+        return new ConteosPostulacionesResponse(
+                pendiente, aceptada, rechazada, pendiente + aceptada + rechazada);
+    }
+
+    private void aplicarFiltroEstado(
+            List<PostulacionBusquedaResponse> resultados,
+            BuscarPostulacionesFiltro filtro) {
+
+        if (filtro == null || filtro.estado() == null || filtro.estado().isEmpty()) {
+            return;
+        }
+
+        Set<EstadoSolicitud> estados = new HashSet<>(filtro.estado());
+        resultados.removeIf(postulacion -> !estados.contains(postulacion.estado()));
     }
 
     private void validarFechas(BuscarPostulacionesFiltro filtro) {

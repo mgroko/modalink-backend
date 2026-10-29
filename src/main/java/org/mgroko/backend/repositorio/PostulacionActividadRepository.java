@@ -108,6 +108,13 @@ public interface PostulacionActividadRepository
     long countByRequerimiento_IdRequerimientoAndEstado(
             Long idRequerimiento, EstadoSolicitud estado);
 
+    /**
+     * Cuenta las postulaciones de actividad del proyecto en un estado. Se usa
+     * para el badge de pendientes del encabezado del proyecto.
+     */
+    long countByRequerimiento_Actividad_Planificacion_Proyecto_IdProyectoAndEstado(
+            Long idProyecto, EstadoSolicitud estado);
+
     @Query("""
         SELECT p FROM PostulacionActividad p
         JOIN FETCH p.perfil perfil

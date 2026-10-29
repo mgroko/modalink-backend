@@ -16,7 +16,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
-import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -30,7 +30,7 @@ public class ObtenerActividadService {
     private final ActividadRepository actividadRepository;
     private final PlanificacionRepository planificacionRepository;
     private final PerfilRepository perfilRepository;
-    private final ProyectoSecurityService proyectoSecurityService;
+    private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final RequerimientoActividadService requerimientoActividadService;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final CronogramaService cronogramaService;
@@ -39,14 +39,14 @@ public class ObtenerActividadService {
             ActividadRepository actividadRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
-            ProyectoSecurityService proyectoSecurityService,
+            ProyectoVisibilidadService proyectoVisibilidadService,
             RequerimientoActividadService requerimientoActividadService,
             AsignacionActividadRepository asignacionActividadRepository,
             CronogramaService cronogramaService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
-        this.proyectoSecurityService = proyectoSecurityService;
+        this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.requerimientoActividadService = requerimientoActividadService;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.cronogramaService = cronogramaService;
@@ -74,10 +74,7 @@ public class ObtenerActividadService {
                 .findByProyectoIdProyecto(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
-        proyectoSecurityService.validarPermiso(
-                idProyecto,
-                idPerfilActivo,
-                ProyectoSecurityService.PERMISO_VER_PROYECTO);
+        proyectoVisibilidadService.validarAcceso(planificacion.getProyecto(), idPerfilActivo);
 
         Actividad actividad = actividadRepository
                 .findByIdActividadAndPlanificacionIdPlanificacion(
@@ -85,7 +82,8 @@ public class ObtenerActividadService {
                 .orElseThrow(() -> new ActividadNoEncontradaException(idActividad));
 
         List<RequerimientoActividadResponse> requerimientos =
-                requerimientoActividadService.listarPorActividad(idActividad);
+                requerimientoActividadService.listarPorActividad(
+                        idActividad, idPerfilActivo, planificacion.getProyecto());
 
         List<AsignacionActividad> asignaciones = asignacionActividadRepository
                 .findActivasByActividadId(idActividad);

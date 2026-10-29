@@ -103,6 +103,7 @@ class ProyectoControllerTest {
                 true,
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
                 false,
+                null,
                 null
         );
 
@@ -269,6 +270,7 @@ class ProyectoControllerTest {
                 true,
                 List.of("VER_PROYECTO"),
                 false,
+                null,
                 null
         );
 
@@ -347,7 +349,8 @@ class ProyectoControllerTest {
                 true,
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
                 false,
-                null
+                null,
+                3L
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
@@ -365,7 +368,8 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.permisos[0]").value("MODIFICAR_PROYECTO"))
                 .andExpect(jsonPath("$.permisos[1]").value("PUBLICAR_PROYECTO"))
                 .andExpect(jsonPath("$.permisos[2]").value("VER_PROYECTO"))
-                .andExpect(jsonPath("$.elegibleParaPostularse").value(false));
+                .andExpect(jsonPath("$.elegibleParaPostularse").value(false))
+                .andExpect(jsonPath("$.postulacionesPendientes").value(3));
     }
 
     @Test
@@ -392,6 +396,7 @@ class ProyectoControllerTest {
                 false,
                 List.of(),
                 true,
+                null,
                 null
         );
 
@@ -688,6 +693,7 @@ class ProyectoControllerTest {
                 true,
                 List.of("MODIFICAR_PROYECTO", "VER_PROYECTO"),
                 false,
+                null,
                 null
         );
     }
@@ -785,7 +791,8 @@ class ProyectoControllerTest {
                 true,
                 List.of("CANCELAR_PROYECTO", "VER_PROYECTO"),
                 false,
-                "Falta de presupuesto"
+                "Falta de presupuesto",
+                null
         );
     }
 

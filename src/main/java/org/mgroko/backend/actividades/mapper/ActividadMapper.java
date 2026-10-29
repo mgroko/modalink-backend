@@ -2,6 +2,7 @@ package org.mgroko.backend.actividades.mapper;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.time.LocalDateTime;
 
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
@@ -16,13 +17,16 @@ import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResumenResponse;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
+import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
+import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 
@@ -56,6 +60,26 @@ public final class ActividadMapper {
             RequerimientoActividad requerimiento,
             CupoRequerimiento cupo,
             boolean puedePostularse) {
+        return toRequerimientoResumen(requerimiento, cupo, puedePostularse, Map.of());
+    }
+
+    public static RequerimientoActividadResumenResponse toRequerimientoResumen(
+            RequerimientoActividad requerimiento,
+            CupoRequerimiento cupo,
+            boolean puedePostularse,
+            Map<Long, List<Long>> valoresPorRequerimientoCaract) {
+
+        List<CaracteristicaRequerimientoResponse> caracteristicas =
+                requerimiento.getCaracteristicas().stream()
+                        .map(caracteristica -> toCaracteristica(
+                                caracteristica, valoresPorRequerimientoCaract))
+                        .toList();
+
+        List<Long> habilidades = requerimiento.getHabilidades().stream()
+                .map(Habilidad::getIdHabilidad)
+                .sorted()
+                .toList();
+
         return new RequerimientoActividadResumenResponse(
                 requerimiento.getIdRequerimiento(),
                 requerimiento.getCantidad(),
@@ -65,8 +89,24 @@ public final class ActividadMapper {
                 cupo.cubiertos(),
                 cupo.faltantes(),
                 cupo.satisfecho(),
-                puedePostularse
+                puedePostularse,
+                caracteristicas,
+                habilidades
         );
+    }
+
+    private static CaracteristicaRequerimientoResponse toCaracteristica(
+            RequerimientoActCaract caracteristica,
+            Map<Long, List<Long>> valoresPorRequerimientoCaract) {
+
+        return new CaracteristicaRequerimientoResponse(
+                caracteristica.getCaracteristica().getIdCaracteristica(),
+                caracteristica.getCaracteristica().getCodigo(),
+                caracteristica.getCaracteristica().getTipoDato(),
+                caracteristica.getValorMin(),
+                caracteristica.getValorMax(),
+                valoresPorRequerimientoCaract.getOrDefault(
+                        caracteristica.getIdReqActCaract(), List.of()));
     }
 
     public static ActividadResponse toResponse(

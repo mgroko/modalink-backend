@@ -13,13 +13,18 @@ import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
+import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActCaractValor;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.ValorCaracteristicaId;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
+import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
@@ -30,6 +35,8 @@ import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.HabilidadRepository;
+import org.mgroko.backend.repositorio.MiembroProyectoRepository;
+import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
@@ -46,6 +53,8 @@ public class RequerimientoActividadService {
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
+    private final PerfilRepository perfilRepository;
+    private final MiembroProyectoRepository miembroProyectoRepository;
 
     public RequerimientoActividadService(
             ProfesionRepository profesionRepository,
@@ -54,7 +63,9 @@ public class RequerimientoActividadService {
             HabilidadRepository habilidadRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoActCaractValorRepository requerimientoActCaractValorRepository,
-            CupoRequerimientoService cupoRequerimientoService) {
+            CupoRequerimientoService cupoRequerimientoService,
+            PerfilRepository perfilRepository,
+            MiembroProyectoRepository miembroProyectoRepository) {
         this.profesionRepository = profesionRepository;
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.valorCaracteristicaRepository = valorCaracteristicaRepository;
@@ -62,6 +73,8 @@ public class RequerimientoActividadService {
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoActCaractValorRepository = requerimientoActCaractValorRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
+        this.perfilRepository = perfilRepository;
+        this.miembroProyectoRepository = miembroProyectoRepository;
     }
 
     public RequerimientoActividadResponse persistir(
@@ -153,12 +166,26 @@ public class RequerimientoActividadService {
      * elegibilidad del candidato se consulta en la búsqueda de actividades.
      */
     public List<RequerimientoActividadResponse> listarPorActividad(Long idActividad) {
+        return listarPorActividad(idActividad, null, null);
+    }
+
+    /**
+     * Lista los requerimientos para el detalle público de la actividad,
+     * calculando {@code puedePostularse} con la misma regla que UC-52.
+     */
+    public List<RequerimientoActividadResponse> listarPorActividad(
+            Long idActividad,
+            Long idPerfilActivo,
+            Proyecto proyecto) {
+
         List<RequerimientoActividad> requerimientos =
                 requerimientoActividadRepository.findByActividad_IdActividad(idActividad);
 
         if (requerimientos.isEmpty()) {
             return List.of();
         }
+
+        ContextoElegibilidad contexto = cargarContexto(proyecto, idPerfilActivo);
 
         Map<Long, CupoRequerimiento> cupos =
                 cupoRequerimientoService.calcularActividades(requerimientos);
@@ -199,14 +226,47 @@ public class RequerimientoActividadService {
                         : 0;
                 cupo = new CupoRequerimiento(cantidad, 0, cantidad, false);
             }
+            boolean puedePostularse = ElegibilidadActividad.puedePostularse(
+                    proyecto,
+                    requerimiento,
+                    cupo,
+                    contexto.idProfesionPerfil(),
+                    contexto.puedeSerPostulante());
+
             resultado.add(toResponse(
                     requerimiento,
                     idsValoresPorCaracteristica,
                     cupo,
-                    false));
+                    puedePostularse));
         }
 
         return resultado;
+    }
+
+    private ContextoElegibilidad cargarContexto(
+            Proyecto proyecto,
+            Long idPerfilActivo) {
+
+        if (proyecto == null || idPerfilActivo == null) {
+            return new ContextoElegibilidad(null, false);
+        }
+
+        Perfil perfil = perfilRepository.findByIdConProfesion(idPerfilActivo)
+                .orElseThrow(PerfilNoEncontradoException::new);
+
+        Long idProfesionPerfil = perfil.getProfesion() != null
+                ? perfil.getProfesion().getIdProfesion()
+                : null;
+
+        MiembroProyecto membresia = miembroProyectoRepository
+                .findMiembroActivoConRol(proyecto.getIdProyecto(), idPerfilActivo)
+                .orElse(null);
+
+        boolean puedeSerPostulante = membresia == null
+                || RolProyectoUsuario.desde(membresia.getRolProyecto())
+                        == RolProyectoUsuario.MIEMBRO;
+
+        return new ContextoElegibilidad(idProfesionPerfil, puedeSerPostulante);
     }
 
     private RequerimientoActividadResponse toResponse(
@@ -389,5 +449,8 @@ public class RequerimientoActividadService {
             resultado.add(habilidad);
         }
         return resultado;
+    }
+
+    private record ContextoElegibilidad(Long idProfesionPerfil, boolean puedeSerPostulante) {
     }
 }

@@ -36,9 +36,9 @@ import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.notificaciones.dto.NotificacionResponse;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
-import org.mgroko.backend.postulaciones.dto.PostulacionBusquedaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.PostulacionResponse;
+import org.mgroko.backend.postulaciones.dto.PostulacionesPaginaResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
@@ -229,7 +229,7 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 postulanteB.idUsuario(), postulanteB.idPerfil(),
                 publicado.idProyecto(), idRequerimiento);
 
-        PaginaResponse<PostulacionBusquedaResponse> pagina =
+        PostulacionesPaginaResponse pagina =
                 buscarPostulacionesProyectoService.buscar(
                         director.idPerfil(),
                         publicado.idProyecto(),
@@ -237,6 +237,9 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                         0, 20, false);
 
         assertThat(pagina.contenido()).hasSize(2);
+        assertThat(pagina.conteosPorEstado().pendiente()).isEqualTo(2);
+        assertThat(pagina.conteosPorEstado().aceptada()).isZero();
+        assertThat(pagina.conteosPorEstado().total()).isEqualTo(2);
         assertThat(pagina.contenido())
                 .allSatisfy(postulacion -> {
                     assertThat(postulacion.tipo()).isEqualTo(TipoPostulacion.GENERAL);
@@ -249,7 +252,7 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                     assertThat(postulacion.puedeRechazar()).isTrue();
                 });
 
-        PaginaResponse<PostulacionBusquedaResponse> filtrada =
+        PostulacionesPaginaResponse filtrada =
                 buscarPostulacionesProyectoService.buscar(
                         director.idPerfil(),
                         publicado.idProyecto(),
