@@ -28,7 +28,8 @@ public final class NotificacionTitulos {
             Map.entry("SOBRECOMPROMISO", "Posible sobrecompromiso"),
             Map.entry("INVITACION_ACEPTADA", "Invitación aceptada"),
             Map.entry("INVITACION_RECHAZADA", "Invitación rechazada"),
-            Map.entry("HITO_CUMPLIDO", "Hito cumplido"));
+            Map.entry("HITO_CUMPLIDO", "Hito cumplido"),
+            Map.entry("PERFIL_REPORTADO", "Perfil reportado"));
 
     private NotificacionTitulos() {
     }

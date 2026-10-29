@@ -36,6 +36,7 @@ public class NotificacionDestinoResolver {
     public static final String ENTIDAD_HITO = "HITO";
     public static final String ENTIDAD_INVITACION_GRAL = "INVITACION_GRAL";
     public static final String ENTIDAD_INVITACION_ACTIVIDAD = "INVITACION_ACTIVIDAD";
+    public static final String ENTIDAD_REPORTE_PERFIL = "REPORTE_PERFIL";
 
     private final PostulacionGralRepository postulacionGralRepository;
     private final PostulacionActividadRepository postulacionActividadRepository;

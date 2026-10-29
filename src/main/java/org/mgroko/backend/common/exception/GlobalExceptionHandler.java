@@ -723,4 +723,52 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.ReporteNoPermitidoException.class)
+    public ResponseEntity<Map<String, Object>> handleReporteNoPermitido(
+            org.mgroko.backend.reportes.exception.ReporteNoPermitidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.AutoreporteException.class)
+    public ResponseEntity<Map<String, Object>> handleAutoreporte(
+            org.mgroko.backend.reportes.exception.AutoreporteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.ReportePendienteExistenteException.class)
+    public ResponseEntity<Map<String, Object>> handleReportePendienteExistente(
+            org.mgroko.backend.reportes.exception.ReportePendienteExistenteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.DescripcionReporteObligatoriaException.class)
+    public ResponseEntity<Map<String, Object>> handleDescripcionReporteObligatoria(
+            org.mgroko.backend.reportes.exception.DescripcionReporteObligatoriaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.DescripcionReporteInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleDescripcionReporteInvalida(
+            org.mgroko.backend.reportes.exception.DescripcionReporteInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.ReporteNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleReporteNoEncontrado(
+            org.mgroko.backend.reportes.exception.ReporteNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.EstadoReporteInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoReporteInvalido(
+            org.mgroko.backend.reportes.exception.EstadoReporteInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.RangoFechasReporteInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasReporteInvalido(
+            org.mgroko.backend.reportes.exception.RangoFechasReporteInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
 }

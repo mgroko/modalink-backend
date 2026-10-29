@@ -85,4 +85,15 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpec
      */
     List<Usuario> findByEstadoAndFechaHastaDeshabilitacionBefore(EstadoUsuario estado, LocalDateTime fechaLimite);
 
+    /**
+     * Usuarios con rol global Administrador que pueden recibir alertas. Se
+     * excluyen los que están deshabilitados o dados de baja.
+     */
+    @Query("""
+        SELECT u FROM Usuario u
+        WHERE u.rolGlobal.codigo = 'ADMINISTRADOR'
+          AND u.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+    """)
+    List<Usuario> findAdministradoresActivos();
+
 }
