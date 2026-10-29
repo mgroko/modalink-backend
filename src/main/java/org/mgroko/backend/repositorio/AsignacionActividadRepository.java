@@ -112,4 +112,32 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
     """)
     List<AsignacionActividad> findActivasDeProyectoConRequerimiento(
             @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Asignaciones activas del usuario en otros proyectos cuya actividad
+     * todavía no tiene horario persistido. Se usan para advertir un posible
+     * sobrecompromiso al aceptar una postulación.
+     */
+    @Query("""
+        SELECT aa FROM AsignacionActividad aa
+        JOIN FETCH aa.miembro m
+        JOIN FETCH m.perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH aa.actividad a
+        JOIN FETCH a.planificacion pl
+        JOIN FETCH pl.proyecto pr
+        WHERE u.idUsuario = :idUsuario
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND a.fechaHoraInicio IS NULL
+          AND a.estado IN (org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE,
+                            org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
+          AND pr.estado IN (org.mgroko.backend.modelo.enums.EstadoProyecto.PUBLICADO,
+                             org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO)
+          AND pr.idProyecto <> :idProyecto
+          AND a.idActividad <> :idActividad
+    """)
+    List<AsignacionActividad> findActivasSinHorarioDeUsuarioEnOtrosProyectos(
+            @Param("idUsuario") Long idUsuario,
+            @Param("idProyecto") Long idProyecto,
+            @Param("idActividad") Long idActividad);
 }

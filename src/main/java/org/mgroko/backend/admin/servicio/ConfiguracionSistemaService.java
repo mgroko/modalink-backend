@@ -26,6 +26,8 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_BAJA_MINUTO = "SCHEDULER_BAJA_MINUTO";
     public static final String CLAVE_BAJA_CRON = "SCHEDULER_BAJA_CRON";
     public static final String CLAVE_MARGEN_ACTIVIDAD_MIN = "AGENDA_MARGEN_ACTIVIDAD_MIN";
+    public static final String CLAVE_TOLERANCIA_PREFERENCIA_MIN =
+            "DISPONIBILIDAD_TOLERANCIA_PREFERENCIA_MIN";
     public static final String CLAVE_DIAS_BAJA = "DIAS_BAJA";
     public static final String CLAVE_IMAGEN_MAX_LADO_PX = "IMAGEN_MAX_LADO_PX";
     public static final String CLAVE_IMAGEN_MAX_MEGAPIXELES = "IMAGEN_MAX_MEGAPIXELES";
@@ -109,6 +111,27 @@ public class ConfiguracionSistemaService {
     public int obtenerMargenActividadDefecto() {
         int margen = obtenerValorEntero(CLAVE_MARGEN_ACTIVIDAD_MIN, DEFAULT_MARGEN_ACTIVIDAD_MIN);
         return margen < 0 ? DEFAULT_MARGEN_ACTIVIDAD_MIN : margen;
+    }
+
+    /**
+     * Tolerancia, en minutos, para aceptar un inicio distinto del horario de
+     * preferencia de una actividad. Se lee de {@code configuracion_sistema}
+     * (clave {@link #CLAVE_TOLERANCIA_PREFERENCIA_MIN}).
+     *
+     * <p>No tiene valor por defecto en código: la clave debe existir en la
+     * base. Esto evita hardcodear una política de negocio.</p>
+     *
+     * @return tolerancia en minutos, siempre &gt;= 0
+     * @throws IllegalStateException si la clave falta o su valor no es válido
+     */
+    @Transactional(readOnly = true)
+    public int obtenerToleranciaPreferenciaMinutos() {
+        int tolerancia = obtenerValorEnteroObligatorio(CLAVE_TOLERANCIA_PREFERENCIA_MIN);
+        if (tolerancia < 0) {
+            throw new IllegalStateException("El valor de '" + CLAVE_TOLERANCIA_PREFERENCIA_MIN
+                    + "' en configuracion_sistema no puede ser negativo: " + tolerancia);
+        }
+        return tolerancia;
     }
 
     /**

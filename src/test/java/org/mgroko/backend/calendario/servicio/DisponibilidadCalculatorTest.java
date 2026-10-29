@@ -119,4 +119,79 @@ class DisponibilidadCalculatorTest {
                 List.of(new Intervalo(BASE, BASE.plusMinutes(30))), 60, 0))
                 .isEmpty();
     }
+
+    @Test
+    void seleccionarHueco_sinPreferencia_devuelveElPrimero() {
+        Intervalo ventana = new Intervalo(BASE, BASE.plusHours(4));
+
+        var seleccion = calculadora.seleccionarHueco(
+                List.of(ventana), 60, 30, null, 120);
+
+        assertThat(seleccion).isPresent();
+        assertThat(seleccion.get().intervalo())
+                .isEqualTo(new Intervalo(BASE.plusMinutes(30), BASE.plusMinutes(90)));
+        assertThat(seleccion.get().desvioMinutos()).isZero();
+    }
+
+    @Test
+    void seleccionarHueco_conPreferenciaExacta_devuelveExacto() {
+        Intervalo ventana = new Intervalo(BASE, BASE.plusHours(9));
+        LocalDateTime preferido = BASE.plusHours(4);
+
+        var seleccion = calculadora.seleccionarHueco(
+                List.of(ventana), 60, 30, preferido, 120);
+
+        assertThat(seleccion).isPresent();
+        assertThat(seleccion.get().intervalo().inicio()).isEqualTo(preferido);
+        assertThat(seleccion.get().desvioMinutos()).isZero();
+    }
+
+    @Test
+    void seleccionarHueco_preferenciaAntesDelHueco_devuelveDesvioPositivo() {
+        Intervalo ventana = new Intervalo(BASE, BASE.plusHours(4));
+        LocalDateTime preferido = BASE; // el margen obliga a empezar 30 min después
+
+        var seleccion = calculadora.seleccionarHueco(
+                List.of(ventana), 60, 30, preferido, 120);
+
+        assertThat(seleccion).isPresent();
+        assertThat(seleccion.get().desvioMinutos()).isEqualTo(30);
+    }
+
+    @Test
+    void seleccionarHueco_preferenciaDespuesDelHueco_devuelveDesvioNegativo() {
+        Intervalo ventana = new Intervalo(BASE, BASE.plusHours(2));
+        LocalDateTime preferido = BASE.plusHours(3);
+
+        var seleccion = calculadora.seleccionarHueco(
+                List.of(ventana), 60, 30, preferido, 180);
+
+        assertThat(seleccion).isPresent();
+        assertThat(seleccion.get().desvioMinutos()).isEqualTo(-150);
+    }
+
+    @Test
+    void seleccionarHueco_preferenciaFueraDeTolerancia_devuelveVacio() {
+        Intervalo ventana = new Intervalo(BASE, BASE.plusHours(4));
+        LocalDateTime preferido = BASE.plusHours(4);
+
+        var seleccion = calculadora.seleccionarHueco(
+                List.of(ventana), 60, 30, preferido, 30);
+
+        assertThat(seleccion).isEmpty();
+    }
+
+    @Test
+    void seleccionarHueco_eligeElMasCercanoDentroDeLaTolerancia() {
+        Intervalo manana = new Intervalo(BASE, BASE.plusHours(1));
+        Intervalo tarde = new Intervalo(BASE.plusHours(5), BASE.plusHours(7));
+        LocalDateTime preferido = BASE.plusHours(5).plusMinutes(20);
+
+        var seleccion = calculadora.seleccionarHueco(
+                List.of(manana, tarde), 30, 0, preferido, 120);
+
+        assertThat(seleccion).isPresent();
+        assertThat(seleccion.get().intervalo().inicio()).isEqualTo(preferido);
+        assertThat(seleccion.get().desvioMinutos()).isZero();
+    }
 }

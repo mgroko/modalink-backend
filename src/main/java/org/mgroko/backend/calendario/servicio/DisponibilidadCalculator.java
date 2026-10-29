@@ -150,6 +150,92 @@ public final class DisponibilidadCalculator {
                 margenMinutos);
     }
 
+    /**
+     * Hueco seleccionado junto con la diferencia entre su inicio y el horario
+     * de preferencia. Un desvío negativo significa que se adelanta; uno
+     * positivo, que se atrasa.
+     */
+    public record SeleccionHueco(Intervalo intervalo, long desvioMinutos) {
+
+        public boolean exacto() {
+            return desvioMinutos == 0;
+        }
+    }
+
+    /**
+     * Selecciona el hueco más cercano al inicio preferido respetando la
+     * duración y el margen. Si no hay preferencia, mantiene el comportamiento
+     * histórico: el primer hueco cronológico.
+     *
+     * <p>La tolerancia solo se aplica cuando existe una preferencia. Si ningún
+     * hueco queda dentro de la tolerancia, devuelve vacío: la preferencia no
+     * se relaja más allá del límite configurado.</p>
+     *
+     * @param huecos          huecos libres ya calculados e intersectados
+     * @param duracionMinutos duración de la actividad
+     * @param margenMinutos   margen simétrico
+     * @param preferido       inicio preferido absoluto; {@code null} si no hay
+     * @param toleranciaMinutos desvío máximo admitido; ignorado sin preferencia
+     * @return el hueco elegido o vacío si no hay uno válido
+     */
+    public java.util.Optional<SeleccionHueco> seleccionarHueco(
+            Collection<Intervalo> huecos,
+            long duracionMinutos,
+            long margenMinutos,
+            LocalDateTime preferido,
+            long toleranciaMinutos) {
+
+        if (duracionMinutos <= 0) {
+            return java.util.Optional.empty();
+        }
+        if (margenMinutos < 0) {
+            throw new IllegalArgumentException("El margen no puede ser negativo.");
+        }
+        if (toleranciaMinutos < 0) {
+            throw new IllegalArgumentException("La tolerancia no puede ser negativa.");
+        }
+        if (huecos == null || huecos.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+
+        long duracionReservada = duracionMinutos + (2 * margenMinutos);
+
+        if (preferido == null) {
+            return primerHuecoEn(huecos, duracionReservada, margenMinutos)
+                    .map(intervalo -> new SeleccionHueco(intervalo, 0L));
+        }
+
+        SeleccionHueco mejor = null;
+        for (Intervalo hueco : huecos) {
+            if (hueco.minutos() < duracionReservada) {
+                continue;
+            }
+
+            LocalDateTime inicioMinimo = hueco.inicio().plusMinutes(margenMinutos);
+            LocalDateTime inicioMaximo = hueco.fin()
+                    .minusMinutes(margenMinutos + duracionMinutos);
+            if (inicioMaximo.isBefore(inicioMinimo)) {
+                continue;
+            }
+
+            LocalDateTime inicio = preferido.isBefore(inicioMinimo)
+                    ? inicioMinimo
+                    : preferido.isAfter(inicioMaximo) ? inicioMaximo : preferido;
+            long desvio = Duration.between(preferido, inicio).toMinutes();
+
+            if (Math.abs(desvio) > toleranciaMinutos) {
+                continue;
+            }
+            if (mejor == null || Math.abs(desvio) < Math.abs(mejor.desvioMinutos())) {
+                mejor = new SeleccionHueco(
+                        new Intervalo(inicio, inicio.plusMinutes(duracionMinutos)),
+                        desvio);
+            }
+        }
+
+        return java.util.Optional.ofNullable(mejor);
+    }
+
     private java.util.Optional<Intervalo> primerHuecoEn(
             Collection<Intervalo> huecos,
             long duracionReservada,

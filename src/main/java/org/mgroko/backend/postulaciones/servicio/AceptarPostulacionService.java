@@ -2,14 +2,22 @@ package org.mgroko.backend.postulaciones.servicio;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.mgroko.backend.actividades.dto.CalculoCpm;
+import org.mgroko.backend.actividades.dto.RangoFactibleAbsoluto;
+import org.mgroko.backend.actividades.servicio.CronogramaService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
+import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.PostulacionGral;
 import org.mgroko.backend.modelo.Proyecto;
@@ -26,6 +34,7 @@ import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.postulaciones.dto.AdvertenciaSobrecompromiso;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaException;
@@ -37,6 +46,7 @@ import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -71,6 +81,8 @@ public class AceptarPostulacionService {
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
     private final CalendarioService calendarioService;
+    private final ActividadRepository actividadRepository;
+    private final CronogramaService cronogramaService;
     private final Clock reloj;
 
     public AceptarPostulacionService(
@@ -87,6 +99,8 @@ public class AceptarPostulacionService {
             ProyectoSecurityService proyectoSecurityService,
             NotificacionService notificacionService,
             CalendarioService calendarioService,
+            ActividadRepository actividadRepository,
+            CronogramaService cronogramaService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
@@ -101,6 +115,8 @@ public class AceptarPostulacionService {
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
         this.calendarioService = calendarioService;
+        this.actividadRepository = actividadRepository;
+        this.cronogramaService = cronogramaService;
         this.reloj = reloj;
     }
 
@@ -247,15 +263,34 @@ public class AceptarPostulacionService {
                     "El postulante ya está asignado a esta actividad.");
         }
 
+        Set<Long> idsUsuarios = new LinkedHashSet<>();
+        idsUsuarios.add(postulante.getUsuario().getIdUsuario());
+        asignacionActividadRepository
+                .findActivasByActividadId(requerimiento.getActividad().getIdActividad())
+                .forEach(asignacion -> {
+                    if (asignacion.getMiembro() != null
+                            && asignacion.getMiembro().getPerfil() != null
+                            && asignacion.getMiembro().getPerfil().getUsuario() != null) {
+                        idsUsuarios.add(asignacion.getMiembro().getPerfil()
+                                .getUsuario().getIdUsuario());
+                    }
+                });
+
         ResultadoDisponibilidad disponibilidad = calendarioService
-                .verificarDisponibilidad(
-                        postulante.getUsuario().getIdUsuario(),
+                .verificarDisponibilidadMiembros(
+                        List.copyOf(idsUsuarios),
                         requerimiento.getActividad());
 
         if (!disponibilidad.disponible()) {
             throw new PostulacionNoPermitidaException(
-                    "No tenés disponibilidad suficiente dentro del rango factible de la actividad.");
+                    "No hay disponibilidad común suficiente dentro del rango factible de la actividad.");
         }
+
+        List<AdvertenciaSobrecompromiso> advertencias = calcularAdvertencias(
+                postulante,
+                proyecto,
+                requerimiento.getActividad(),
+                disponibilidad);
 
         if (miembro == null) {
             miembro = crearMiembro(proyecto, postulante, null);
@@ -273,6 +308,8 @@ public class AceptarPostulacionService {
 
         notificarAceptacionActividad(
                 postulante, proyecto, requerimiento.getActividad(), postulacion);
+        notificarAjusteHorario(proyecto, requerimiento.getActividad(), disponibilidad);
+        notificarSobrecompromiso(proyecto, postulante, requerimiento.getActividad(), advertencias);
 
         return new PostulacionGestionadaResponse(
                 postulacion.getIdPostulacion(),
@@ -282,7 +319,143 @@ public class AceptarPostulacionService {
                 idRequerimiento,
                 postulante.getIdPerfil(),
                 miembro.getIdMiembro(),
-                asignacion.getIdAsignacionAct());
+                asignacion.getIdAsignacionAct(),
+                disponibilidad.resultadoPreferencia(),
+                disponibilidad.desvioMinutos(),
+                advertencias);
+    }
+
+    /**
+     * Advierte, sin bloquear, si el mismo profesional tiene otras actividades
+     * aceptadas sin horario persistido cuyas ventanas CPM se superponen con la
+     * actividad que se está aceptando.
+     */
+    private List<AdvertenciaSobrecompromiso> calcularAdvertencias(
+            Perfil postulante,
+            Proyecto proyecto,
+            Actividad objetivo,
+            ResultadoDisponibilidad disponibilidad) {
+
+        if (disponibilidad.inicioEvaluado() == null
+                || disponibilidad.finEvaluado() == null) {
+            return List.of();
+        }
+
+        List<AdvertenciaSobrecompromiso> advertencias = new ArrayList<>();
+        for (AsignacionActividad otra : asignacionActividadRepository
+                .findActivasSinHorarioDeUsuarioEnOtrosProyectos(
+                        postulante.getUsuario().getIdUsuario(),
+                        proyecto.getIdProyecto(),
+                        objetivo.getIdActividad())) {
+
+            Actividad actividad = otra.getActividad();
+            Planificacion planificacion = actividad != null
+                    ? actividad.getPlanificacion()
+                    : null;
+            if (planificacion == null || planificacion.getFechaEntrega() == null) {
+                continue;
+            }
+
+            try {
+                CalculoCpm calculo = cronogramaService.calcularProyeccion(
+                        planificacion,
+                        actividadRepository.findConPredecesorasByPlanificacion(
+                                planificacion.getIdPlanificacion()));
+                RangoFactibleAbsoluto rango = cronogramaService.rangoFactibleAbsoluto(
+                        planificacion, calculo, actividad.getIdActividad());
+
+                boolean seSuperpone = disponibilidad.inicioEvaluado().isBefore(rango.fin())
+                        && disponibilidad.finEvaluado().isAfter(rango.inicio());
+                if (seSuperpone) {
+                    advertencias.add(new AdvertenciaSobrecompromiso(
+                            actividad.getIdActividad(),
+                            actividad.getNombre(),
+                            planificacion.getProyecto().getIdProyecto(),
+                            planificacion.getProyecto().getNombre(),
+                            rango.inicio(),
+                            rango.fin()));
+                }
+            } catch (RuntimeException ex) {
+                // Un cronograma inconsistente no debe impedir la aceptación.
+            }
+        }
+        return advertencias;
+    }
+
+    private void notificarAjusteHorario(
+            Proyecto proyecto,
+            Actividad actividad,
+            ResultadoDisponibilidad disponibilidad) {
+
+        if (disponibilidad.desvioMinutos() == null
+                || disponibilidad.desvioMinutos() == 0) {
+            return;
+        }
+
+        String mensaje = "La actividad '" + actividad.getNombre()
+                + "' del proyecto '" + proyecto.getNombre()
+                + "' se asignó con un desvío de " + disponibilidad.desvioMinutos()
+                + " minutos respecto del horario de preferencia.";
+
+        registrarNotificacionDirectores(
+                proyecto,
+                NotificacionService.TIPO_AJUSTE_HORARIO,
+                mensaje,
+                "ACTIVIDAD",
+                actividad.getIdActividad());
+    }
+
+    private void notificarSobrecompromiso(
+            Proyecto proyecto,
+            Perfil postulante,
+            Actividad actividad,
+            List<AdvertenciaSobrecompromiso> advertencias) {
+
+        for (AdvertenciaSobrecompromiso advertencia : advertencias) {
+            String mensaje = "Posible sobrecompromiso de " + postulante.getNombreArtistico()
+                    + " al aceptar la actividad '" + actividad.getNombre()
+                    + "': se superpone con la actividad '"
+                    + advertencia.nombreActividad()
+                    + "' del proyecto '" + advertencia.nombreProyecto() + "'.";
+
+            registrarNotificacionDirectores(
+                    proyecto,
+                    NotificacionService.TIPO_SOBRECOMPROMISO,
+                    mensaje,
+                    "ACTIVIDAD",
+                    actividad.getIdActividad());
+        }
+    }
+
+    private void registrarNotificacionDirectores(
+            Proyecto proyecto,
+            String tipo,
+            String mensaje,
+            String entidadTipo,
+            Long entidadId) {
+
+        List<MiembroProyecto> directores = miembroProyectoRepository
+                .buscarDirectoresDeProyectos(List.of(proyecto.getIdProyecto()));
+
+        if (directores.isEmpty()) {
+            return;
+        }
+
+        List<Notificacion> notificaciones = new ArrayList<>();
+        for (MiembroProyecto director : directores) {
+            Perfil perfilDirector = director.getPerfil();
+            if (perfilDirector == null || perfilDirector.getUsuario() == null) {
+                continue;
+            }
+            notificaciones.add(notificacionService.crear(
+                    perfilDirector.getUsuario(),
+                    perfilDirector,
+                    tipo,
+                    mensaje,
+                    entidadTipo,
+                    entidadId));
+        }
+        notificacionService.registrarTodas(notificaciones);
     }
 
     private Proyecto cargarProyectoAutorizado(

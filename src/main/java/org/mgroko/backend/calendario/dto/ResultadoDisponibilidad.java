@@ -19,6 +19,14 @@ import java.util.List;
  * @param finSeleccionado     fin del primer hueco común
  * @param motivo              explicación cuando no hay disponibilidad
  * @param miembros            detalle individual de cada miembro evaluado
+ * @param resultadoPreferencia resultado de aplicar el horario de preferencia
+ * @param desvioMinutos       diferencia con signo entre el inicio elegido y el
+ *                            preferido; negativo si se adelanta, positivo si se
+ *                            atrasa. {@code null} si no hay preferencia.
+ * @param inicioPreferido     inicio absoluto construido a partir del horario de
+ *                            preferencia; {@code null} si no hay preferencia
+ * @param miembrosBloqueantes miembros que impiden la intersección común; vacío
+ *                            si no hay intersección o no se pudo aislar a uno
  */
 public record ResultadoDisponibilidad(
         boolean disponible,
@@ -28,7 +36,39 @@ public record ResultadoDisponibilidad(
         LocalDateTime inicioSeleccionado,
         LocalDateTime finSeleccionado,
         String motivo,
-        List<DetalleMiembroDisponibilidad> miembros) {
+        List<DetalleMiembroDisponibilidad> miembros,
+        ResultadoPreferencia resultadoPreferencia,
+        Long desvioMinutos,
+        LocalDateTime inicioPreferido,
+        List<Long> miembrosBloqueantes) {
+
+    /**
+     * Constructor histórico. Mantiene la compatibilidad con consumidores que
+     * todavía no leen los campos de preferencia ni el diagnóstico.
+     */
+    public ResultadoDisponibilidad(
+            boolean disponible,
+            boolean provisional,
+            LocalDateTime inicioEvaluado,
+            LocalDateTime finEvaluado,
+            LocalDateTime inicioSeleccionado,
+            LocalDateTime finSeleccionado,
+            String motivo,
+            List<DetalleMiembroDisponibilidad> miembros) {
+        this(
+                disponible,
+                provisional,
+                inicioEvaluado,
+                finEvaluado,
+                inicioSeleccionado,
+                finSeleccionado,
+                motivo,
+                miembros,
+                null,
+                null,
+                null,
+                List.of());
+    }
 
     public ResultadoDisponibilidad(
             boolean disponible,
@@ -52,5 +92,8 @@ public record ResultadoDisponibilidad(
 
     public ResultadoDisponibilidad {
         miembros = miembros == null ? List.of() : List.copyOf(miembros);
+        miembrosBloqueantes = miembrosBloqueantes == null
+                ? List.of()
+                : List.copyOf(miembrosBloqueantes);
     }
 }

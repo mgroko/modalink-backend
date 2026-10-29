@@ -135,6 +135,9 @@ public class ModificarActividadService {
         validarTransicionEstado(actividad, request.estado());
         EstadoActividad estadoAnterior = actividad.getEstado();
 
+        int duracionMinutos = calcularDuracionMinutos(request);
+        validarEstructuraConfirmada(proyecto, actividad, request, duracionMinutos);
+
         String nombre = request.nombre().trim();
         if (actividadRepository.existeNombreEnPlanificacionExcluyendo(
                 planificacion.getIdPlanificacion(), nombre, idActividad)) {
@@ -144,7 +147,6 @@ public class ModificarActividadService {
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
 
-        int duracionMinutos = calcularDuracionMinutos(request);
         actualizarDatos(actividad, request, nombre, duracionMinutos);
         actualizarUbicacion(actividad, request);
         actualizarPredecesoras(actividad, request.predecesoras(), planificacion);
@@ -161,11 +163,16 @@ public class ModificarActividadService {
                     actividadRepository, guardada, paraReconectar);
         }
 
-        // Fase 2: siempre se evalúa el cronograma, no condicionalmente sobre el inicio
-        actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
-        var calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
-        EstadoCronograma estadoCronograma = cronogramaService.estadoDe(calculo);
+        // Sin fecha de entrega no se calcula CPM: la actividad queda flotante.
+        var calculo = planificacion.getFechaEntrega() == null
+                ? null
+                : cronogramaService.calcularProyeccion(
+                        planificacion,
+                        actividadRepository.findConPredecesorasByPlanificacion(
+                                planificacion.getIdPlanificacion()));
+        EstadoCronograma estadoCronograma = calculo == null
+                ? EstadoCronograma.SIN_FECHA_ENTREGA
+                : cronogramaService.estadoDe(calculo);
 
         List<RequerimientoActividadResponse> requerimientos =
                 requerimientoActividadService.listarPorActividad(idActividad);
@@ -183,8 +190,8 @@ public class ModificarActividadService {
                         .toList(),
                 estadoCronograma,
                 calculo,
-                cronogramaService.inicioEfectivo(planificacion),
-                cronogramaService.esTentativa(planificacion));
+                calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
+                calculo == null || cronogramaService.esTentativa(planificacion));
     }
 
     private void validarEstadoProyecto(Proyecto proyecto) {
@@ -193,6 +200,66 @@ public class ModificarActividadService {
                 && estado != EstadoProyecto.PUBLICADO
                 && estado != EstadoProyecto.CONFIRMADO) {
             throw new EstadoProyectoNoPermiteModificarActividadesException(estado.name());
+        }
+    }
+
+    /**
+     * En un proyecto confirmado solo se permiten cambios descriptivos y las
+     * transiciones de ejecución. Duración, dependencias y requerimientos son
+     * estructurales: cambiarlos invalidaría el plan persistido.
+     */
+    private void validarEstructuraConfirmada(
+            Proyecto proyecto,
+            Actividad actividad,
+            ModificarActividadRequest request,
+            int duracionMinutos) {
+
+        if (proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
+            return;
+        }
+
+        boolean cambioDuracion = !Integer.valueOf(duracionMinutos)
+                .equals(actividad.getDuracionMinutos());
+
+        Set<Long> predecesorasActuales = actividad.getPredecesoras().stream()
+                .filter(predecesora -> predecesora != null
+                        && predecesora.getIdActividad() != null)
+                .map(Actividad::getIdActividad)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<Long> predecesorasNuevas = request.predecesoras() == null
+                ? Set.of()
+                : new HashSet<>(request.predecesoras());
+
+        Map<Long, Integer> requerimientosActuales = new HashMap<>();
+        for (RequerimientoActividad requerimiento
+                : requerimientoActividadRepository.findByActividad_IdActividad(
+                        actividad.getIdActividad())) {
+            if (requerimiento.getIdRequerimiento() != null) {
+                requerimientosActuales.put(
+                        requerimiento.getIdRequerimiento(),
+                        requerimiento.getCantidad());
+            }
+        }
+
+        Map<Long, Integer> requerimientosNuevos = new HashMap<>();
+        if (request.requerimientos() != null) {
+            for (ModificarRequerimientoActividadRequest requerimiento
+                    : request.requerimientos()) {
+                if (requerimiento.idRequerimiento() == null
+                        || requerimientosNuevos.put(
+                                requerimiento.idRequerimiento(),
+                                requerimiento.cantidad()) != null) {
+                    throw new EstadoProyectoNoPermiteModificarActividadesException(
+                            EstadoProyecto.CONFIRMADO.name());
+                }
+            }
+        }
+
+        if (cambioDuracion
+                || !predecesorasActuales.equals(predecesorasNuevas)
+                || !requerimientosActuales.equals(requerimientosNuevos)) {
+            throw new EstadoProyectoNoPermiteModificarActividadesException(
+                    EstadoProyecto.CONFIRMADO.name());
         }
     }
 
