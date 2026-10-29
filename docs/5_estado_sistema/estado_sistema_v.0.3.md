@@ -96,7 +96,7 @@ A continuación se detalla el avance metodológico de los casos de uso relevados
 | **UC-24** | Crear proyecto | Sí | Sí | Sí (CUR-24) | Implementado y testeado |
 | **UC-25** | Publicar proyecto | Sí | Sí (DSS) | No | No iniciado |
 | **UC-26** | Dar de alta postulación a proyecto | Sí | Sí (DSS) | No | No iniciado |
-| **UC-27** | Dar de baja postulación a proyecto | Sí | No | No | No iniciado |
+| **UC-27** | Dar de baja postulación a proyecto | Sí | Sí (DSS) | Sí | Implementado y testeado |
 | **UC-28** | Aceptar solicitud de incorporación | Sí | Sí (DSS) | No | No iniciado |
 | **UC-29** | Buscar proyecto | Sí | Sí (DSS) | No | No iniciado |
 | **UC-30** | Buscar invitaciones | Sí | Sí (DSS) | No | No iniciado |
