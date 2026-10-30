@@ -1032,7 +1032,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene un proyecto en estado “Borrador” o “Publicado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto al cual desea agregar la actividad (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Duración estimada en días/horas Y de forma opcional: Descripción Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
+|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Duración estimada en horas/minutos Y de forma opcional: Descripción Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
 |  | 3 | El actor completa los campos solicitados y confirma la acción. |
 |  | 4  | Mientras exista requerimiento profesional por cargar, se ejecutan los siguientes pasos: |
 |  | 4.a | El sistema despliega el formulario para la carga de requerimiento profesional: Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Si corresponde, el sistema despliega debajo de este formulario un listado de los miembros del proyecto, permitiendo al actor la asignación directa.  |
@@ -1057,7 +1057,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene un proyecto en estado “Borrador”, “Publicado” o “Confirmado” que cuenta con al menos una actividad en la planificación. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona la tarea que desea modificar (ver caso de uso UC-52 Buscar actividades). |
-|  | 2 | El sistema despliega un formulario con la información de la actividad: Nombre de la actividad Descripción Duración estimada en días/horas Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Profesionales asignados (si corresponde) Actividades predecesoras asociadas (si corresponde (ver caso de uso UC-52 Buscar actividades)) Ubicación  Estado  |
+|  | 2 | El sistema despliega un formulario con la información de la actividad: Nombre de la actividad Descripción Duración estimada en horas/minutos Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Profesionales asignados (si corresponde) Actividades predecesoras asociadas (si corresponde (ver caso de uso UC-52 Buscar actividades)) Ubicación  Estado  |
 |  | 3 | El actor modifica los campos deseados y confirma la acción. |
 |  | 4 | El sistema registra los cambios de la actividad. |
 | **Postcondición** | Se actualizó una actividad. Se actualizó el cronograma del proyecto en base a los cambios de la actividad. El sistema, por cada miembro asignado a la actividad, emite una notificación para informar sobre los cambios. El sistema, por cada miembro designado, asigna en su calendario como no disponible el bloque de tiempo que dura la actividad. |  |

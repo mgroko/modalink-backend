@@ -148,19 +148,20 @@ public class CrearActividadService {
 
     private int calcularDuracionMinutos(CrearActividadRequest request) {
         if (request.duracion() == null || request.unidadDuracion() == null) {
-            throw new DuracionInvalidaException("La duracion y su unidad son obligatorias.");
+            throw new DuracionInvalidaException(
+                    "La duración y su unidad son obligatorias. Usá HORAS o MINUTOS.");
         }
 
         long minutos;
         try {
             minutos = request.unidadDuracion().aMinutos(request.duracion());
         } catch (ArithmeticException ex) {
-            throw new DuracionInvalidaException("La duracion indicada es demasiado grande.");
+            throw new DuracionInvalidaException("La duración indicada es demasiado grande.");
         }
 
         if (minutos <= 0 || minutos > Integer.MAX_VALUE) {
             throw new DuracionInvalidaException(
-                    "La duracion debe ser mayor que cero y expresarse en un rango valido.");
+                    "La duración debe ser mayor que cero y expresarse en un rango válido.");
         }
 
         return (int) minutos;

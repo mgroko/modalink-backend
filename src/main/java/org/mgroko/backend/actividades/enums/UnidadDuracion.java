@@ -2,8 +2,8 @@ package org.mgroko.backend.actividades.enums;
 
 public enum UnidadDuracion {
 
-    DIAS(1440),
-    HORAS(60);
+    HORAS(60),
+    MINUTOS(1);
 
     private final int minutosPorUnidad;
 

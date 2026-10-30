@@ -137,10 +137,10 @@ Reglas del payload:
 
 | Campo | Tipo / Formato | Obligatorio | Reglas / Restricciones Backend | Notas UI/UX |
 | :--- | :--- | :---: | :--- | :--- |
-| `nombre` | `string` | **Sí** | No blanco. Máx. 20 caracteres. Se aplica `trim`. Único en la planificación, sin distinguir mayúsculas. Excluye la propia actividad. | Contador `(x/20)`. Error `409` inline. |
+| `nombre` | `string` | **Sí** | No blanco. Máx. 100 caracteres. Se aplica `trim`. Único en la planificación, sin distinguir mayúsculas. Excluye la propia actividad. | Contador `(x/100)`. Error `409` inline. |
 | `descripcion` | `string` | No | Máx. 200 caracteres. Se aplica `trim`. `null` o ausente **borra** la descripción. | Siempre reenviar la descripción actual si no se quiere borrar. |
 | `duracion` | `int` | **Sí** | Entero `> 0`. La conversión a minutos debe caber en un `int`. | Number input, mínimo `1`, sin decimales. |
-| `unidadDuracion` | `enum` | **Sí** | `DIAS` o `HORAS` en mayúsculas. `1 DIA = 1440` min; `1 HORA = 60` min. | Select o segmented control. |
+| `unidadDuracion` | `enum` | **Sí** | `HORAS` o `MINUTOS` en mayúsculas. `1 HORA = 60` min; `1 MINUTO = 1` min. | Select o segmented control. |
 | `horarioPreferenciaInicio` | `string` `HH:mm` | No | Hora sin fecha, con precisión de minutos. `null` o ausente borra la preferencia. | Input de hora. |
 | `ubicacion` | `object \| null` | No | Si el objeto está presente, `localidadId` es obligatorio y no blanco. `null` o ausente **borra** la ubicación. | Si la ubicación no cambia, reenviar el objeto completo actual. |
 | `ubicacion.localidadId` | `string` | Condicional | Debe existir en el catálogo Georef. | Select dependiente de provincia. |
@@ -358,7 +358,7 @@ Notas de respuesta:
 {
   "message": "Validación fallida",
   "errores": {
-    "nombre": "El nombre no puede superar los 20 caracteres.",
+    "nombre": "El nombre no puede superar los 100 caracteres.",
     "requerimientos[0].cantidad": "La cantidad debe ser mayor que cero."
   },
   "httpStatus": 400,
@@ -407,7 +407,7 @@ Notas de respuesta:
 4. **Requerimientos:** reenviar completos los que se conservan. Omitir uno sin vínculos lo elimina.
 5. **Requerimientos protegidos:** mostrar como solo lectura. Enviarlos u omitirlos responde `409`; resolver sus postulaciones o invitaciones antes de guardar la actividad.
 6. **Estado:** mostrar el estado actual y permitir cambiarlo solo si la actividad no está finalizada/cancelada.
-7. **Duración:** permitir alternar `DIAS`/`HORAS` sin perder el valor; mostrar equivalencia en minutos.
+7. **Duración:** permitir alternar `HORAS`/`MINUTOS` sin perder el valor; mostrar equivalencia en minutos. Para 1 h 30 min, usar `90 MINUTOS` o dos inputs que envíen el total en minutos.
 8. **Predecesoras:** multi-select sin duplicados; no permitir la propia actividad.
 9. **Cronograma:** advertir que las fechas de otras actividades pueden cambiar tras guardar.
 10. **Doble envío:** deshabilitar el botón mientras la petición está en curso. No hay clave de idempotencia.

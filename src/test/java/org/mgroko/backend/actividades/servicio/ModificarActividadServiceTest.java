@@ -209,6 +209,18 @@ class ModificarActividadServiceTest {
     }
 
     @Test
+    void modificar_duracionEnMinutos_guardaElTotalSinConvertir() {
+        ModificarActividadRequest request = new ModificarActividadRequest(
+                "Montaje final", null, 90, UnidadDuracion.MINUTOS, null,
+                List.of(), List.of(), EstadoActividad.PENDIENTE);
+
+        ActividadResponse response = modificarActividadService.modificar(
+                1L, 10L, 100L, 55L, request);
+
+        assertThat(response.duracionMinutos()).isEqualTo(90);
+    }
+
+    @Test
     void modificar_conDesborde_devuelveActividadPersistidaYAlerta() {
         when(cronogramaService.calcularProyeccion(planificacion, List.of(actividad)))
                 .thenReturn(new CalculoCpm(Map.of(), 600L, 300L, false, List.of()));

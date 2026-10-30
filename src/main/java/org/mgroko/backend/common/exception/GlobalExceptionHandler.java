@@ -63,6 +63,7 @@ import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -126,6 +127,20 @@ public class GlobalExceptionHandler {
         response.put("httpStatus", HttpStatus.BAD_REQUEST.value());
         response.put("timestamp", System.currentTimeMillis());
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Maneja JSON malformado o valores de enum inválidos. En particular,
+     * devuelve un mensaje claro cuando la unidad de duración ya no es DIAS.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex) {
+        String detalle = ex.getMessage() != null ? ex.getMessage() : "";
+        String mensaje = detalle.contains("UnidadDuracion")
+                ? "Unidad de duración inválida. Usá HORAS o MINUTOS."
+                : "Solicitud inválida: revisá el formato de los datos enviados.";
+        return buildErrorResponse(mensaje, HttpStatus.BAD_REQUEST);
     }
 
     /**

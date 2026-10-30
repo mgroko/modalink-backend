@@ -223,8 +223,8 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
         ModificarActividadRequest request = new ModificarActividadRequest(
                 "Montaje final",
                 "Duracion que desborda la entrega",
-                60,
-                UnidadDuracion.DIAS,
+                86400,
+                UnidadDuracion.MINUTOS,
                 null,
                 List.of(),
                 List.of(new ModificarRequerimientoActividadRequest(

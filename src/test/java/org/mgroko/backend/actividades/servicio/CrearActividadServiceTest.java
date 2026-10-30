@@ -130,6 +130,27 @@ class CrearActividadServiceTest {
     }
 
     @Test
+    void crear_duracionEnMinutos_guardaElTotalSinConvertir() {
+        when(actividadRepository.existeNombreEnPlanificacion(50L, "Ajuste"))
+                .thenReturn(false);
+        when(actividadRepository.saveAndFlush(any(Actividad.class)))
+                .thenAnswer(invocation -> {
+                    Actividad actividad = invocation.getArgument(0);
+                    actividad.setIdActividad(57L);
+                    return actividad;
+                });
+        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+
+        CrearActividadRequest request = new CrearActividadRequest(
+                "Ajuste", null, 45, UnidadDuracion.MINUTOS, null, null, null);
+
+        ActividadResponse response = crearActividadService.crear(1L, 10L, 100L, request);
+
+        assertThat(response.duracionMinutos()).isEqualTo(45);
+    }
+
+    @Test
     void crear_proyectoConfirmado_lanzaExcepcion() {
         planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
         CrearActividadRequest request = new CrearActividadRequest(

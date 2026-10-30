@@ -143,7 +143,7 @@ class PublicarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         return crearActividadService.crear(
                 director.idUsuario(), director.idPerfil(), idProyecto,
                 new CrearActividadRequest(
-                        nombre, "Actividad de prueba UC-25", 1, UnidadDuracion.DIAS,
+                        nombre, "Actividad de prueba UC-25", 24, UnidadDuracion.HORAS,
                         null, null,
                         List.of(new CrearRequerimientoActividadRequest(
                                 2, idProfesionModelo(), "Dos modelos", null, null))))

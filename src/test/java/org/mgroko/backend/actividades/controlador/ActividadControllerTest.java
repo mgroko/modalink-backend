@@ -131,6 +131,26 @@ class ActividadControllerTest {
     }
 
     @Test
+    void crear_conUnidadDias_devuelve400ConMensajeClaro() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(post("/proyectos/100/actividades")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Montaje",
+                                  "duracion": 1,
+                                  "unidadDuracion": "DIAS"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Unidad de duración inválida. Usá HORAS o MINUTOS."));
+    }
+
+    @Test
     void modificar_conDatosValidos_devuelve200() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));

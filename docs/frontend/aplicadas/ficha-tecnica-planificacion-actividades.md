@@ -22,7 +22,7 @@ Filtros disponibles: `nombre`, `descripcion`, `requerimiento`, `duracionMin`,
       "idActividad": 1,
       "nombre": "Bocetos y selección de telas",
       "descripcion": "Bocetos iniciales",
-      "duracionMinutos": 11520,
+      "duracionMinutos": 90,
       "estado": "PENDIENTE",
       "fechaHoraInicio": null,
       "fechaHoraFin": null,
@@ -82,8 +82,11 @@ Filtros disponibles: `nombre`, `descripcion`, `requerimiento`, `duracionMin`,
 
 ## 4. UI
 
-- Director: puede crear, editar, eliminar y (a futuro) asignar.
+- Director: puede crear, editar, eliminar y asignar.
 - Miembro: solo lectura.
+- Para asignar, usar `GET /proyectos/{idProyecto}/miembros` como selector y
+  `POST /proyectos/{idProyecto}/actividades/{idActividad}/asignaciones`.
+  Ver [`ficha-tecnica-asignar-actividad.md`](./ficha-tecnica-asignar-actividad.md).
 - Las acciones se ocultan con `rolUsuario`/`permisos` de `ProyectoResponse`.
 - La columna "Responsables" muestra los `nombreArtistico`; "Vos" es una
   decisión de presentación del front comparando `idUsuario`/`idPerfil`.
