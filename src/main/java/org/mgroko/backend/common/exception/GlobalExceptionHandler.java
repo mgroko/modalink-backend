@@ -3,6 +3,7 @@ package org.mgroko.backend.common.exception;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
@@ -44,6 +45,8 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.actividades.exception.AsignacionActividadNoPermitidaException;
+import org.mgroko.backend.actividades.exception.AsignacionNoDisponibleException;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
@@ -607,6 +610,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleActividadCancelada(
             org.mgroko.backend.actividades.exception.ActividadCanceladaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(AsignacionActividadNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleAsignacionActividadNoPermitida(
+            AsignacionActividadNoPermitidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(AsignacionNoDisponibleException.class)
+    public ResponseEntity<Map<String, Object>> handleAsignacionNoDisponible(
+            AsignacionNoDisponibleException ex) {
+        var disponibilidad = ex.getDisponibilidad();
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("motivo", disponibilidad != null ? disponibilidad.motivo() : null);
+        response.put("provisional", disponibilidad != null && disponibilidad.provisional());
+        response.put("inicioEvaluado",
+                disponibilidad != null ? disponibilidad.inicioEvaluado() : null);
+        response.put("finEvaluado",
+                disponibilidad != null ? disponibilidad.finEvaluado() : null);
+        response.put("miembrosBloqueantes",
+                disponibilidad != null ? disponibilidad.miembrosBloqueantes() : List.of());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadNoModificableException.class)

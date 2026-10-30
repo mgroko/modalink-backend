@@ -155,7 +155,10 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 .fechaInicio(LocalDate.now()).estado(estado).privacidad(Privacidad.Publico).build();
         em.persist(proyecto);
 
-        Planificacion planificacion = Planificacion.builder().proyecto(proyecto).build();
+        Planificacion planificacion = Planificacion.builder()
+                .proyecto(proyecto)
+                .fechaEntrega(LocalDate.now().plusDays(30))
+                .build();
         em.persist(planificacion);
 
         MiembroProyecto miembro = MiembroProyecto.builder()

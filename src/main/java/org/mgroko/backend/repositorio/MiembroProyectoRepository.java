@@ -55,6 +55,24 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     List<MiembroProyecto> buscarMiembrosActivosDeProyecto(@Param("idProyecto") Long idProyecto);
 
+    /**
+     * Miembros activos de un proyecto con perfil, usuario, profesión y rol
+     * inicializados. Se usa para que el director pueda elegir a quién asignar
+     * una actividad (UC-70).
+     */
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion pr
+        JOIN FETCH mp.rolProyecto r
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC
+    """)
+    List<MiembroProyecto> buscarActivosDeProyectoConPerfilProfesionYRol(
+            @Param("idProyecto") Long idProyecto);
+
     @Query("""
         SELECT mp FROM MiembroProyecto mp
         JOIN FETCH mp.perfil p

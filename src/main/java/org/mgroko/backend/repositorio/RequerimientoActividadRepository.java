@@ -18,6 +18,23 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
     List<RequerimientoActividad> findByActividad_IdActividad(Long idActividad);
 
     /**
+     * Recupera los requerimientos de una actividad con su profesión
+     * inicializada. Se usa en UC-70 para resolver si el miembro asignado
+     * cubre alguno de los requerimientos de la actividad.
+     *
+     * @param idActividad actividad cuyos requerimientos se quieren listar
+     * @return requerimientos ordenados por identificador
+     */
+    @Query("""
+        SELECT r FROM RequerimientoActividad r
+        JOIN FETCH r.profesion
+        WHERE r.actividad.idActividad = :idActividad
+        ORDER BY r.idRequerimiento ASC
+    """)
+    List<RequerimientoActividad> findConProfesionByActividadId(
+            @Param("idActividad") Long idActividad);
+
+    /**
      * Recupera los requerimientos de las actividades indicadas junto con su
      * profesión en una sola consulta, para armar el resumen de UC-52 sin N+1.
      *

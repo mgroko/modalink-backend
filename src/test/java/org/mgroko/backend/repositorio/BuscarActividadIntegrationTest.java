@@ -115,7 +115,10 @@ class BuscarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private Planificacion crearPlanificacion(Proyecto proyecto) {
-        Planificacion planificacion = Planificacion.builder().proyecto(proyecto).build();
+        Planificacion planificacion = Planificacion.builder()
+                .proyecto(proyecto)
+                .fechaEntrega(LocalDate.now().plusDays(30))
+                .build();
         em.persist(planificacion);
         return planificacion;
     }
