@@ -107,7 +107,7 @@ de corrido al insertar usuario).
 4. **No-solape manual:** el chequeo `existsBy...FechaHoraInicioLessThan...GreaterThan` replica la condición del trigger (`inicio < fin_existente AND fin > inicio_existente`). Defensa en profundidad correcta.
 5. **`dia_semana` 1–7:** CHECK en BD + validación en `validarJornada`. Consistente (notar H-07: `dia.diaSemana()` hace unboxing; un null saltaría la validación `@NotNull` solo si el servicio se invoca fuera del controlador con `@Valid`).
 6. **Jornada default del trigger** (Lun–Vie 09:00–18:00, solo `hora_inicio_manana`/`hora_fin_tarde`) es una jornada "de corrido" válida según el modelo Java (`esPartida() == false`).
-7. **Longitudes:** `motivo` 200 = `varchar(200)`; `nombre` actividad 20 = `varchar(20)`; `dia_semana`/`margen` tipos compatibles.
+7. **Longitudes:** `motivo` 200 = `varchar(200)`; `nombre` actividad 100 = `varchar(100)`; `dia_semana`/`margen` tipos compatibles.
 
 ---
 
