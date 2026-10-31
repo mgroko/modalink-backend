@@ -576,9 +576,10 @@ la confirmación.
 ## UC-38 — Eliminar integrante
 
 El director elimina a un integrante activo del proyecto. La baja se registra
-como estado `ELIMINADO`, se guarda el motivo y se quitan las asignaciones del
-miembro. Cada actividad que pierde el recurso debe volver a abrir la vacante
-correspondiente.
+como estado `ELIMINADO`, se guarda el motivo y la fecha de baja, y se conservan
+las asignaciones para auditoría y trazabilidad. El profesional deja de contar
+como recurso activo, por lo que cada actividad que pierde el recurso reabre la
+vacante correspondiente por cálculo de cupo.
 
 ```mermaid
 sequenceDiagram
@@ -612,19 +613,13 @@ sequenceDiagram
         Servicio-->>API: excepcion()
         API-->>Director: Notificar error y finalizar
     else Miembro activo y motivo válido
-        Servicio->>AsignacionRepo: Buscar asignaciones del miembro
-        AsignacionRepo-->>Servicio: actividades[]
-
-        loop Por cada actividad asignada
-            Servicio->>AsignacionRepo: deleteByActividadIdAndPerfil(idActividad, idPerfil)
-            AsignacionRepo-->>Servicio: Asignación eliminada
-            Servicio->>ReqService: reabrirVacante(actividad/requerimiento)
-            ReqService-->>Servicio: Requerimiento actualizado
-        end
-
         Servicio->>MiembroRepo: setEstado(ELIMINADO)
         Servicio->>MiembroRepo: setMotivoBaja(motivo)
+        Servicio->>MiembroRepo: setFechaBaja(ahora)
         Servicio->>MiembroRepo: save(unMiembroDeProyecto)
+        Note over Servicio,ReqService: Las asignaciones se conservan para auditoría.<br/>La vacante se reabre por cálculo de cupo.
+        Servicio->>ReqService: recalcularVacantesDeActividades(unProyecto, unPerfil)
+        ReqService-->>Servicio: Requerimientos actualizados
         Servicio->>Notif: notificarIntegranteEliminado(unPerfil, motivo)
         Notif-->>Servicio: Solicitud de notificación
         Servicio-->>API: bajaIntegranteRegistrada(unProyecto, unPerfil)
@@ -632,9 +627,14 @@ sequenceDiagram
     end
 ```
 
-El orden de la transacción garantiza que las asignaciones se eliminen y que
-las vacantes se reabran antes de confirmar la baja del integrante. La
-notificación se dirige al perfil eliminado.
+La implementación actual realiza una baja lógica: la membresía pasa a
+`ELIMINADO` y conserva `motivoBaja` y `fechaBaja`. No se borran físicamente las
+asignaciones; se conservan para auditoría. Las consultas operativas filtran
+miembros `ACTIVO`, por lo que el profesional deja de contar como recurso y la
+vacante se reabre por cálculo de cupo. El historial de actividad muestra a los
+profesionales eliminados cuando la actividad está `EN_CURSO`, `FINALIZADA` o
+`CANCELADA`; no los muestra en `PENDIENTE`. La notificación se dirige al perfil
+eliminado.
 
 ## UC-40 — Darse de baja de proyecto
 

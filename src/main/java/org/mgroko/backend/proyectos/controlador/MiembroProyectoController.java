@@ -2,28 +2,39 @@ package org.mgroko.backend.proyectos.controlador;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.dto.MiembroProyectoResponse;
+import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ListarMiembrosProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 
 /**
  * UC-70: miembros activos del proyecto para seleccionar el destinatario de una
  * asignación.
+ *
+ * UC-38: el Director elimina lógicamente a un integrante del proyecto.
  */
 @RestController
 public class MiembroProyectoController {
 
     private final ListarMiembrosProyectoService listarMiembrosProyectoService;
+    private final EliminarIntegranteService eliminarIntegranteService;
 
     public MiembroProyectoController(
-            ListarMiembrosProyectoService listarMiembrosProyectoService) {
+            ListarMiembrosProyectoService listarMiembrosProyectoService,
+            EliminarIntegranteService eliminarIntegranteService) {
         this.listarMiembrosProyectoService = listarMiembrosProyectoService;
+        this.eliminarIntegranteService = eliminarIntegranteService;
     }
 
     @GetMapping("/proyectos/{idProyecto}/miembros")
@@ -58,5 +69,33 @@ public class MiembroProyectoController {
                 page,
                 size,
                 todos));
+    }
+
+    @DeleteMapping("/proyectos/{idProyecto}/miembros/{idMiembro}")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idMiembro,
+            @Valid @RequestBody EliminarIntegranteRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        eliminarIntegranteService.eliminar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto,
+                idMiembro,
+                request);
+
+        return ResponseEntity.noContent().build();
     }
 }

@@ -337,6 +337,42 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.MotivoEliminacionIntegranteObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleMotivoEliminacionIntegranteObligatorio(
+            org.mgroko.backend.proyectos.exception.MotivoEliminacionIntegranteObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.MiembroProyectoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleMiembroProyectoNoEncontrado(
+            org.mgroko.backend.proyectos.exception.MiembroProyectoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoParticipacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoParticipacionInvalido(
+            org.mgroko.backend.proyectos.exception.EstadoParticipacionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteEliminarIntegrantesException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteEliminarIntegrantes(
+            org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteEliminarIntegrantesException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException.class)
+    public ResponseEntity<Map<String, Object>> handleUltimoDirectorActivo(
+            org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.AutoeliminacionIntegranteException.class)
+    public ResponseEntity<Map<String, Object>> handleAutoeliminacionIntegrante(
+            org.mgroko.backend.proyectos.exception.AutoeliminacionIntegranteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException.class)
     public ResponseEntity<Map<String, Object>> handleUbicacionObligatoria(
             org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException ex) {
@@ -357,6 +393,11 @@ public class GlobalExceptionHandler {
                     "La modificacion genera un ciclo entre actividades.",
                     HttpStatus.CONFLICT);
         }
+        if (esViolacionPorUltimoDirector(ex)) {
+            return buildErrorResponse(
+                    "El proyecto debe conservar al menos un director activo.",
+                    HttpStatus.CONFLICT);
+        }
         return buildErrorResponse(
                 "Los datos enviados violan una restriccion de integridad de la base de datos.",
                 HttpStatus.BAD_REQUEST);
@@ -369,6 +410,22 @@ public class GlobalExceptionHandler {
             if (mensaje != null
                     && mensaje.toLowerCase(java.util.Locale.ROOT).contains("genera un ciclo")) {
                 return true;
+            }
+            actual = actual.getCause();
+        }
+        return false;
+    }
+
+    private boolean esViolacionPorUltimoDirector(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null) {
+                String normalizado = mensaje.toLowerCase(java.util.Locale.ROOT);
+                if (normalizado.contains("al menos un director activo")
+                        || normalizado.contains("unico director")) {
+                    return true;
+                }
             }
             actual = actual.getCause();
         }

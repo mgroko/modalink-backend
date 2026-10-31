@@ -6,12 +6,15 @@ import java.util.Locale;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.MiembroProyectoResponse;
+import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -29,6 +32,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class ListarMiembrosProyectoService {
+
+    public static final String MOTIVO_SIN_PERMISO = "SIN_PERMISO";
+    public static final String MOTIVO_PROYECTO_NO_PERMITE_BAJA = "PROYECTO_NO_PERMITE_BAJA";
+    public static final String MOTIVO_AUTOELIMINACION = "AUTOELIMINACION";
+    public static final String MOTIVO_ULTIMO_DIRECTOR = "ULTIMO_DIRECTOR";
 
     private final ProyectoRepository proyectoRepository;
     private final PerfilRepository perfilRepository;
@@ -70,7 +78,7 @@ public class ListarMiembrosProyectoService {
             throw new PerfilEnBajaException("El perfil no se encuentra activo.");
         }
 
-        proyectoRepository.findById(idProyecto)
+        Proyecto proyecto = proyectoRepository.findById(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
         proyectoSecurityService.validarPermiso(
@@ -78,16 +86,42 @@ public class ListarMiembrosProyectoService {
                 idPerfilActivo,
                 ProyectoSecurityService.PERMISO_VER_PROYECTO);
 
+        MiembroProyecto actor = miembroProyectoRepository
+                .findMiembroActivoConPermisos(idProyecto, idPerfilActivo)
+                .orElseThrow(() -> new AccesoDenegadoProyectoException(
+                        "No tienes el permiso 'VER_PROYECTO' en este proyecto o no eres un miembro activo."));
+
+        boolean actorEsDirector = RolProyectoUsuario.desde(actor.getRolProyecto())
+                == RolProyectoUsuario.DIRECTOR;
+        boolean actorPuedeEliminar = tienePermiso(
+                actor,
+                ProyectoSecurityService.PERMISO_ELIMINAR_INTEGRANTE);
+        boolean proyectoPermiteEliminar = proyecto.getEstado() == EstadoProyecto.PUBLICADO
+                || proyecto.getEstado() == EstadoProyecto.CONFIRMADO;
+
+        List<MiembroProyecto> miembros = miembroProyectoRepository
+                .buscarActivosDeProyectoConPerfilProfesionYRol(idProyecto);
+
+        long directoresActivos = miembros.stream()
+                .filter(miembro -> RolProyectoUsuario.desde(miembro.getRolProyecto())
+                        == RolProyectoUsuario.DIRECTOR)
+                .count();
+
         String nombreNormalizado = normalizar(nombre);
         String rolNormalizado = normalizar(rol);
 
-        List<MiembroProyectoResponse> filtrados = miembroProyectoRepository
-                .buscarActivosDeProyectoConPerfilProfesionYRol(idProyecto)
+        List<MiembroProyectoResponse> filtrados = miembros
                 .stream()
                 .filter(miembro -> coincideNombre(miembro, nombreNormalizado))
                 .filter(miembro -> coincideRol(miembro, rolNormalizado))
                 .filter(miembro -> coincideProfesion(miembro, idProfesion))
-                .map(this::toResponse)
+                .map(miembro -> toResponse(
+                        miembro,
+                        idPerfilActivo,
+                        actorEsDirector,
+                        actorPuedeEliminar,
+                        proyectoPermiteEliminar,
+                        directoresActivos))
                 .toList();
 
         Pageable pageable = construirPageable(page, size, todos);
@@ -140,9 +174,24 @@ public class ListarMiembrosProyectoService {
                                 miembro.getPerfil().getProfesion().getIdProfesion()));
     }
 
-    private MiembroProyectoResponse toResponse(MiembroProyecto miembro) {
+    private MiembroProyectoResponse toResponse(
+            MiembroProyecto miembro,
+            Long idPerfilActivo,
+            boolean actorEsDirector,
+            boolean actorPuedeEliminar,
+            boolean proyectoPermiteEliminar,
+            long directoresActivos) {
+
         Perfil perfil = miembro.getPerfil();
         RolProyectoUsuario rol = RolProyectoUsuario.desde(miembro.getRolProyecto());
+
+        String motivoNoEliminable = motivoNoEliminable(
+                miembro,
+                idPerfilActivo,
+                actorEsDirector,
+                actorPuedeEliminar,
+                proyectoPermiteEliminar,
+                directoresActivos);
 
         return new MiembroProyectoResponse(
                 miembro.getIdMiembro(),
@@ -160,7 +209,47 @@ public class ListarMiembrosProyectoService {
                 rol != null ? rol.name() : null,
                 miembro.getEstadoParticipacion() != null
                         ? miembro.getEstadoParticipacion().name()
-                        : null);
+                        : null,
+                motivoNoEliminable == null,
+                motivoNoEliminable);
+    }
+
+    private String motivoNoEliminable(
+            MiembroProyecto miembro,
+            Long idPerfilActivo,
+            boolean actorEsDirector,
+            boolean actorPuedeEliminar,
+            boolean proyectoPermiteEliminar,
+            long directoresActivos) {
+
+        if (!actorEsDirector || !actorPuedeEliminar) {
+            return MOTIVO_SIN_PERMISO;
+        }
+        if (!proyectoPermiteEliminar) {
+            return MOTIVO_PROYECTO_NO_PERMITE_BAJA;
+        }
+        if (miembro.getPerfil() != null
+                && idPerfilActivo != null
+                && idPerfilActivo.equals(miembro.getPerfil().getIdPerfil())) {
+            return MOTIVO_AUTOELIMINACION;
+        }
+        if (RolProyectoUsuario.desde(miembro.getRolProyecto())
+                == RolProyectoUsuario.DIRECTOR
+                && directoresActivos <= 1) {
+            return MOTIVO_ULTIMO_DIRECTOR;
+        }
+        return null;
+    }
+
+    private boolean tienePermiso(MiembroProyecto miembro, String permiso) {
+        if (miembro == null
+                || miembro.getRolProyecto() == null
+                || miembro.getRolProyecto().getPermisos() == null) {
+            return false;
+        }
+        return miembro.getRolProyecto().getPermisos().stream()
+                .anyMatch(permisoProyecto -> permisoProyecto != null
+                        && permiso.equalsIgnoreCase(permisoProyecto.getNombre()));
     }
 
     private Pageable construirPageable(int page, int size, boolean todos) {

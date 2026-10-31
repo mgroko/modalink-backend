@@ -10,6 +10,7 @@ import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -85,8 +86,9 @@ public class ObtenerActividadService {
                 requerimientoActividadService.listarPorActividad(
                         idActividad, idPerfilActivo, planificacion.getProyecto());
 
-        List<AsignacionActividad> asignaciones = asignacionActividadRepository
-                .findActivasByActividadId(idActividad);
+        List<AsignacionActividad> asignaciones = actividad.getEstado() == EstadoActividad.PENDIENTE
+                ? asignacionActividadRepository.findActivasByActividadId(idActividad)
+                : asignacionActividadRepository.findByActividadIdConMiembroPerfil(idActividad);
 
         var calculo = planificacion.getFechaEntrega() == null
                 ? null

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProyectoSecurityService {
 
     public static final String PERMISO_VER_PROYECTO = "VER_PROYECTO";
+    public static final String PERMISO_ELIMINAR_INTEGRANTE = "ELIMINAR_INTEGRANTE";
 
     private final MiembroProyectoRepository miembroProyectoRepository;
 

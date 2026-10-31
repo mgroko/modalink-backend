@@ -8,6 +8,7 @@ import java.util.Objects;
 
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
@@ -53,8 +54,11 @@ public class CupoRequerimientoService {
             return construir(requerimiento != null ? requerimiento.getCantidad() : null, 0);
         }
 
-        long cubiertos = asignacionActividadRepository
-                .countActivasPorRequerimientoActividad(requerimiento.getIdRequerimiento());
+        long cubiertos = usaCupoHistorico(requerimiento)
+                ? asignacionActividadRepository
+                        .countTodasPorRequerimientoActividad(requerimiento.getIdRequerimiento())
+                : asignacionActividadRepository
+                        .countActivasPorRequerimientoActividad(requerimiento.getIdRequerimiento());
         return construir(requerimiento.getCantidad(), cubiertos);
     }
 
@@ -71,17 +75,36 @@ public class CupoRequerimientoService {
             return Map.of();
         }
 
-        List<Long> ids = requerimientos.stream()
+        List<Long> idsActivos = requerimientos.stream()
                 .filter(Objects::nonNull)
+                .filter(requerimiento -> !usaCupoHistorico(requerimiento))
+                .map(RequerimientoActividad::getIdRequerimiento)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        List<Long> idsHistoricos = requerimientos.stream()
+                .filter(Objects::nonNull)
+                .filter(this::usaCupoHistorico)
                 .map(RequerimientoActividad::getIdRequerimiento)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
         Map<Long, Long> cubiertosPorRequerimiento = new HashMap<>();
-        if (!ids.isEmpty()) {
+        if (!idsActivos.isEmpty()) {
             for (CubiertosPorRequerimiento fila
-                    : asignacionActividadRepository.countActivasPorRequerimientoIds(ids)) {
+                    : asignacionActividadRepository.countActivasPorRequerimientoIds(idsActivos)) {
+                if (fila.getIdRequerimiento() != null) {
+                    cubiertosPorRequerimiento.put(
+                            fila.getIdRequerimiento(),
+                            fila.getCubiertos() != null ? fila.getCubiertos() : 0L);
+                }
+            }
+        }
+        if (!idsHistoricos.isEmpty()) {
+            for (CubiertosPorRequerimiento fila
+                    : asignacionActividadRepository.countTodasPorRequerimientoIds(idsHistoricos)) {
                 if (fila.getIdRequerimiento() != null) {
                     cubiertosPorRequerimiento.put(
                             fila.getIdRequerimiento(),
@@ -150,6 +173,21 @@ public class CupoRequerimientoService {
                                     requerimiento.getIdRequerimientoGral(), 0L)));
         }
         return resultado;
+    }
+
+    /**
+     * Las actividades finalizadas o canceladas ya no representan una
+     * necesidad operativa de personal. Para ellas el cupo es histórico y
+     * debe incluir a todos los profesionales que participaron, aunque hoy su
+     * membresía esté dada de baja.
+     */
+    private boolean usaCupoHistorico(RequerimientoActividad requerimiento) {
+        if (requerimiento == null || requerimiento.getActividad() == null) {
+            return false;
+        }
+        EstadoActividad estado = requerimiento.getActividad().getEstado();
+        return estado == EstadoActividad.FINALIZADA
+                || estado == EstadoActividad.CANCELADA;
     }
 
     private CupoRequerimiento construir(Integer cantidad, long cubiertos) {

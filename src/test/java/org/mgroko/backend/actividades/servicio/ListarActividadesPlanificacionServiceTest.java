@@ -27,6 +27,7 @@ import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
@@ -120,7 +121,7 @@ class ListarActividadesPlanificacionServiceTest {
                 .thenReturn(new PageImpl<>(List.of(segunda, primera)));
         when(actividadRepository.findConPredecesoras(anyCollection()))
                 .thenReturn(List.of(segunda));
-        when(asignacionActividadRepository.findActivasByActividadIds(anyCollection()))
+        when(asignacionActividadRepository.findByActividadIdsConMiembroPerfil(anyCollection()))
                 .thenReturn(List.of(asignacion(segunda)));
     }
 
@@ -168,6 +169,70 @@ class ListarActividadesPlanificacionServiceTest {
     }
 
     @Test
+    void listar_actividadEnCurso_incluyeMiembroEliminadoComoHistorico() {
+        segunda.setEstado(EstadoActividad.EN_CURSO);
+        when(asignacionActividadRepository.findByActividadIdsConMiembroPerfil(anyCollection()))
+                .thenReturn(List.of(asignacion(segunda, EstadoParticipacion.ELIMINADO)));
+
+        PaginaResponse<ActividadPlanificacionResponse> pagina = service.listar(
+                1L, 10L, 100L, null, 0, 20, true);
+
+        assertThat(pagina.contenido().get(1).responsables())
+                .singleElement()
+                .satisfies(responsable -> {
+                    assertThat(responsable.estadoParticipacion()).isEqualTo("ELIMINADO");
+                    assertThat(responsable.activo()).isFalse();
+                });
+    }
+
+    @Test
+    void listar_mismoPerfilReincorporado_priorizaAsignacionActiva() {
+        segunda.setEstado(EstadoActividad.EN_CURSO);
+        AsignacionActividad historica = AsignacionActividad.builder()
+                .idAsignacionAct(77L)
+                .miembro(MiembroProyecto.builder()
+                        .idMiembro(88L)
+                        .perfil(perfil)
+                        .estadoParticipacion(EstadoParticipacion.ELIMINADO)
+                        .build())
+                .actividad(segunda)
+                .build();
+        AsignacionActividad activa = AsignacionActividad.builder()
+                .idAsignacionAct(78L)
+                .miembro(MiembroProyecto.builder()
+                        .idMiembro(99L)
+                        .perfil(perfil)
+                        .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                        .build())
+                .actividad(segunda)
+                .build();
+        when(asignacionActividadRepository.findByActividadIdsConMiembroPerfil(anyCollection()))
+                .thenReturn(List.of(historica, activa));
+
+        PaginaResponse<ActividadPlanificacionResponse> pagina = service.listar(
+                1L, 10L, 100L, null, 0, 20, true);
+
+        assertThat(pagina.contenido().get(1).responsables())
+                .singleElement()
+                .satisfies(responsable -> {
+                    assertThat(responsable.idMiembroProyecto()).isEqualTo(99L);
+                    assertThat(responsable.activo()).isTrue();
+                });
+    }
+
+    @Test
+    void listar_actividadPendiente_excluyeMiembroEliminado() {
+        segunda.setEstado(EstadoActividad.PENDIENTE);
+        when(asignacionActividadRepository.findByActividadIdsConMiembroPerfil(anyCollection()))
+                .thenReturn(List.of(asignacion(segunda, EstadoParticipacion.ELIMINADO)));
+
+        PaginaResponse<ActividadPlanificacionResponse> pagina = service.listar(
+                1L, 10L, 100L, null, 0, 20, true);
+
+        assertThat(pagina.contenido().get(1).responsables()).isEmpty();
+    }
+
+    @Test
     void listar_validaPermisoDeLectura() {
         service.listar(1L, 10L, 100L, null, 0, 20, true);
 
@@ -182,9 +247,16 @@ class ListarActividadesPlanificacionServiceTest {
     }
 
     private AsignacionActividad asignacion(Actividad actividad) {
+        return asignacion(actividad, EstadoParticipacion.ACTIVO);
+    }
+
+    private AsignacionActividad asignacion(
+            Actividad actividad,
+            EstadoParticipacion estadoParticipacion) {
         MiembroProyecto miembro = MiembroProyecto.builder()
                 .idMiembro(88L)
                 .perfil(perfil)
+                .estadoParticipacion(estadoParticipacion)
                 .build();
 
         return AsignacionActividad.builder()

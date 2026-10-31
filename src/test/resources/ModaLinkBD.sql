@@ -3611,7 +3611,8 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('PROYECTO_FECHA_ENTREGA_MODIFICADA',
                               'Fecha de entrega modificada',
                                                       'PROYECTO',    'ALTA'),
-    ('PERFIL_REPORTADO',      'Perfil reportado',     'ADMINISTRACION', 'ALTA')
+    ('PERFIL_REPORTADO',      'Perfil reportado',     'ADMINISTRACION', 'ALTA'),
+    ('INTEGRANTE_ELIMINADO',  'Integrante eliminado', 'PROYECTO',       'ALTA')
 
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,
@@ -3894,19 +3895,32 @@ SELECT
     aa.id_asignacion_act,
     aa.id_actividad,
     a.nombre AS nombre_actividad,
+    a.estado AS estado_actividad,
     aa.id_requerimiento_act,
     ra.descripcion AS descripcion_requerimiento,
     aa.id_miembro,
     mp.id_proyecto,
     mp.id_perfil,
+    pf.nombre_artistico,
+    pf.id_profesion,
+    pr.nombre AS nombre_profesion,
+    mp.id_rol_proyecto,
+    rp.nombre AS nombre_rol,
     mp.estado_participacion,
     mp.fecha_alta AS fecha_alta_miembro,
-    mp.fecha_baja AS fecha_baja_miembro
+    mp.fecha_baja AS fecha_baja_miembro,
+    mp."motivoBaja" AS motivo_baja_miembro
 FROM asignacion_actividad aa
 JOIN actividad a
   ON a.id_actividad = aa.id_actividad
-JOIN requerimiento_actividad ra
+LEFT JOIN requerimiento_actividad ra
   ON ra.id_requerimiento_act = aa.id_requerimiento_act
 JOIN miembros_proyecto mp
   ON mp.id_miembro = aa.id_miembro
+JOIN perfil pf
+  ON pf.id_perfil = mp.id_perfil
+LEFT JOIN profesion pr
+  ON pr.id_profesion = pf.id_profesion
+JOIN rol_proyecto rp
+  ON rp.id_rol_proyecto = mp.id_rol_proyecto
 ORDER BY mp.id_proyecto, mp.id_perfil, aa.id_actividad;

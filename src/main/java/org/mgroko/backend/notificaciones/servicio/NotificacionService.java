@@ -40,6 +40,7 @@ public class NotificacionService {
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
     public static final String TIPO_HITO_CUMPLIDO = "HITO_CUMPLIDO";
     public static final String TIPO_PERFIL_REPORTADO = "PERFIL_REPORTADO";
+    public static final String TIPO_INTEGRANTE_ELIMINADO = "INTEGRANTE_ELIMINADO";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;

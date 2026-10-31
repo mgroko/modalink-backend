@@ -29,7 +29,8 @@ public final class NotificacionTitulos {
             Map.entry("INVITACION_ACEPTADA", "Invitación aceptada"),
             Map.entry("INVITACION_RECHAZADA", "Invitación rechazada"),
             Map.entry("HITO_CUMPLIDO", "Hito cumplido"),
-            Map.entry("PERFIL_REPORTADO", "Perfil reportado"));
+            Map.entry("PERFIL_REPORTADO", "Perfil reportado"),
+            Map.entry("INTEGRANTE_ELIMINADO", "Integrante eliminado"));
 
     private NotificacionTitulos() {
     }

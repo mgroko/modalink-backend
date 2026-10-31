@@ -58,6 +58,22 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void ultimoDirectorDetectadoPorTrigger_responde409() {
+        DataIntegrityViolationException ex = new DataIntegrityViolationException(
+                "Error de integridad",
+                new RuntimeException(
+                        "El proyecto (ID 100) debe conservar al menos un director activo."));
+
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleDataIntegrityViolation(ex);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("al menos un director activo"));
+    }
+
+    @Test
     void requerimientoConVinculos_responde409() {
         ResponseEntity<Map<String, Object>> respuesta =
                 manejador.handleRequerimientoConVinculos(

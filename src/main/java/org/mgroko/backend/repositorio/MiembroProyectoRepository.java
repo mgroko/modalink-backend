@@ -9,8 +9,11 @@ import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto, Long> {
 
@@ -98,6 +101,48 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     Optional<MiembroProyecto> findMiembroActivoConPermisos(
             @Param("idProyecto") Long idProyecto,
             @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario
+        JOIN FETCH mp.rolProyecto
+        WHERE mp.idMiembro = :idMiembro
+          AND mp.proyecto.idProyecto = :idProyecto
+    """)
+    Optional<MiembroProyecto> findByIdMiembroAndProyecto(
+            @Param("idMiembro") Long idMiembro,
+            @Param("idProyecto") Long idProyecto);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario
+        JOIN FETCH mp.rolProyecto
+        WHERE mp.idMiembro = :idMiembro
+          AND mp.proyecto.idProyecto = :idProyecto
+    """)
+    Optional<MiembroProyecto> findByIdMiembroAndProyectoForUpdate(
+            @Param("idMiembro") Long idMiembro,
+            @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Cuenta los Directores activos del proyecto distintos del miembro
+     * indicado. Se usa para impedir que una baja deje al proyecto sin
+     * Director.
+     */
+    @Query("""
+        SELECT COUNT(mp) FROM MiembroProyecto mp
+        JOIN mp.rolProyecto r
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.idMiembro <> :idMiembro
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND (LOWER(r.codigo) = 'director' OR LOWER(r.nombre) LIKE 'director%')
+    """)
+    long countOtrosDirectoresActivos(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idMiembro") Long idMiembro);
 
     @Query("""
         SELECT mp FROM MiembroProyecto mp

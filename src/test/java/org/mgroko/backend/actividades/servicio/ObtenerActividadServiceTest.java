@@ -25,6 +25,7 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.ActividadRepository;
@@ -66,11 +67,12 @@ class ObtenerActividadServiceTest {
     private ObtenerActividadService obtenerActividadService;
 
     private Actividad actividad;
+    private Perfil perfil;
 
     @BeforeEach
     void setUp() {
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
-        Perfil perfil = Perfil.builder()
+        perfil = Perfil.builder()
                 .idPerfil(10L)
                 .nombreArtistico("Luna")
                 .estado(EstadoPerfil.Activo)
@@ -120,6 +122,31 @@ class ObtenerActividadServiceTest {
                 .thenReturn(List.of(actividad));
         when(cronogramaService.calcularProyeccion(any(), any()))
                 .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+    }
+
+    @Test
+    void obtener_actividadEnCurso_incluyeMiembroEliminadoComoHistorico() {
+        actividad.setEstado(EstadoActividad.EN_CURSO);
+        var asignacion = org.mgroko.backend.modelo.AsignacionActividad.builder()
+                .idAsignacionAct(77L)
+                .miembro(MiembroProyecto.builder()
+                        .idMiembro(88L)
+                        .perfil(perfil)
+                        .estadoParticipacion(EstadoParticipacion.ELIMINADO)
+                        .build())
+                .actividad(actividad)
+                .build();
+        when(asignacionActividadRepository.findByActividadIdConMiembroPerfil(55L))
+                .thenReturn(List.of(asignacion));
+
+        ActividadResponse response = obtenerActividadService.obtener(1L, 10L, 100L, 55L);
+
+        assertThat(response.profesionalesAsignados())
+                .singleElement()
+                .satisfies(profesional -> {
+                    assertThat(profesional.estadoParticipacion()).isEqualTo("ELIMINADO");
+                    assertThat(profesional.activo()).isFalse();
+                });
     }
 
     @Test

@@ -214,6 +214,10 @@ public final class ActividadMapper {
         Usuario usuario = perfil.getUsuario();
         Profesion profesion = perfil.getProfesion();
 
+        String estadoParticipacion = miembro.getEstadoParticipacion() != null
+                ? miembro.getEstadoParticipacion().name()
+                : null;
+
         return new ProfesionalAsignadoResponse(
                 asignacion.getIdAsignacionAct(),
                 miembro.getIdMiembro(),
@@ -221,7 +225,9 @@ public final class ActividadMapper {
                 usuario != null ? usuario.getIdUsuario() : null,
                 perfil.getNombreArtistico(),
                 profesion != null ? profesion.getIdProfesion() : null,
-                profesion != null ? profesion.getNombre() : null
+                profesion != null ? profesion.getNombre() : null,
+                estadoParticipacion,
+                "ACTIVO".equals(estadoParticipacion)
         );
     }
 

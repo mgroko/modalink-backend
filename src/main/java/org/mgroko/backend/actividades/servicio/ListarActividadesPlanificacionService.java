@@ -18,6 +18,8 @@ import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
@@ -182,7 +184,13 @@ public class ListarActividadesPlanificacionService {
         Map<Long, Map<Long, ProfesionalAsignadoResponse>> porActividad = new HashMap<>();
 
         for (AsignacionActividad asignacion
-                : asignacionActividadRepository.findActivasByActividadIds(ids)) {
+                : asignacionActividadRepository.findByActividadIdsConMiembroPerfil(ids)) {
+
+            if (asignacion.getActividad().getEstado() == EstadoActividad.PENDIENTE
+                    && asignacion.getMiembro().getEstadoParticipacion()
+                            != EstadoParticipacion.ACTIVO) {
+                continue;
+            }
 
             Long idActividad = asignacion.getActividad().getIdActividad();
             ProfesionalAsignadoResponse profesional =
@@ -192,9 +200,17 @@ public class ListarActividadesPlanificacionService {
                 continue;
             }
 
-            porActividad
-                    .computeIfAbsent(idActividad, id -> new LinkedHashMap<>())
-                    .putIfAbsent(profesional.idPerfil(), profesional);
+            Map<Long, ProfesionalAsignadoResponse> porPerfil =
+                    porActividad.computeIfAbsent(idActividad, id -> new LinkedHashMap<>());
+            ProfesionalAsignadoResponse existente = porPerfil.get(profesional.idPerfil());
+
+            // Si el mismo perfil fue reincorporado y reasignado, priorizar la
+            // asignación activa sobre la histórica.
+            if (existente == null
+                    || (!Boolean.TRUE.equals(existente.activo())
+                            && Boolean.TRUE.equals(profesional.activo()))) {
+                porPerfil.put(profesional.idPerfil(), profesional);
+            }
         }
 
         Map<Long, List<ProfesionalAsignadoResponse>> resultado = new HashMap<>();

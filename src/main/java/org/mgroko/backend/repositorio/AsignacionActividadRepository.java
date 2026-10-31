@@ -40,10 +40,28 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
         JOIN FETCH a.miembro m
         JOIN FETCH m.perfil p
         JOIN FETCH p.usuario
+        JOIN FETCH p.profesion
         WHERE a.actividad.idActividad = :idActividad
     """)
     List<AsignacionActividad> findByActividadIdConMiembroPerfil(
             @Param("idActividad") Long idActividad);
+
+    /**
+     * Asignaciones de las actividades indicadas, incluyendo miembros que ya no
+     * están activos. Se usa para el historial de actividades en curso o
+     * cerradas, donde se debe conservar quién participó.
+     */
+    @Query("""
+        SELECT a FROM AsignacionActividad a
+        JOIN FETCH a.actividad act
+        JOIN FETCH a.miembro m
+        JOIN FETCH m.perfil p
+        JOIN FETCH p.usuario
+        JOIN FETCH p.profesion
+        WHERE a.actividad.idActividad IN :idsActividades
+    """)
+    List<AsignacionActividad> findByActividadIdsConMiembroPerfil(
+            @Param("idsActividades") Collection<Long> idsActividades);
 
     @Query("""
         SELECT a FROM AsignacionActividad a
@@ -85,6 +103,18 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
             @Param("idRequerimiento") Long idRequerimiento);
 
     /**
+     * Cuenta todas las asignaciones de un requerimiento, sin importar el
+     * estado de participación del miembro. Se usa para el cupo histórico de
+     * actividades finalizadas o canceladas.
+     */
+    @Query("""
+        SELECT COUNT(aa) FROM AsignacionActividad aa
+        WHERE aa.requerimientoActividad.idRequerimiento = :idRequerimiento
+    """)
+    long countTodasPorRequerimientoActividad(
+            @Param("idRequerimiento") Long idRequerimiento);
+
+    /**
      * Cuenta las asignaciones activas de cada requerimiento indicado en una
      * sola consulta. Los requerimientos sin asignaciones no aparecen en el
      * resultado; el consumidor debe asumir cero.
@@ -99,6 +129,21 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
         GROUP BY aa.requerimientoActividad.idRequerimiento
     """)
     List<CubiertosPorRequerimiento> countActivasPorRequerimientoIds(
+            @Param("ids") Collection<Long> ids);
+
+    /**
+     * Cuenta todas las asignaciones de cada requerimiento indicado, sin
+     * importar el estado del miembro. Se usa para el cupo histórico de
+     * actividades finalizadas o canceladas.
+     */
+    @Query("""
+        SELECT aa.requerimientoActividad.idRequerimiento AS idRequerimiento,
+               COUNT(aa) AS cubiertos
+        FROM AsignacionActividad aa
+        WHERE aa.requerimientoActividad.idRequerimiento IN :ids
+        GROUP BY aa.requerimientoActividad.idRequerimiento
+    """)
+    List<CubiertosPorRequerimiento> countTodasPorRequerimientoIds(
             @Param("ids") Collection<Long> ids);
 
     @Query("""

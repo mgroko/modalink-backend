@@ -15,12 +15,18 @@ import jakarta.persistence.LockModeType;
 
 public interface RequerimientoActividadRepository extends JpaRepository<RequerimientoActividad, Long> {
 
-    List<RequerimientoActividad> findByActividad_IdActividad(Long idActividad);
+    @Query("""
+        SELECT r FROM RequerimientoActividad r
+        JOIN FETCH r.actividad
+        WHERE r.actividad.idActividad = :idActividad
+    """)
+    List<RequerimientoActividad> findByActividad_IdActividad(
+            @Param("idActividad") Long idActividad);
 
     /**
-     * Recupera los requerimientos de una actividad con su profesión
-     * inicializada. Se usa en UC-70 para resolver si el miembro asignado
-     * cubre alguno de los requerimientos de la actividad.
+     * Recupera los requerimientos de una actividad con su profesión y
+     * actividad inicializadas. Se usa en UC-70 para resolver si el miembro
+     * asignado cubre alguno de los requerimientos de la actividad.
      *
      * @param idActividad actividad cuyos requerimientos se quieren listar
      * @return requerimientos ordenados por identificador
@@ -28,6 +34,7 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
     @Query("""
         SELECT r FROM RequerimientoActividad r
         JOIN FETCH r.profesion
+        JOIN FETCH r.actividad
         WHERE r.actividad.idActividad = :idActividad
         ORDER BY r.idRequerimiento ASC
     """)

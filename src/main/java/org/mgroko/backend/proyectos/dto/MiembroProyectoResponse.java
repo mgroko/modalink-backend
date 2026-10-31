@@ -13,6 +13,34 @@ public record MiembroProyectoResponse(
         Long idProfesion,
         String nombreProfesion,
         String rol,
-        String estadoParticipacion
+        String estadoParticipacion,
+        Boolean eliminable,
+        String motivoNoEliminable
 ) {
+
+    public MiembroProyectoResponse(
+            Long idMiembro,
+            Long idPerfil,
+            Long idUsuario,
+            String nombreArtistico,
+            String nombreUsuario,
+            String apellidoUsuario,
+            Long idProfesion,
+            String nombreProfesion,
+            String rol,
+            String estadoParticipacion) {
+        this(
+                idMiembro,
+                idPerfil,
+                idUsuario,
+                nombreArtistico,
+                nombreUsuario,
+                apellidoUsuario,
+                idProfesion,
+                nombreProfesion,
+                rol,
+                estadoParticipacion,
+                null,
+                null);
+    }
 }
