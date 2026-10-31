@@ -233,9 +233,9 @@ public class AsignarActividadService {
     /**
      * Resuelve el requerimiento que cubre la asignación.
      *
-     * <p>Los directores se asignan sin consumir cupo. Para un miembro se toma
+     * Los directores se asignan sin consumir cupo. Para un miembro se toma
      * el primer requerimiento de la actividad con su misma profesión que aún
-     * tenga faltantes, en orden de identificador.</p>
+     * tenga faltantes, en orden de identificador.
      */
     private RequerimientoActividad resolverRequerimiento(
             Actividad actividad,

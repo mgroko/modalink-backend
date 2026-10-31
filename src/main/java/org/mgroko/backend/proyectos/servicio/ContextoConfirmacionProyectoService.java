@@ -215,15 +215,11 @@ public class ContextoConfirmacionProyectoService {
                     requerimientosPorActividad.getOrDefault(
                             actividad.getIdActividad(), Set.of());
             for (AsignacionActividad asignacion : asignacionesActividad) {
+                // UC-70 permite asignar a un miembro sin que consuma cupo
+                // (por ejemplo, al director o a un perfil cuya profesión no
+                // coincide con ningún requerimiento). La ausencia de vínculo
+                // no es un dato inconsistente; el cupo se valida aparte.
                 if (asignacion.getRequerimientoActividad() == null) {
-                    if (!requerimientosActividad.isEmpty()) {
-                        bloqueos.add(new BloqueoConfirmacionResponse(
-                                "DATOS_INCONSISTENTES",
-                                "Una asignación de la actividad '" + actividad.getNombre()
-                                        + "' no está vinculada a un requerimiento.",
-                                "ACTIVIDAD",
-                                actividad.getIdActividad()));
-                    }
                     continue;
                 }
                 Long idRequerimiento = asignacion.getRequerimientoActividad()
@@ -233,7 +229,7 @@ public class ContextoConfirmacionProyectoService {
                     bloqueos.add(new BloqueoConfirmacionResponse(
                             "DATOS_INCONSISTENTES",
                             "Una asignación de la actividad '" + actividad.getNombre()
-                                    + "' apunta a un requerimiento de otra actividad.",
+                                    + "' apunta a un requerimiento inexistente o de otra actividad.",
                             "ACTIVIDAD",
                             actividad.getIdActividad()));
                 }
