@@ -445,6 +445,22 @@
 
 ---
 
+
+### **UC-40: Darse de baja de proyecto**
+
+- **Actor:** Miembro de proyecto
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-29 Buscar proyecto`.
+  2. El actor envía el mensaje `unProyecto = obtenerProyecto(idProyecto)`.
+  3. El actor solicita la baja enviando `darseDeBaja(unProyecto, motivo)`.
+  4. **Bloque Alternativo (`alt`)**:
+     - `[motivo vacío]`: El sistema retorna `excepcion()`.
+     - `[motivo completado]`:
+       - El sistema retorna `bajaIntegranteRegistrada(unProyecto, unPerfil)`.
+       - El sistema retorna `reabrirVacantesActividades(unProyecto, unPerfil)`.
+       - El sistema retorna `notificarDirectorProyecto(unProyecto, motivo)`.
+
 ### **UC-49: Crear actividad a planificación**
 
 - **Actor:** Director de proyecto
