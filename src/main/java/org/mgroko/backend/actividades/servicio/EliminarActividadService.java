@@ -144,10 +144,18 @@ public class EliminarActividadService {
         ActividadDependencias.reconectarSucesoras(actividadRepository, actividad, actividades);
         actividadRepository.deleteDependenciasByActividadId(idActividad);
         actividadRepository.deleteHitoActividadByActividadId(idActividad);
+
+        // Las filas hijas deben desaparecer antes que los requerimientos por
+        // las FKs de postulacion_actividad, invitacion_actividad y
+        // asignacion_actividad. El flush fuerza ese orden; no alcanza con
+        // cambiar el orden de las llamadas porque Hibernate puede reordenar
+        // los DELETE dentro de un mismo flush.
         postulaciones.forEach(postulacionActividadRepository::delete);
         invitaciones.forEach(invitacionActividadRepository::delete);
-        eliminarRequerimientos(idActividad);
         asignaciones.forEach(asignacionActividadRepository::delete);
+        asignacionActividadRepository.flush();
+
+        eliminarRequerimientos(idActividad);
         actividadRepository.delete(actividad);
         actividadRepository.flush();
         // Fase 2: no persistir proyecciones al eliminar; el cronograma se mantiene

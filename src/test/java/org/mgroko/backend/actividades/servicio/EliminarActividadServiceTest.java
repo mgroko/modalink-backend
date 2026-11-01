@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -55,6 +56,7 @@ import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -391,6 +393,21 @@ class EliminarActividadServiceTest {
         verify(asignacionActividadRepository).delete(asignacion);
         verify(actividadRepository).delete(actividad);
         verify(actividadRepository, atLeastOnce()).flush();
+
+        // Las asignaciones deben borrarse y flushearse antes de borrar los
+        // requerimientos que las referencian.
+        InOrder ordenBorrado = inOrder(
+                postulacionActividadRepository,
+                invitacionActividadRepository,
+                asignacionActividadRepository,
+                requerimientoActividadService,
+                actividadRepository);
+        ordenBorrado.verify(postulacionActividadRepository).delete(postulacion);
+        ordenBorrado.verify(invitacionActividadRepository).delete(invitacion);
+        ordenBorrado.verify(asignacionActividadRepository).delete(asignacion);
+        ordenBorrado.verify(asignacionActividadRepository).flush();
+        ordenBorrado.verify(requerimientoActividadService).eliminar(requerimiento);
+        ordenBorrado.verify(actividadRepository).delete(actividad);
         // Fase 2: no se llama a recalcularTolerandoDesborde; las proyecciones no se persisten.
         verify(cronogramaService, never()).recalcularTolerandoDesborde(any(), any());
 
