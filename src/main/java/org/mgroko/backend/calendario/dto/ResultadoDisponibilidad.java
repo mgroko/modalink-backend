@@ -23,8 +23,9 @@ import java.util.List;
  * @param desvioMinutos       diferencia con signo entre el inicio elegido y el
  *                            preferido; negativo si se adelanta, positivo si se
  *                            atrasa. {@code null} si no hay preferencia.
- * @param inicioPreferido     inicio absoluto construido a partir del horario de
- *                            preferencia; {@code null} si no hay preferencia
+ * @param inicioPreferido     inicio absoluto de la hora preferida en la fecha
+ *                            del hueco evaluado/seleccionado; {@code null} si
+ *                            no hay preferencia
  * @param miembrosBloqueantes miembros que impiden la intersección común; vacío
  *                            si no hay intersección o no se pudo aislar a uno
  */

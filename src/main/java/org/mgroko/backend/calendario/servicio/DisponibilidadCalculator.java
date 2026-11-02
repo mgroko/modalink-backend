@@ -171,10 +171,16 @@ public final class DisponibilidadCalculator {
      * hueco queda dentro de la tolerancia, devuelve vacío: la preferencia no
      * se relaja más allá del límite configurado.</p>
      *
+     * <p>La preferencia es una hora del día: se aplica a la fecha de cada
+     * hueco, no a la fecha del primer hueco. Así, un hueco del 03/11 a las
+     * 08:00 se compara contra las 08:00 del 03/11 aunque el primer hueco sea
+     * del 02/11.</p>
+     *
      * @param huecos          huecos libres ya calculados e intersectados
      * @param duracionMinutos duración de la actividad
      * @param margenMinutos   margen simétrico
-     * @param preferido       inicio preferido absoluto; {@code null} si no hay
+     * @param preferido       hora preferida; su fecha se ignora y se usa la de
+     *                        cada hueco. {@code null} si no hay preferencia
      * @param toleranciaMinutos desvío máximo admitido; ignorado sin preferencia
      * @return el hueco elegido o vacío si no hay uno válido
      */
@@ -211,6 +217,11 @@ public final class DisponibilidadCalculator {
                 continue;
             }
 
+            // La preferencia es una hora del día: se ancla a la fecha de este
+            // hueco, no a la fecha del primer hueco común.
+            LocalDateTime preferidoDelHueco =
+                    hueco.inicio().toLocalDate().atTime(preferido.toLocalTime());
+
             LocalDateTime inicioMinimo = hueco.inicio().plusMinutes(margenMinutos);
             LocalDateTime inicioMaximo = hueco.fin()
                     .minusMinutes(margenMinutos + duracionMinutos);
@@ -218,10 +229,10 @@ public final class DisponibilidadCalculator {
                 continue;
             }
 
-            LocalDateTime inicio = preferido.isBefore(inicioMinimo)
+            LocalDateTime inicio = preferidoDelHueco.isBefore(inicioMinimo)
                     ? inicioMinimo
-                    : preferido.isAfter(inicioMaximo) ? inicioMaximo : preferido;
-            long desvio = Duration.between(preferido, inicio).toMinutes();
+                    : preferidoDelHueco.isAfter(inicioMaximo) ? inicioMaximo : preferidoDelHueco;
+            long desvio = Duration.between(preferidoDelHueco, inicio).toMinutes();
 
             if (Math.abs(desvio) > toleranciaMinutos) {
                 continue;

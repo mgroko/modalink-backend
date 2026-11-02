@@ -182,6 +182,23 @@ class DisponibilidadCalculatorTest {
     }
 
     @Test
+    void seleccionarHueco_preferenciaSeAplicaAlDiaDeCadaHueco() {
+        Intervalo lunes = new Intervalo(BASE.withHour(14), BASE.withHour(18));
+        Intervalo martes = new Intervalo(
+                BASE.plusDays(1).withHour(8),
+                BASE.plusDays(1).withHour(12));
+        LocalDateTime preferido = BASE.withHour(8); // la hora importa, no la fecha
+
+        var seleccion = calculadora.seleccionarHueco(
+                List.of(lunes, martes), 60, 30, preferido, 120);
+
+        assertThat(seleccion).isPresent();
+        assertThat(seleccion.get().intervalo().inicio())
+                .isEqualTo(BASE.plusDays(1).withHour(8).plusMinutes(30));
+        assertThat(seleccion.get().desvioMinutos()).isEqualTo(30);
+    }
+
+    @Test
     void seleccionarHueco_eligeElMasCercanoDentroDeLaTolerancia() {
         Intervalo manana = new Intervalo(BASE, BASE.plusHours(1));
         Intervalo tarde = new Intervalo(BASE.plusHours(5), BASE.plusHours(7));

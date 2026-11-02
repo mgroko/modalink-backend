@@ -317,8 +317,8 @@ public class CalendarioService {
                 margenActividad);
 
         LocalTime preferencia = actividad.getHorarioPreferenciaInicio();
-        // El ES calendario-aware es el inicio del primer hueco común. La fecha
-        // de ese hueco es la referencia natural para la hora preferida.
+        // Referencia inicial: el calculador aplica la hora preferida a la
+        // fecha de cada hueco, no a la fecha de este primer hueco.
         LocalDateTime inicioPreferido = preferencia == null
                 ? null
                 : primerHuecoComun
@@ -335,6 +335,14 @@ public class CalendarioService {
                         margenActividad,
                         inicioPreferido,
                         tolerancia);
+
+        if (preferencia != null && seleccionado.isPresent()) {
+            // La respuesta debe referirse al día del hueco elegido, no al
+            // primer hueco común.
+            inicioPreferido = seleccionado.get()
+                    .intervalo().inicio().toLocalDate()
+                    .atTime(preferencia);
+        }
 
         boolean disponible = seleccionado.isPresent();
         String motivo;

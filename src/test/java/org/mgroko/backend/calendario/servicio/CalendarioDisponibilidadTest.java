@@ -299,6 +299,33 @@ class CalendarioDisponibilidadTest {
     }
 
     @Test
+    void verificarDisponibilidad_preferenciaSeEvaluaEnElDiaDeCadaHueco() {
+        Planificacion planificacion = planificacion(INICIO);
+        Actividad actividad = actividad(1L, "A", 120, planificacion);
+        actividad.setHorarioPreferenciaInicio(LocalTime.of(8, 0));
+
+        when(configuracionSistemaService.obtenerToleranciaPreferenciaMinutos()).thenReturn(120);
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(
+                        jornadaCorrida(1, LocalTime.of(14, 0), LocalTime.of(18, 0)),
+                        jornadaCorrida(2, LocalTime.of(8, 0), LocalTime.of(12, 0))));
+        when(actividadRepository.findConPredecesorasByPlanificacion(100L))
+                .thenReturn(List.of(actividad));
+
+        ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidad(1L, actividad);
+
+        assertThat(resultado.disponible()).isTrue();
+        assertThat(resultado.inicioSeleccionado())
+                .isEqualTo(INICIO.plusDays(1).withHour(8).withMinute(30));
+        assertThat(resultado.finSeleccionado())
+                .isEqualTo(INICIO.plusDays(1).withHour(10).withMinute(30));
+        assertThat(resultado.resultadoPreferencia()).isEqualTo(ResultadoPreferencia.DESVIO);
+        assertThat(resultado.desvioMinutos()).isEqualTo(30);
+        assertThat(resultado.inicioPreferido())
+                .isEqualTo(INICIO.plusDays(1).withHour(8).withMinute(0));
+    }
+
+    @Test
     void verificarDisponibilidad_conPreferenciaFueraDeTolerancia_devuelveSinLugar() {
         Planificacion planificacion = planificacion(INICIO);
         Actividad actividad = actividad(1L, "A", 120, planificacion);
