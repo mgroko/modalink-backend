@@ -7,7 +7,6 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,17 +49,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * disco un archivo .webp que después se sirve por GET /uploads/... con
  * Content-Type: image/webp.
  *
- * Usa PostgreSQL real (Testcontainers) y el directorio de subida por defecto de la
- * aplicación (uploads/perfiles), que es el que publica {@code StorageWebConfig};
+ * Usa PostgreSQL real (Testcontainers) y un subdirectorio de subida aislado
+ * (uploads/perfiles-foto-subida), publicado por {@code StorageWebConfig};
  * los archivos que crea cada test se borran al terminar.
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.storage.perfiles-dir=perfiles-foto-subida")
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 @Rollback
 class FotoPerfilSubidaIntegrationTest extends AbstractPostgresIntegrationTest {
 
-    private static final Path DIRECTORIO_SUBIDAS = Path.of("uploads", "perfiles");
+    private static final Path DIRECTORIO_SUBIDAS = Path.of("uploads", "perfiles-foto-subida");
 
     @Autowired
     private MockMvc mockMvc;
@@ -96,7 +95,7 @@ class FotoPerfilSubidaIntegrationTest extends AbstractPostgresIntegrationTest {
         JsonNode respuesta = subirFoto(usuario, idPerfil, jpeg());
 
         String fotoUrl = respuesta.get("fotoUrl").asText();
-        assertTrue(fotoUrl.matches("/uploads/perfiles/perfil_[0-9a-f\\-]{36}\\.webp"),
+        assertTrue(fotoUrl.matches("/uploads/perfiles-foto-subida/perfil_[0-9a-f\\-]{36}\\.webp"),
                 "La URL debe apuntar a un .webp con nombre perfil_<UUID>: " + fotoUrl);
         assertTrue(respuesta.get("idImagen").isNumber());
 
@@ -127,16 +126,8 @@ class FotoPerfilSubidaIntegrationTest extends AbstractPostgresIntegrationTest {
             Files.deleteIfExists(archivo);
         }
         archivosCreados.clear();
-        // Solo se retiran los directorios si quedaron vacíos (no se borra nada de terceros)
-        borrarSiEstaVacio(DIRECTORIO_SUBIDAS);
-        borrarSiEstaVacio(DIRECTORIO_SUBIDAS.getParent());
-    }
-
-    private static void borrarSiEstaVacio(Path directorio) throws IOException {
-        if (directorio != null && Files.isDirectory(directorio)
-                && Files.list(directorio).findAny().isEmpty()) {
-            Files.delete(directorio);
-        }
+        // No se elimina el directorio: el contexto de Spring lo crea una sola vez
+        // y otros tests podrían seguir usando el mismo bean de storage.
     }
 
     private JsonNode subirFoto(Usuario usuario, Long idPerfil, byte[] jpeg) throws Exception {

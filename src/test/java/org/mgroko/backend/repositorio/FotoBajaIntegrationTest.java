@@ -53,10 +53,10 @@ import org.springframework.web.multipart.MultipartFile;
  * del commit real de la expiraci&oacute;n, as&iacute; que cada test limpia sus
  * propias filas y archivos.
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.storage.upload-dir=target/uploads-foto-baja")
 class FotoBajaIntegrationTest extends AbstractPostgresIntegrationTest {
 
-    private static final Path DIRECTORIO_SUBIDAS = Path.of("uploads", "perfiles");
+    private static final Path DIRECTORIO_SUBIDAS = Path.of("target", "uploads-foto-baja", "perfiles");
     private static final AtomicInteger SECUENCIA = new AtomicInteger();
 
     @Autowired
