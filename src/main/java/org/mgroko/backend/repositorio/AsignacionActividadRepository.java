@@ -2,13 +2,17 @@ package org.mgroko.backend.repositorio;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface AsignacionActividadRepository extends JpaRepository<AsignacionActividad, Long> {
 
@@ -97,6 +101,27 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
 
     boolean existsByMiembro_IdMiembroAndActividad_IdActividad(
             Long idMiembro, Long idActividad);
+
+    /**
+     * Recupera una asignación bloqueada para desasignarla. Incluye miembro,
+     * perfil, usuario, actividad, planificación, proyecto y requerimiento para
+     * validar pertenencia y notificar sin consultas perezosas adicionales.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT a FROM AsignacionActividad a
+        JOIN FETCH a.miembro m
+        JOIN FETCH m.perfil p
+        LEFT JOIN FETCH p.usuario
+        LEFT JOIN FETCH p.profesion
+        JOIN FETCH a.actividad act
+        JOIN FETCH act.planificacion pl
+        JOIN FETCH pl.proyecto pr
+        LEFT JOIN FETCH a.requerimientoActividad
+        WHERE a.idAsignacionAct = :idAsignacion
+    """)
+    Optional<AsignacionActividad> findByIdParaDesasignar(
+            @Param("idAsignacion") Long idAsignacion);
 
     @Query("""
         SELECT COUNT(aa) FROM AsignacionActividad aa

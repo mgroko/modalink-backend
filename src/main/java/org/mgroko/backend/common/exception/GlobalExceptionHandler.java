@@ -45,6 +45,7 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.actividades.exception.AsignacionActividadNoEncontradaException;
 import org.mgroko.backend.actividades.exception.AsignacionActividadNoPermitidaException;
 import org.mgroko.backend.actividades.exception.AsignacionNoDisponibleException;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaException;
@@ -682,6 +683,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleActividadCancelada(
             org.mgroko.backend.actividades.exception.ActividadCanceladaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(AsignacionActividadNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleAsignacionActividadNoEncontrada(
+            AsignacionActividadNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(AsignacionActividadNoPermitidaException.class)

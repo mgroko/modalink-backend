@@ -3,6 +3,7 @@ package org.mgroko.backend.actividades.controlador;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,10 +14,13 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.actividades.dto.AsignacionActividadResponse;
 import org.mgroko.backend.actividades.dto.AsignarActividadRequest;
+import org.mgroko.backend.actividades.dto.DesasignacionActividadResponse;
 import org.mgroko.backend.actividades.exception.AsignacionNoDisponibleException;
 import org.mgroko.backend.actividades.servicio.AsignarActividadService;
+import org.mgroko.backend.actividades.servicio.DesasignarActividadService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -35,6 +39,9 @@ class AsignacionActividadControllerTest {
 
     @MockitoBean
     private AsignarActividadService asignarActividadService;
+
+    @MockitoBean
+    private DesasignarActividadService desasignarActividadService;
 
     @Test
     void asignar_conDatosValidos_devuelve201() throws Exception {
@@ -123,5 +130,36 @@ class AsignacionActividadControllerTest {
                 .andExpect(jsonPath("$.motivo").value("SIN_HUECO"))
                 .andExpect(jsonPath("$.provisional").value(true))
                 .andExpect(jsonPath("$.httpStatus").value(409));
+    }
+
+    @Test
+    void desasignar_conAsignacionValida_devuelve200ConCupo() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        DesasignacionActividadResponse response = new DesasignacionActividadResponse(
+                1200L,
+                100L,
+                77L,
+                900L,
+                50L,
+                2L,
+                123L,
+                false,
+                new CupoRequerimiento(1, 0, 1, false),
+                List.of("El requerimiento quedó con 1 vacante(s)."));
+
+        when(desasignarActividadService.desasignar(1L, 10L, 100L, 77L, 1200L))
+                .thenReturn(response);
+
+        mockMvc.perform(delete("/proyectos/100/actividades/77/asignaciones/1200")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idAsignacionActividad").value(1200L))
+                .andExpect(jsonPath("$.idRequerimientoActividad").value(123L))
+                .andExpect(jsonPath("$.requerimientoSatisfecho").value(false))
+                .andExpect(jsonPath("$.cupo.faltantes").value(1))
+                .andExpect(jsonPath("$.advertencias[0]").value(
+                        "El requerimiento quedó con 1 vacante(s)."));
     }
 }

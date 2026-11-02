@@ -30,6 +30,7 @@ public class NotificacionService {
     public static final String TIPO_PROYECTO_CONFIRMADO = "PROYECTO_CONFIRMADO";
     public static final String TIPO_ACTIVIDAD_MODIFICADA = "ACTIVIDAD_MODIFICADA";
     public static final String TIPO_ACTIVIDAD_ELIMINADA = "ACTIVIDAD_ELIMINADA";
+    public static final String TIPO_ACTIVIDAD_DESASIGNADA = "ACTIVIDAD_DESASIGNADA";
     public static final String TIPO_POSTULACION_RECIBIDA = "POSTULACION_RECIBIDA";
     public static final String TIPO_POSTULACION_ACEPTADA = "POSTULACION_ACEPTADA";
     public static final String TIPO_POSTULACION_RECHAZADA = "POSTULACION_RECHAZADA";

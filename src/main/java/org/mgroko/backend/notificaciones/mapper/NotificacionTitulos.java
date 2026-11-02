@@ -20,6 +20,7 @@ public final class NotificacionTitulos {
             Map.entry("PROYECTO_FECHA_ENTREGA_MODIFICADA", "Fecha de entrega modificada"),
             Map.entry("ACTIVIDAD_MODIFICADA", "Actividad modificada"),
             Map.entry("ACTIVIDAD_ELIMINADA", "Actividad eliminada"),
+            Map.entry("ACTIVIDAD_DESASIGNADA", "Actividad desasignada"),
             Map.entry("ACTIVIDAD_ASIGNADA", "Actividad asignada"),
             Map.entry("POSTULACION_RECIBIDA", "Postulación recibida"),
             Map.entry("POSTULACION_ACEPTADA", "Postulación aceptada"),

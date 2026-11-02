@@ -13,11 +13,13 @@ import org.mgroko.backend.actividades.dto.AsignacionActividadResponse;
 import org.mgroko.backend.actividades.dto.AsignarActividadRequest;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
 import org.mgroko.backend.actividades.dto.CrearRequerimientoActividadRequest;
+import org.mgroko.backend.actividades.dto.DesasignacionActividadResponse;
 import org.mgroko.backend.actividades.enums.UnidadDuracion;
 import org.mgroko.backend.actividades.exception.AsignacionActividadNoPermitidaException;
 import org.mgroko.backend.actividades.exception.AsignacionNoDisponibleException;
 import org.mgroko.backend.actividades.servicio.AsignarActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
+import org.mgroko.backend.actividades.servicio.DesasignarActividadService;
 import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.mgroko.backend.modelo.Genero;
@@ -55,6 +57,8 @@ class AsignarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private AsignarActividadService asignarActividadService;
+    @Autowired
+    private DesasignarActividadService desasignarActividadService;
     @Autowired
     private CrearPerfilService crearPerfilService;
     @Autowired
@@ -271,6 +275,87 @@ class AsignarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 new AsignarActividadRequest(miembro.idPerfil())))
                 .isInstanceOf(org.mgroko.backend.actividades.exception
                         .FechaEntregaNoDefinidaException.class);
+    }
+
+    @Test
+    void desasignar_borraFisicoNotificaYLiberaCupo() {
+        PerfilCreado director = crearPerfil(
+                "uc70.des.dir1@example.com", "88870101", "Directora UC70 Des", "modelo");
+        PerfilCreado miembro = crearPerfil(
+                "uc70.des.mie1@example.com", "88870102", "Miembro UC70 Des", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC70 Desasignar");
+        Long idActividad = idActividadDe(publicado.idProyecto());
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+        agregarMiembro(publicado, miembro);
+
+        AsignacionActividadResponse asignacion = asignarActividadService.asignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                new AsignarActividadRequest(miembro.idPerfil()));
+
+        DesasignacionActividadResponse response = desasignarActividadService.desasignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                asignacion.idAsignacionActividad());
+
+        assertThat(response.idAsignacionActividad())
+                .isEqualTo(asignacion.idAsignacionActividad());
+        assertThat(response.idRequerimientoActividad()).isEqualTo(idRequerimiento);
+        assertThat(response.requerimientoSatisfecho()).isFalse();
+        assertThat(response.cupo().faltantes()).isEqualTo(1);
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad WHERE id_actividad = ?
+                """, Long.class, idActividad);
+        assertThat(asignaciones).isZero();
+
+        Long notificaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ?
+                  AND tipo = 'ACTIVIDAD_DESASIGNADA'
+                  AND entidad_tipo = 'ACTIVIDAD'
+                  AND entidad_id = ?
+                """, Long.class, miembro.idUsuario(), idActividad);
+        assertThat(notificaciones).isEqualTo(1L);
+
+        Long actividad = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM actividad WHERE id_actividad = ?
+                """, Long.class, idActividad);
+        assertThat(actividad).isEqualTo(1L);
+    }
+
+    @Test
+    void desasignar_permiteReasignarAlMismoMiembro() {
+        PerfilCreado director = crearPerfil(
+                "uc70.des.dir2@example.com", "88870103", "Directora UC70 Reasignar", "modelo");
+        PerfilCreado miembro = crearPerfil(
+                "uc70.des.mie2@example.com", "88870104", "Miembro UC70 Reasignar", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC70 Reasignar");
+        Long idActividad = idActividadDe(publicado.idProyecto());
+        agregarMiembro(publicado, miembro);
+
+        AsignacionActividadResponse primera = asignarActividadService.asignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                new AsignarActividadRequest(miembro.idPerfil()));
+
+        desasignarActividadService.desasignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                primera.idAsignacionActividad());
+
+        AsignacionActividadResponse segunda = asignarActividadService.asignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                new AsignarActividadRequest(miembro.idPerfil()));
+
+        assertThat(segunda.idAsignacionActividad()).isNotNull();
+        assertThat(segunda.idAsignacionActividad())
+                .isNotEqualTo(primera.idAsignacionActividad());
     }
 
     // ---------------------------------------------------------------

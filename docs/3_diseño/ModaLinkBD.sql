@@ -3612,7 +3612,8 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
                               'Fecha de entrega modificada',
                                                       'PROYECTO',    'ALTA'),
     ('PERFIL_REPORTADO',      'Perfil reportado',     'ADMINISTRACION', 'ALTA'),
-    ('INTEGRANTE_ELIMINADO',  'Integrante eliminado', 'PROYECTO',       'ALTA')
+    ('INTEGRANTE_ELIMINADO',  'Integrante eliminado', 'PROYECTO',       'ALTA'),
+    ('ACTIVIDAD_DESASIGNADA', 'Actividad desasignada', 'ACTIVIDAD',     'MEDIA')
 
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,

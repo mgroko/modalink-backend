@@ -2,12 +2,15 @@ package org.mgroko.backend.actividades.controlador;
 
 import org.mgroko.backend.actividades.dto.AsignacionActividadResponse;
 import org.mgroko.backend.actividades.dto.AsignarActividadRequest;
+import org.mgroko.backend.actividades.dto.DesasignacionActividadResponse;
 import org.mgroko.backend.actividades.servicio.AsignarActividadService;
+import org.mgroko.backend.actividades.servicio.DesasignarActividadService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,10 +25,13 @@ import jakarta.validation.Valid;
 public class AsignacionActividadController {
 
     private final AsignarActividadService asignarActividadService;
+    private final DesasignarActividadService desasignarActividadService;
 
     public AsignacionActividadController(
-            AsignarActividadService asignarActividadService) {
+            AsignarActividadService asignarActividadService,
+            DesasignarActividadService desasignarActividadService) {
         this.asignarActividadService = asignarActividadService;
+        this.desasignarActividadService = desasignarActividadService;
     }
 
     @PostMapping("/proyectos/{idProyecto}/actividades/{idActividad}/asignaciones")
@@ -50,5 +56,32 @@ public class AsignacionActividadController {
                 idUsuario, idPerfilActivo, idProyecto, idActividad, request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @DeleteMapping(
+            "/proyectos/{idProyecto}/actividades/{idActividad}/asignaciones/{idAsignacionActividad}")
+    public ResponseEntity<DesasignacionActividadResponse> desasignar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idActividad,
+            @PathVariable Long idAsignacionActividad,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        return ResponseEntity.ok(desasignarActividadService.desasignar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto,
+                idActividad,
+                idAsignacionActividad));
     }
 }
