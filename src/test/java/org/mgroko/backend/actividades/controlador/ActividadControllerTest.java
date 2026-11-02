@@ -17,6 +17,8 @@ import org.mgroko.backend.actividades.dto.ActividadPlanificacionResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
+import org.mgroko.backend.actividades.dto.EliminarActividadRequest;
+import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.dto.ProfesionalAsignadoResponse;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResumenResponse;
@@ -29,6 +31,7 @@ import org.mgroko.backend.actividades.servicio.BuscarActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
 import org.mgroko.backend.actividades.servicio.ListarActividadesPlanificacionService;
+import org.mgroko.backend.actividades.servicio.MiembrosActividadService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerDisponibilidadActividadService;
@@ -80,6 +83,9 @@ class ActividadControllerTest {
 
     @MockitoBean
     private EliminarActividadService eliminarActividadService;
+
+    @MockitoBean
+    private MiembrosActividadService miembrosActividadService;
 
     @Test
     void crear_conDatosValidos_devuelve201() throws Exception {
@@ -509,5 +515,65 @@ class ActividadControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("La duración mínima no puede ser mayor que la duración máxima."));
+    }
+
+    @Test
+    void listarMiembrosExclusivos_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of(new MiembroExclusivoResponse(
+                        30L, 20L, 11L, 2L, "Luna", 2L, "Modelo", true, null)));
+
+        mockMvc.perform(get("/proyectos/100/actividades/55/miembros-exclusivos")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idMiembro").value(20L))
+                .andExpect(jsonPath("$[0].puedeEliminar").value(true));
+    }
+
+    @Test
+    void eliminar_conDecisiones_devuelve204() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(post("/proyectos/100/actividades/55/eliminar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "motivo": "Falta de presupuesto",
+                                  "decisiones": [
+                                    {
+                                      "idMiembro": 20,
+                                      "accion": "GUARDAR"
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarActividadService).eliminar(
+                eq(1L), eq(10L), eq(100L), eq(55L), any(EliminarActividadRequest.class));
+    }
+
+    @Test
+    void eliminar_sinDecisiones_devuelve400() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(post("/proyectos/100/actividades/55/eliminar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "motivo": "Falta de presupuesto"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(eliminarActividadService, never()).eliminar(
+                any(), any(), any(), any(), any(EliminarActividadRequest.class));
     }
 }

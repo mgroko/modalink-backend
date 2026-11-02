@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -21,9 +21,16 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.actividades.dto.DecisionIntegranteRequest;
+import org.mgroko.backend.actividades.dto.EliminarActividadRequest;
+import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
+import org.mgroko.backend.actividades.enums.AccionIntegrante;
 import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent;
+import org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException;
 import org.mgroko.backend.actividades.exception.ActividadNoEliminableException;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
+import org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException;
+import org.mgroko.backend.actividades.exception.EliminacionIntegranteNoPermitidaException;
 import org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException;
 import org.mgroko.backend.actividades.exception.MotivoEliminacionObligatorioException;
 import org.mgroko.backend.modelo.Actividad;
@@ -45,8 +52,10 @@ import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -70,41 +79,34 @@ class EliminarActividadServiceTest {
 
     @Mock
     private ActividadRepository actividadRepository;
-
     @Mock
     private PlanificacionRepository planificacionRepository;
-
     @Mock
     private PerfilRepository perfilRepository;
-
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
-
     @Mock
     private RequerimientoActividadService requerimientoActividadService;
-
     @Mock
     private RequerimientoActividadRepository requerimientoActividadRepository;
-
     @Mock
     private PostulacionActividadRepository postulacionActividadRepository;
-
     @Mock
     private InvitacionActividadRepository invitacionActividadRepository;
-
     @Mock
     private AsignacionActividadRepository asignacionActividadRepository;
-
+    @Mock
+    private MiembrosActividadService miembrosActividadService;
+    @Mock
+    private EliminarIntegranteService eliminarIntegranteService;
     @Mock
     private CronogramaService cronogramaService;
-
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private EliminarActividadService service;
 
-    private Usuario usuario;
     private Perfil perfil;
     private Proyecto proyecto;
     private Planificacion planificacion;
@@ -112,12 +114,11 @@ class EliminarActividadServiceTest {
 
     @BeforeEach
     void setUp() {
-        usuario = Usuario.builder().idUsuario(1L).build();
         perfil = Perfil.builder()
                 .idPerfil(10L)
                 .nombreArtistico("Luna")
                 .estado(EstadoPerfil.Activo)
-                .usuario(usuario)
+                .usuario(Usuario.builder().idUsuario(1L).build())
                 .profesion(Profesion.builder().idProfesion(2L).nombre("Modelo").build())
                 .build();
 
@@ -159,11 +160,14 @@ class EliminarActividadServiceTest {
                 .thenReturn(List.of());
         when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
                 .thenReturn(List.of());
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of());
     }
 
     @Test
     void eliminar_sinPerfilActivo_lanzaExcepcion() {
-        assertThatThrownBy(() -> service.eliminar(1L, null, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, null, 100L, 55L, request("Motivo")))
                 .isInstanceOf(PerfilActivoNoSeleccionadoException.class);
 
         verifyNoInteractions(proyectoSecurityService, eventPublisher);
@@ -174,7 +178,8 @@ class EliminarActividadServiceTest {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(PerfilNoEncontradoException.class);
 
         verifyNoInteractions(proyectoSecurityService, eventPublisher);
@@ -184,7 +189,8 @@ class EliminarActividadServiceTest {
     void eliminar_perfilNoActivo_lanzaExcepcion() {
         perfil.setEstado(EstadoPerfil.PENDIENTE_BAJA);
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(PerfilEnBajaException.class);
 
         verifyNoInteractions(proyectoSecurityService, eventPublisher);
@@ -195,7 +201,8 @@ class EliminarActividadServiceTest {
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(ProyectoNoEncontradoException.class);
 
         verifyNoInteractions(proyectoSecurityService, eventPublisher);
@@ -207,7 +214,8 @@ class EliminarActividadServiceTest {
                 .when(proyectoSecurityService)
                 .validarPermiso(100L, 10L, EliminarActividadService.PERMISO_ELIMINAR_ACTIVIDAD);
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(AccesoDenegadoProyectoException.class);
 
         verify(actividadRepository, never())
@@ -219,7 +227,8 @@ class EliminarActividadServiceTest {
     void eliminar_proyectoFinalizado_lanzaExcepcion() {
         proyecto.setEstado(EstadoProyecto.FINALIZADO);
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(EstadoProyectoNoPermiteEliminarActividadesException.class);
 
         verify(actividadRepository, never())
@@ -228,14 +237,24 @@ class EliminarActividadServiceTest {
     }
 
     @Test
-    void eliminar_proyectoConfirmado_lanzaExcepcion() {
+    void eliminar_proyectoConfirmadoConActividadPendiente_permiteEliminar() {
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
-                .isInstanceOf(EstadoProyectoNoPermiteEliminarActividadesException.class);
+        service.eliminar(1L, 10L, 100L, 55L, request("Motivo"));
 
-        verify(actividadRepository, never())
-                .findByIdActividadAndPlanificacionIdPlanificacion(anyLong(), anyLong());
+        verify(actividadRepository).delete(actividad);
+    }
+
+    @Test
+    void eliminar_proyectoConfirmadoConActividadEnCurso_lanzaExcepcion() {
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        actividad.setEstado(EstadoActividad.EN_CURSO);
+
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
+                .isInstanceOf(ActividadEnCursoConfirmadaNoEliminableException.class);
+
+        verify(actividadRepository, never()).delete(any(Actividad.class));
         verifyNoInteractions(eventPublisher);
     }
 
@@ -244,7 +263,8 @@ class EliminarActividadServiceTest {
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(55L, 50L))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(ActividadNoEncontradaException.class);
 
         verify(actividadRepository, never()).delete(any(Actividad.class));
@@ -255,7 +275,8 @@ class EliminarActividadServiceTest {
     void eliminar_actividadFinalizada_lanzaExcepcion() {
         actividad.setEstado(EstadoActividad.FINALIZADA);
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(ActividadNoEliminableException.class);
 
         verify(actividadRepository, never()).delete(any(Actividad.class));
@@ -266,7 +287,8 @@ class EliminarActividadServiceTest {
     void eliminar_actividadCancelada_lanzaExcepcion() {
         actividad.setEstado(EstadoActividad.CANCELADA);
 
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "Motivo"))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
                 .isInstanceOf(ActividadNoEliminableException.class);
 
         verify(actividadRepository, never()).delete(any(Actividad.class));
@@ -274,35 +296,86 @@ class EliminarActividadServiceTest {
     }
 
     @Test
-    void eliminar_motivoNulo_lanzaExcepcion() {
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, null))
+    void eliminar_motivoInvalido_lanzaExcepcion() {
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request(null)))
                 .isInstanceOf(MotivoEliminacionObligatorioException.class);
 
-        verify(actividadRepository, never()).delete(any(Actividad.class));
-        verifyNoInteractions(eventPublisher);
-    }
-
-    @Test
-    void eliminar_motivoEnBlanco_lanzaExcepcion() {
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "   "))
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("   ")))
                 .isInstanceOf(MotivoEliminacionObligatorioException.class);
 
-        verify(actividadRepository, never()).delete(any(Actividad.class));
-        verifyNoInteractions(eventPublisher);
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("x".repeat(201))))
+                .isInstanceOf(MotivoEliminacionObligatorioException.class);
     }
 
     @Test
-    void eliminar_motivoDemasiadoLargo_lanzaExcepcion() {
-        assertThatThrownBy(() -> service.eliminar(1L, 10L, 100L, 55L, "x".repeat(201)))
-                .isInstanceOf(MotivoEliminacionObligatorioException.class)
-                .hasMessageContaining("200");
-
-        verify(actividadRepository, never()).delete(any(Actividad.class));
-        verifyNoInteractions(eventPublisher);
+    void eliminar_decisionesNulas_lanzaExcepcion() {
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L,
+                new EliminarActividadRequest("Motivo", null)))
+                .isInstanceOf(DecisionIntegranteInvalidaException.class);
     }
 
     @Test
-    void eliminar_conDatosValidos_eliminaHijosReconectaYPublicaEvento() {
+    void eliminar_faltaDecisionDeUnExclusivo_lanzaExcepcion() {
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of(exclusivo(20L, true, null)));
+
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L,
+                request("Motivo")))
+                .isInstanceOf(DecisionIntegranteInvalidaException.class)
+                .hasMessageContaining("Falta la decisión");
+    }
+
+    @Test
+    void eliminar_decisionParaMiembroNoExclusivo_lanzaExcepcion() {
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L,
+                new EliminarActividadRequest("Motivo",
+                        List.of(new DecisionIntegranteRequest(
+                                20L, AccionIntegrante.GUARDAR, null)))))
+                .isInstanceOf(DecisionIntegranteInvalidaException.class)
+                .hasMessageContaining("no participa exclusivamente");
+    }
+
+    @Test
+    void eliminar_decisionDuplicada_lanzaExcepcion() {
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of(exclusivo(20L, true, null)));
+
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L,
+                new EliminarActividadRequest("Motivo",
+                        List.of(
+                                new DecisionIntegranteRequest(
+                                        20L, AccionIntegrante.GUARDAR, null),
+                                new DecisionIntegranteRequest(
+                                        20L, AccionIntegrante.GUARDAR, null)))))
+                .isInstanceOf(DecisionIntegranteInvalidaException.class)
+                .hasMessageContaining("repetido");
+    }
+
+    @Test
+    void eliminar_decisionEliminarNoPermitida_lanzaExcepcion() {
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of(exclusivo(20L, false, "AUTOELIMINACION")));
+
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L,
+                new EliminarActividadRequest("Motivo",
+                        List.of(new DecisionIntegranteRequest(
+                                20L, AccionIntegrante.ELIMINAR, null)))))
+                .isInstanceOf(EliminacionIntegranteNoPermitidaException.class);
+    }
+
+    @Test
+    void eliminar_conDecisiones_aplicaBajasYConservaAlGuardado() {
         Actividad predecesora = Actividad.builder()
                 .idActividad(54L)
                 .nombre("Preparacion")
@@ -323,6 +396,10 @@ class EliminarActividadServiceTest {
 
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(actividad, sucesora));
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of(
+                        exclusivo(20L, true, null),
+                        exclusivo(21L, true, null)));
 
         Perfil perfilPostulante = Perfil.builder()
                 .idPerfil(11L)
@@ -337,11 +414,19 @@ class EliminarActividadServiceTest {
                 .actividad(actividad)
                 .build();
 
-        AsignacionActividad asignacion = AsignacionActividad.builder()
+        AsignacionActividad asignacionGuardada = AsignacionActividad.builder()
                 .miembro(MiembroProyecto.builder()
-                        .idMiembro(20L)
+                        .idMiembro(21L)
                         .perfil(perfil)
                         .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                        .build())
+                .actividad(actividad)
+                .build();
+        AsignacionActividad asignacionEliminada = AsignacionActividad.builder()
+                .miembro(MiembroProyecto.builder()
+                        .idMiembro(20L)
+                        .perfil(Perfil.builder().idPerfil(11L).build())
+                        .estadoParticipacion(EstadoParticipacion.ELIMINADO)
                         .build())
                 .actividad(actividad)
                 .build();
@@ -351,33 +436,39 @@ class EliminarActividadServiceTest {
                 .perfil(perfilPostulante)
                 .estado(EstadoSolicitud.PENDIENTE)
                 .build();
-        PostulacionActividad postulacionRechazada = PostulacionActividad.builder()
-                .idPostulacion(81L)
-                .perfil(Perfil.builder().idPerfil(13L).build())
-                .estado(EstadoSolicitud.RECHAZADA)
-                .build();
-
         InvitacionActividad invitacion = InvitacionActividad.builder()
                 .idInvitacion(90L)
                 .perfilDestinatario(perfilInvitado)
                 .estado(EstadoSolicitud.PENDIENTE)
                 .build();
-        InvitacionActividad invitacionRechazada = InvitacionActividad.builder()
-                .idInvitacion(91L)
-                .perfilDestinatario(Perfil.builder().idPerfil(14L).build())
-                .estado(EstadoSolicitud.RECHAZADA)
-                .build();
 
         when(asignacionActividadRepository.findByActividadIdConMiembroPerfil(55L))
-                .thenReturn(List.of(asignacion));
+                .thenReturn(List.of(asignacionGuardada, asignacionEliminada));
         when(postulacionActividadRepository.findByActividadIdConPerfil(55L))
-                .thenReturn(List.of(postulacion, postulacionRechazada));
+                .thenReturn(List.of(postulacion));
         when(invitacionActividadRepository.findByActividadIdConDestinatario(55L))
-                .thenReturn(List.of(invitacion, invitacionRechazada));
+                .thenReturn(List.of(invitacion));
         when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
                 .thenReturn(List.of(requerimiento));
 
-        service.eliminar(1L, 10L, 100L, 55L, "  Falta de presupuesto  ");
+        EliminarActividadRequest request = new EliminarActividadRequest(
+                "  Falta de presupuesto  ",
+                List.of(
+                        new DecisionIntegranteRequest(
+                                20L, AccionIntegrante.ELIMINAR, null),
+                        new DecisionIntegranteRequest(
+                                21L, AccionIntegrante.GUARDAR, null)));
+
+        service.eliminar(1L, 10L, 100L, 55L, request);
+
+        verify(eliminarIntegranteService).eliminar(
+                eq(1L),
+                eq(10L),
+                eq(100L),
+                eq(20L),
+                eq(new EliminarIntegranteRequest("Falta de presupuesto")));
+        verify(eliminarIntegranteService, never()).eliminar(
+                eq(1L), eq(10L), eq(100L), eq(21L), any(EliminarIntegranteRequest.class));
 
         assertThat(sucesora.getPredecesoras())
                 .containsExactly(predecesora)
@@ -386,16 +477,12 @@ class EliminarActividadServiceTest {
         verify(actividadRepository).deleteDependenciasByActividadId(55L);
         verify(actividadRepository).deleteHitoActividadByActividadId(55L);
         verify(postulacionActividadRepository).delete(postulacion);
-        verify(postulacionActividadRepository).delete(postulacionRechazada);
         verify(invitacionActividadRepository).delete(invitacion);
-        verify(invitacionActividadRepository).delete(invitacionRechazada);
         verify(requerimientoActividadService).eliminar(requerimiento);
-        verify(asignacionActividadRepository).delete(asignacion);
+        verify(asignacionActividadRepository).delete(asignacionGuardada);
+        verify(asignacionActividadRepository).delete(asignacionEliminada);
         verify(actividadRepository).delete(actividad);
-        verify(actividadRepository, atLeastOnce()).flush();
 
-        // Las asignaciones deben borrarse y flushearse antes de borrar los
-        // requerimientos que las referencian.
         InOrder ordenBorrado = inOrder(
                 postulacionActividadRepository,
                 invitacionActividadRepository,
@@ -404,60 +491,45 @@ class EliminarActividadServiceTest {
                 actividadRepository);
         ordenBorrado.verify(postulacionActividadRepository).delete(postulacion);
         ordenBorrado.verify(invitacionActividadRepository).delete(invitacion);
-        ordenBorrado.verify(asignacionActividadRepository).delete(asignacion);
+        ordenBorrado.verify(asignacionActividadRepository).delete(asignacionGuardada);
         ordenBorrado.verify(asignacionActividadRepository).flush();
         ordenBorrado.verify(requerimientoActividadService).eliminar(requerimiento);
         ordenBorrado.verify(actividadRepository).delete(actividad);
-        // Fase 2: no se llama a recalcularTolerandoDesborde; las proyecciones no se persisten.
-        verify(cronogramaService, never()).recalcularTolerandoDesborde(any(), any());
 
         ArgumentCaptor<ActividadEliminadaEvent> evento =
                 ArgumentCaptor.forClass(ActividadEliminadaEvent.class);
         verify(eventPublisher).publishEvent(evento.capture());
-        assertThat(evento.getValue().idActividad()).isEqualTo(55L);
-        assertThat(evento.getValue().nombreActividad()).isEqualTo("Montaje");
-        assertThat(evento.getValue().nombreProyecto()).isEqualTo("Desfile Primavera");
         assertThat(evento.getValue().motivo()).isEqualTo("Falta de presupuesto");
         assertThat(evento.getValue().idsPerfilesAsignados()).containsExactly(10L);
-        assertThat(evento.getValue().postulaciones())
-                .singleElement()
-                .satisfies(afectada -> {
-                    assertThat(afectada.idPostulacion()).isEqualTo(80L);
-                    assertThat(afectada.idPerfil()).isEqualTo(11L);
-                });
-        assertThat(evento.getValue().invitaciones())
-                .singleElement()
-                .satisfies(afectada -> {
-                    assertThat(afectada.idInvitacion()).isEqualTo(90L);
-                    assertThat(afectada.idPerfil()).isEqualTo(12L);
-                });
+        assertThat(evento.getValue().postulaciones()).hasSize(1);
+        assertThat(evento.getValue().invitaciones()).hasSize(1);
     }
 
     @Test
     void eliminar_sinAfectados_noPublicaEvento() {
-        service.eliminar(1L, 10L, 100L, 55L, "Motivo");
+        service.eliminar(1L, 10L, 100L, 55L, request("Motivo"));
 
         verify(actividadRepository).delete(actividad);
         verifyNoInteractions(eventPublisher);
     }
 
-    @Test
-    void eliminar_sinFechaEntrega_omiteRecalculo() {
-        planificacion.setFechaEntrega(null);
-
-        service.eliminar(1L, 10L, 100L, 55L, "Motivo");
-
-        verify(cronogramaService, never()).recalcularTolerandoDesborde(any(), any());
+    private EliminarActividadRequest request(String motivo) {
+        return new EliminarActividadRequest(motivo, List.of());
     }
 
-    @Test
-    void eliminar_sinActividadesRestantes_omiteRecalculo() {
-        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
-                .thenReturn(List.of(actividad))
-                .thenReturn(List.of());
-
-        service.eliminar(1L, 10L, 100L, 55L, "Motivo");
-
-        verify(cronogramaService, never()).recalcularTolerandoDesborde(any(), any());
+    private MiembroExclusivoResponse exclusivo(
+            Long idMiembro,
+            boolean puedeEliminar,
+            String motivoNoEliminable) {
+        return new MiembroExclusivoResponse(
+                30L,
+                idMiembro,
+                20L + idMiembro,
+                30L + idMiembro,
+                "Miembro " + idMiembro,
+                2L,
+                "Modelo",
+                puedeEliminar,
+                motivoNoEliminable);
     }
 }

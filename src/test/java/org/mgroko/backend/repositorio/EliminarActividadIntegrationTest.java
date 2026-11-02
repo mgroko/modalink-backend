@@ -12,7 +12,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mgroko.backend.actividades.dto.ProfesionalAsignadoResponse;
+import org.mgroko.backend.actividades.dto.DecisionIntegranteRequest;
+import org.mgroko.backend.actividades.dto.EliminarActividadRequest;
+import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
+import org.mgroko.backend.actividades.enums.AccionIntegrante;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
 import org.mgroko.backend.actividades.servicio.MiembrosActividadService;
 import org.mgroko.backend.modelo.Actividad;
@@ -89,7 +92,7 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 escenario.idPerfilDirector(),
                 escenario.idProyecto(),
                 escenario.idActividadEliminada(),
-                "  Falta de presupuesto  ");
+                new EliminarActividadRequest("  Falta de presupuesto  ", List.of()));
 
         assertThat(contar(
                 "SELECT COUNT(*) FROM actividad WHERE id_actividad = ?",
@@ -169,17 +172,103 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void eliminar_conDecisiones_eliminaYGuardaIntegrantesExclusivos() {
+        EscenarioConDecision escenario = transactionTemplate.execute(status -> {
+            Escenario base = crearEscenario();
+            Proyecto proyecto = em.find(Proyecto.class, base.idProyecto());
+            Actividad actividad = em.find(Actividad.class, base.idActividadEliminada());
+            RolProyecto rolMiembro = em.createQuery(
+                    "SELECT r FROM RolProyecto r WHERE r.codigo = 'MIEMBRO'",
+                    RolProyecto.class)
+                    .getSingleResult();
+
+            MiembroProyecto eliminar = crearMiembroExclusivo(
+                    proyecto, "Perfil Eliminar UC51", rolMiembro);
+            MiembroProyecto guardar = crearMiembroExclusivo(
+                    proyecto, "Perfil Guardar UC51", rolMiembro);
+
+            em.persist(AsignacionActividad.builder()
+                    .miembro(eliminar)
+                    .actividad(actividad)
+                    .build());
+            em.persist(AsignacionActividad.builder()
+                    .miembro(guardar)
+                    .actividad(actividad)
+                    .build());
+            em.flush();
+
+            return new EscenarioConDecision(
+                    base,
+                    eliminar.getIdMiembro(),
+                    guardar.getIdMiembro(),
+                    eliminar.getPerfil().getUsuario().getIdUsuario(),
+                    guardar.getPerfil().getUsuario().getIdUsuario());
+        });
+
+        eliminarActividadService.eliminar(
+                escenario.base().idUsuarioDirector(),
+                escenario.base().idPerfilDirector(),
+                escenario.base().idProyecto(),
+                escenario.base().idActividadEliminada(),
+                new EliminarActividadRequest(
+                        "Falta de presupuesto",
+                        List.of(
+                                new DecisionIntegranteRequest(
+                                        escenario.idMiembroEliminar(),
+                                        AccionIntegrante.ELIMINAR,
+                                        "Baja UC51"),
+                                new DecisionIntegranteRequest(
+                                        escenario.idMiembroGuardar(),
+                                        AccionIntegrante.GUARDAR,
+                                        null))));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT estado_participacion FROM miembros_proyecto WHERE id_miembro = ?",
+                String.class,
+                escenario.idMiembroEliminar())).isEqualTo("ELIMINADO");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT estado_participacion FROM miembros_proyecto WHERE id_miembro = ?",
+                String.class,
+                escenario.idMiembroGuardar())).isEqualTo("ACTIVO");
+        assertThat(contar(
+                "SELECT COUNT(*) FROM asignacion_actividad WHERE id_actividad = ?",
+                escenario.base().idActividadEliminada())).isZero();
+
+        Map<String, Object> notificacionEliminado = jdbcTemplate.queryForMap(
+                "SELECT tipo, entidad_tipo, entidad_id, id_proyecto, mensaje "
+                        + "FROM notificacion WHERE id_usuario_destino = ? AND tipo = ?",
+                escenario.idUsuarioEliminar(),
+                NotificacionService.TIPO_INTEGRANTE_ELIMINADO);
+        assertThat(notificacionEliminado.get("entidad_tipo")).isEqualTo("PROYECTO");
+        assertThat((String) notificacionEliminado.get("mensaje")).contains("Baja UC51");
+
+        Map<String, Object> notificacionGuardado = jdbcTemplate.queryForMap(
+                "SELECT tipo, entidad_tipo, entidad_id, id_proyecto, mensaje "
+                        + "FROM notificacion WHERE id_usuario_destino = ? AND tipo = ?",
+                escenario.idUsuarioGuardar(),
+                NotificacionService.TIPO_ACTIVIDAD_ELIMINADA);
+        assertThat(notificacionGuardado.get("entidad_tipo")).isEqualTo("ACTIVIDAD");
+        assertThat((String) notificacionGuardado.get("mensaje"))
+                .contains("Continuás en el proyecto");
+    }
+
+    @Test
     @Transactional
     void miembros_listarExclusivosYQuitarAsignacion_conservaElMiembro() {
         Escenario escenario = crearEscenario();
 
-        List<ProfesionalAsignadoResponse> exclusivos =
-                miembrosActividadService.listarExclusivos(escenario.idActividadSolo());
+        List<MiembroExclusivoResponse> exclusivos =
+                miembrosActividadService.listarExclusivos(
+                        escenario.idUsuarioDirector(),
+                        escenario.idPerfilDirector(),
+                        escenario.idProyecto(),
+                        escenario.idActividadSolo());
 
         assertThat(exclusivos).singleElement().satisfies(profesional -> {
             assertThat(profesional.idPerfil()).isEqualTo(escenario.idPerfilMiembroSolo());
             assertThat(profesional.nombreArtistico()).isEqualTo("Perfil MiembroSolo");
             assertThat(profesional.nombreProfesion()).isNotNull();
+            assertThat(profesional.puedeEliminar()).isTrue();
         });
 
         miembrosActividadService.guardarMiembro(
@@ -380,6 +469,27 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 sucesora.getFechaHoraInicio());
     }
 
+    private MiembroProyecto crearMiembroExclusivo(
+            Proyecto proyecto,
+            String nombreArtistico,
+            RolProyecto rolProyecto) {
+
+        RolGlobal rolGlobal = rolGlobalRepository.findByNombre("Usuario").orElseThrow();
+        Genero genero = generoRepository.findByCodigo("mujer").orElseThrow();
+        String sufijo = String.valueOf(Math.abs(System.nanoTime()));
+        String dni = String.valueOf(10_000_000L + (Math.abs(System.nanoTime()) % 89_999_999L));
+        Usuario usuario = crearUsuario(
+                "uc51.exclusivo." + sufijo + "@example.com",
+                dni,
+                rolGlobal,
+                genero);
+        Perfil perfil = crearPerfil(
+                usuario,
+                nombreArtistico,
+                em.find(Profesion.class, 2L));
+        return crearMiembro(proyecto, perfil, rolProyecto, null);
+    }
+
     private Usuario crearUsuario(
             String correo,
             String dni,
@@ -467,5 +577,13 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
             Long idHito,
             LocalDateTime inicioActividadPrevia,
             LocalDateTime inicioActividadSucesora) {
+    }
+
+    private record EscenarioConDecision(
+            Escenario base,
+            Long idMiembroEliminar,
+            Long idMiembroGuardar,
+            Long idUsuarioEliminar,
+            Long idUsuarioGuardar) {
     }
 }

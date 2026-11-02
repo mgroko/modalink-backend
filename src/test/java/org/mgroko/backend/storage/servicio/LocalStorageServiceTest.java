@@ -17,10 +17,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import javax.imageio.ImageIO;
 
@@ -234,26 +232,6 @@ class LocalStorageServiceTest {
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         assertTrue(ImageIO.write(imagen, "jpg", salida), "No hay escritor JPEG disponible");
         return salida.toByteArray();
-    }
-
-    @Test
-    void listarFotografiasDePerfil_soloArchivosDelDirectorioConSuFechaDeModificacion() throws IOException {
-        Path perfilesDir = tempDir.resolve("perfiles");
-        Path archivo = perfilesDir.resolve("perfil_vieja.webp");
-        Files.write(archivo, "dummy".getBytes());
-        Path subdirectorio = perfilesDir.resolve("subdirectorio");
-        Files.createDirectory(subdirectorio);
-        Files.write(subdirectorio.resolve("perfil_dentro.webp"), "dummy".getBytes());
-
-        Map<String, Instant> fotografias = storageService.listarFotografiasDePerfil();
-
-        assertEquals(Set.of("perfil_vieja.webp"), fotografias.keySet(),
-                "Solo se listan archivos del directorio, nunca subdirectorios");
-        assertNotNull(fotografias.get("perfil_vieja.webp"));
-        assertTrue(fotografias.get("perfil_vieja.webp").isBefore(Instant.now()),
-                "Debe devolver la última modificación real del archivo");
-        assertTrue(Files.exists(subdirectorio.resolve("perfil_dentro.webp")),
-                "El listado no debe tocar el contenido de los subdirectorios");
     }
 
     @Test

@@ -77,7 +77,7 @@ public class ActividadEliminadaNotificacionListener {
 
         String mensajeActividad = "La actividad \"" + evento.nombreActividad()
                 + "\" del proyecto \"" + evento.nombreProyecto()
-                + "\" fue eliminada. Motivo: " + evento.motivo();
+                + "\" fue eliminada. Continuás en el proyecto. Motivo: " + evento.motivo();
 
         for (Long idPerfil : evento.idsPerfilesAsignados()) {
             Perfil perfil = perfilesPorId.get(idPerfil);

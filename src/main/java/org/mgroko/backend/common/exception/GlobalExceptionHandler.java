@@ -727,6 +727,24 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadEnCursoConfirmadaNoEliminable(
+            org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleDecisionIntegranteInvalida(
+            org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.EliminacionIntegranteNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleEliminacionIntegranteNoPermitida(
+            org.mgroko.backend.actividades.exception.EliminacionIntegranteNoPermitidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.MotivoEliminacionObligatorioException.class)
     public ResponseEntity<Map<String, Object>> handleMotivoEliminacionObligatorio(
             org.mgroko.backend.actividades.exception.MotivoEliminacionObligatorioException ex) {

@@ -1,16 +1,24 @@
 package org.mgroko.backend.actividades.servicio;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.mgroko.backend.actividades.dto.DecisionIntegranteRequest;
+import org.mgroko.backend.actividades.dto.EliminarActividadRequest;
+import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
+import org.mgroko.backend.actividades.enums.AccionIntegrante;
 import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent;
 import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent.InvitacionAfectada;
 import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent.PostulacionAfectada;
+import org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException;
 import org.mgroko.backend.actividades.exception.ActividadNoEliminableException;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
+import org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException;
+import org.mgroko.backend.actividades.exception.EliminacionIntegranteNoPermitidaException;
 import org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException;
 import org.mgroko.backend.actividades.exception.MotivoEliminacionObligatorioException;
 import org.mgroko.backend.modelo.Actividad;
@@ -29,7 +37,10 @@ import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
+import org.mgroko.backend.proyectos.exception.MotivoEliminacionIntegranteObligatorioException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -48,6 +59,7 @@ public class EliminarActividadService {
     public static final String PERMISO_ELIMINAR_ACTIVIDAD = "ELIMINAR_ACTIVIDAD";
 
     private static final int MOTIVO_MAX_LENGTH = 200;
+    private static final int MOTIVO_BAJA_MAX_LENGTH = 100;
 
     private final ActividadRepository actividadRepository;
     private final PlanificacionRepository planificacionRepository;
@@ -58,6 +70,8 @@ public class EliminarActividadService {
     private final PostulacionActividadRepository postulacionActividadRepository;
     private final InvitacionActividadRepository invitacionActividadRepository;
     private final AsignacionActividadRepository asignacionActividadRepository;
+    private final MiembrosActividadService miembrosActividadService;
+    private final EliminarIntegranteService eliminarIntegranteService;
     private final CronogramaService cronogramaService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -71,6 +85,8 @@ public class EliminarActividadService {
             PostulacionActividadRepository postulacionActividadRepository,
             InvitacionActividadRepository invitacionActividadRepository,
             AsignacionActividadRepository asignacionActividadRepository,
+            MiembrosActividadService miembrosActividadService,
+            EliminarIntegranteService eliminarIntegranteService,
             CronogramaService cronogramaService,
             ApplicationEventPublisher eventPublisher) {
         this.actividadRepository = actividadRepository;
@@ -82,6 +98,8 @@ public class EliminarActividadService {
         this.postulacionActividadRepository = postulacionActividadRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
         this.asignacionActividadRepository = asignacionActividadRepository;
+        this.miembrosActividadService = miembrosActividadService;
+        this.eliminarIntegranteService = eliminarIntegranteService;
         this.cronogramaService = cronogramaService;
         this.eventPublisher = eventPublisher;
     }
@@ -92,7 +110,7 @@ public class EliminarActividadService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idActividad,
-            String motivo) {
+            EliminarActividadRequest request) {
 
         if (idPerfilActivo == null) {
             throw new PerfilActivoNoSeleccionadoException();
@@ -119,9 +137,26 @@ public class EliminarActividadService {
                         idActividad, planificacion.getIdPlanificacion())
                 .orElseThrow(() -> new ActividadNoEncontradaException(idActividad));
 
-        validarEstadoActividad(actividad);
-        String motivoNormalizado = normalizarMotivo(motivo);
+        validarEstadoActividad(proyecto, actividad);
+        String motivoNormalizado = normalizarMotivo(
+                request != null ? request.motivo() : null);
 
+        List<MiembroExclusivoResponse> exclusivos =
+                miembrosActividadService.listarExclusivos(
+                        idUsuario, idPerfilActivo, idProyecto, idActividad);
+
+        List<DecisionIntegranteRequest> decisiones = validarDecisiones(
+                request, exclusivos, motivoNormalizado);
+
+        aplicarDecisiones(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto,
+                motivoNormalizado,
+                decisiones);
+
+        // Se recargan después de aplicar las bajas para que el evento refleje
+        // solamente a los integrantes que continúan activos en el proyecto.
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
         List<AsignacionActividad> asignaciones = asignacionActividadRepository
@@ -164,19 +199,107 @@ public class EliminarActividadService {
         publicarEvento(evento);
     }
 
+    private List<DecisionIntegranteRequest> validarDecisiones(
+            EliminarActividadRequest request,
+            List<MiembroExclusivoResponse> exclusivos,
+            String motivoActividad) {
+
+        if (request == null || request.decisiones() == null) {
+            throw new DecisionIntegranteInvalidaException(
+                    "La lista de decisiones sobre los integrantes es obligatoria.");
+        }
+
+        Map<Long, MiembroExclusivoResponse> porId = new LinkedHashMap<>();
+        for (MiembroExclusivoResponse miembro : exclusivos) {
+            porId.put(miembro.idMiembro(), miembro);
+        }
+
+        Set<Long> idsDeclarados = new HashSet<>();
+        for (DecisionIntegranteRequest decision : request.decisiones()) {
+            if (decision == null
+                    || decision.idMiembro() == null
+                    || decision.accion() == null) {
+                throw new DecisionIntegranteInvalidaException(
+                        "Cada decisión debe indicar el miembro y la acción.");
+            }
+
+            if (!idsDeclarados.add(decision.idMiembro())) {
+                throw new DecisionIntegranteInvalidaException(
+                        "El miembro " + decision.idMiembro()
+                                + " está repetido en las decisiones.");
+            }
+
+            MiembroExclusivoResponse miembro = porId.get(decision.idMiembro());
+            if (miembro == null) {
+                throw new DecisionIntegranteInvalidaException(
+                        "El miembro " + decision.idMiembro()
+                                + " no participa exclusivamente de esta actividad.");
+            }
+
+            if (decision.accion() == AccionIntegrante.ELIMINAR) {
+                if (!miembro.puedeEliminar()) {
+                    throw new EliminacionIntegranteNoPermitidaException(
+                            miembro.motivoNoEliminable());
+                }
+                normalizarMotivoBaja(decision.motivoBaja(), motivoActividad);
+            }
+        }
+
+        for (MiembroExclusivoResponse miembro : exclusivos) {
+            if (!idsDeclarados.contains(miembro.idMiembro())) {
+                throw new DecisionIntegranteInvalidaException(
+                        "Falta la decisión para el miembro " + miembro.idMiembro() + ".");
+            }
+        }
+
+        return request.decisiones();
+    }
+
+    private void aplicarDecisiones(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            String motivoActividad,
+            List<DecisionIntegranteRequest> decisiones) {
+
+        for (DecisionIntegranteRequest decision : decisiones) {
+            if (decision.accion() != AccionIntegrante.ELIMINAR) {
+                // GUARDAR: la membresía no se modifica. La asignación a la
+                // actividad se elimina junto con la actividad.
+                continue;
+            }
+
+            String motivoBaja = normalizarMotivoBaja(
+                    decision.motivoBaja(), motivoActividad);
+
+            eliminarIntegranteService.eliminar(
+                    idUsuario,
+                    idPerfilActivo,
+                    idProyecto,
+                    decision.idMiembro(),
+                    new EliminarIntegranteRequest(motivoBaja));
+        }
+    }
+
     private void validarEstadoProyecto(Proyecto proyecto) {
         EstadoProyecto estado = proyecto.getEstado();
         if (estado != EstadoProyecto.BORRADOR
-                && estado != EstadoProyecto.PUBLICADO) {
+                && estado != EstadoProyecto.PUBLICADO
+                && estado != EstadoProyecto.CONFIRMADO) {
             throw new EstadoProyectoNoPermiteEliminarActividadesException(estado.name());
         }
     }
 
-    private void validarEstadoActividad(Actividad actividad) {
+    private void validarEstadoActividad(Proyecto proyecto, Actividad actividad) {
         EstadoActividad estado = actividad.getEstado();
         if (estado == EstadoActividad.FINALIZADA
                 || estado == EstadoActividad.CANCELADA) {
             throw new ActividadNoEliminableException(estado.name());
+        }
+
+        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO
+                && estado == EstadoActividad.EN_CURSO) {
+            throw new ActividadEnCursoConfirmadaNoEliminableException();
         }
     }
 
@@ -193,6 +316,25 @@ public class EliminarActividadService {
         }
 
         return normalizado;
+    }
+
+    private String normalizarMotivoBaja(String motivoBaja, String motivoActividad) {
+        String candidato = motivoBaja == null || motivoBaja.isBlank()
+                ? motivoActividad
+                : motivoBaja.trim();
+
+        if (candidato == null || candidato.isBlank()) {
+            throw new MotivoEliminacionIntegranteObligatorioException();
+        }
+
+        if (candidato.length() > MOTIVO_BAJA_MAX_LENGTH) {
+            throw new MotivoEliminacionIntegranteObligatorioException(
+                    "El motivo de baja del integrante no puede superar los "
+                            + MOTIVO_BAJA_MAX_LENGTH
+                            + " caracteres. Indicá un motivo propio más corto.");
+        }
+
+        return candidato;
     }
 
     private List<Long> perfilesAsignados(List<AsignacionActividad> asignaciones) {

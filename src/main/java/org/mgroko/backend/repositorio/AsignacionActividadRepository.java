@@ -73,12 +73,17 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
           AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
           AND NOT EXISTS (
               SELECT 1 FROM AsignacionActividad otra
+              JOIN otra.actividad otraActividad
+              JOIN otraActividad.planificacion otraPlanificacion
               WHERE otra.miembro.idMiembro = a.miembro.idMiembro
-                AND otra.actividad.idActividad <> :idActividad
+                AND otraActividad.idActividad <> :idActividad
+                AND otraPlanificacion.proyecto.idProyecto = :idProyecto
+                AND otraActividad.estado <> org.mgroko.backend.modelo.enums.EstadoActividad.CANCELADA
           )
     """)
-    List<AsignacionActividad> findExclusivasByActividadId(
-            @Param("idActividad") Long idActividad);
+    List<AsignacionActividad> findExclusivasByActividadIdAndProyecto(
+            @Param("idActividad") Long idActividad,
+            @Param("idProyecto") Long idProyecto);
 
     @Modifying(flushAutomatically = true)
     @Query("""
