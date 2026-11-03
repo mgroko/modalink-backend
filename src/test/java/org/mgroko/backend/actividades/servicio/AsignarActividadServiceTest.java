@@ -45,11 +45,13 @@ import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -71,6 +73,8 @@ class AsignarActividadServiceTest {
     @Mock
     private PerfilRepository perfilRepository;
     @Mock
+    private ProyectoRepository proyectoRepository;
+    @Mock
     private PlanificacionRepository planificacionRepository;
     @Mock
     private ActividadRepository actividadRepository;
@@ -86,6 +90,8 @@ class AsignarActividadServiceTest {
     private ProyectoSecurityService proyectoSecurityService;
     @Mock
     private CalendarioService calendarioService;
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
 
     private AsignarActividadService service;
 
@@ -102,6 +108,7 @@ class AsignarActividadServiceTest {
     void setUp() {
         service = new AsignarActividadService(
                 perfilRepository,
+                proyectoRepository,
                 planificacionRepository,
                 actividadRepository,
                 miembroProyectoRepository,
@@ -109,7 +116,8 @@ class AsignarActividadServiceTest {
                 requerimientoActividadRepository,
                 cupoRequerimientoService,
                 proyectoSecurityService,
-                calendarioService);
+                calendarioService,
+                reprogramarProyectoService);
 
         actor = Perfil.builder()
                 .idPerfil(ID_PERFIL_ACTOR)
@@ -309,6 +317,8 @@ class AsignarActividadServiceTest {
         proyecto.setEstado(EstadoProyecto.FINALIZADO);
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL_ACTOR, ID_USUARIO))
                 .thenReturn(Optional.of(actor));
+        when(proyectoRepository.findByIdParaGestion(ID_PROYECTO))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(ID_PROYECTO))
                 .thenReturn(Optional.of(planificacion));
 
@@ -323,6 +333,8 @@ class AsignarActividadServiceTest {
     void rechazaSinPermiso() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL_ACTOR, ID_USUARIO))
                 .thenReturn(Optional.of(actor));
+        when(proyectoRepository.findByIdParaGestion(ID_PROYECTO))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(ID_PROYECTO))
                 .thenReturn(Optional.of(planificacion));
         doThrow(new AccesoDenegadoProyectoException("Sin permiso"))
@@ -350,6 +362,8 @@ class AsignarActividadServiceTest {
     private void prepararEscenarioBase() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL_ACTOR, ID_USUARIO))
                 .thenReturn(Optional.of(actor));
+        when(proyectoRepository.findByIdParaGestion(ID_PROYECTO))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(ID_PROYECTO))
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(

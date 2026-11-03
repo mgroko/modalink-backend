@@ -84,6 +84,8 @@ public interface PostulacionActividadRepository
 
     boolean existsByRequerimiento_IdRequerimiento(Long idRequerimiento);
 
+    void deleteByRequerimiento_IdRequerimiento(Long idRequerimiento);
+
     /**
      * Indica si el perfil ya se postuló al requerimiento, sin importar el
      * estado de la postulación. La base también lo garantiza con el índice

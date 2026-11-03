@@ -81,6 +81,8 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
         assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertEquals("REQUERIMIENTO_CON_VINCULOS", respuesta.getBody().get("codigo"));
+        assertEquals(7L, respuesta.getBody().get("idRequerimiento"));
         assertTrue(respuesta.getBody().get("message").toString()
                 .contains("requerimiento 7"));
     }

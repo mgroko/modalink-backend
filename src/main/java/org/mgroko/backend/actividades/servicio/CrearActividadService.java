@@ -27,10 +27,13 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,27 +45,33 @@ public class CrearActividadService {
 
     private final ActividadRepository actividadRepository;
     private final PlanificacionRepository planificacionRepository;
+    private final ProyectoRepository proyectoRepository;
     private final PerfilRepository perfilRepository;
     private final ProyectoSecurityService proyectoSecurityService;
     private final UbicacionService ubicacionService;
     private final RequerimientoActividadService requerimientoActividadService;
     private final CronogramaService cronogramaService;
+    private final ReprogramarProyectoService reprogramarProyectoService;
 
     public CrearActividadService(
             ActividadRepository actividadRepository,
             PlanificacionRepository planificacionRepository,
+            ProyectoRepository proyectoRepository,
             PerfilRepository perfilRepository,
             ProyectoSecurityService proyectoSecurityService,
             UbicacionService ubicacionService,
             RequerimientoActividadService requerimientoActividadService,
-            CronogramaService cronogramaService) {
+            CronogramaService cronogramaService,
+            ReprogramarProyectoService reprogramarProyectoService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
+        this.proyectoRepository = proyectoRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoSecurityService = proyectoSecurityService;
         this.ubicacionService = ubicacionService;
         this.requerimientoActividadService = requerimientoActividadService;
         this.cronogramaService = cronogramaService;
+        this.reprogramarProyectoService = reprogramarProyectoService;
     }
 
     @Transactional
@@ -83,11 +92,14 @@ public class CrearActividadService {
             throw new PerfilEnBajaException("El perfil no se encuentra activo.");
         }
 
+        // Orden de locks: proyecto y luego planificación. Reprogramar toma los
+        // mismos locks para evitar una inversión con los flujos de proyecto.
+        Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyectoForUpdate(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
-
-        Proyecto proyecto = planificacion.getProyecto();
         validarEstadoProyecto(proyecto);
         proyectoSecurityService.validarPermiso(idProyecto, idPerfilActivo, PERMISO_CREAR_ACTIVIDAD);
 
@@ -119,6 +131,13 @@ public class CrearActividadService {
         List<RequerimientoActividadResponse> requerimientos = persistirRequerimientos(
                 guardada, request.requerimientos());
 
+        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+            reprogramarProyectoService.reprogramar(
+                    idProyecto,
+                    MotivoReprogramacion.CREACION_ACTIVIDAD,
+                    null);
+        }
+
         var calculo = planificacion.getFechaEntrega() == null
                 ? null
                 : cronogramaService.calcularProyeccion(
@@ -141,7 +160,8 @@ public class CrearActividadService {
     private void validarEstadoProyecto(Proyecto proyecto) {
         EstadoProyecto estado = proyecto.getEstado();
         if (estado != EstadoProyecto.BORRADOR
-                && estado != EstadoProyecto.PUBLICADO) {
+                && estado != EstadoProyecto.PUBLICADO
+                && estado != EstadoProyecto.CONFIRMADO) {
             throw new EstadoProyectoNoPermiteActividadesException(estado.name());
         }
     }

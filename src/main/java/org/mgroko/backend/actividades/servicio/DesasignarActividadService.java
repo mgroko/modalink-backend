@@ -27,11 +27,14 @@ import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,28 +54,34 @@ import org.springframework.transaction.annotation.Transactional;
 public class DesasignarActividadService {
 
     private final PerfilRepository perfilRepository;
+    private final ProyectoRepository proyectoRepository;
     private final PlanificacionRepository planificacionRepository;
     private final ActividadRepository actividadRepository;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
+    private final ReprogramarProyectoService reprogramarProyectoService;
 
     public DesasignarActividadService(
             PerfilRepository perfilRepository,
+            ProyectoRepository proyectoRepository,
             PlanificacionRepository planificacionRepository,
             ActividadRepository actividadRepository,
             AsignacionActividadRepository asignacionActividadRepository,
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService,
+            ReprogramarProyectoService reprogramarProyectoService) {
         this.perfilRepository = perfilRepository;
+        this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.actividadRepository = actividadRepository;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
+        this.reprogramarProyectoService = reprogramarProyectoService;
     }
 
     @Transactional
@@ -85,11 +94,12 @@ public class DesasignarActividadService {
 
         validarPerfilActor(idUsuario, idPerfilActivo);
 
+        Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyectoForUpdate(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
-
-        Proyecto proyecto = planificacion.getProyecto();
 
         proyectoSecurityService.validarPermiso(
                 idProyecto,
@@ -128,6 +138,13 @@ public class DesasignarActividadService {
 
         asignacionActividadRepository.delete(asignacion);
         asignacionActividadRepository.flush();
+
+        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+            reprogramarProyectoService.reprogramar(
+                    idProyecto,
+                    MotivoReprogramacion.DESASIGNACION,
+                    null);
+        }
 
         CupoRequerimiento cupo = requerimiento != null
                 ? cupoRequerimientoService.calcularActividad(requerimiento)
@@ -193,10 +210,6 @@ public class DesasignarActividadService {
         if (cupo != null && !cupo.satisfecho()) {
             advertencias.add("El requerimiento quedó con "
                     + cupo.faltantes() + " vacante(s).");
-        }
-        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
-            advertencias.add(
-                    "El proyecto está confirmado; la desasignación no reprograma el cronograma.");
         }
         return advertencias;
     }

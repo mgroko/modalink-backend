@@ -57,12 +57,14 @@ import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -79,6 +81,8 @@ class EliminarActividadServiceTest {
 
     @Mock
     private ActividadRepository actividadRepository;
+    @Mock
+    private ProyectoRepository proyectoRepository;
     @Mock
     private PlanificacionRepository planificacionRepository;
     @Mock
@@ -101,6 +105,8 @@ class EliminarActividadServiceTest {
     private EliminarIntegranteService eliminarIntegranteService;
     @Mock
     private CronogramaService cronogramaService;
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
@@ -146,6 +152,8 @@ class EliminarActividadServiceTest {
 
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
                 .thenReturn(Optional.of(perfil));
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(55L, 50L))

@@ -23,6 +23,14 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
     List<RequerimientoActividad> findByActividad_IdActividad(
             @Param("idActividad") Long idActividad);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT r FROM RequerimientoActividad r
+        WHERE r.actividad.idActividad = :idActividad
+    """)
+    List<RequerimientoActividad> findByActividadIdForUpdate(
+            @Param("idActividad") Long idActividad);
+
     /**
      * Recupera los requerimientos de una actividad con su profesión y
      * actividad inicializadas. Se usa en UC-70 para resolver si el miembro

@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 
@@ -69,7 +70,53 @@ public class PlanificadorRecursosService {
             List<Actividad> actividades,
             LocalDateTime fechaInicio,
             boolean proyectoConfirmado) {
+        return planificar(
+                planificacion, actividades, fechaInicio, proyectoConfirmado, false);
+    }
 
+    /**
+     * Variante que permite agendar actividades sin integrantes activos.
+     *
+     * <p>Se usa en proyectos confirmados que ya pueden contener actividades
+     * nuevas sin asignar. Las actividades fijas sin asignación conservan su
+     * inicio; las libres se colocan en su inicio temprano. En ambos casos no
+     * reservan bloques para ningún usuario.</p>
+     */
+    public Resultado planificar(
+            Planificacion planificacion,
+            List<Actividad> actividades,
+            LocalDateTime fechaInicio,
+            boolean proyectoConfirmado,
+            boolean permitirSinAsignaciones) {
+        return planificar(
+                planificacion,
+                actividades,
+                fechaInicio,
+                proyectoConfirmado,
+                permitirSinAsignaciones,
+                Map.of());
+    }
+
+    /**
+     * Variante que agrega usuarios virtuales a una actividad.
+     *
+     * <p>Se usa antes de insertar una asignación: el planificador considera al
+     * candidato como si ya estuviera asignado, mueve la actividad a un hueco
+     * común y recién después se persiste la asignación. Así la disponibilidad
+     * real gobierna la reprogramación y el trigger de solape no rechaza la
+     * asignación por la fecha vieja.</p>
+     */
+    public Resultado planificar(
+            Planificacion planificacion,
+            List<Actividad> actividades,
+            LocalDateTime fechaInicio,
+            boolean proyectoConfirmado,
+            boolean permitirSinAsignaciones,
+            Map<Long, List<Long>> usuariosExtraPorActividad) {
+
+        Map<Long, List<Long>> extras = usuariosExtraPorActividad == null
+                ? Map.of()
+                : usuariosExtraPorActividad;
         LocalDate fechaEntrega = planificacion.getFechaEntrega();
         if (fechaEntrega == null) {
             throw new ProyectoNoConfirmableException(
@@ -140,19 +187,24 @@ public class PlanificadorRecursosService {
             Actividad actividad = actividadesPorId.get(idActividad);
             List<AsignacionActividad> asignaciones = asignacionesPorActividad
                     .getOrDefault(idActividad, List.of());
-            List<Long> usuarios = usuariosDe(asignaciones);
-            if (usuarios.isEmpty()) {
-                throw new ProyectoNoConfirmableException(
-                        "ACTIVIDADES_SIN_ASIGNACION",
-                        "La actividad '" + actividad.getNombre()
-                                + "' no tiene integrantes activos asignados.",
-                        List.of(new BloqueoConfirmacionResponse(
-                                "ACTIVIDADES_SIN_ASIGNACION",
-                                "La actividad no tiene integrantes activos asignados.",
-                                "ACTIVIDAD",
-                                idActividad)));
-            }
+            List<Long> usuarios = usuariosDe(
+                    asignaciones, extras.getOrDefault(idActividad, List.of()));
             LocalDateTime inicio = fechaInicio.plusMinutes(nodo.inicioFijo());
+            if (usuarios.isEmpty()) {
+                if (!permitirSinAsignaciones) {
+                    throw new ProyectoNoConfirmableException(
+                            "ACTIVIDADES_SIN_ASIGNACION",
+                            "La actividad '" + actividad.getNombre()
+                                    + "' no tiene integrantes activos asignados.",
+                            List.of(new BloqueoConfirmacionResponse(
+                                    "ACTIVIDADES_SIN_ASIGNACION",
+                                    "La actividad no tiene integrantes activos asignados.",
+                                    "ACTIVIDAD",
+                                    idActividad)));
+                }
+                inicios.put(idActividad, inicio);
+                continue;
+            }
             inicios.put(idActividad, inicio);
             agregarBloqueoValidandoSolape(
                     bloqueosExtra, usuarios, inicio, actividad);
@@ -164,24 +216,14 @@ public class PlanificadorRecursosService {
                 continue;
             }
             NodoCpm nodo = calculo.nodoDe(idActividad);
-            List<AsignacionActividad> asignaciones = asignacionesPorActividad
-                    .getOrDefault(idActividad, List.of());
-            List<Long> usuarios = usuariosDe(asignaciones);
-            if (usuarios.isEmpty()) {
-                throw new ProyectoNoConfirmableException(
-                        "ACTIVIDADES_SIN_ASIGNACION",
-                        "La actividad '" + actividad.getNombre()
-                                + "' no tiene integrantes activos asignados.",
-                        List.of(new BloqueoConfirmacionResponse(
-                                "ACTIVIDADES_SIN_ASIGNACION",
-                                "La actividad no tiene integrantes activos asignados.",
-                                "ACTIVIDAD",
-                                idActividad)));
-            }
-
             if (nodo.fijo()) {
                 continue;
             }
+
+            List<AsignacionActividad> asignaciones = asignacionesPorActividad
+                    .getOrDefault(idActividad, List.of());
+            List<Long> usuarios = usuariosDe(
+                    asignaciones, extras.getOrDefault(idActividad, List.of()));
 
             LocalDateTime inicioMinimo = fechaInicio.plusMinutes(nodo.inicioTemprano());
             if (inicioMinimo.isBefore(ahora)) {
@@ -226,6 +268,22 @@ public class PlanificadorRecursosService {
                                 "La ventana de inicio quedó vacía.",
                                 "ACTIVIDAD",
                                 idActividad)));
+            }
+
+            if (usuarios.isEmpty()) {
+                if (!permitirSinAsignaciones) {
+                    throw new ProyectoNoConfirmableException(
+                            "ACTIVIDADES_SIN_ASIGNACION",
+                            "La actividad '" + actividad.getNombre()
+                                    + "' no tiene integrantes activos asignados.",
+                            List.of(new BloqueoConfirmacionResponse(
+                                    "ACTIVIDADES_SIN_ASIGNACION",
+                                    "La actividad no tiene integrantes activos asignados.",
+                                    "ACTIVIDAD",
+                                    idActividad)));
+                }
+                inicios.put(idActividad, inicioMinimo);
+                continue;
             }
 
             ResultadoDisponibilidad resultado;
@@ -430,6 +488,13 @@ public class PlanificadorRecursosService {
     }
 
     private List<Long> usuariosDe(Collection<AsignacionActividad> asignaciones) {
+        return usuariosDe(asignaciones, List.of());
+    }
+
+    private List<Long> usuariosDe(
+            Collection<AsignacionActividad> asignaciones,
+            Collection<Long> extras) {
+
         Set<Long> ids = new LinkedHashSet<>();
         for (AsignacionActividad asignacion : asignaciones) {
             if (asignacion.getMiembro() == null
@@ -438,6 +503,11 @@ public class PlanificadorRecursosService {
                 continue;
             }
             ids.add(asignacion.getMiembro().getPerfil().getUsuario().getIdUsuario());
+        }
+        if (extras != null) {
+            extras.stream()
+                    .filter(Objects::nonNull)
+                    .forEach(ids::add);
         }
         return List.copyOf(ids);
     }

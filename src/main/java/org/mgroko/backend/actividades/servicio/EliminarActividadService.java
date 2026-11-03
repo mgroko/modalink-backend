@@ -41,13 +41,16 @@ import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.exception.MotivoEliminacionIntegranteObligatorioException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -62,6 +65,7 @@ public class EliminarActividadService {
     private static final int MOTIVO_BAJA_MAX_LENGTH = 100;
 
     private final ActividadRepository actividadRepository;
+    private final ProyectoRepository proyectoRepository;
     private final PlanificacionRepository planificacionRepository;
     private final PerfilRepository perfilRepository;
     private final ProyectoSecurityService proyectoSecurityService;
@@ -73,10 +77,12 @@ public class EliminarActividadService {
     private final MiembrosActividadService miembrosActividadService;
     private final EliminarIntegranteService eliminarIntegranteService;
     private final CronogramaService cronogramaService;
+    private final ReprogramarProyectoService reprogramarProyectoService;
     private final ApplicationEventPublisher eventPublisher;
 
     public EliminarActividadService(
             ActividadRepository actividadRepository,
+            ProyectoRepository proyectoRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
             ProyectoSecurityService proyectoSecurityService,
@@ -88,8 +94,10 @@ public class EliminarActividadService {
             MiembrosActividadService miembrosActividadService,
             EliminarIntegranteService eliminarIntegranteService,
             CronogramaService cronogramaService,
+            ReprogramarProyectoService reprogramarProyectoService,
             ApplicationEventPublisher eventPublisher) {
         this.actividadRepository = actividadRepository;
+        this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoSecurityService = proyectoSecurityService;
@@ -101,6 +109,7 @@ public class EliminarActividadService {
         this.miembrosActividadService = miembrosActividadService;
         this.eliminarIntegranteService = eliminarIntegranteService;
         this.cronogramaService = cronogramaService;
+        this.reprogramarProyectoService = reprogramarProyectoService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -123,11 +132,12 @@ public class EliminarActividadService {
             throw new PerfilEnBajaException("El perfil no se encuentra activo.");
         }
 
+        Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyectoForUpdate(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
-
-        Proyecto proyecto = planificacion.getProyecto();
         proyectoSecurityService.validarPermiso(
                 idProyecto, idPerfilActivo, PERMISO_ELIMINAR_ACTIVIDAD);
         validarEstadoProyecto(proyecto);
@@ -193,9 +203,14 @@ public class EliminarActividadService {
         eliminarRequerimientos(idActividad);
         actividadRepository.delete(actividad);
         actividadRepository.flush();
-        // Fase 2: no persistir proyecciones al eliminar; el cronograma se mantiene
-        // con los estados actuales de las actividades restantes.
-        // Se omite el recálculo para evitar escribir fechaHoraInicio en PENDIENTE.
+
+        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+            reprogramarProyectoService.reprogramar(
+                    idProyecto,
+                    MotivoReprogramacion.ELIMINACION_ACTIVIDAD,
+                    null);
+        }
+
         publicarEvento(evento);
     }
 

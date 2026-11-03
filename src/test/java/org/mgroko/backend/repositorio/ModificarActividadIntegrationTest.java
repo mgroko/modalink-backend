@@ -43,6 +43,7 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -302,7 +303,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
     }
 
     @Test
-    void modificar_requerimientoConPostulacion_lanzaExcepcionYNoElimina() {
+    void modificar_requerimientoConPostulacionAceptadaOmitido_seConserva() {
         Escenario escenario = crearEscenario();
         Perfil perfil = em.find(Perfil.class, escenario.idPerfil());
         RequerimientoActividad requerimiento = em.find(
@@ -311,6 +312,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
         em.persist(PostulacionActividad.builder()
                 .perfil(perfil)
                 .requerimiento(requerimiento)
+                .estado(EstadoSolicitud.ACEPTADA)
                 .build());
         em.flush();
 
@@ -324,14 +326,12 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
                 List.of(),
                 EstadoActividad.PENDIENTE);
 
-        assertThatThrownBy(() -> modificarActividadService.modificar(
+        modificarActividadService.modificar(
                 escenario.idUsuario(),
                 escenario.idPerfil(),
                 escenario.idProyecto(),
                 escenario.idActividad(),
-                request))
-                .isInstanceOf(RequerimientoConVinculosException.class)
-                .hasMessageContaining("requerimiento " + escenario.idRequerimiento());
+                request);
 
         em.clear();
         assertThat(em.find(RequerimientoActividad.class, escenario.idRequerimiento()))
@@ -339,7 +339,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
     }
 
     @Test
-    void modificar_requerimientoConInvitacion_lanzaExcepcionYNoElimina() {
+    void modificar_requerimientoConInvitacionAceptadaOmitido_seConserva() {
         Escenario escenario = crearEscenario();
         Perfil remitente = em.find(Perfil.class, escenario.idPerfil());
         RequerimientoActividad requerimiento = em.find(
@@ -364,6 +364,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
                 .perfilRemitente(remitente)
                 .perfilDestinatario(destinatario)
                 .requerimiento(requerimiento)
+                .estado(EstadoSolicitud.ACEPTADA)
                 .build());
         em.flush();
 
@@ -377,14 +378,12 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
                 List.of(),
                 EstadoActividad.PENDIENTE);
 
-        assertThatThrownBy(() -> modificarActividadService.modificar(
+        modificarActividadService.modificar(
                 escenario.idUsuario(),
                 escenario.idPerfil(),
                 escenario.idProyecto(),
                 escenario.idActividad(),
-                request))
-                .isInstanceOf(RequerimientoConVinculosException.class)
-                .hasMessageContaining("requerimiento " + escenario.idRequerimiento());
+                request);
 
         em.clear();
         assertThat(em.find(RequerimientoActividad.class, escenario.idRequerimiento()))

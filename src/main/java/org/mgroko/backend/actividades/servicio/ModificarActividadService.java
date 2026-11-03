@@ -1,11 +1,13 @@
 package org.mgroko.backend.actividades.servicio;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.mgroko.backend.actividades.dto.ActividadResponse;
@@ -15,20 +17,20 @@ import org.mgroko.backend.actividades.dto.ModificarRequerimientoActividadRequest
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.actividades.evento.ActividadModificadaEvent;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
-import org.mgroko.backend.actividades.exception.ActividadNoModificableException;
 import org.mgroko.backend.actividades.exception.CicloActividadException;
 import org.mgroko.backend.actividades.exception.DuracionInvalidaException;
 import org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteModificarActividadesException;
 import org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException;
 import org.mgroko.backend.actividades.exception.PredecesoraInvalidaException;
 import org.mgroko.backend.actividades.exception.RequerimientoConVinculosException;
-import org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalidaException;
 import org.mgroko.backend.actividades.mapper.ActividadMapper;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActCaract;
+import org.mgroko.backend.modelo.RequerimientoActCaractValor;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -38,15 +40,20 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -60,42 +67,54 @@ public class ModificarActividadService {
     public static final String PERMISO_MODIFICAR_ACTIVIDAD = "MODIFICAR_ACTIVIDAD";
 
     private final ActividadRepository actividadRepository;
+    private final ProyectoRepository proyectoRepository;
     private final PlanificacionRepository planificacionRepository;
     private final PerfilRepository perfilRepository;
     private final ProyectoSecurityService proyectoSecurityService;
     private final UbicacionService ubicacionService;
     private final RequerimientoActividadService requerimientoActividadService;
+    private final RequerimientoProteccionService requerimientoProteccionService;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
+    private final RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
     private final PostulacionActividadRepository postulacionActividadRepository;
     private final InvitacionActividadRepository invitacionActividadRepository;
     private final CronogramaService cronogramaService;
     private final AsignacionActividadRepository asignacionActividadRepository;
+    private final ReprogramarProyectoService reprogramarProyectoService;
     private final ApplicationEventPublisher eventPublisher;
 
     public ModificarActividadService(
             ActividadRepository actividadRepository,
+            ProyectoRepository proyectoRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
             ProyectoSecurityService proyectoSecurityService,
             UbicacionService ubicacionService,
             RequerimientoActividadService requerimientoActividadService,
+            RequerimientoProteccionService requerimientoProteccionService,
             RequerimientoActividadRepository requerimientoActividadRepository,
+            RequerimientoActCaractValorRepository requerimientoActCaractValorRepository,
             PostulacionActividadRepository postulacionActividadRepository,
             InvitacionActividadRepository invitacionActividadRepository,
             CronogramaService cronogramaService,
             AsignacionActividadRepository asignacionActividadRepository,
+            ReprogramarProyectoService reprogramarProyectoService,
             ApplicationEventPublisher eventPublisher) {
         this.actividadRepository = actividadRepository;
+        this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoSecurityService = proyectoSecurityService;
         this.ubicacionService = ubicacionService;
         this.requerimientoActividadService = requerimientoActividadService;
+        this.requerimientoProteccionService = requerimientoProteccionService;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
+        this.requerimientoActCaractValorRepository = requerimientoActCaractValorRepository;
         this.postulacionActividadRepository = postulacionActividadRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
         this.cronogramaService = cronogramaService;
         this.asignacionActividadRepository = asignacionActividadRepository;
+        this.reprogramarProyectoService = reprogramarProyectoService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -118,11 +137,12 @@ public class ModificarActividadService {
             throw new PerfilEnBajaException("El perfil no se encuentra activo.");
         }
 
+        Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyectoForUpdate(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
-
-        Proyecto proyecto = planificacion.getProyecto();
         proyectoSecurityService.validarPermiso(
                 idProyecto, idPerfilActivo, PERMISO_MODIFICAR_ACTIVIDAD);
         validarEstadoProyecto(proyecto);
@@ -132,7 +152,7 @@ public class ModificarActividadService {
                         idActividad, planificacion.getIdPlanificacion())
                 .orElseThrow(() -> new ActividadNoEncontradaException(idActividad));
 
-        validarTransicionEstado(actividad, request.estado());
+        ActividadEstadoValidator.validar(actividad.getEstado(), request.estado());
         EstadoActividad estadoAnterior = actividad.getEstado();
 
         int duracionMinutos = calcularDuracionMinutos(request);
@@ -151,7 +171,10 @@ public class ModificarActividadService {
         actualizarUbicacion(actividad, request);
         actualizarPredecesoras(actividad, request.predecesoras(), planificacion);
         validarSinCiclos(actividad, actividades);
-        actualizarRequerimientos(actividad, request.requerimientos());
+        actualizarRequerimientos(
+                actividad,
+                request.requerimientos(),
+                proyecto.getEstado() == EstadoProyecto.CONFIRMADO);
 
         Actividad guardada = guardarActividad(actividad);
 
@@ -161,6 +184,13 @@ public class ModificarActividadService {
                     .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
             ActividadDependencias.reconectarSucesoras(
                     actividadRepository, guardada, paraReconectar);
+
+            if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+                reprogramarProyectoService.reprogramar(
+                        idProyecto,
+                        MotivoReprogramacion.CANCELACION_ACTIVIDAD,
+                        null);
+            }
         }
 
         // Sin fecha de entrega no se calcula CPM: la actividad queda flotante.
@@ -175,7 +205,12 @@ public class ModificarActividadService {
                 : cronogramaService.estadoDe(calculo);
 
         List<RequerimientoActividadResponse> requerimientos =
-                requerimientoActividadService.listarPorActividad(idActividad);
+                requerimientoActividadService.listarPorActividad(idActividad).stream()
+                        .map(requerimiento -> requerimiento.conProtegido(
+                                estaProtegido(
+                                        requerimiento.idRequerimiento(),
+                                        proyecto.getEstado() == EstadoProyecto.CONFIRMADO)))
+                        .toList();
 
         List<AsignacionActividad> asignaciones = asignacionActividadRepository
                 .findActivasByActividadId(idActividad);
@@ -204,9 +239,11 @@ public class ModificarActividadService {
     }
 
     /**
-     * En un proyecto confirmado solo se permiten cambios descriptivos y las
-     * transiciones de ejecución. Duración, dependencias y requerimientos son
-     * estructurales: cambiarlos invalidaría el plan persistido.
+     * En un proyecto confirmado no se pueden cambiar nombre, duración ni
+     * predecesoras. Los requerimientos se validan individualmente en
+     * {@link #actualizarRequerimientos}: los que tienen postulaciones
+     * pendientes/aceptadas o asignaciones quedan inmutables; el resto se puede
+     * mantener, modificar, agregar o quitar.
      */
     private void validarEstructuraConfirmada(
             Proyecto proyecto,
@@ -218,6 +255,8 @@ public class ModificarActividadService {
             return;
         }
 
+        boolean cambioNombre = !Objects.equals(
+                actividad.getNombre(), request.nombre().trim());
         boolean cambioDuracion = !Integer.valueOf(duracionMinutos)
                 .equals(actividad.getDuracionMinutos());
 
@@ -230,51 +269,11 @@ public class ModificarActividadService {
                 ? Set.of()
                 : new HashSet<>(request.predecesoras());
 
-        Map<Long, Integer> requerimientosActuales = new HashMap<>();
-        for (RequerimientoActividad requerimiento
-                : requerimientoActividadRepository.findByActividad_IdActividad(
-                        actividad.getIdActividad())) {
-            if (requerimiento.getIdRequerimiento() != null) {
-                requerimientosActuales.put(
-                        requerimiento.getIdRequerimiento(),
-                        requerimiento.getCantidad());
-            }
-        }
-
-        Map<Long, Integer> requerimientosNuevos = new HashMap<>();
-        if (request.requerimientos() != null) {
-            for (ModificarRequerimientoActividadRequest requerimiento
-                    : request.requerimientos()) {
-                if (requerimiento.idRequerimiento() == null
-                        || requerimientosNuevos.put(
-                                requerimiento.idRequerimiento(),
-                                requerimiento.cantidad()) != null) {
-                    throw new EstadoProyectoNoPermiteModificarActividadesException(
-                            EstadoProyecto.CONFIRMADO.name());
-                }
-            }
-        }
-
-        if (cambioDuracion
-                || !predecesorasActuales.equals(predecesorasNuevas)
-                || !requerimientosActuales.equals(requerimientosNuevos)) {
+        if (cambioNombre
+                || cambioDuracion
+                || !predecesorasActuales.equals(predecesorasNuevas)) {
             throw new EstadoProyectoNoPermiteModificarActividadesException(
                     EstadoProyecto.CONFIRMADO.name());
-        }
-    }
-
-    private void validarTransicionEstado(
-            Actividad actividad,
-            EstadoActividad estadoNuevo) {
-        EstadoActividad estadoActual = actividad.getEstado();
-        if (estadoActual == EstadoActividad.FINALIZADA
-                || estadoActual == EstadoActividad.CANCELADA) {
-            throw new ActividadNoModificableException(estadoActual.name());
-        }
-
-        if (!estadoActual.permiteTransicionA(estadoNuevo)) {
-            throw new TransicionEstadoActividadInvalidaException(
-                    estadoActual, estadoNuevo);
         }
     }
 
@@ -440,7 +439,8 @@ public class ModificarActividadService {
 
     private void actualizarRequerimientos(
             Actividad actividad,
-            List<ModificarRequerimientoActividadRequest> requerimientos) {
+            List<ModificarRequerimientoActividadRequest> requerimientos,
+            boolean incluirPendientes) {
 
         if (requerimientos == null) {
             throw new RequerimientoInvalidoException(
@@ -452,14 +452,17 @@ public class ModificarActividadService {
         }
 
         List<RequerimientoActividad> existentes = requerimientoActividadRepository
-                .findByActividad_IdActividad(actividad.getIdActividad());
+                .findByActividadIdForUpdate(actividad.getIdActividad());
 
         Map<Long, RequerimientoActividad> porId = new HashMap<>();
         for (RequerimientoActividad existente : existentes) {
             porId.put(existente.getIdRequerimiento(), existente);
         }
+        Map<Long, RequerimientoSnapshot> snapshotsActuales =
+                snapshotsExistentes(existentes);
 
         Set<Long> idsSolicitados = new HashSet<>();
+        Set<Long> idsSinCambios = new HashSet<>();
         for (ModificarRequerimientoActividadRequest requerimiento : requerimientos) {
             Long idRequerimiento = requerimiento.idRequerimiento();
             if (idRequerimiento == null) {
@@ -476,7 +479,13 @@ public class ModificarActividadService {
                         "El requerimiento " + idRequerimiento
                                 + " esta duplicado en la solicitud.");
             }
-            if (tieneVinculos(idRequerimiento)) {
+
+            RequerimientoSnapshot snapshot = snapshotDesdeRequest(requerimiento);
+            if (snapshot.equals(snapshotsActuales.get(idRequerimiento))) {
+                idsSinCambios.add(idRequerimiento);
+                continue;
+            }
+            if (estaProtegido(idRequerimiento, incluirPendientes)) {
                 throw new RequerimientoConVinculosException(idRequerimiento);
             }
         }
@@ -485,9 +494,11 @@ public class ModificarActividadService {
             if (idsSolicitados.contains(existente.getIdRequerimiento())) {
                 continue;
             }
-            if (tieneVinculos(existente.getIdRequerimiento())) {
-                throw new RequerimientoConVinculosException(existente.getIdRequerimiento());
+            if (estaProtegido(existente.getIdRequerimiento(), incluirPendientes)) {
+                // Política acordada: el requerimiento protegido omitido se conserva.
+                continue;
             }
+            limpiarVinculosNoAceptados(existente.getIdRequerimiento());
             requerimientoActividadService.eliminar(existente);
         }
 
@@ -501,11 +512,24 @@ public class ModificarActividadService {
 
             if (requerimiento.idRequerimiento() == null) {
                 requerimientoActividadService.persistir(actividad, datos);
-            } else {
+            } else if (!idsSinCambios.contains(requerimiento.idRequerimiento())) {
                 requerimientoActividadService.actualizar(
                         porId.get(requerimiento.idRequerimiento()), datos);
             }
         }
+    }
+
+    private boolean estaProtegido(Long idRequerimiento, boolean incluirPendientes) {
+        return incluirPendientes
+                ? requerimientoProteccionService.estaProtegido(idRequerimiento, true)
+                : requerimientoProteccionService.estaProtegido(idRequerimiento);
+    }
+
+    private void limpiarVinculosNoAceptados(Long idRequerimiento) {
+        postulacionActividadRepository.deleteByRequerimiento_IdRequerimiento(idRequerimiento);
+        invitacionActividadRepository.deleteByRequerimiento_IdRequerimiento(idRequerimiento);
+        postulacionActividadRepository.flush();
+        invitacionActividadRepository.flush();
     }
 
     private void validarRequerimientoObligatorio(
@@ -520,11 +544,124 @@ public class ModificarActividadService {
         }
     }
 
-    private boolean tieneVinculos(Long idRequerimiento) {
-        return postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(idRequerimiento)
-                || invitacionActividadRepository
-                        .existsByRequerimiento_IdRequerimiento(idRequerimiento);
+    private Map<Long, RequerimientoSnapshot> snapshotsExistentes(
+            List<RequerimientoActividad> requerimientos) {
+
+        List<Long> idsCaracteristicas = requerimientos.stream()
+                .flatMap(requerimiento -> requerimiento.getCaracteristicas().stream())
+                .map(RequerimientoActCaract::getIdReqActCaract)
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<Long, Set<Long>> valoresPorCaracteristica = new HashMap<>();
+        if (!idsCaracteristicas.isEmpty()) {
+            for (RequerimientoActCaractValor valor
+                    : requerimientoActCaractValorRepository
+                            .findByIdReqActCaractIn(idsCaracteristicas)) {
+                valoresPorCaracteristica
+                        .computeIfAbsent(
+                                valor.getIdReqActCaract(),
+                                id -> new HashSet<>())
+                        .add(valor.getIdValor());
+            }
+        }
+
+        Map<Long, RequerimientoSnapshot> resultado = new HashMap<>();
+        for (RequerimientoActividad requerimiento : requerimientos) {
+            Map<Long, CaracteristicaSnapshot> caracteristicas = new HashMap<>();
+            for (RequerimientoActCaract caracteristica
+                    : requerimiento.getCaracteristicas()) {
+                Long idCaracteristica = caracteristica.getCaracteristica()
+                        .getIdCaracteristica();
+                Set<Long> valores = new HashSet<>(valoresPorCaracteristica
+                        .getOrDefault(caracteristica.getIdReqActCaract(), Set.of()));
+                caracteristicas.put(idCaracteristica, new CaracteristicaSnapshot(
+                        idCaracteristica,
+                        normalizar(caracteristica.getValorMin()),
+                        normalizar(caracteristica.getValorMax()),
+                        valores));
+            }
+
+            Set<Long> habilidades = new HashSet<>();
+            if (requerimiento.getHabilidades() != null) {
+                requerimiento.getHabilidades()
+                        .forEach(habilidad -> habilidades.add(habilidad.getIdHabilidad()));
+            }
+
+            resultado.put(requerimiento.getIdRequerimiento(), new RequerimientoSnapshot(
+                    requerimiento.getCantidad(),
+                    requerimiento.getProfesion() != null
+                            ? requerimiento.getProfesion().getIdProfesion()
+                            : null,
+                    normalizarTexto(requerimiento.getDescripcion()),
+                    caracteristicas,
+                    habilidades));
+        }
+        return resultado;
+    }
+
+    private RequerimientoSnapshot snapshotDesdeRequest(
+            ModificarRequerimientoActividadRequest requerimiento) {
+
+        Map<Long, CaracteristicaSnapshot> caracteristicas = new HashMap<>();
+        if (requerimiento.caracteristicas() != null) {
+            for (CrearRequerimientoCaractRequest caracteristica
+                    : requerimiento.caracteristicas()) {
+                Set<Long> valores = caracteristica.valores() == null
+                        ? Set.of()
+                        : new HashSet<>(caracteristica.valores());
+                if (caracteristicas.put(
+                        caracteristica.idCaracteristica(),
+                        new CaracteristicaSnapshot(
+                                caracteristica.idCaracteristica(),
+                                normalizar(caracteristica.valorMin()),
+                                normalizar(caracteristica.valorMax()),
+                                valores)) != null) {
+                    throw new RequerimientoInvalidoException(
+                            "La caracteristica tecnica "
+                                    + caracteristica.idCaracteristica()
+                                    + " esta duplicada en el requerimiento.");
+                }
+            }
+        }
+
+        Set<Long> habilidades = requerimiento.habilidades() == null
+                ? Set.of()
+                : new HashSet<>(requerimiento.habilidades());
+
+        return new RequerimientoSnapshot(
+                requerimiento.cantidad(),
+                requerimiento.idProfesion(),
+                normalizarTexto(requerimiento.descripcion()),
+                caracteristicas,
+                habilidades);
+    }
+
+    private BigDecimal normalizar(BigDecimal valor) {
+        return valor == null ? null : valor.stripTrailingZeros();
+    }
+
+    private String normalizarTexto(String texto) {
+        if (texto == null) {
+            return null;
+        }
+        String normalizado = texto.trim();
+        return normalizado.isEmpty() ? null : normalizado;
+    }
+
+    private record CaracteristicaSnapshot(
+            Long idCaracteristica,
+            BigDecimal valorMin,
+            BigDecimal valorMax,
+            Set<Long> valores) {
+    }
+
+    private record RequerimientoSnapshot(
+            Integer cantidad,
+            Long idProfesion,
+            String descripcion,
+            Map<Long, CaracteristicaSnapshot> caracteristicas,
+            Set<Long> habilidades) {
     }
 
     private void publicarActividadModificada(

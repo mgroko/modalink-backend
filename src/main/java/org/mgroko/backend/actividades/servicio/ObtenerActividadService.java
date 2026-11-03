@@ -13,6 +13,7 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -33,6 +34,7 @@ public class ObtenerActividadService {
     private final PerfilRepository perfilRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final RequerimientoActividadService requerimientoActividadService;
+    private final RequerimientoProteccionService requerimientoProteccionService;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final CronogramaService cronogramaService;
 
@@ -42,6 +44,7 @@ public class ObtenerActividadService {
             PerfilRepository perfilRepository,
             ProyectoVisibilidadService proyectoVisibilidadService,
             RequerimientoActividadService requerimientoActividadService,
+            RequerimientoProteccionService requerimientoProteccionService,
             AsignacionActividadRepository asignacionActividadRepository,
             CronogramaService cronogramaService) {
         this.actividadRepository = actividadRepository;
@@ -49,6 +52,7 @@ public class ObtenerActividadService {
         this.perfilRepository = perfilRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.requerimientoActividadService = requerimientoActividadService;
+        this.requerimientoProteccionService = requerimientoProteccionService;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.cronogramaService = cronogramaService;
     }
@@ -84,7 +88,15 @@ public class ObtenerActividadService {
 
         List<RequerimientoActividadResponse> requerimientos =
                 requerimientoActividadService.listarPorActividad(
-                        idActividad, idPerfilActivo, planificacion.getProyecto());
+                                idActividad, idPerfilActivo, planificacion.getProyecto())
+                        .stream()
+                        .map(requerimiento -> requerimiento.conProtegido(
+                                requerimientoProteccionService.estaProtegido(
+                                        requerimiento.idRequerimiento(),
+                                        planificacion.getProyecto() != null
+                                                && planificacion.getProyecto().getEstado()
+                                                        == EstadoProyecto.CONFIRMADO)))
+                        .toList();
 
         List<AsignacionActividad> asignaciones = actividad.getEstado() == EstadoActividad.PENDIENTE
                 ? asignacionActividadRepository.findActivasByActividadId(idActividad)

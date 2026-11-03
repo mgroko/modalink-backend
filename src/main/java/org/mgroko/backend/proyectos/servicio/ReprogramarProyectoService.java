@@ -87,6 +87,21 @@ public class ReprogramarProyectoService {
             Long idProyecto,
             MotivoReprogramacion motivo,
             LocalDate nuevaFechaEntrega) {
+        return reprogramar(idProyecto, motivo, nuevaFechaEntrega, Map.of());
+    }
+
+    /**
+     * Variante que considera usuarios que todavía no tienen una asignación
+     * persistida. Se usa al asignar un miembro: la actividad se mueve antes de
+     * insertar la asignación y así el trigger de solape no la rechaza por la
+     * fecha anterior.
+     */
+    @Transactional
+    public ReprogramacionProyectoResponse reprogramar(
+            Long idProyecto,
+            MotivoReprogramacion motivo,
+            LocalDate nuevaFechaEntrega,
+            Map<Long, List<Long>> usuariosExtraPorActividad) {
 
         Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
@@ -168,7 +183,9 @@ public class ReprogramarProyectoService {
                     planificacion,
                     actividades,
                     fechaInicio,
-                    true);
+                    true,
+                    true,
+                    usuariosExtraPorActividad);
         } catch (ProyectoNoConfirmableException ex) {
             throw ex;
         } catch (RuntimeException ex) {

@@ -30,12 +30,15 @@ import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +61,7 @@ public class AsignarActividadService {
     public static final String PERMISO_ASIGNAR_ACTIVIDAD = "ASIGNAR_ACTIVIDAD";
 
     private final PerfilRepository perfilRepository;
+    private final ProyectoRepository proyectoRepository;
     private final PlanificacionRepository planificacionRepository;
     private final ActividadRepository actividadRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
@@ -66,9 +70,11 @@ public class AsignarActividadService {
     private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final CalendarioService calendarioService;
+    private final ReprogramarProyectoService reprogramarProyectoService;
 
     public AsignarActividadService(
             PerfilRepository perfilRepository,
+            ProyectoRepository proyectoRepository,
             PlanificacionRepository planificacionRepository,
             ActividadRepository actividadRepository,
             MiembroProyectoRepository miembroProyectoRepository,
@@ -76,8 +82,10 @@ public class AsignarActividadService {
             RequerimientoActividadRepository requerimientoActividadRepository,
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
-            CalendarioService calendarioService) {
+            CalendarioService calendarioService,
+            ReprogramarProyectoService reprogramarProyectoService) {
         this.perfilRepository = perfilRepository;
+        this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.actividadRepository = actividadRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -86,6 +94,7 @@ public class AsignarActividadService {
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.calendarioService = calendarioService;
+        this.reprogramarProyectoService = reprogramarProyectoService;
     }
 
     @Transactional
@@ -98,13 +107,14 @@ public class AsignarActividadService {
 
         validarPerfilActor(idUsuario, idPerfilActivo);
 
-        // Se bloquea la planificación para serializar asignaciones concurrentes
-        // del mismo proyecto y no sobrepasar el cupo de un requerimiento.
+        // Orden de locks: proyecto y luego planificación. Reprogramar usa el
+        // mismo orden para evitar una inversión con los flujos de proyecto.
+        Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyectoForUpdate(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
-
-        Proyecto proyecto = planificacion.getProyecto();
 
         proyectoSecurityService.validarPermiso(
                 idProyecto, idPerfilActivo, PERMISO_ASIGNAR_ACTIVIDAD);
@@ -145,6 +155,26 @@ public class AsignarActividadService {
                         miembro.getIdMiembro(), actividad.getIdActividad())) {
             throw new AsignacionActividadNoPermitidaException(
                     "El miembro ya está asignado a esta actividad.");
+        }
+
+        boolean reprogramar = proyecto.getEstado() == EstadoProyecto.CONFIRMADO
+                && actividad.getEstado() == EstadoActividad.PENDIENTE;
+
+        if (reprogramar) {
+            // El candidato todavía no tiene asignación persistida: se lo pasa
+            // al planificador como usuario virtual para mover la actividad a un
+            // hueco común antes de insertar la asignación.
+            reprogramarProyectoService.reprogramar(
+                    idProyecto,
+                    MotivoReprogramacion.ASIGNACION,
+                    null,
+                    Map.of(
+                            actividad.getIdActividad(),
+                            List.of(perfilDestino.getUsuario().getIdUsuario())));
+            actividad = actividadRepository
+                    .findByIdActividadAndPlanificacionIdPlanificacion(
+                            idActividad, planificacion.getIdPlanificacion())
+                    .orElseThrow(() -> new ActividadNoEncontradaException(idActividad));
         }
 
         ResultadoDisponibilidad disponibilidad = verificarDisponibilidad(

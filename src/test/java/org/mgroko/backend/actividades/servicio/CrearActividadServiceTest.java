@@ -28,10 +28,13 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -47,6 +50,9 @@ class CrearActividadServiceTest {
     private PlanificacionRepository planificacionRepository;
 
     @Mock
+    private ProyectoRepository proyectoRepository;
+
+    @Mock
     private PerfilRepository perfilRepository;
 
     @Mock
@@ -60,6 +66,9 @@ class CrearActividadServiceTest {
 
     @Mock
     private CronogramaService cronogramaService;
+
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
 
     @InjectMocks
     private CrearActividadService crearActividadService;
@@ -88,6 +97,8 @@ class CrearActividadServiceTest {
 
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
                 .thenReturn(Optional.of(perfil));
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(Optional.of(planificacion));
     }
@@ -151,16 +162,27 @@ class CrearActividadServiceTest {
     }
 
     @Test
-    void crear_proyectoConfirmado_lanzaExcepcion() {
+    void crear_proyectoConfirmado_reprogramaElProyecto() {
         planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+        when(actividadRepository.existeNombreEnPlanificacion(50L, "Montaje"))
+                .thenReturn(false);
+        when(actividadRepository.saveAndFlush(any(Actividad.class)))
+                .thenAnswer(invocation -> {
+                    Actividad actividad = invocation.getArgument(0);
+                    actividad.setIdActividad(55L);
+                    return actividad;
+                });
+        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+
         CrearActividadRequest request = new CrearActividadRequest(
                 "Montaje", null, 1, UnidadDuracion.HORAS, null, null, null);
 
-        assertThatThrownBy(() -> crearActividadService.crear(1L, 10L, 100L, request))
-                .isInstanceOf(org.mgroko.backend.actividades.exception
-                        .EstadoProyectoNoPermiteActividadesException.class);
+        crearActividadService.crear(1L, 10L, 100L, request);
 
-        verify(actividadRepository, never()).saveAndFlush(any());
+        verify(actividadRepository).saveAndFlush(any(Actividad.class));
+        verify(reprogramarProyectoService).reprogramar(
+                100L, MotivoReprogramacion.CREACION_ACTIVIDAD, null);
     }
 
     @Test

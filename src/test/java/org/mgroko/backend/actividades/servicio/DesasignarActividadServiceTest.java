@@ -40,11 +40,14 @@ import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -66,6 +69,8 @@ class DesasignarActividadServiceTest {
     @Mock
     private PerfilRepository perfilRepository;
     @Mock
+    private ProyectoRepository proyectoRepository;
+    @Mock
     private PlanificacionRepository planificacionRepository;
     @Mock
     private ActividadRepository actividadRepository;
@@ -77,6 +82,8 @@ class DesasignarActividadServiceTest {
     private ProyectoSecurityService proyectoSecurityService;
     @Mock
     private NotificacionService notificacionService;
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
 
     private DesasignarActividadService service;
 
@@ -93,12 +100,14 @@ class DesasignarActividadServiceTest {
     void setUp() {
         service = new DesasignarActividadService(
                 perfilRepository,
+                proyectoRepository,
                 planificacionRepository,
                 actividadRepository,
                 asignacionActividadRepository,
                 cupoRequerimientoService,
                 proyectoSecurityService,
-                notificacionService);
+                notificacionService,
+                reprogramarProyectoService);
 
         actor = Perfil.builder()
                 .idPerfil(ID_PERFIL_ACTOR)
@@ -203,7 +212,7 @@ class DesasignarActividadServiceTest {
     }
 
     @Test
-    void proyectoConfirmadoDevuelveAdvertencia() {
+    void proyectoConfirmadoReprogramaElCronograma() {
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
         prepararEscenarioBase();
         when(cupoRequerimientoService.calcularActividad(requerimiento))
@@ -215,8 +224,9 @@ class DesasignarActividadServiceTest {
         DesasignacionActividadResponse response = service.desasignar(
                 ID_USUARIO, ID_PERFIL_ACTOR, ID_PROYECTO, ID_ACTIVIDAD, ID_ASIGNACION);
 
-        assertThat(response.advertencias())
-                .contains("El proyecto está confirmado; la desasignación no reprograma el cronograma.");
+        assertThat(response.advertencias()).isEmpty();
+        verify(reprogramarProyectoService).reprogramar(
+                ID_PROYECTO, MotivoReprogramacion.DESASIGNACION, null);
     }
 
     @Test
@@ -283,6 +293,8 @@ class DesasignarActividadServiceTest {
     void rechazaSinPermiso() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL_ACTOR, ID_USUARIO))
                 .thenReturn(Optional.of(actor));
+        when(proyectoRepository.findByIdParaGestion(ID_PROYECTO))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(ID_PROYECTO))
                 .thenReturn(Optional.of(planificacion));
         doThrow(new AccesoDenegadoProyectoException("Sin permiso"))
@@ -298,6 +310,8 @@ class DesasignarActividadServiceTest {
     private void prepararEscenarioBase() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL_ACTOR, ID_USUARIO))
                 .thenReturn(Optional.of(actor));
+        when(proyectoRepository.findByIdParaGestion(ID_PROYECTO))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(ID_PROYECTO))
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(

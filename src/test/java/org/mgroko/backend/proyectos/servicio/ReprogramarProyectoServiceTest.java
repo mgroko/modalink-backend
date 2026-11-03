@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -94,7 +95,8 @@ class ReprogramarProyectoServiceTest {
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(pendiente, fija));
         when(planificadorRecursosService.planificar(
-                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true)))
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true), eq(true),
+                anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_NUEVO, 2L, INICIO_FIJO),
                         Map.of(),
@@ -190,7 +192,8 @@ class ReprogramarProyectoServiceTest {
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(pendiente));
         when(planificadorRecursosService.planificar(
-                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true)))
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true), eq(true),
+                anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_NUEVO), Map.of(), null));
 

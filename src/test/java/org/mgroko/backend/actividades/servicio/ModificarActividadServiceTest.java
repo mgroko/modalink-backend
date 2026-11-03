@@ -47,12 +47,14 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -70,6 +72,9 @@ class ModificarActividadServiceTest {
 
     @Mock
     private ActividadRepository actividadRepository;
+
+    @Mock
+    private ProyectoRepository proyectoRepository;
 
     @Mock
     private PlanificacionRepository planificacionRepository;
@@ -90,6 +95,12 @@ class ModificarActividadServiceTest {
     private RequerimientoActividadRepository requerimientoActividadRepository;
 
     @Mock
+    private org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
+
+    @Mock
+    private RequerimientoProteccionService requerimientoProteccionService;
+
+    @Mock
     private PostulacionActividadRepository postulacionActividadRepository;
 
     @Mock
@@ -100,6 +111,9 @@ class ModificarActividadServiceTest {
 
     @Mock
     private AsignacionActividadRepository asignacionActividadRepository;
+
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -146,6 +160,8 @@ class ModificarActividadServiceTest {
 
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
                 .thenReturn(Optional.of(perfil));
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(planificacion.getProyecto()));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(55L, 50L))
@@ -156,6 +172,8 @@ class ModificarActividadServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(actividad));
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of());
         when(requerimientoActividadService.listarPorActividad(55L))
                 .thenReturn(List.of());
         when(asignacionActividadRepository.findActivasByActividadId(55L))
@@ -334,15 +352,13 @@ class ModificarActividadServiceTest {
     @Test
     void modificar_requerimientoConPostulacion_lanzaExcepcion() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
-        when(postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(true);
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
 
         ModificarRequerimientoActividadRequest requerimientoRequest =
                 new ModificarRequerimientoActividadRequest(
-                        7L, 1, 2L, null, List.of(), List.of());
+                        7L, 2, 2L, null, List.of(), List.of());
 
         assertThatThrownBy(() -> modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
@@ -358,18 +374,13 @@ class ModificarActividadServiceTest {
     @Test
     void modificar_requerimientoConInvitacion_lanzaExcepcion() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
-        when(postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(false);
-        when(invitacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(true);
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
 
         ModificarRequerimientoActividadRequest requerimientoRequest =
                 new ModificarRequerimientoActividadRequest(
-                        7L, 1, 2L, null, List.of(), List.of());
+                        7L, 2, 2L, null, List.of(), List.of());
 
         assertThatThrownBy(() -> modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
@@ -504,6 +515,48 @@ class ModificarActividadServiceTest {
     }
 
     @Test
+    void modificar_proyectoConfirmadoRequerimientoSinVinculos_permiteCambiarlo() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+        actividad.setNombre("Montaje final");
+        RequerimientoActividad requerimiento = crearRequerimiento();
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of(requerimiento));
+
+        ModificarRequerimientoActividadRequest requerimientoRequest =
+                new ModificarRequerimientoActividadRequest(
+                        7L, 2, 2L, null, List.of(), List.of());
+
+        modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
+                        List.of(requerimientoRequest)));
+
+        verify(requerimientoActividadService).actualizar(
+                eq(requerimiento), any());
+    }
+
+    @Test
+    void modificar_proyectoConfirmadoRequerimientoConPendiente_lanzaExcepcion() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+        actividad.setNombre("Montaje final");
+        RequerimientoActividad requerimiento = crearRequerimiento();
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of(requerimiento));
+        when(requerimientoProteccionService.estaProtegido(7L, true))
+                .thenReturn(true);
+
+        ModificarRequerimientoActividadRequest requerimientoRequest =
+                new ModificarRequerimientoActividadRequest(
+                        7L, 2, 2L, null, List.of(), List.of());
+
+        assertThatThrownBy(() -> modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
+                        List.of(requerimientoRequest))))
+                .isInstanceOf(RequerimientoConVinculosException.class);
+    }
+
+    @Test
     void modificar_desdeEnCursoAFinalizada_permiteCambioDeEstado() {
         actividad.setEstado(EstadoActividad.EN_CURSO);
 
@@ -516,29 +569,46 @@ class ModificarActividadServiceTest {
     }
 
     @Test
-    void modificar_requerimientoConVinculosOmitido_lanzaExcepcion() {
+    void modificar_requerimientoConVinculosSinCambios_noLanzaExcepcion() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
-        when(postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(true);
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
 
-        assertThatThrownBy(() -> modificarActividadService.modificar(
+        ModificarRequerimientoActividadRequest requerimientoRequest =
+                new ModificarRequerimientoActividadRequest(
+                        7L, 1, 2L, null, List.of(), List.of());
+
+        modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
                 request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
-                        List.of())))
-                .isInstanceOf(RequerimientoConVinculosException.class);
+                        List.of(requerimientoRequest)));
+
+        verify(requerimientoActividadService, never()).actualizar(any(), any());
+        verify(requerimientoActividadService, never()).eliminar(any());
+    }
+
+    @Test
+    void modificar_requerimientoConVinculosOmitido_seConserva() {
+        RequerimientoActividad requerimiento = crearRequerimiento();
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of(requerimiento));
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
+
+        modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
+                        List.of()));
 
         verify(requerimientoActividadService, never()).eliminar(requerimiento);
         verify(requerimientoActividadService, never()).actualizar(any(), any());
-        verify(actividadRepository, never()).saveAndFlush(any());
+        verify(actividadRepository).saveAndFlush(actividad);
     }
 
     @Test
     void modificar_requerimientoSinVinculosOmitido_loElimina() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
         when(postulacionActividadRepository
                 .existsByRequerimiento_IdRequerimiento(7L))
@@ -576,6 +646,7 @@ class ModificarActividadServiceTest {
                 .idRequerimiento(7L)
                 .actividad(actividad)
                 .cantidad(1)
+                .profesion(Profesion.builder().idProfesion(2L).build())
                 .build();
     }
 

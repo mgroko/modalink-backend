@@ -28,6 +28,7 @@ import org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException;
 import org.mgroko.backend.actividades.exception.RequerimientoConVinculosException;
 import org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalidaException;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
+import org.mgroko.backend.actividades.servicio.CambiarEstadoActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
 import org.mgroko.backend.actividades.servicio.ListarActividadesPlanificacionService;
@@ -49,6 +50,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -86,6 +88,9 @@ class ActividadControllerTest {
 
     @MockitoBean
     private MiembrosActividadService miembrosActividadService;
+
+    @MockitoBean
+    private CambiarEstadoActividadService cambiarEstadoActividadService;
 
     @Test
     void crear_conDatosValidos_devuelve201() throws Exception {
@@ -207,6 +212,54 @@ class ActividadControllerTest {
                 .andExpect(jsonPath("$.nombre").value("Montaje final"))
                 .andExpect(jsonPath("$.estado").value("EN_CURSO"))
                 .andExpect(jsonPath("$.estadoCronograma").value("NORMAL"));
+    }
+
+    @Test
+    void cambiarEstado_conDatosValidos_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        ActividadResponse response = new ActividadResponse(
+                55L,
+                100L,
+                "Desfile Primavera",
+                "Montaje final",
+                "Montar escenario",
+                90,
+                LocalDateTime.of(2026, 11, 1, 22, 29),
+                LocalDateTime.of(2026, 11, 1, 23, 59),
+                null,
+                "EN_CURSO",
+                "NORMAL",
+                null,
+                null,
+                0L,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of());
+
+        when(cambiarEstadoActividadService.cambiar(
+                1L, 10L, 100L, 55L, EstadoActividad.EN_CURSO))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/proyectos/100/actividades/55/estado")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "estado": "EN_CURSO"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idActividad").value(55L))
+                .andExpect(jsonPath("$.estado").value("EN_CURSO"));
+
+        verify(cambiarEstadoActividadService).cambiar(
+                1L, 10L, 100L, 55L, EstadoActividad.EN_CURSO);
     }
 
     @Test

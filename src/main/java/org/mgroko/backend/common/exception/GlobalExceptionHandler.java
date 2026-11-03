@@ -794,6 +794,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadSinFechaInicioException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadSinFechaInicio(
+            org.mgroko.backend.actividades.exception.ActividadSinFechaInicioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteActividadesException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteActividades(
             org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteActividadesException ex) {
@@ -821,7 +827,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.mgroko.backend.actividades.exception.RequerimientoConVinculosException.class)
     public ResponseEntity<Map<String, Object>> handleRequerimientoConVinculos(
             org.mgroko.backend.actividades.exception.RequerimientoConVinculosException ex) {
-        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "REQUERIMIENTO_CON_VINCULOS");
+        response.put("idRequerimiento", ex.getIdRequerimiento());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.mgroko.backend.actividades.exception.DuracionInvalidaException.class)

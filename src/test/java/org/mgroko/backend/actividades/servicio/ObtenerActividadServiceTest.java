@@ -58,6 +58,9 @@ class ObtenerActividadServiceTest {
     private RequerimientoActividadService requerimientoActividadService;
 
     @Mock
+    private RequerimientoProteccionService requerimientoProteccionService;
+
+    @Mock
     private CronogramaService cronogramaService;
 
     @Mock

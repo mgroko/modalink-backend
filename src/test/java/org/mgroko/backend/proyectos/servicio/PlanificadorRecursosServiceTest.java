@@ -100,6 +100,21 @@ class PlanificadorRecursosServiceTest {
     }
 
     @Test
+    void planificar_actividadSinAsignacionPermitida_laAgenda() {
+        Actividad actividad = actividad(1L, "Montaje", 60, EstadoActividad.PENDIENTE);
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));
+
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of());
+
+        PlanificadorRecursosService.Resultado resultado =
+                service.planificar(
+                        planificacion, List.of(actividad), INICIO, false, true);
+
+        assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
+    }
+
+    @Test
     void planificar_sinDisponibilidad_lanzaExcepcion() {
         Actividad actividad = actividad(1L, "Montaje", 60, EstadoActividad.PENDIENTE);
         Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));

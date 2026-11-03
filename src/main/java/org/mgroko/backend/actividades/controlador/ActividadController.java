@@ -6,11 +6,13 @@ import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
 import org.mgroko.backend.actividades.dto.ActividadPlanificacionResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
+import org.mgroko.backend.actividades.dto.CambiarEstadoActividadRequest;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
 import org.mgroko.backend.actividades.dto.EliminarActividadRequest;
 import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
+import org.mgroko.backend.actividades.servicio.CambiarEstadoActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
 import org.mgroko.backend.actividades.servicio.ListarActividadesPlanificacionService;
@@ -27,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -47,6 +50,7 @@ public class ActividadController {
     private final ListarActividadesPlanificacionService listarActividadesPlanificacionService;
     private final EliminarActividadService eliminarActividadService;
     private final MiembrosActividadService miembrosActividadService;
+    private final CambiarEstadoActividadService cambiarEstadoActividadService;
 
     public ActividadController(
             BuscarActividadService buscarActividadService,
@@ -56,7 +60,8 @@ public class ActividadController {
             ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService,
             ListarActividadesPlanificacionService listarActividadesPlanificacionService,
             EliminarActividadService eliminarActividadService,
-            MiembrosActividadService miembrosActividadService) {
+            MiembrosActividadService miembrosActividadService,
+            CambiarEstadoActividadService cambiarEstadoActividadService) {
         this.buscarActividadService = buscarActividadService;
         this.crearActividadService = crearActividadService;
         this.modificarActividadService = modificarActividadService;
@@ -65,6 +70,7 @@ public class ActividadController {
         this.listarActividadesPlanificacionService = listarActividadesPlanificacionService;
         this.eliminarActividadService = eliminarActividadService;
         this.miembrosActividadService = miembrosActividadService;
+        this.cambiarEstadoActividadService = cambiarEstadoActividadService;
     }
 
     @PostMapping("/proyectos/{idProyecto}/actividades")
@@ -109,6 +115,21 @@ public class ActividadController {
 
         ActividadResponse response = modificarActividadService.modificar(
                 idUsuario, idPerfilActivo, idProyecto, idActividad, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/proyectos/{idProyecto}/actividades/{idActividad}/estado")
+    public ResponseEntity<ActividadResponse> cambiarEstado(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idActividad,
+            @Valid @RequestBody CambiarEstadoActividadRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        ActividadResponse response = cambiarEstadoActividadService.cambiar(
+                idUsuario, idPerfilActivo, idProyecto, idActividad, request.estado());
         return ResponseEntity.ok(response);
     }
 
