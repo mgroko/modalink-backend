@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Actividad;
+import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.MiembroProyecto;
@@ -26,8 +28,10 @@ import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.proyectos.dto.ConfirmarProyectoResponse;
 import org.mgroko.backend.proyectos.dto.PrevisualizacionConfirmacionResponse;
+import org.mgroko.backend.proyectos.dto.ResumenReprogramacionResponse;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.servicio.ConfirmarProyectoService;
+import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
 import org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
@@ -68,6 +72,12 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private GeneroRepository generoRepository;
 
+    @Autowired
+    private AgendaRepository agendaRepository;
+
+    @Autowired
+    private JornadaReprogramacionService jornadaReprogramacionService;
+
     @Test
     void confirmar_caminoFeliz_persisteEstadoFechaYHorario() {
         Datos datos = crearProyectoConActividadAsignada(false);
@@ -98,6 +108,42 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(actividad.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
         assertThat(response.proyecto().estado()).isEqualTo("Confirmado");
         assertThat(response.cronograma().resumen().tentativo()).isFalse();
+    }
+
+    @Test
+    void cambiarMargen_reprogramaAutomaticamenteElProyectoConfirmado() {
+        Datos datos = crearProyectoConActividadAsignada(false);
+
+        confirmarProyectoService.confirmar(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto());
+
+        em.flush();
+        em.clear();
+
+        Actividad antes = em.find(Actividad.class, datos.actividad().getIdActividad());
+        LocalDateTime inicioAntes = antes.getFechaHoraInicio();
+
+        Agenda agenda = agendaRepository
+                .findByUsuario_IdUsuario(datos.miembro().getIdUsuario())
+                .orElseThrow();
+        agenda.setMargenActividadMinutos(60);
+        agendaRepository.saveAndFlush(agenda);
+
+        ResumenReprogramacionResponse resumen =
+                jornadaReprogramacionService.reprogramarAfectados(
+                        datos.miembro().getIdUsuario());
+
+        em.flush();
+        em.clear();
+
+        Actividad despues = em.find(Actividad.class, datos.actividad().getIdActividad());
+
+        assertThat(resumen.totalProyectos()).isEqualTo(1);
+        assertThat(resumen.exitosos()).hasSize(1);
+        assertThat(despues.getFechaHoraInicio()).isNotEqualTo(inicioAntes);
+        assertThat(despues.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
     }
 
     @Test
@@ -188,7 +234,7 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         }
 
         em.flush();
-        return new Datos(proyecto, actividad, director, perfilDirector);
+        return new Datos(proyecto, actividad, director, perfilDirector, miembro);
     }
 
     private Usuario guardarUsuario(String correo, String dni) {
@@ -229,6 +275,7 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
             Proyecto proyecto,
             Actividad actividad,
             Usuario director,
-            Perfil perfilDirector) {
+            Perfil perfilDirector,
+            Usuario miembro) {
     }
 }

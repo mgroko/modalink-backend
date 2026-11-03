@@ -6,6 +6,8 @@ import org.mgroko.backend.calendario.dto.ConfigJornadaRequest;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.MarcarNoDisponibleRequest;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
+import org.mgroko.backend.proyectos.dto.ResumenReprogramacionResponse;
+import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,9 +26,13 @@ import jakarta.validation.Valid;
 public class CalendarioController {
 
     private final CalendarioService calendarioService;
+    private final JornadaReprogramacionService jornadaReprogramacionService;
 
-    public CalendarioController(CalendarioService calendarioService) {
+    public CalendarioController(
+            CalendarioService calendarioService,
+            JornadaReprogramacionService jornadaReprogramacionService) {
         this.calendarioService = calendarioService;
+        this.jornadaReprogramacionService = jornadaReprogramacionService;
     }
 
     @GetMapping
@@ -45,7 +51,18 @@ public class CalendarioController {
             @Valid @RequestBody ConfigJornadaRequest request,
             Authentication authentication) {
         Long idUsuario = idUsuario(authentication);
-        return ResponseEntity.ok(calendarioService.configurarJornada(idUsuario, request));
+
+        ConfigJornadaResponse anterior = calendarioService.obtenerJornada(idUsuario);
+        ConfigJornadaResponse actual = calendarioService.configurarJornada(idUsuario, request);
+
+        ResumenReprogramacionResponse reprogramacion = anterior.equals(actual)
+                ? ResumenReprogramacionResponse.vacio()
+                : jornadaReprogramacionService.reprogramarAfectados(idUsuario);
+
+        return ResponseEntity.ok(new ConfigJornadaResponse(
+                actual.margenActividadMinutos(),
+                actual.dias(),
+                reprogramacion));
     }
 
     @PostMapping("/bloqueos")

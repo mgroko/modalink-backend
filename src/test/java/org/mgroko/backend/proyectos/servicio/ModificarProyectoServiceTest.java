@@ -114,7 +114,7 @@ class ModificarProyectoServiceTest {
     private ActividadRepository actividadRepository;
 
     @Mock
-    private PlanificadorRecursosService planificadorRecursosService;
+    private ReprogramarProyectoService reprogramarProyectoService;
 
     @Mock
     private NotificacionService notificacionService;
@@ -187,10 +187,6 @@ class ModificarProyectoServiceTest {
         when(planificacionRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.of(planificacion));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(Optional.of(planificacion));
-        when(actividadRepository.findConPredecesorasByPlanificacion(1L)).thenReturn(List.of());
-        when(planificadorRecursosService.planificar(any(), any(), any(), eq(false)))
-                .thenReturn(new PlanificadorRecursosService.Resultado(
-                        java.util.Map.of(), java.util.Map.of(), null));
         when(notificacionService.crear(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new org.mgroko.backend.modelo.Notificacion());
         when(objetivoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
@@ -376,10 +372,8 @@ class ModificarProyectoServiceTest {
 
         assertThat(response.fechaEntregaEstipulada()).isEqualTo(nuevaFecha);
         assertThat(planificacion.getFechaEntrega()).isEqualTo(nuevaFecha);
-        verify(planificadorRecursosService).planificar(
-                eq(planificacion), any(), eq(proyecto.getFechaInicio()), eq(false));
-        verify(actividadRepository, org.mockito.Mockito.atLeastOnce()).saveAll(any());
-        verify(actividadRepository, org.mockito.Mockito.atLeastOnce()).flush();
+        verify(reprogramarProyectoService).reprogramar(
+                100L, MotivoReprogramacion.CAMBIO_ENTREGA, nuevaFecha);
         verify(notificacionService).registrarTodas(any());
     }
 
@@ -387,7 +381,7 @@ class ModificarProyectoServiceTest {
     void modificar_proyectoConfirmadoConCambioInviable_noGuardaNiNotifica() {
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
         proyecto.setFechaInicio(java.time.LocalDateTime.now().minusDays(1));
-        when(planificadorRecursosService.planificar(any(), any(), any(), eq(false)))
+        when(reprogramarProyectoService.reprogramar(any(), any(), any()))
                 .thenThrow(new ProyectoNoConfirmableException(
                         "SIN_DISPONIBILIDAD",
                         "La actividad no entra en la nueva entrega."));

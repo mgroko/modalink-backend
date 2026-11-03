@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.MiembroProyecto;
@@ -28,13 +27,11 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
-import org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
 import org.mgroko.backend.proyectos.dto.CrearObjetivoRequest;
@@ -52,7 +49,6 @@ import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoSatisfechoException;
 import org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
-import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
@@ -96,8 +92,7 @@ public class ModificarProyectoService {
     private final UbicacionService ubicacionService;
     private final RequerimientoGralService requerimientoGralService;
     private final ProyectoSecurityService proyectoSecurityService;
-    private final ActividadRepository actividadRepository;
-    private final PlanificadorRecursosService planificadorRecursosService;
+    private final ReprogramarProyectoService reprogramarProyectoService;
     private final NotificacionService notificacionService;
     private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
 
@@ -115,8 +110,7 @@ public class ModificarProyectoService {
             UbicacionService ubicacionService,
             RequerimientoGralService requerimientoGralService,
             ProyectoSecurityService proyectoSecurityService,
-            ActividadRepository actividadRepository,
-            PlanificadorRecursosService planificadorRecursosService,
+            ReprogramarProyectoService reprogramarProyectoService,
             NotificacionService notificacionService,
             BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy) {
         this.perfilRepository = perfilRepository;
@@ -132,8 +126,7 @@ public class ModificarProyectoService {
         this.ubicacionService = ubicacionService;
         this.requerimientoGralService = requerimientoGralService;
         this.proyectoSecurityService = proyectoSecurityService;
-        this.actividadRepository = actividadRepository;
-        this.planificadorRecursosService = planificadorRecursosService;
+        this.reprogramarProyectoService = reprogramarProyectoService;
         this.notificacionService = notificacionService;
         this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
     }
@@ -233,69 +226,10 @@ public class ModificarProyectoService {
                     "La fecha de entrega no puede ser anterior al inicio del proyecto.");
         }
 
-        // El planificador lee la nueva entrega desde la planificación.
-        planificacion.setFechaEntrega(nuevaFecha);
-
-        List<Actividad> actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(
-                        planificacion.getIdPlanificacion());
-
-        // Las fechas viejas de las actividades PENDIENTE no deben bloquear el
-        // recálculo como si fueran reservas. Se limpian y se flush-ean antes de
-        // planificar; la transacción las restaura si algo falla.
-        for (Actividad actividad : actividades) {
-            if (actividad.getEstado() == EstadoActividad.PENDIENTE) {
-                actividad.setFechaHoraInicio(null);
-                actividad.setOrigenInicio(null);
-            }
-        }
-        actividadRepository.saveAll(actividades);
-        actividadRepository.flush();
-
-        PlanificadorRecursosService.Resultado plan;
-        try {
-            plan = planificadorRecursosService.planificar(
-                    planificacion,
-                    actividades,
-                    fechaInicio,
-                    false);
-        } catch (ProyectoNoConfirmableException ex) {
-            throw ex;
-        } catch (RuntimeException ex) {
-            throw new ProyectoNoConfirmableException(
-                    "CRONOGRAMA_NO_VIABLE",
-                    ex.getMessage() != null
-                            ? ex.getMessage()
-                            : "No se pudo recalcular el cronograma con la nueva fecha de entrega.");
-        }
-
-        for (Actividad actividad : actividades) {
-            if (actividad.getEstado() == EstadoActividad.CANCELADA) {
-                continue;
-            }
-
-            LocalDateTime inicio = plan.inicios().get(actividad.getIdActividad());
-            if (inicio == null) {
-                throw new ProyectoNoConfirmableException(
-                        "DATOS_INCONSISTENTES",
-                        "No se pudo asignar un horario a la actividad '"
-                                + actividad.getNombre() + "'.",
-                        List.of(new BloqueoConfirmacionResponse(
-                                "DATOS_INCONSISTENTES",
-                                "Actividad sin horario luego de la reprogramación.",
-                                "ACTIVIDAD",
-                                actividad.getIdActividad())));
-            }
-
-            actividad.setFechaHoraInicio(inicio);
-            actividad.setOrigenInicio(
-                    actividad.getEstado() == EstadoActividad.PENDIENTE
-                            ? OrigenInicio.CONFIRMADA
-                            : OrigenInicio.REAL);
-        }
-
-        actividadRepository.saveAll(actividades);
-        actividadRepository.flush();
+        reprogramarProyectoService.reprogramar(
+                idProyecto,
+                MotivoReprogramacion.CAMBIO_ENTREGA,
+                nuevaFecha);
     }
 
     private void notificarCambioFechaEntregaSiCorresponde(

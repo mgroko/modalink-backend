@@ -114,6 +114,20 @@ public class CalendarioService {
     }
 
     /**
+     * Devuelve solo la configuración de jornada y margen del usuario. Se usa
+     * para comparar si un {@code PUT /calendario/jornada} cambió realmente la
+     * disponibilidad antes de disparar una reprogramación automática.
+     */
+    @Transactional(readOnly = true)
+    public ConfigJornadaResponse obtenerJornada(Long idUsuario) {
+        usuarioActivo(idUsuario);
+        Agenda agenda = agendaDe(idUsuario);
+        List<JornadaAgenda> dias =
+                jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(agenda.getIdAgenda());
+        return CalendarioMapper.toConfigJornadaResponse(agenda, dias);
+    }
+
+    /**
      * Devuelve la agenda pública de un usuario (para visualización de disponibilidad
      * en su perfil). Incluye la jornada laboral, los bloqueos por actividades y los
      * bloqueos manuales con el motivo siempre visible: el motivo del bloqueo es
@@ -268,6 +282,56 @@ public class CalendarioService {
                 fin,
                 false,
                 bloqueosExtra == null ? Map.of() : bloqueosExtra);
+    }
+
+    /**
+     * Indica si una ventana concreta {@code [inicio, fin]} sigue siendo
+     * compatible con la jornada, los bloqueos manuales y las demás actividades
+     * del usuario. Se usa para reportar actividades {@code EN_CURSO} o
+     * {@code FINALIZADA} que quedaron fuera de una nueva disponibilidad sin
+     * moverlas.
+     *
+     * @param idsUsuarios        usuarios que deben poder cubrir la ventana
+     * @param inicio             inicio exacto de la ventana
+     * @param fin                fin exacto de la ventana
+     * @param idActividadExcluida actividad que no debe contarse como bloqueo
+     *                            (normalmente, la propia actividad fija)
+     */
+    @Transactional(readOnly = true)
+    public boolean ventanaDisponiblePara(
+            Collection<Long> idsUsuarios,
+            LocalDateTime inicio,
+            LocalDateTime fin,
+            Long idActividadExcluida) {
+
+        if (idsUsuarios == null || idsUsuarios.isEmpty()
+                || inicio == null || fin == null || !fin.isAfter(inicio)) {
+            return false;
+        }
+
+        Intervalo objetivo = new Intervalo(inicio, fin);
+        Set<Long> excluidas = idActividadExcluida == null
+                ? Set.of()
+                : Set.of(idActividadExcluida);
+
+        for (Long idUsuario : idsUsuarios) {
+            Agenda agenda = agendaDe(idUsuario);
+            List<Intervalo> ventanas = ventanasDe(agenda, inicio, fin);
+            boolean dentroDeJornada = ventanas.stream()
+                    .anyMatch(ventana -> !ventana.inicio().isAfter(inicio)
+                            && !ventana.fin().isBefore(fin));
+            if (!dentroDeJornada) {
+                return false;
+            }
+
+            List<Intervalo> bloqueos = bloqueosDe(
+                    idUsuario, agenda, inicio, fin, excluidas);
+            if (bloqueos.stream().anyMatch(objetivo::solapa)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private ResultadoDisponibilidad evaluarDisponibilidadEnRango(
@@ -626,6 +690,16 @@ public class CalendarioService {
             LocalDateTime desde,
             LocalDateTime hasta) {
 
+        return bloqueosDe(idUsuario, agenda, desde, hasta, Set.of());
+    }
+
+    private List<Intervalo> bloqueosDe(
+            Long idUsuario,
+            Agenda agenda,
+            LocalDateTime desde,
+            LocalDateTime hasta,
+            Set<Long> idsActividadesExcluidas) {
+
         List<Intervalo> bloqueos = new ArrayList<>();
 
         for (BloqueoAgenda bloqueo : bloqueoAgendaRepository
@@ -640,6 +714,11 @@ public class CalendarioService {
         int margenIzquierdo = MargenActividad.izquierdo(margen);
         int margenDerecho = MargenActividad.derecho(margen);
         for (Actividad actividad : actividadesDe(idUsuario)) {
+            if (actividad.getIdActividad() != null
+                    && idsActividadesExcluidas.contains(actividad.getIdActividad())) {
+                continue;
+            }
+
             LocalDateTime inicio = actividad.getFechaHoraInicio();
             LocalDateTime fin = actividad.getFechaHoraFin();
             if (inicio == null || fin == null || !fin.isAfter(inicio)) {

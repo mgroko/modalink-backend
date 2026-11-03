@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
+import org.mgroko.backend.proyectos.dto.ReprogramacionProyectoResponse;
 import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
@@ -66,6 +67,9 @@ class ProyectoControllerTest {
 
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService previsualizarConfirmacionService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService jornadaReprogramacionService;
 
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
@@ -928,5 +932,25 @@ class ProyectoControllerTest {
         mockMvc.perform(get("/proyectos/100/confirmacion").principal(auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.puedeConfirmar").value(true));
+    }
+
+    @Test
+    void reprogramar_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        when(jornadaReprogramacionService.reintentar(1L, 10L, 100L))
+                .thenReturn(new ReprogramacionProyectoResponse(
+                        100L,
+                        "Desfile Primavera",
+                        "REINTENTO",
+                        LocalDate.now().plusDays(10),
+                        List.of(),
+                        List.of()));
+
+        mockMvc.perform(post("/proyectos/100/reprogramar").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idProyecto").value(100))
+                .andExpect(jsonPath("$.motivo").value("REINTENTO"));
     }
 }

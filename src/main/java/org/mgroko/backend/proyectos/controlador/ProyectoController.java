@@ -12,11 +12,13 @@ import org.mgroko.backend.proyectos.dto.PrevisualizacionConfirmacionResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoPropioResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
+import org.mgroko.backend.proyectos.dto.ReprogramacionProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectoService;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
 import org.mgroko.backend.proyectos.servicio.CancelarProyectoService;
 import org.mgroko.backend.proyectos.servicio.ConfirmarProyectoService;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
+import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
 import org.mgroko.backend.proyectos.servicio.ModificarProyectoService;
 import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
 import org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService;
@@ -48,6 +50,7 @@ public class ProyectoController {
     private final CancelarProyectoService cancelarProyectoService;
     private final ConfirmarProyectoService confirmarProyectoService;
     private final PrevisualizarConfirmacionService previsualizarConfirmacionService;
+    private final JornadaReprogramacionService jornadaReprogramacionService;
 
     public ProyectoController(CrearProyectoService crearProyectoService,
             ObtenerProyectoService obtenerProyectoService,
@@ -57,7 +60,8 @@ public class ProyectoController {
             ModificarProyectoService modificarProyectoService,
             CancelarProyectoService cancelarProyectoService,
             ConfirmarProyectoService confirmarProyectoService,
-            PrevisualizarConfirmacionService previsualizarConfirmacionService) {
+            PrevisualizarConfirmacionService previsualizarConfirmacionService,
+            JornadaReprogramacionService jornadaReprogramacionService) {
         this.crearProyectoService = crearProyectoService;
         this.obtenerProyectoService = obtenerProyectoService;
         this.buscarProyectoService = buscarProyectoService;
@@ -67,6 +71,7 @@ public class ProyectoController {
         this.cancelarProyectoService = cancelarProyectoService;
         this.confirmarProyectoService = confirmarProyectoService;
         this.previsualizarConfirmacionService = previsualizarConfirmacionService;
+        this.jornadaReprogramacionService = jornadaReprogramacionService;
     }
 
     // UC-24: Crear proyecto
@@ -219,6 +224,29 @@ public class ProyectoController {
 
         ConfirmarProyectoResponse response = confirmarProyectoService.confirmar(
                 idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // Reprogramación manual de un proyecto confirmado que falló
+    @PostMapping("/proyectos/{idProyecto}/reprogramar")
+    public ResponseEntity<ReprogramacionProyectoResponse> reprogramar(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        ReprogramacionProyectoResponse response =
+                jornadaReprogramacionService.reintentar(
+                        idUsuario, idPerfilActivo, idProyecto);
         return ResponseEntity.ok(response);
     }
 

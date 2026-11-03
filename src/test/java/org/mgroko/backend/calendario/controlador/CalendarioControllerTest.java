@@ -25,6 +25,8 @@ import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
 import org.mgroko.backend.calendario.exception.HorarioComprometidoException;
 import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
+import org.mgroko.backend.proyectos.dto.ResumenReprogramacionResponse;
+import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -54,6 +56,9 @@ class CalendarioControllerTest {
 
     @MockitoBean
     private CalendarioService calendarioService;
+
+    @MockitoBean
+    private JornadaReprogramacionService jornadaReprogramacionService;
 
     private static final CalendarioResponse CALENDARIO = new CalendarioResponse(
             new ConfigJornadaResponse(30, List.of(
@@ -110,9 +115,11 @@ class CalendarioControllerTest {
     void configurarJornada_valido_devuelve200() throws Exception {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+        ConfigJornadaResponse respuesta = new ConfigJornadaResponse(30, List.of(
+                new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+        when(calendarioService.obtenerJornada(1L)).thenReturn(respuesta);
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
-                .thenReturn(new ConfigJornadaResponse(30, List.of(
-                        new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0)))));
+                .thenReturn(respuesta);
 
         mockMvc.perform(put("/calendario/jornada")
                         .principal(auth())
@@ -130,10 +137,12 @@ class CalendarioControllerTest {
         ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
                 new JornadaDiaRequest(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
                         LocalTime.of(15, 0), LocalTime.of(19, 0))));
+        ConfigJornadaResponse respuesta = new ConfigJornadaResponse(30, List.of(
+                new JornadaDiaResponse(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
+                        LocalTime.of(15, 0), LocalTime.of(19, 0))));
+        when(calendarioService.obtenerJornada(1L)).thenReturn(respuesta);
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
-                .thenReturn(new ConfigJornadaResponse(30, List.of(
-                        new JornadaDiaResponse(1, LocalTime.of(9, 0), LocalTime.of(13, 0),
-                                LocalTime.of(15, 0), LocalTime.of(19, 0)))));
+                .thenReturn(respuesta);
 
         mockMvc.perform(put("/calendario/jornada")
                         .principal(auth())
@@ -142,6 +151,31 @@ class CalendarioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dias[0].horaFinManana").value("13:00:00"))
                 .andExpect(jsonPath("$.dias[0].horaInicioTarde").value("15:00:00"));
+    }
+
+    @Test
+    void configurarJornada_conCambio_devuelveResumenReprogramacion() throws Exception {
+        ConfigJornadaRequest request = new ConfigJornadaRequest(60, List.of(
+                new JornadaDiaRequest(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+        ConfigJornadaResponse anterior = new ConfigJornadaResponse(30, List.of(
+                new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+        ConfigJornadaResponse actual = new ConfigJornadaResponse(60, List.of(
+                new JornadaDiaResponse(1, LocalTime.of(9, 0), null, null, LocalTime.of(18, 0))));
+
+        when(calendarioService.obtenerJornada(1L)).thenReturn(anterior);
+        when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
+                .thenReturn(actual);
+        when(jornadaReprogramacionService.reprogramarAfectados(1L))
+                .thenReturn(new ResumenReprogramacionResponse(1, List.of(), List.of()));
+
+        mockMvc.perform(put("/calendario/jornada")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reprogramacion.totalProyectos").value(1));
+
+        verify(jornadaReprogramacionService).reprogramarAfectados(1L);
     }
 
     @Test

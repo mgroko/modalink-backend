@@ -189,6 +189,27 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
             @Param("idProyecto") Long idProyecto);
 
     /**
+     * Proyectos confirmados en los que el usuario tiene al menos una
+     * asignación activa sobre una actividad no cancelada. Se usa para detectar
+     * el impacto de un cambio de jornada o margen.
+     */
+    @Query("""
+        SELECT DISTINCT pl.proyecto.idProyecto
+        FROM AsignacionActividad aa
+        JOIN aa.miembro m
+        JOIN m.perfil p
+        JOIN aa.actividad a
+        JOIN a.planificacion pl
+        WHERE p.usuario.idUsuario = :idUsuario
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND pl.proyecto.estado = org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO
+          AND a.estado <> org.mgroko.backend.modelo.enums.EstadoActividad.CANCELADA
+        ORDER BY pl.proyecto.idProyecto
+    """)
+    List<Long> findProyectosConfirmadosDeUsuario(
+            @Param("idUsuario") Long idUsuario);
+
+    /**
      * Asignaciones activas del usuario en otros proyectos cuya actividad
      * todavía no tiene horario persistido. Se usan para advertir un posible
      * sobrecompromiso al aceptar una postulación.
