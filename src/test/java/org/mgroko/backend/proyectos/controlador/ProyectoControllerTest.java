@@ -104,7 +104,8 @@ class ProyectoControllerTest {
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
                 false,
                 null,
-                null
+                null,
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -271,7 +272,8 @@ class ProyectoControllerTest {
                 List.of("VER_PROYECTO"),
                 false,
                 null,
-                null
+                null,
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -350,7 +352,8 @@ class ProyectoControllerTest {
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
                 false,
                 null,
-                3L
+                3L,
+                false
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
@@ -369,7 +372,8 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.permisos[1]").value("PUBLICAR_PROYECTO"))
                 .andExpect(jsonPath("$.permisos[2]").value("VER_PROYECTO"))
                 .andExpect(jsonPath("$.elegibleParaPostularse").value(false))
-                .andExpect(jsonPath("$.postulacionesPendientes").value(3));
+                .andExpect(jsonPath("$.postulacionesPendientes").value(3))
+                .andExpect(jsonPath("$.puedeDarseDeBaja").value(false));
     }
 
     @Test
@@ -397,7 +401,8 @@ class ProyectoControllerTest {
                 List.of(),
                 true,
                 null,
-                null
+                null,
+                false
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(200L))).thenReturn(response);
@@ -694,7 +699,8 @@ class ProyectoControllerTest {
                 List.of("MODIFICAR_PROYECTO", "VER_PROYECTO"),
                 false,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -792,7 +798,8 @@ class ProyectoControllerTest {
                 List.of("CANCELAR_PROYECTO", "VER_PROYECTO"),
                 false,
                 "Falta de presupuesto",
-                null
+                null,
+                false
         );
     }
 

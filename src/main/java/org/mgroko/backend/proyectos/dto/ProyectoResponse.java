@@ -26,5 +26,6 @@ public record ProyectoResponse(
         List<String> permisos,
         Boolean elegibleParaPostularse,
         String motivoCancelacion,
-        Long postulacionesPendientes
+        Long postulacionesPendientes,
+        Boolean puedeDarseDeBaja
 ) {}

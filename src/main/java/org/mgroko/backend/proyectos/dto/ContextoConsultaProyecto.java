@@ -15,10 +15,13 @@ import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
  * @param permisos               permisos del rol en el proyecto; vacío si no es miembro
  * @param elegibleParaPostularse true si, sin ser miembro, el proyecto acepta postulaciones
  *                               y la profesión del perfil coincide con algún requerimiento
+ * @param puedeDarseDeBaja       true si el perfil activo puede darse de baja
+ *                               voluntariamente del proyecto (UC-40)
  */
 public record ContextoConsultaProyecto(
         RolProyectoUsuario rolUsuario,
         Boolean esMiembro,
         List<String> permisos,
-        Boolean elegibleParaPostularse) {
+        Boolean elegibleParaPostularse,
+        Boolean puedeDarseDeBaja) {
 }

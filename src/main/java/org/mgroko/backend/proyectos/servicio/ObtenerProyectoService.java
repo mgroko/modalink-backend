@@ -69,6 +69,7 @@ public class ObtenerProyectoService {
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final PostulacionGralRepository postulacionGralRepository;
     private final PostulacionActividadRepository postulacionActividadRepository;
+    private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
 
     public ObtenerProyectoService(
             ProyectoRepository proyectoRepository,
@@ -82,7 +83,8 @@ public class ObtenerProyectoService {
             MoodboardRepository moodboardRepository,
             ProyectoVisibilidadService proyectoVisibilidadService,
             PostulacionGralRepository postulacionGralRepository,
-            PostulacionActividadRepository postulacionActividadRepository) {
+            PostulacionActividadRepository postulacionActividadRepository,
+            BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy) {
         this.proyectoRepository = proyectoRepository;
         this.perfilRepository = perfilRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -95,6 +97,7 @@ public class ObtenerProyectoService {
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.postulacionGralRepository = postulacionGralRepository;
         this.postulacionActividadRepository = postulacionActividadRepository;
+        this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
     }
 
     /**
@@ -194,7 +197,8 @@ public class ObtenerProyectoService {
                 && aceptaPostulacionGral
                 && profesionDelPerfilCoincide;
 
-        ContextoConsultaProyecto contexto = armarContexto(miembroActivo, elegibleParaPostularse);
+        ContextoConsultaProyecto contexto = armarContexto(
+                proyecto, miembroActivo, elegibleParaPostularse);
         Long postulacionesPendientes =
                 contarPendientesSiPuedeGestionar(miembroActivo, idProyecto);
 
@@ -239,10 +243,13 @@ public class ObtenerProyectoService {
      * Contexto del consultante: rol y permisos si es miembro activo; si no es
      * miembro, indica la elegibilidad para postularse (profesión coincidente).
      */
-    private ContextoConsultaProyecto armarContexto(Optional<MiembroProyecto> miembroActivo,
+    private ContextoConsultaProyecto armarContexto(
+            Proyecto proyecto,
+            Optional<MiembroProyecto> miembroActivo,
             boolean elegibleParaPostularse) {
         if (miembroActivo.isEmpty()) {
-            return new ContextoConsultaProyecto(null, Boolean.FALSE, List.of(), elegibleParaPostularse);
+            return new ContextoConsultaProyecto(
+                    null, Boolean.FALSE, List.of(), elegibleParaPostularse, Boolean.FALSE);
         }
 
         MiembroProyecto miembro = miembroActivo.get();
@@ -259,7 +266,8 @@ public class ObtenerProyectoService {
                 RolProyectoUsuario.desde(rol),
                 Boolean.TRUE,
                 permisos,
-                Boolean.FALSE);
+                Boolean.FALSE,
+                bajaVoluntariaProyectoPolicy.puedeDarseDeBaja(proyecto, miembro));
     }
 
     private Perfil buscarDirector(Long idProyecto) {

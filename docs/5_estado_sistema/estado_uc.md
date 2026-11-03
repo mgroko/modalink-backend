@@ -91,7 +91,7 @@ el historial de git sirva de bitácora adicional.
 | UC-36 | Modificar proyecto                   | Implementado y testeado | `PUT /proyectos/{idProyecto}` | Sí    | Estados Borrador/Publicado/Confirmado; permiso `MODIFICAR_PROYECTO`; nombre inmutable; requerimientos con postulación ACEPTADA no modificables (se conservan si se omiten); reemplazo de objetivos y requerimientos no satisfechos; en Publicado/Confirmado exige ubicación y toda la información básica; `satisfecho` expuesto en `requerimientosGral` |
 | UC-37 | Finalizar proyecto                   | No iniciado |                  |       | Primera iteracion |
 | UC-38 | Eliminar integrante                  | Implementado y testeado | `DELETE /proyectos/{idProyecto}/miembros/{idMiembro}` | Sí    | Baja lógica de membresía (`ELIMINADO`, `motivoBaja`, `fechaBaja`); permiso `ELIMINAR_INTEGRANTE` y rol Director; proyecto Publicado/Confirmado; no autoeliminación ni último Director; asignaciones conservadas para auditoría; cupos operativos cuentan solo activos; históricos visibles en actividades En curso/Finalizada/Cancelada; notificación `INTEGRANTE_ELIMINADO` |
-| UC-40 | Darse de baja de proyecto            | No iniciado |                  |       | Primera iteracion |
+| UC-40 | Darse de baja de proyecto            | Implementado y testeado | `POST /proyectos/{idProyecto}/baja` | Sí (unitario + MVC + integración) | Baja lógica de membresía (`BAJA_VOLUNTARIA`, `motivoBaja`, `fechaBaja`); cualquier miembro activo, incluido Director si queda otro Director activo; proyecto Publicado/Confirmado; asignaciones conservadas como historial; cupos operativos se reabren por cálculo; notificación `INTEGRANTE_BAJA_VOLUNTARIA` a los directores restantes; `puedeDarseDeBaja` expuesto en `ProyectoResponse` |
 | UC-41 | Enviar mensaje a chat grupal         | No iniciado |                  |       | Segunda iteracion |
 | UC-49 | Crear actividad en planificación     | Implementado y testeado | `POST /proyectos/{idProyecto}/actividades` | Sí | Primera iteracion. Incluye programacion regresiva basica; CPM completo queda para UC-33. La duración se expresa en HORAS o MINUTOS y se persiste en `duracionMinutos`. |
 | UC-50 | Modificar actividad de planificación | No iniciado |                  |       | Primera iteracion |
@@ -132,10 +132,10 @@ el historial de git sirva de bitácora adicional.
 | Gestión de usuarios y administración | 15     | 12                      | 0            | 0           | 3           |
 | Gestión de perfiles y disponibilidad | 13     | 10                      | 0            | 0           | 3           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
-| Gestión de proyectos               | 26       | 16                      | 0            | 0           | 10          |
+| Gestión de proyectos               | 26       | 17                      | 0            | 0           | 9           |
 | Gestión de contratos               | 5        | 0                       | 0            | 0           | 5           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **75**   | **38**                  | **0**        | **0**       | **37**      |
+| **Total**                          | **75**   | **39**                  | **0**        | **0**       | **36**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -146,4 +146,4 @@ el historial de git sirva de bitácora adicional.
 > que no forma parte del catálogo numerado; se listan sus filas en el módulo de proyectos solo a efectos de
 > seguimiento y **no se computa** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 38 de 75 casos de uso implementados y testeados = **50,7 %** del catálogo de requisitos.
+**Avance global:** 39 de 75 casos de uso implementados y testeados = **52,0 %** del catálogo de requisitos.

@@ -295,6 +295,15 @@
 | **Precondición** | El perfil es miembro activo del proyecto. |
 | **Postcondición** | Se actualizó unMiembroDeProyecto.estadoParticipacion a “BajaVoluntaria”. Se asignó unMiembroDeProyecto.motivoBaja el valor motivo *\*Si corresponde:*  Se desvinculó unMiembroDeProyecto de actividades\[\] |
 
+> **Nota de implementación (UC-40):** la baja es lógica, igual que UC-38. La
+> membresía pasa a `BAJA_VOLUNTARIA` y conserva `motivoBaja` y `fechaBaja`. Las
+> asignaciones a actividades no se borran físicamente: se conservan como
+> historial y dejan de contar como recursos activos. La vacante se reabre por
+> cálculo de cupo. El motivo es obligatorio y tiene un máximo de 100 caracteres.
+> Un Director puede darse de baja solo si queda otro Director activo. Se
+> notifica a los directores activos restantes con el tipo
+> `INTEGRANTE_BAJA_VOLUNTARIA`.
+
 | Nombre | eliminarIntegrante(unProyecto, unPerfil, motivo) |
 | :---- | :---- |
 | **Responsabilidades** | Esta operación se encarga de dar de baja a un miembro de un proyecto. |

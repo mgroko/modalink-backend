@@ -128,6 +128,25 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
             @Param("idProyecto") Long idProyecto);
 
     /**
+     * Membresía activa del perfil en el proyecto, bloqueada para una baja
+     * voluntaria (UC-40). El estado ACTIVO está garantizado por el índice
+     * único parcial {@code UQ_miembro_proyecto_activo}.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario
+        JOIN FETCH mp.rolProyecto
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.perfil.idPerfil = :idPerfil
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    Optional<MiembroProyecto> findMiembroActivoDeProyectoParaActualizar(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    /**
      * Cuenta los Directores activos del proyecto distintos del miembro
      * indicado. Se usa para impedir que una baja deje al proyecto sin
      * Director.

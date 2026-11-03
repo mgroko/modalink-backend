@@ -73,6 +73,7 @@ public class PublicarProyectoService {
     private final ObjetivoRepository objetivoRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
+    private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
 
     public PublicarProyectoService(
             PerfilRepository perfilRepository,
@@ -85,7 +86,8 @@ public class PublicarProyectoService {
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             ObjetivoRepository objetivoRepository,
             CupoRequerimientoService cupoRequerimientoService,
-            ProyectoSecurityService proyectoSecurityService) {
+            ProyectoSecurityService proyectoSecurityService,
+            BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -97,6 +99,7 @@ public class PublicarProyectoService {
         this.objetivoRepository = objetivoRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
+        this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
     }
 
     @Transactional
@@ -164,7 +167,8 @@ public class PublicarProyectoService {
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        ContextoConsultaProyecto contexto = armarContexto(proyecto.getIdProyecto(), perfilConsultante);
+        ContextoConsultaProyecto contexto = armarContexto(
+                proyecto, perfilConsultante);
 
         return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos,
                 requerimientos, moodboardResponse, contexto);
@@ -175,15 +179,20 @@ public class PublicarProyectoService {
      * el permiso PUBLICAR_PROYECTO (ya validado), por lo que se reutiliza la
      * membresía activa para exponer rol y permisos completos.
      */
-    private ContextoConsultaProyecto armarContexto(Long idProyecto, Perfil perfilConsultante) {
+    private ContextoConsultaProyecto armarContexto(
+            Proyecto proyecto,
+            Perfil perfilConsultante) {
         Optional<MiembroProyecto> miembroActivo = miembroProyectoRepository
-                .findMiembroActivoConPermisos(idProyecto, perfilConsultante.getIdPerfil());
+                .findMiembroActivoConPermisos(
+                        proyecto.getIdProyecto(), perfilConsultante.getIdPerfil());
 
         if (miembroActivo.isEmpty()) {
-            return new ContextoConsultaProyecto(null, Boolean.FALSE, List.of(), Boolean.FALSE);
+            return new ContextoConsultaProyecto(
+                    null, Boolean.FALSE, List.of(), Boolean.FALSE, Boolean.FALSE);
         }
 
-        RolProyecto rol = miembroActivo.get().getRolProyecto();
+        MiembroProyecto miembro = miembroActivo.get();
+        RolProyecto rol = miembro.getRolProyecto();
         List<String> permisos = rol != null && rol.getPermisos() != null
                 ? rol.getPermisos().stream()
                         .map(PermisoProyecto::getNombre)
@@ -196,7 +205,8 @@ public class PublicarProyectoService {
                 RolProyectoUsuario.desde(rol),
                 Boolean.TRUE,
                 permisos,
-                Boolean.FALSE);
+                Boolean.FALSE,
+                bajaVoluntariaProyectoPolicy.puedeDarseDeBaja(proyecto, miembro));
     }
 
     private Perfil buscarDirector(Long idProyecto) {

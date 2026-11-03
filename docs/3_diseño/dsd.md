@@ -638,59 +638,60 @@ eliminado.
 
 ## UC-40 — Darse de baja de proyecto
 
-La baja voluntaria utiliza el mismo tratamiento de asignaciones que UC-38,
-pero conserva la causa y cambia el estado de participación a
-`BAJA_VOLUNTARIA`. El actor es el miembro que solicita su propia baja y la
-notificación se dirige al director del proyecto.
+La baja voluntaria sigue el mismo criterio de baja lógica que UC-38: la
+membresía pasa a `BAJA_VOLUNTARIA`, conserva `motivoBaja` y `fechaBaja`, y las
+asignaciones a actividades no se borran; quedan como historial. La vacante se
+reabre por cálculo de cupo porque las consultas operativas filtran miembros
+activos. El actor es cualquier miembro activo, incluido un Director si queda al
+menos otro Director activo. La notificación se dirige a los directores activos
+restantes.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Miembro as Miembro de proyecto
     participant API as MiembroProyectoController
-    participant Servicio as DarseDeBajaService
-    participant ProyectoService as ProyectoSecurityService
+    participant Servicio as DarseDeBajaProyectoService
     participant MiembroRepo as MiembroProyectoRepository
-    participant AsignacionRepo as AsignacionActividadRepository
-    participant ReqService as RequerimientoActividadService
     participant DirectorRepo as MiembroProyectoRepository
     participant Notif as NotificacionService
 
     Miembro->>API: Seleccionar proyecto
-    API->>ProyectoService: Validar membresía activa y proyecto PUBLICADO/CONFIRMADO
-    ProyectoService-->>API: Acceso autorizado
     API-->>Miembro: Mostrar información y solicitar motivo obligatorio
     Miembro->>API: Introducir motivo y confirmar
     API->>Servicio: darseDeBaja(unProyecto, motivo)
-    Servicio->>MiembroRepo: Buscar miembro activo del proyecto
+    Servicio->>MiembroRepo: Buscar membresía activa del perfil
     MiembroRepo-->>Servicio: unMiembroDeProyecto
 
     alt Motivo vacío
         Servicio-->>API: excepcion()
         API-->>Miembro: Notificar error y finalizar
-    else Motivo válido
-        Servicio->>AsignacionRepo: Buscar asignaciones del miembro
-        AsignacionRepo-->>Servicio: actividades[]
-
-        loop Por cada actividad asignada
-            Servicio->>AsignacionRepo: deleteByActividadIdAndPerfil(idActividad, idPerfil)
-            AsignacionRepo-->>Servicio: Asignación eliminada
-            Servicio->>ReqService: reabrirVacante(actividad/requerimiento)
-            ReqService-->>Servicio: Requerimiento actualizado
-        end
-
+    else Proyecto no Publicado/Confirmado
+        Servicio-->>API: excepcion()
+        API-->>Miembro: Notificar error y finalizar
+    else Membresía inactiva
+        Servicio-->>API: excepcion()
+        API-->>Miembro: Notificar error y finalizar
+    else Director único
+        Servicio-->>API: excepcion()
+        API-->>Miembro: Notificar error y finalizar
+    else Motivo válido y baja permitida
         Servicio->>MiembroRepo: setEstado(BAJA_VOLUNTARIA)
         Servicio->>MiembroRepo: setMotivoBaja(motivo)
+        Servicio->>MiembroRepo: setFechaBaja(ahora)
         Servicio->>MiembroRepo: save(unMiembroDeProyecto)
-        Servicio->>DirectorRepo: Buscar director activo del proyecto
-        DirectorRepo-->>Servicio: unDirector
-        Servicio->>Notif: notificarDirector(unDirector, unProyecto, motivo)
-        Notif-->>Servicio: Solicitud de notificación
+        Note over Servicio,MiembroRepo: Las asignaciones se conservan para auditoría.<br/>La vacante se reabre por cálculo de cupo.
+        Servicio->>DirectorRepo: Buscar directores activos restantes
+        DirectorRepo-->>Servicio: directores[]
+        Servicio->>Notif: notificarDirectores(unProyecto, motivo)
+        Notif-->>Servicio: Notificaciones registradas
         Servicio-->>API: Baja voluntaria registrada
         API-->>Miembro: Operación exitosa
     end
 ```
 
-La operación debe ser transaccional. En ambos casos de baja, la eliminación
-de una asignación no elimina al miembro: primero se liberan los recursos
-asignados y luego se actualiza el estado de participación. 
+La operación es transaccional. No se borran asignaciones ni se recalcula el
+cronograma. Si el proyecto está `CONFIRMADO`, las actividades conservan sus
+fechas. El historial de actividades muestra a los profesionales con
+`estadoParticipacion = BAJA_VOLUNTARIA` cuando la actividad está `EN_CURSO`,
+`FINALIZADA` o `CANCELADA`; no los muestra en `PENDIENTE`.

@@ -93,6 +93,9 @@ class PublicarProyectoServiceTest {
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
 
+    @Mock
+    private BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
+
     @InjectMocks
     private PublicarProyectoService publicarProyectoService;
 

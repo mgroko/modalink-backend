@@ -93,6 +93,9 @@ class ObtenerProyectoServiceTest {
     @Mock
     private PostulacionActividadRepository postulacionActividadRepository;
 
+    @Mock
+    private BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
+
     @InjectMocks
     private ObtenerProyectoService obtenerProyectoService;
 
@@ -557,6 +560,17 @@ class ObtenerProyectoServiceTest {
         when(moodboardRepository.findByProyectoIdProyecto(200L)).thenReturn(Optional.empty());
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(200L))
                 .thenReturn(requerimientos);
+    }
+
+    @Test
+    void obtener_miembroActivoEnPublicado_exponePuedeDarseDeBaja() {
+        prepararMiembroActivoProyectoPublicado(List.of());
+        when(bajaVoluntariaProyectoPolicy.puedeDarseDeBaja(any(), any()))
+                .thenReturn(true);
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.puedeDarseDeBaja()).isTrue();
     }
 
     private void prepararMiembroActivoProyectoPublicado(

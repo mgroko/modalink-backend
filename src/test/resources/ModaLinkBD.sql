@@ -3613,6 +3613,7 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
                                                       'PROYECTO',    'ALTA'),
     ('PERFIL_REPORTADO',      'Perfil reportado',     'ADMINISTRACION', 'ALTA'),
     ('INTEGRANTE_ELIMINADO',  'Integrante eliminado', 'PROYECTO',       'ALTA'),
+    ('INTEGRANTE_BAJA_VOLUNTARIA', 'Baja voluntaria de integrante', 'PROYECTO', 'ALTA'),
     ('ACTIVIDAD_DESASIGNADA', 'Actividad desasignada', 'ACTIVIDAD',     'MEDIA')
 
 ON CONFLICT (codigo) DO UPDATE 

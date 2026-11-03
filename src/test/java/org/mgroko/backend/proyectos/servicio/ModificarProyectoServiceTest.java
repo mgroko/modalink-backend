@@ -119,6 +119,9 @@ class ModificarProyectoServiceTest {
     @Mock
     private NotificacionService notificacionService;
 
+    @Mock
+    private BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
+
     @InjectMocks
     private ModificarProyectoService modificarProyectoService;
 

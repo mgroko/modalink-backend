@@ -374,6 +374,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.MotivoBajaVoluntariaObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleMotivoBajaVoluntariaObligatorio(
+            org.mgroko.backend.proyectos.exception.MotivoBajaVoluntariaObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteBajaVoluntariaException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteBajaVoluntaria(
+            org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteBajaVoluntariaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException.class)
     public ResponseEntity<Map<String, Object>> handleUbicacionObligatoria(
             org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException ex) {
