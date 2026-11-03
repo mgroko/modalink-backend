@@ -278,6 +278,8 @@ public final class ActividadMapper {
                 nodo.conflicto(),
                 nodo.motivoConflicto(),
                 nodo.fijo(),
-                tentativo);
+                tentativo,
+                actividad.getFechaHoraInicio(),
+                actividad.getFechaHoraFin());
     }
 }

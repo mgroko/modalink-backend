@@ -7,6 +7,7 @@ import org.mgroko.backend.calendario.dto.BloqueoActividadResponse;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.JornadaDiaResponse;
+import org.mgroko.backend.calendario.servicio.MargenActividad;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.BloqueoAgenda;
@@ -42,9 +43,10 @@ public class CalendarioMapper {
 
     /**
      * Convierte una actividad en el bloqueo calculado correspondiente,
-     * extendiendo el rango con el margen por actividad (buffer) a cada lado.
-     * Falla rápido si la actividad no trae inicio o fin (columnas NOT NULL
-     * en BD; solo posible en objetos transient o mal construidos).
+     * extendiendo el rango con la mitad del margen total a cada lado. Con un
+     * margen de 30 minutos, dos actividades consecutivas quedan separadas por
+     * 30 minutos. Falla rápido si la actividad no trae inicio o fin (columnas
+     * NOT NULL en BD; solo posible en objetos transient o mal construidos).
      */
     public static BloqueoActividadResponse toBloqueoActividadResponse(Actividad actividad, int margenMinutos) {
         Objects.requireNonNull(actividad.getFechaHoraInicio(),
@@ -54,7 +56,7 @@ public class CalendarioMapper {
         return new BloqueoActividadResponse(
                 actividad.getIdActividad(),
                 actividad.getNombre(),
-                actividad.getFechaHoraInicio().minusMinutes(margenMinutos),
-                actividad.getFechaHoraFin().plusMinutes(margenMinutos));
+                actividad.getFechaHoraInicio().minusMinutes(MargenActividad.izquierdo(margenMinutos)),
+                actividad.getFechaHoraFin().plusMinutes(MargenActividad.derecho(margenMinutos)));
     }
 }

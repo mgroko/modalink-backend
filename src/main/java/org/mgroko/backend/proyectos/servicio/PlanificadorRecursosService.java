@@ -21,6 +21,7 @@ import org.mgroko.backend.actividades.servicio.CronogramaService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.calendario.servicio.DisponibilidadCalculator.Intervalo;
+import org.mgroko.backend.calendario.servicio.MargenActividad;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Planificacion;
@@ -39,6 +40,10 @@ import org.springframework.stereotype.Service;
  * de las actividades que se van colocando se mantiene en memoria para que la
  * evaluación de las siguientes actividades las vea sin depender de un flush
  * intermedio.</p>
+ *
+ * <p>El cálculo usa el mismo {@code releaseTime} que el cronograma de lectura:
+ * las actividades libres nunca empiezan antes de la hora actual, mientras que
+ * las fijas conservan su inicio real aunque esté en el pasado.</p>
  */
 @Service
 public class PlanificadorRecursosService {
@@ -93,13 +98,15 @@ public class PlanificadorRecursosService {
                 actividades, fechaInicio, proyectoConfirmado);
 
         long minutosHastaEntrega = Duration.between(fechaInicio, finEntrega).toMinutes();
+        LocalDateTime ahora = cronogramaService.ahora();
+        long releaseTime = cronogramaService.releaseTime(fechaInicio, ahora);
         CalculoCpm calculo;
         try {
             calculo = cronogramaService.calcular(
                     actividades,
                     iniciosFijos,
                     minutosHastaEntrega,
-                    0L);
+                    releaseTime);
         } catch (RuntimeException ex) {
             throw new ProyectoNoConfirmableException(
                     "CRONOGRAMA_NO_VIABLE",
@@ -177,6 +184,9 @@ public class PlanificadorRecursosService {
             }
 
             LocalDateTime inicioMinimo = fechaInicio.plusMinutes(nodo.inicioTemprano());
+            if (inicioMinimo.isBefore(ahora)) {
+                inicioMinimo = ahora;
+            }
             for (Actividad predecesora : actividad.getPredecesoras()) {
                 if (predecesora == null
                         || predecesora.getEstado() == EstadoActividad.CANCELADA) {
@@ -265,6 +275,22 @@ public class PlanificadorRecursosService {
             if (actividad == null) {
                 continue;
             }
+
+            NodoCpm nodo = calculo.nodoDe(entrada.getKey());
+            if (nodo != null
+                    && !nodo.fijo()
+                    && entrada.getValue().isBefore(ahora)) {
+                throw new ProyectoNoConfirmableException(
+                        "SIN_DISPONIBILIDAD",
+                        "La actividad '" + actividad.getNombre()
+                                + "' quedaría programada en el pasado.",
+                        List.of(new BloqueoConfirmacionResponse(
+                                "SIN_DISPONIBILIDAD",
+                                "El inicio planificado es anterior a la hora actual.",
+                                "ACTIVIDAD",
+                                actividad.getIdActividad())));
+            }
+
             LocalDateTime fin = entrada.getValue()
                     .plusMinutes(actividad.getDuracionMinutos());
             if (fin.isAfter(finEntrega)) {
@@ -443,7 +469,11 @@ public class PlanificadorRecursosService {
         for (Long idUsuario : usuarios) {
             List<Intervalo> existentes = bloqueosExtra
                     .computeIfAbsent(idUsuario, id -> new ArrayList<>());
-            boolean solapa = existentes.stream().anyMatch(intervalo::solapa);
+            int margen = calendarioService.margenEfectivoDe(idUsuario);
+            Intervalo intervaloConMargen = expandirConMargen(intervalo, margen);
+            boolean solapa = existentes.stream()
+                    .map(existente -> expandirConMargen(existente, margen))
+                    .anyMatch(intervaloConMargen::solapa);
             if (solapa) {
                 throw new ProyectoNoConfirmableException(
                         "CRONOGRAMA_NO_VIABLE",
@@ -454,8 +484,16 @@ public class PlanificadorRecursosService {
                                 "ACTIVIDAD",
                                 actividad.getIdActividad())));
             }
+            // Se guarda el intervalo crudo: la evaluación de disponibilidad
+            // posterior lo expande con el margen del usuario una sola vez.
             existentes.add(intervalo);
         }
+    }
+
+    private Intervalo expandirConMargen(Intervalo intervalo, int margen) {
+        return new Intervalo(
+                intervalo.inicio().minusMinutes(MargenActividad.izquierdo(margen)),
+                intervalo.fin().plusMinutes(MargenActividad.derecho(margen)));
     }
 
     private List<BloqueoConfirmacionResponse> bloqueosDeCalculo(CalculoCpm calculo) {

@@ -190,6 +190,23 @@ class ObtenerCronogramaServiceTest {
     }
 
     @Test
+    void obtener_incluyeFechasPersistidasParaElGantt() {
+        LocalDateTime persistido = LocalDateTime.of(2026, 10, 14, 9, 0);
+        critica.setFechaHoraInicio(persistido);
+
+        CronogramaResponse response = service.obtener(1L, 10L, 100L);
+
+        ActividadCronogramaResponse fila = response.actividades().stream()
+                .filter(actividad -> actividad.idActividad().equals(1L))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(fila.inicioPersistido()).isEqualTo(persistido);
+        assertThat(fila.finPersistido()).isEqualTo(persistido.plusMinutes(60));
+        assertThat(fila.inicioProyectado()).isEqualTo(inicio);
+    }
+
+    @Test
     void obtener_validaPermisoDeLectura() {
         service.obtener(1L, 10L, 100L);
 

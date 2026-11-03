@@ -97,7 +97,7 @@ class CalendarioMapperTest {
     }
 
     @Test
-    void toBloqueoActividadResponse_aplicaMargenALosDosExtremos() {
+    void toBloqueoActividadResponse_aplicaMitadDelMargenALosDosExtremos() {
         Actividad actividad = Actividad.builder()
                 .idActividad(11L)
                 .nombre("Sesión de fotos")
@@ -109,8 +109,8 @@ class CalendarioMapperTest {
 
         assertEquals(11L, response.idActividad());
         assertEquals("Sesión de fotos", response.nombre());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 0), response.fechaHoraInicio());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 13, 0), response.fechaHoraFin());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 30), response.fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 30), response.fechaHoraFin());
     }
 
     @Test

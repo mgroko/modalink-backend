@@ -72,7 +72,9 @@ class CronogramaControllerTest {
                         false,
                         null,
                         false,
-                        false)),
+                        false,
+                        null,
+                        null)),
                 List.of());
 
         when(obtenerCronogramaService.obtener(1L, 10L, 100L)).thenReturn(response);

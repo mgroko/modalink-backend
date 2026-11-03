@@ -216,7 +216,7 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
     void eliminarBloqueoCubiertoPorActividad_lanzaExcepcion() {
         Usuario usuario = guardarUsuario("act@example.com", "88880001");
         Agenda agenda = agendaDe(usuario);
-        // Actividad 10:00-12:00 (margen 60 -> ocupa 09:00-13:00)
+        // Actividad 10:00-12:00 con margen 60 -> buffer 09:30-12:30.
         crearCadenaActividad(usuario, EstadoProyecto.Publicado,
                 LocalDateTime.of(2026, 9, 15, 10, 0), 120);
         BloqueoAgenda bloqueo = guardarBloqueoSinValidarActividad(agenda,
@@ -237,12 +237,12 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
         // a tocar el margen, así que se sube a 60 para que la premisa del test se cumpla.
         agenda.setMargenActividadMinutos(60);
         em.flush();
-        // Actividad 10:00-12:00 (margen 60 -> ocupa 09:00-13:00)
+        // Actividad 10:00-12:00 con margen total 60 -> buffer 09:30-12:30.
         crearCadenaActividad(usuario, EstadoProyecto.Confirmado,
                 LocalDateTime.of(2026, 9, 15, 10, 0), 120);
-        // Bloqueo [08:30, 09:30]: solapa solo por el margen de la actividad.
+        // Bloqueo [08:30, 09:31]: solapa solo por la mitad izquierda del margen.
         BloqueoAgenda bloqueo = guardarBloqueoSinValidarActividad(agenda,
-                LocalDateTime.of(2026, 9, 15, 8, 30), LocalDateTime.of(2026, 9, 15, 9, 30));
+                LocalDateTime.of(2026, 9, 15, 8, 30), LocalDateTime.of(2026, 9, 15, 9, 31));
 
         assertExcepcionConMensaje(() -> {
             bloqueoAgendaRepository.delete(bloqueo);

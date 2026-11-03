@@ -123,8 +123,8 @@ class CalendarioServiceTest {
         assertEquals(1, response.jornada().dias().size());
         assertEquals(1, response.bloqueosManuales().size());
         assertEquals(1, response.actividades().size());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 30), response.actividades().get(0).fechaHoraInicio());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 30), response.actividades().get(0).fechaHoraFin());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 45), response.actividades().get(0).fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 15), response.actividades().get(0).fechaHoraFin());
     }
 
     @Test
@@ -150,8 +150,8 @@ class CalendarioServiceTest {
 
         CalendarioResponse response = calendarioService.obtener(1L);
 
-        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 15), response.actividades().get(0).fechaHoraInicio());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 45), response.actividades().get(0).fechaHoraFin());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 38), response.actividades().get(0).fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 23), response.actividades().get(0).fechaHoraFin());
     }
 
     // ------------------------------------------------------------------
@@ -184,8 +184,8 @@ class CalendarioServiceTest {
         assertEquals(1L, response.bloqueosManuales().get(0).idBloqueo());
         assertEquals("Motivo personal privado", response.bloqueosManuales().get(0).motivo());
         assertEquals(1, response.actividades().size());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 30), response.actividades().get(0).fechaHoraInicio());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 30), response.actividades().get(0).fechaHoraFin());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 45), response.actividades().get(0).fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 15), response.actividades().get(0).fechaHoraFin());
     }
 
     @Test
@@ -502,7 +502,7 @@ class CalendarioServiceTest {
     void marcarNoDisponible_solapaActividadSoloPorMargen_lanzaHorarioComprometido() {
         mockUsuarioActivo();
         mockAgenda();
-        // Actividad 10:00-12:00, margen 30 -> ocupa 09:30-12:30.
+        // Actividad 10:00-12:00, margen total 30 -> buffer 09:45-12:15.
         when(actividadRepository.findActividadesDeUsuario(anyLong(), anyCollection()))
                 .thenReturn(List.of(actividad(
                         LocalDateTime.of(2026, 9, 15, 10, 0),
@@ -511,7 +511,7 @@ class CalendarioServiceTest {
         assertThrows(HorarioComprometidoException.class,
                 () -> calendarioService.marcarNoDisponible(1L, new MarcarNoDisponibleRequest(
                         LocalDateTime.of(2026, 9, 15, 8, 30),
-                        LocalDateTime.of(2026, 9, 15, 9, 31), null)));
+                        LocalDateTime.of(2026, 9, 15, 9, 46), null)));
 
         verify(bloqueoAgendaRepository, never()).save(any());
     }

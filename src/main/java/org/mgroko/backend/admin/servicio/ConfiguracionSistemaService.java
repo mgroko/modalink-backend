@@ -100,10 +100,11 @@ public class ConfiguracionSistemaService {
     }
 
     /**
-     * Margen en minutos aplicado a cada lado de las actividades del calendario.
-     * Se lee de {@code configuracion_sistema} (clave {@link #CLAVE_MARGEN_ACTIVIDAD_MIN});
-     * ante fila ausente, valor no numérico o negativo se usa 30 (igual que el
-     * trigger {@code fn_crear_agenda} y el DEFAULT de la columna).
+     * Margen total en minutos entre dos actividades consecutivas del
+     * calendario. Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_MARGEN_ACTIVIDAD_MIN}); ante fila ausente, valor no
+     * numérico o negativo se usa 30 (igual que el trigger
+     * {@code fn_crear_agenda} y el DEFAULT de la columna).
      *
      * @return margen por defecto en minutos, siempre >= 0
      */

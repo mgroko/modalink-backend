@@ -96,12 +96,21 @@ class DisponibilidadCalculatorTest {
     }
 
     @Test
-    void primerHueco_aplicaMargenSimetricoALaActividadNueva() {
+    void primerHueco_aplicaMargenTotalALaActividadNueva() {
         Intervalo ventana = new Intervalo(BASE, BASE.plusHours(4));
 
         assertThat(calculadora.primerHueco(
                 List.of(ventana), List.of(), 60, 30))
-                .contains(new Intervalo(BASE.plusMinutes(30), BASE.plusMinutes(90)));
+                .contains(new Intervalo(BASE.plusMinutes(15), BASE.plusMinutes(75)));
+    }
+
+    @Test
+    void primerHueco_conMargenImpar_reparteMitadesSinPerderMinutos() {
+        Intervalo ventana = new Intervalo(BASE, BASE.plusHours(4));
+
+        assertThat(calculadora.primerHueco(
+                List.of(ventana), List.of(), 60, 15))
+                .contains(new Intervalo(BASE.plusMinutes(7), BASE.plusMinutes(67)));
     }
 
     @Test
@@ -129,7 +138,7 @@ class DisponibilidadCalculatorTest {
 
         assertThat(seleccion).isPresent();
         assertThat(seleccion.get().intervalo())
-                .isEqualTo(new Intervalo(BASE.plusMinutes(30), BASE.plusMinutes(90)));
+                .isEqualTo(new Intervalo(BASE.plusMinutes(15), BASE.plusMinutes(75)));
         assertThat(seleccion.get().desvioMinutos()).isZero();
     }
 
@@ -149,13 +158,13 @@ class DisponibilidadCalculatorTest {
     @Test
     void seleccionarHueco_preferenciaAntesDelHueco_devuelveDesvioPositivo() {
         Intervalo ventana = new Intervalo(BASE, BASE.plusHours(4));
-        LocalDateTime preferido = BASE; // el margen obliga a empezar 30 min después
+        LocalDateTime preferido = BASE; // el margen obliga a empezar 15 min después
 
         var seleccion = calculadora.seleccionarHueco(
                 List.of(ventana), 60, 30, preferido, 120);
 
         assertThat(seleccion).isPresent();
-        assertThat(seleccion.get().desvioMinutos()).isEqualTo(30);
+        assertThat(seleccion.get().desvioMinutos()).isEqualTo(15);
     }
 
     @Test
@@ -167,7 +176,7 @@ class DisponibilidadCalculatorTest {
                 List.of(ventana), 60, 30, preferido, 180);
 
         assertThat(seleccion).isPresent();
-        assertThat(seleccion.get().desvioMinutos()).isEqualTo(-150);
+        assertThat(seleccion.get().desvioMinutos()).isEqualTo(-135);
     }
 
     @Test
@@ -194,8 +203,8 @@ class DisponibilidadCalculatorTest {
 
         assertThat(seleccion).isPresent();
         assertThat(seleccion.get().intervalo().inicio())
-                .isEqualTo(BASE.plusDays(1).withHour(8).plusMinutes(30));
-        assertThat(seleccion.get().desvioMinutos()).isEqualTo(30);
+                .isEqualTo(BASE.plusDays(1).withHour(8).plusMinutes(15));
+        assertThat(seleccion.get().desvioMinutos()).isEqualTo(15);
     }
 
     @Test

@@ -443,6 +443,40 @@ public class CronogramaService {
                 || planificacion.getProyecto().getFechaInicio() == null;
     }
 
+    /**
+     * Instante actual según el reloj inyectado, sin nanosegundos.
+     *
+     * <p>Se expone para que el planificador use exactamente la misma noción de
+     * “ahora” que el cálculo de lectura y no programe actividades libres en el
+     * pasado.</p>
+     */
+    public LocalDateTime ahora() {
+        return LocalDateTime.now(reloj).withNano(0);
+    }
+
+    /**
+     * Minutos transcurridos desde {@code inicio} hasta ahora, nunca negativos.
+     *
+     * <p>Es el {@code releaseTime} del CPM: empuja el inicio de las actividades
+     * libres hasta el instante actual, pero no mueve las actividades fijas. Si
+     * {@code inicio} está en el futuro, el resultado es {@code 0}.</p>
+     */
+    public long releaseTime(LocalDateTime inicio) {
+        return releaseTime(inicio, ahora());
+    }
+
+    /**
+     * Variante que usa un instante de referencia explícito. Permite que el
+     * planificador capture “ahora” una sola vez y use el mismo valor para el
+     * {@code releaseTime} y para la validación final.
+     */
+    public long releaseTime(LocalDateTime inicio, LocalDateTime ahora) {
+        if (inicio == null || ahora == null) {
+            return 0L;
+        }
+        return Math.max(0L, Duration.between(inicio, ahora).toMinutes());
+    }
+
     private EstadoCronograma recalcular(
             Planificacion planificacion,
             List<Actividad> actividades,

@@ -314,6 +314,31 @@ class CronogramaServiceTest {
         assertThat(cronogramaService.esTentativa(planificacion)).isFalse();
     }
 
+    @Test
+    void ahora_devuelveElInstanteDelReloj() {
+        assertThat(cronogramaService.ahora())
+                .isEqualTo(LocalDateTime.of(2026, 10, 25, 12, 0));
+    }
+
+    @Test
+    void releaseTime_conInicioEnElPasado_devuelveMinutosHastaAhora() {
+        assertThat(cronogramaService.releaseTime(
+                LocalDateTime.of(2026, 10, 25, 9, 0)))
+                .isEqualTo(180L);
+    }
+
+    @Test
+    void releaseTime_conInicioFuturo_devuelveCero() {
+        assertThat(cronogramaService.releaseTime(
+                LocalDateTime.of(2026, 10, 26, 9, 0)))
+                .isZero();
+    }
+
+    @Test
+    void releaseTime_conInicioNulo_devuelveCero() {
+        assertThat(cronogramaService.releaseTime(null)).isZero();
+    }
+
     private LocalDateTime fechaProyectada(
             Planificacion planificacion,
             List<Actividad> actividades,

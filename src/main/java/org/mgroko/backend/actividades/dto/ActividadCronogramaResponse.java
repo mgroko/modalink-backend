@@ -5,6 +5,11 @@ import java.util.List;
 
 /**
  * Fila del cronograma (UC-33) para el Gantt y la tabla CPM detallada.
+ *
+ * <p>{@code inicioProyectado} y {@code finProyectado} son la proyección CPM.
+ * {@code inicioPersistido} y {@code finPersistido} son las fechas realmente
+ * guardadas en la actividad. En un proyecto confirmado el Gantt debe priorizar
+ * las persistidas; en uno no confirmado, las proyectadas.</p>
  */
 public record ActividadCronogramaResponse(
         Long idActividad,
@@ -25,7 +30,9 @@ public record ActividadCronogramaResponse(
         Boolean conflicto,
         String motivoConflicto,
         Boolean fijo,
-        Boolean tentativo) {
+        Boolean tentativo,
+        LocalDateTime inicioPersistido,
+        LocalDateTime finPersistido) {
 
     public ActividadCronogramaResponse {
         predecesoras = predecesoras == null ? List.of() : List.copyOf(predecesoras);

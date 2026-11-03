@@ -94,8 +94,8 @@ class CalendarioDisponibilidadTest {
 
         assertThat(resultado.disponible()).isTrue();
         assertThat(resultado.provisional()).isFalse();
-        assertThat(resultado.inicio()).isEqualTo(INICIO.plusMinutes(30));
-        assertThat(resultado.fin()).isEqualTo(INICIO.plusMinutes(150));
+        assertThat(resultado.inicio()).isEqualTo(INICIO.plusMinutes(15));
+        assertThat(resultado.fin()).isEqualTo(INICIO.plusMinutes(135));
     }
 
     @Test
@@ -141,6 +141,27 @@ class CalendarioDisponibilidadTest {
     }
 
     @Test
+    void verificarDisponibilidad_margenTotal_dejaTreintaMinutosEntreActividades() {
+        Planificacion planificacion = planificacion(INICIO);
+        Actividad actividad = actividad(1L, "A", 60, planificacion);
+        Actividad asignada = actividad(2L, "Asignada", 60, planificacion);
+        asignada.setFechaHoraInicio(INICIO);
+
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(jornadaCorrida(1, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+        when(actividadRepository.findConPredecesorasByPlanificacion(100L))
+                .thenReturn(List.of(actividad));
+        when(actividadRepository.findActividadesDeUsuario(eq(1L), anyCollection()))
+                .thenReturn(List.of(asignada));
+
+        ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidad(1L, actividad);
+
+        assertThat(resultado.disponible()).isTrue();
+        assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusMinutes(90));
+        assertThat(resultado.finSeleccionado()).isEqualTo(INICIO.plusMinutes(150));
+    }
+
+    @Test
     void verificarDisponibilidad_conPredecesora_desplazaElRango() {
         Planificacion planificacion = planificacion(INICIO);
         Actividad predecesora = actividad(1L, "A", 60, planificacion);
@@ -155,8 +176,8 @@ class CalendarioDisponibilidadTest {
         ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidad(1L, objetivo);
 
         assertThat(resultado.disponible()).isTrue();
-        assertThat(resultado.inicio()).isEqualTo(INICIO.plusMinutes(90));
-        assertThat(resultado.fin()).isEqualTo(INICIO.plusMinutes(210));
+        assertThat(resultado.inicio()).isEqualTo(INICIO.plusMinutes(75));
+        assertThat(resultado.fin()).isEqualTo(INICIO.plusMinutes(195));
     }
 
     @Test
@@ -176,7 +197,7 @@ class CalendarioDisponibilidadTest {
 
         ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidad(1L, objetivo);
 
-        assertThat(resultado.inicio()).isEqualTo(INICIO.plusMinutes(330));
+        assertThat(resultado.inicio()).isEqualTo(INICIO.plusMinutes(315));
         assertThat(resultado.disponible()).isTrue();
     }
 
@@ -193,9 +214,9 @@ class CalendarioDisponibilidadTest {
         ResultadoDisponibilidad resultado = calendarioService.verificarDisponibilidad(1L, actividad);
 
         assertThat(resultado.provisional()).isTrue();
-        assertThat(resultado.inicio()).isEqualTo(LocalDateTime.of(2026, 10, 25, 12, 30));
+        assertThat(resultado.inicio()).isEqualTo(LocalDateTime.of(2026, 10, 25, 12, 15));
         assertThat(resultado.finEvaluado()).isEqualTo(ENTREGA.atTime(23, 59));
-        assertThat(resultado.finSeleccionado()).isEqualTo(LocalDateTime.of(2026, 10, 25, 14, 30));
+        assertThat(resultado.finSeleccionado()).isEqualTo(LocalDateTime.of(2026, 10, 25, 14, 15));
         assertThat(resultado.disponible()).isTrue();
     }
 
@@ -260,8 +281,8 @@ class CalendarioDisponibilidadTest {
                 List.of(1L, 2L), actividad);
 
         assertThat(resultado.disponible()).isTrue();
-        assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusMinutes(90));
-        assertThat(resultado.finSeleccionado()).isEqualTo(INICIO.plusMinutes(150));
+        assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusMinutes(75));
+        assertThat(resultado.finSeleccionado()).isEqualTo(INICIO.plusMinutes(135));
         assertThat(resultado.miembros()).hasSize(2);
     }
 
@@ -316,11 +337,11 @@ class CalendarioDisponibilidadTest {
 
         assertThat(resultado.disponible()).isTrue();
         assertThat(resultado.inicioSeleccionado())
-                .isEqualTo(INICIO.plusDays(1).withHour(8).withMinute(30));
+                .isEqualTo(INICIO.plusDays(1).withHour(8).withMinute(15));
         assertThat(resultado.finSeleccionado())
-                .isEqualTo(INICIO.plusDays(1).withHour(10).withMinute(30));
+                .isEqualTo(INICIO.plusDays(1).withHour(10).withMinute(15));
         assertThat(resultado.resultadoPreferencia()).isEqualTo(ResultadoPreferencia.DESVIO);
-        assertThat(resultado.desvioMinutos()).isEqualTo(30);
+        assertThat(resultado.desvioMinutos()).isEqualTo(15);
         assertThat(resultado.inicioPreferido())
                 .isEqualTo(INICIO.plusDays(1).withHour(8).withMinute(0));
     }
@@ -398,7 +419,7 @@ class CalendarioDisponibilidadTest {
                         extras);
 
         assertThat(resultado.disponible()).isTrue();
-        assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusHours(3));
+        assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusMinutes(150));
     }
 
     private Agenda agenda() {

@@ -110,8 +110,13 @@ public final class DisponibilidadCalculator {
     }
 
     /**
-     * Busca el primer hueco que admite la duración solicitada y un margen
-     * simétrico a ambos lados de la actividad nueva.
+     * Busca el primer hueco que admite la duración solicitada y el margen
+     * total que debe quedar entre actividades consecutivas.
+     *
+     * <p>El margen se reparte en mitades a cada lado de la actividad nueva:
+     * con un margen de 30 minutos, la actividad reserva 15 minutos a la
+     * izquierda y 15 a la derecha, de modo que la separación total con la
+     * actividad anterior o siguiente sea de 30 minutos.</p>
      */
     public java.util.Optional<Intervalo> primerHueco(
             Collection<Intervalo> ventanas,
@@ -126,8 +131,7 @@ public final class DisponibilidadCalculator {
             throw new IllegalArgumentException("El margen no puede ser negativo.");
         }
 
-        long duracionReservada = duracionMinutos + (2 * margenMinutos);
-        return primerHuecoEn(huecosLibres(ventanas, bloqueos), duracionReservada, margenMinutos);
+        return primerHuecoEn(huecosLibres(ventanas, bloqueos), duracionMinutos, margenMinutos);
     }
 
     /**
@@ -144,10 +148,7 @@ public final class DisponibilidadCalculator {
         if (margenMinutos < 0) {
             throw new IllegalArgumentException("El margen no puede ser negativo.");
         }
-        return primerHuecoEn(
-                huecos,
-                duracionMinutos + (2 * margenMinutos),
-                margenMinutos);
+        return primerHuecoEn(huecos, duracionMinutos, margenMinutos);
     }
 
     /**
@@ -164,8 +165,13 @@ public final class DisponibilidadCalculator {
 
     /**
      * Selecciona el hueco más cercano al inicio preferido respetando la
-     * duración y el margen. Si no hay preferencia, mantiene el comportamiento
-     * histórico: el primer hueco cronológico.
+     * duración y el margen total entre actividades. Si no hay preferencia,
+     * mantiene el comportamiento histórico: el primer hueco cronológico.
+     *
+     * <p>El margen se reparte en mitades: la actividad nueva deja
+     * {@code margen / 2} a la izquierda y el resto a la derecha. Con un margen
+     * de 30 minutos, la separación total con cada actividad vecina es de 30
+     * minutos.</p>
      *
      * <p>La tolerancia solo se aplica cuando existe una preferencia. Si ningún
      * hueco queda dentro de la tolerancia, devuelve vacío: la preferencia no
@@ -178,7 +184,7 @@ public final class DisponibilidadCalculator {
      *
      * @param huecos          huecos libres ya calculados e intersectados
      * @param duracionMinutos duración de la actividad
-     * @param margenMinutos   margen simétrico
+     * @param margenMinutos   margen total entre actividades consecutivas
      * @param preferido       hora preferida; su fecha se ignora y se usa la de
      *                        cada hueco. {@code null} si no hay preferencia
      * @param toleranciaMinutos desvío máximo admitido; ignorado sin preferencia
@@ -204,10 +210,12 @@ public final class DisponibilidadCalculator {
             return java.util.Optional.empty();
         }
 
-        long duracionReservada = duracionMinutos + (2 * margenMinutos);
+        long duracionReservada = duracionMinutos + margenMinutos;
+        long margenIzquierdo = MargenActividad.izquierdo(margenMinutos);
+        long margenDerecho = MargenActividad.derecho(margenMinutos);
 
         if (preferido == null) {
-            return primerHuecoEn(huecos, duracionReservada, margenMinutos)
+            return primerHuecoEn(huecos, duracionMinutos, margenMinutos)
                     .map(intervalo -> new SeleccionHueco(intervalo, 0L));
         }
 
@@ -222,9 +230,9 @@ public final class DisponibilidadCalculator {
             LocalDateTime preferidoDelHueco =
                     hueco.inicio().toLocalDate().atTime(preferido.toLocalTime());
 
-            LocalDateTime inicioMinimo = hueco.inicio().plusMinutes(margenMinutos);
+            LocalDateTime inicioMinimo = hueco.inicio().plusMinutes(margenIzquierdo);
             LocalDateTime inicioMaximo = hueco.fin()
-                    .minusMinutes(margenMinutos + duracionMinutos);
+                    .minusMinutes(margenDerecho + duracionMinutos);
             if (inicioMaximo.isBefore(inicioMinimo)) {
                 continue;
             }
@@ -249,19 +257,22 @@ public final class DisponibilidadCalculator {
 
     private java.util.Optional<Intervalo> primerHuecoEn(
             Collection<Intervalo> huecos,
-            long duracionReservada,
+            long duracionMinutos,
             long margenMinutos) {
         if (huecos == null) {
             return java.util.Optional.empty();
         }
+
+        long duracionReservada = duracionMinutos + margenMinutos;
+        long margenIzquierdo = MargenActividad.izquierdo(margenMinutos);
+
         for (Intervalo hueco : huecos) {
             if (hueco.minutos() < duracionReservada) {
                 continue;
             }
-            LocalDateTime inicio = hueco.inicio().plusMinutes(margenMinutos);
+            LocalDateTime inicio = hueco.inicio().plusMinutes(margenIzquierdo);
             return java.util.Optional.of(new Intervalo(
-                    inicio, inicio.plusMinutes(
-                            duracionReservada - (2 * margenMinutos))));
+                    inicio, inicio.plusMinutes(duracionMinutos)));
         }
         return java.util.Optional.empty();
     }

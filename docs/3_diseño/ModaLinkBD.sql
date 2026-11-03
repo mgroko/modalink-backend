@@ -293,8 +293,8 @@ BEGIN
 END $$ LANGUAGE plpgsql;
 
 -- Valida que un bloque de horario de una persona no se superponga con otra
--- actividad suya ni con un bloqueo manual. El margen se aplica a la actividad
--- nueva, igual que en la verificación de disponibilidad del backend.
+-- actividad suya ni con un bloqueo manual. El margen es total entre
+-- actividades: se reparte en mitades a cada lado de la actividad nueva.
 CREATE OR REPLACE FUNCTION fn_validar_solape_horario_usuario(
     p_id_usuario BIGINT,
     p_id_actividad BIGINT,
@@ -302,6 +302,9 @@ CREATE OR REPLACE FUNCTION fn_validar_solape_horario_usuario(
     p_duracion INT,
     p_margen INT
 ) RETURNS void AS $$
+DECLARE
+    v_margen_izquierdo INT;
+    v_margen_derecho INT;
 BEGIN
     IF p_inicio IS NULL OR p_duracion IS NULL THEN
         RETURN;
@@ -312,6 +315,9 @@ BEGIN
     IF p_margen < 0 THEN
         RAISE EXCEPTION 'El margen de la agenda no puede ser negativo: %', p_margen;
     END IF;
+
+    v_margen_izquierdo := p_margen / 2;
+    v_margen_derecho := p_margen - v_margen_izquierdo;
 
     IF EXISTS (
         SELECT 1
@@ -327,10 +333,10 @@ BEGIN
           AND act.id_actividad <> p_id_actividad
           AND act.fecha_hora_inicio IS NOT NULL
           AND act.estado IN ('PENDIENTE', 'EN_CURSO')
-          AND (p_inicio - (p_margen * INTERVAL '1 minute'))
-              < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (p_margen * INTERVAL '1 minute'))
-          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (p_margen * INTERVAL '1 minute'))
-              > (act.fecha_hora_inicio - (p_margen * INTERVAL '1 minute'))
+          AND (p_inicio - (v_margen_izquierdo * INTERVAL '1 minute'))
+              < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute'))
+          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute'))
+              > (act.fecha_hora_inicio - (v_margen_izquierdo * INTERVAL '1 minute'))
     ) THEN
         RAISE EXCEPTION 'El horario se superpone con otra actividad del mismo profesional.';
     END IF;
@@ -340,8 +346,8 @@ BEGIN
         FROM bloqueo_agenda b
         JOIN agenda ag ON ag.id_agenda = b.id_agenda
         WHERE ag.id_usuario = p_id_usuario
-          AND (p_inicio - (p_margen * INTERVAL '1 minute')) < b.fecha_hora_fin
-          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (p_margen * INTERVAL '1 minute')) > b.fecha_hora_inicio
+          AND (p_inicio - (v_margen_izquierdo * INTERVAL '1 minute')) < b.fecha_hora_fin
+          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute')) > b.fecha_hora_inicio
     ) THEN
         RAISE EXCEPTION 'El horario se superpone con un bloqueo manual del profesional.';
     END IF;
@@ -444,6 +450,8 @@ DECLARE
     v_fin TIMESTAMP;
     v_id_usuario BIGINT;
     v_margen INT;
+    v_margen_izquierdo INT;
+    v_margen_derecho INT;
 BEGIN
     IF TG_OP = 'DELETE' THEN
         v_id_agenda := OLD.id_agenda;
@@ -459,6 +467,8 @@ BEGIN
     FROM agenda WHERE id_agenda = v_id_agenda;
 
     v_margen := fn_margen_agenda(v_id_agenda);
+    v_margen_izquierdo := v_margen / 2;
+    v_margen_derecho := v_margen - v_margen_izquierdo;
 
     IF EXISTS (
         SELECT 1
@@ -473,8 +483,8 @@ BEGIN
           AND pf.id_usuario = v_id_usuario
           AND act.fecha_hora_inicio IS NOT NULL
           AND act.estado IN ('PENDIENTE', 'EN_CURSO')
-          AND v_inicio < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (v_margen * INTERVAL '1 minute'))
-          AND v_fin > (act.fecha_hora_inicio - (v_margen * INTERVAL '1 minute'))
+          AND v_inicio < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute'))
+          AND v_fin > (act.fecha_hora_inicio - (v_margen_izquierdo * INTERVAL '1 minute'))
     ) THEN
         RAISE EXCEPTION 'El bloqueo se superpone con una actividad agendada del profesional.';
     END IF;
@@ -3569,7 +3579,7 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios'),
     ('CATALOGO_GEOREF_PAIS_ISO',        'AR',          'Codigo ISO del pais para georeferenciacion de ubicaciones con API Georef'),
-    ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen en minutos aplicado a cada lado de las actividades del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen'),
+    ('AGENDA_MARGEN_ACTIVIDAD_MIN',     '30',          'Margen total en minutos entre dos actividades consecutivas del calendario. Valor inicial de agendas nuevas y fallback si la agenda no tiene margen'),
     ('DISPONIBILIDAD_TOLERANCIA_PREFERENCIA_MIN', '120', 'Minutos de tolerancia para adelantar o atrasar el inicio de una actividad respecto del horario de preferencia'),
     ('IMAGEN_MAX_LADO_PX',   '8000',           'Tamaño máximo en píxeles del lado más largo de una imagen'),
     ('IMAGEN_MAX_MEGAPIXELES', '24',             'Tamaño máximo en megapíxeles de una imagen'),

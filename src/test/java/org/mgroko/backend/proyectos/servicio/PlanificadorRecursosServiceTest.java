@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -43,6 +44,13 @@ class PlanificadorRecursosServiceTest {
 
     private static final LocalDateTime INICIO =
             LocalDateTime.of(2026, 11, 1, 9, 0);
+
+    private static final Clock RELOJ_TARDE = Clock.fixed(
+            Instant.parse("2026-11-01T12:00:00Z"),
+            ZoneId.of("UTC"));
+
+    private static final LocalDateTime AHORA_TARDE =
+            LocalDateTime.of(2026, 11, 1, 12, 0);
 
     private final CalendarioService calendarioService =
             Mockito.mock(CalendarioService.class);
@@ -145,6 +153,69 @@ class PlanificadorRecursosServiceTest {
     }
 
     @Test
+    void planificar_dosFijasAMenosDelMargenTotal_lanzaExcepcion() {
+        Actividad primera = actividad(1L, "Montaje", 60, EstadoActividad.EN_CURSO);
+        primera.setFechaHoraInicio(INICIO);
+        Actividad segunda = actividad(2L, "Desmontaje", 60, EstadoActividad.EN_CURSO);
+        segunda.setFechaHoraInicio(INICIO.plusMinutes(89));
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));
+
+        when(calendarioService.margenEfectivoDe(anyLong())).thenReturn(30);
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(
+                        asignacion(10L, 20L, 30L, primera),
+                        asignacion(11L, 20L, 30L, segunda)));
+
+        assertThatThrownBy(() -> service.planificar(
+                planificacion, List.of(primera, segunda), INICIO, true))
+                .isInstanceOf(ProyectoNoConfirmableException.class)
+                .extracting("codigo")
+                .isEqualTo("CRONOGRAMA_NO_VIABLE");
+    }
+
+    @Test
+    void planificar_dosFijasSeparadasPorElMargenTotal_esValido() {
+        Actividad primera = actividad(1L, "Montaje", 60, EstadoActividad.EN_CURSO);
+        primera.setFechaHoraInicio(INICIO);
+        Actividad segunda = actividad(2L, "Desmontaje", 60, EstadoActividad.EN_CURSO);
+        segunda.setFechaHoraInicio(INICIO.plusMinutes(90));
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));
+
+        when(calendarioService.margenEfectivoDe(anyLong())).thenReturn(30);
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(
+                        asignacion(10L, 20L, 30L, primera),
+                        asignacion(11L, 20L, 30L, segunda)));
+
+        PlanificadorRecursosService.Resultado resultado = service.planificar(
+                planificacion, List.of(primera, segunda), INICIO, true);
+
+        assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
+        assertThat(resultado.inicios().get(2L)).isEqualTo(INICIO.plusMinutes(90));
+    }
+
+    @Test
+    void planificar_fijasDeUsuariosDistintosPuedenQuedarBackToBack() {
+        Actividad primera = actividad(1L, "Montaje", 60, EstadoActividad.EN_CURSO);
+        primera.setFechaHoraInicio(INICIO);
+        Actividad segunda = actividad(2L, "Desmontaje", 60, EstadoActividad.EN_CURSO);
+        segunda.setFechaHoraInicio(INICIO.plusMinutes(60));
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));
+
+        when(calendarioService.margenEfectivoDe(anyLong())).thenReturn(30);
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(
+                        asignacion(10L, 20L, 30L, primera),
+                        asignacion(11L, 21L, 31L, segunda)));
+
+        PlanificadorRecursosService.Resultado resultado = service.planificar(
+                planificacion, List.of(primera, segunda), INICIO, true);
+
+        assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
+        assertThat(resultado.inicios().get(2L)).isEqualTo(INICIO.plusMinutes(60));
+    }
+
+    @Test
     void planificar_pendienteConfirmada_seTrataComoFija() {
         Actividad fija = actividad(1L, "Fija", 60, EstadoActividad.PENDIENTE);
         fija.setFechaHoraInicio(INICIO.plusHours(2));
@@ -158,6 +229,75 @@ class PlanificadorRecursosServiceTest {
                 service.planificar(planificacion, List.of(fija), INICIO, true);
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO.plusHours(2));
+    }
+
+    @Test
+    void planificar_proyectoIniciadoEnElPasado_solicitaInicioDesdeAhora() {
+        PlanificadorRecursosService servicioTarde = servicioConReloj(RELOJ_TARDE);
+        Actividad actividad = actividad(1L, "Montaje", 30, EstadoActividad.PENDIENTE);
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10), INICIO);
+
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(asignacion(10L, 20L, 30L, actividad)));
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(actividad), any(), any(), anyMap()))
+                .thenAnswer(inv -> disponible(inv.getArgument(2), 30));
+
+        PlanificadorRecursosService.Resultado resultado = servicioTarde.planificar(
+                planificacion, List.of(actividad), INICIO, false);
+
+        assertThat(resultado.inicios().get(1L)).isAfterOrEqualTo(AHORA_TARDE);
+    }
+
+    @Test
+    void planificar_fijaEnElPasado_seConservaYSucesoraEmpiezaAhora() {
+        PlanificadorRecursosService servicioTarde = servicioConReloj(RELOJ_TARDE);
+        Actividad fija = actividad(1L, "Fija", 60, EstadoActividad.PENDIENTE);
+        fija.setFechaHoraInicio(INICIO);
+        fija.setOrigenInicio(OrigenInicio.CONFIRMADA);
+        Actividad libre = actividad(2L, "Libre", 30, EstadoActividad.PENDIENTE);
+        libre.setPredecesoras(Set.of(fija));
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10), INICIO);
+
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(
+                        asignacion(10L, 20L, 30L, fija),
+                        asignacion(11L, 20L, 30L, libre)));
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(libre), any(), any(), anyMap()))
+                .thenAnswer(inv -> disponible(inv.getArgument(2), 30));
+
+        PlanificadorRecursosService.Resultado resultado = servicioTarde.planificar(
+                planificacion, List.of(fija, libre), INICIO, true);
+
+        assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
+        assertThat(resultado.inicios().get(2L)).isAfterOrEqualTo(AHORA_TARDE);
+    }
+
+    @Test
+    void planificar_disponibilidadDevuelveInicioPasado_lanzaExcepcion() {
+        PlanificadorRecursosService servicioTarde = servicioConReloj(RELOJ_TARDE);
+        Actividad actividad = actividad(1L, "Montaje", 30, EstadoActividad.PENDIENTE);
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10), INICIO);
+
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(asignacion(10L, 20L, 30L, actividad)));
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(actividad), any(), any(), anyMap()))
+                .thenReturn(disponible(LocalDateTime.of(2026, 11, 1, 11, 30), 30));
+
+        assertThatThrownBy(() -> servicioTarde.planificar(
+                planificacion, List.of(actividad), INICIO, false))
+                .isInstanceOf(ProyectoNoConfirmableException.class)
+                .extracting("codigo")
+                .isEqualTo("SIN_DISPONIBILIDAD");
+    }
+
+    private PlanificadorRecursosService servicioConReloj(Clock reloj) {
+        return new PlanificadorRecursosService(
+                new CronogramaService(reloj),
+                calendarioService,
+                asignacionRepository);
     }
 
     private ResultadoDisponibilidad disponible(LocalDateTime inicio, int duracion) {
@@ -177,10 +317,14 @@ class PlanificadorRecursosServiceTest {
     }
 
     private Planificacion planificacion(LocalDate entrega) {
+        return planificacion(entrega, INICIO);
+    }
+
+    private Planificacion planificacion(LocalDate entrega, LocalDateTime fechaInicio) {
         Proyecto proyecto = Proyecto.builder()
                 .idProyecto(100L)
                 .nombre("Proyecto")
-                .fechaInicio(INICIO)
+                .fechaInicio(fechaInicio)
                 .estado(EstadoProyecto.PUBLICADO)
                 .build();
         return Planificacion.builder()

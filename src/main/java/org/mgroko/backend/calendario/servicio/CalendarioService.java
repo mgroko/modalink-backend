@@ -56,7 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Gestión del calendario del usuario. La disponibilidad se calcula como la
  * unión de los bloqueos manuales (persistidos en bloqueo_agenda) y los
  * bloqueos calculados por actividades de proyectos activos (derivados, no
- * persistidos, extendidos con el margen configurado en la agenda).
+ * persistidos, extendidos con la mitad del margen total a cada lado).
  */
 @Service
 public class CalendarioService {
@@ -289,10 +289,12 @@ public class CalendarioService {
             List<Intervalo> ventanas = ventanasDe(agenda, desde, hasta);
             List<Intervalo> bloqueos = new ArrayList<>(
                     bloqueosDe(idUsuario, agenda, desde, hasta));
+            int margenIzquierdo = MargenActividad.izquierdo(margen);
+            int margenDerecho = MargenActividad.derecho(margen);
             for (Intervalo extra : bloqueosExtra.getOrDefault(idUsuario, List.of())) {
                 bloqueos.add(new Intervalo(
-                        extra.inicio().minusMinutes(margen),
-                        extra.fin().plusMinutes(margen)));
+                        extra.inicio().minusMinutes(margenIzquierdo),
+                        extra.fin().plusMinutes(margenDerecho)));
             }
             List<Intervalo> huecos = disponibilidadCalculator.huecosLibres(ventanas, bloqueos);
             Optional<Intervalo> primerHueco = disponibilidadCalculator.primerHueco(
@@ -537,15 +539,17 @@ public class CalendarioService {
 
     /**
      * Indica si el rango [inicio, fin] solapa algún bloqueo calculado por
-     * actividad de un proyecto activo (considerando el margen). Las
-     * actividades sin inicio o fin se ignoran (no deberían existir: son
-     * NOT NULL en BD).
+     * actividad de un proyecto activo, considerando la mitad del margen total
+     * a cada lado. Las actividades sin inicio o fin se ignoran (no deberían
+     * existir: son NOT NULL en BD).
      */
     private boolean solapaActividad(Long idUsuario, LocalDateTime inicio, LocalDateTime fin, int margen) {
+        int margenIzquierdo = MargenActividad.izquierdo(margen);
+        int margenDerecho = MargenActividad.derecho(margen);
         return actividadesDe(idUsuario).stream()
                 .filter(a -> a.getFechaHoraInicio() != null && a.getFechaHoraFin() != null)
-                .anyMatch(a -> a.getFechaHoraInicio().minusMinutes(margen).isBefore(fin)
-                        && a.getFechaHoraFin().plusMinutes(margen).isAfter(inicio));
+                .anyMatch(a -> a.getFechaHoraInicio().minusMinutes(margenIzquierdo).isBefore(fin)
+                        && a.getFechaHoraFin().plusMinutes(margenDerecho).isAfter(inicio));
     }
 
     private List<Actividad> actividadesDe(Long idUsuario) {
@@ -613,7 +617,8 @@ public class CalendarioService {
 
     /**
      * Bloqueos que se descuentan de la jornada: los manuales del usuario y las
-     * actividades ya asignadas, extendidas por el margen configurado.
+     * actividades ya asignadas, extendidas por la mitad del margen total a cada
+     * lado.
      */
     private List<Intervalo> bloqueosDe(
             Long idUsuario,
@@ -632,6 +637,8 @@ public class CalendarioService {
         }
 
         int margen = margenDe(agenda);
+        int margenIzquierdo = MargenActividad.izquierdo(margen);
+        int margenDerecho = MargenActividad.derecho(margen);
         for (Actividad actividad : actividadesDe(idUsuario)) {
             LocalDateTime inicio = actividad.getFechaHoraInicio();
             LocalDateTime fin = actividad.getFechaHoraFin();
@@ -639,8 +646,8 @@ public class CalendarioService {
                 continue;
             }
 
-            LocalDateTime inicioBloqueo = inicio.minusMinutes(margen);
-            LocalDateTime finBloqueo = fin.plusMinutes(margen);
+            LocalDateTime inicioBloqueo = inicio.minusMinutes(margenIzquierdo);
+            LocalDateTime finBloqueo = fin.plusMinutes(margenDerecho);
 
             if (inicioBloqueo.isBefore(hasta) && finBloqueo.isAfter(desde)) {
                 bloqueos.add(new Intervalo(inicioBloqueo, finBloqueo));
@@ -711,6 +718,20 @@ public class CalendarioService {
         return agendaRepository.findByUsuario_IdUsuario(idUsuario)
                 .orElseThrow(() -> new AgendaNoEncontradaException(
                         "No se encontró la agenda del usuario."));
+    }
+
+    /**
+     * Margen efectivo del usuario en minutos. Se usa desde el planificador
+     * para validar actividades fijas con la misma regla que la disponibilidad.
+     *
+     * <p>Si el usuario todavía no tiene agenda se devuelve {@code 0}: la
+     * validación de fijas no debe fallar por un dato que la verificación de
+     * disponibilidad reportará después con su propio diagnóstico.</p>
+     */
+    public int margenEfectivoDe(Long idUsuario) {
+        return agendaRepository.findByUsuario_IdUsuario(idUsuario)
+                .map(this::margenDe)
+                .orElse(0);
     }
 
     /**
