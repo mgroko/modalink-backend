@@ -17,13 +17,11 @@ CREATE TABLE actividad(
     nombre               varchar(100)    NOT NULL,
     duracion_minutos     int4            NOT NULL,
     fecha_hora_inicio    timestamp,
-    origen_inicio         varchar(20),
     horario_preferencia_inicio time,
     descripcion          varchar(200),
     id_planificacion     int8            NOT NULL,
     id_ubicacion         int8,
     CONSTRAINT chk_actividad_duracion CHECK (duracion_minutos > 0),
-    CONSTRAINT chk_actividad_origen_inicio CHECK (origen_inicio IS NULL OR origen_inicio IN ('PROYECTADA', 'CONFIRMADA', 'REAL')),
     CONSTRAINT chk_estado_actividad CHECK (estado IN ('PENDIENTE', 'EN_CURSO', 'FINALIZADA', 'CANCELADA')),
     CONSTRAINT "PK_actividad" PRIMARY KEY (id_actividad)
 )
