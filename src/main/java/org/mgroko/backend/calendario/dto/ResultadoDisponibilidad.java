@@ -181,4 +181,22 @@ public record ResultadoDisponibilidad(
                 codigo,
                 reprogramacionPropuesta);
     }
+
+    public ResultadoDisponibilidad conMiembros(List<DetalleMiembroDisponibilidad> nuevosMiembros) {
+        return new ResultadoDisponibilidad(
+                disponible,
+                provisional,
+                inicioEvaluado,
+                finEvaluado,
+                inicioSeleccionado,
+                finSeleccionado,
+                motivo,
+                nuevosMiembros,
+                resultadoPreferencia,
+                desvioMinutos,
+                inicioPreferido,
+                miembrosBloqueantes,
+                codigoMotivo,
+                reprogramacionPropuesta);
+    }
 }

@@ -27,12 +27,14 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
     @Query("""
         SELECT DISTINCT a
         FROM Actividad a
+        JOIN FETCH a.planificacion pl
+        JOIN FETCH pl.proyecto pr
         JOIN AsignacionActividad asg ON asg.actividad = a
         JOIN asg.miembro m
         JOIN m.perfil per
         WHERE per.usuario.idUsuario = :idUsuario
           AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
-          AND a.planificacion.proyecto.estado IN :estados
+          AND pr.estado IN :estados
           AND a.estado IN (org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE,
                             org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
           AND a.fechaHoraInicio IS NOT NULL

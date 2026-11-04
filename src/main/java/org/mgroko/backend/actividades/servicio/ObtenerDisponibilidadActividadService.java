@@ -1,9 +1,12 @@
 package org.mgroko.backend.actividades.servicio;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.mgroko.backend.actividades.exception.ActividadCanceladaException;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
+import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
@@ -115,7 +118,7 @@ public class ObtenerDisponibilidadActividadService {
                         reprogramarProyectoService.simularAsignacion(
                                 idProyecto, idActividad, idsUsuarios);
                 if (simulacion.disponibilidad() != null) {
-                    return simulacion.disponibilidad();
+                    return enriquecerConPerfiles(simulacion.disponibilidad(), perfiles);
                 }
             } catch (ProyectoNoConfirmableException ex) {
                 return new ResultadoDisponibilidad(
@@ -152,7 +155,44 @@ public class ObtenerDisponibilidadActividadService {
             }
         }
 
-        return calendarioService.verificarDisponibilidadMiembros(idsUsuarios, actividad);
+        return enriquecerConPerfiles(
+                calendarioService.verificarDisponibilidadMiembros(idsUsuarios, actividad),
+                perfiles);
+    }
+
+    /**
+     * Completa el detalle de cada miembro con el perfil evaluado. El cálculo
+     * de disponibilidad trabaja con usuarios, pero la consulta conoce los
+     * perfiles solicitados y puede asociarlos para mostrar el nombre artístico.
+     */
+    private ResultadoDisponibilidad enriquecerConPerfiles(
+            ResultadoDisponibilidad resultado,
+            List<Perfil> perfiles) {
+
+        if (resultado == null || resultado.miembros().isEmpty() || perfiles.isEmpty()) {
+            return resultado;
+        }
+
+        Map<Long, Perfil> porUsuario = new LinkedHashMap<>();
+        for (Perfil perfil : perfiles) {
+            if (perfil.getUsuario() == null || perfil.getUsuario().getIdUsuario() == null) {
+                continue;
+            }
+            porUsuario.putIfAbsent(perfil.getUsuario().getIdUsuario(), perfil);
+        }
+
+        List<DetalleMiembroDisponibilidad> miembros = resultado.miembros().stream()
+                .map(miembro -> {
+                    Perfil perfil = porUsuario.get(miembro.idUsuario());
+                    return perfil == null
+                            ? miembro
+                            : miembro.conPerfil(
+                                    perfil.getIdPerfil(),
+                                    perfil.getNombreArtistico());
+                })
+                .toList();
+
+        return resultado.conMiembros(miembros);
     }
 
     private List<Perfil> resolverPerfiles(List<Long> idsPerfil, Perfil perfilActivo) {

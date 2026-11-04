@@ -239,7 +239,7 @@ Cambios:
 - Si el proyecto no tiene `fechaEntrega` → `400`.
 - La respuesta incluye los cuatro campos nuevos.
 - Si hay varios perfiles y no hay intersección, `miembrosBloqueantes` intenta identificar a los responsables.
-- El detalle `miembros[]` sigue igual: `idUsuario`, `inicioEvaluado`, `finEvaluado`, `huecos`, `disponible`, `motivo`.
+- El detalle `miembros[]` incluye `idUsuario`, `idPerfil`, `nombreArtistico`, `inicioEvaluado`, `finEvaluado`, `huecos`, `disponible` y `motivo`. `idPerfil`/`nombreArtistico` identifican el perfil evaluado; si el llamador no lo conoce pueden ser `null`.
 
 ---
 

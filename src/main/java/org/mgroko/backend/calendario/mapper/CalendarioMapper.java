@@ -7,11 +7,13 @@ import org.mgroko.backend.calendario.dto.BloqueoActividadResponse;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.JornadaDiaResponse;
+import org.mgroko.backend.calendario.dto.PerfilCalendarioResponse;
 import org.mgroko.backend.calendario.servicio.MargenActividad;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.mgroko.backend.modelo.JornadaAgenda;
+import org.mgroko.backend.modelo.Proyecto;
 
 public class CalendarioMapper {
 
@@ -49,14 +51,32 @@ public class CalendarioMapper {
      * NOT NULL en BD; solo posible en objetos transient o mal construidos).
      */
     public static BloqueoActividadResponse toBloqueoActividadResponse(Actividad actividad, int margenMinutos) {
+        return toBloqueoActividadResponse(actividad, margenMinutos, List.of());
+    }
+
+    /**
+     * Igual que {@link #toBloqueoActividadResponse(Actividad, int)} pero
+     * agrega el proyecto de la actividad y los perfiles del usuario dueño del
+     * calendario que están asignados a ella.
+     */
+    public static BloqueoActividadResponse toBloqueoActividadResponse(
+            Actividad actividad,
+            int margenMinutos,
+            List<PerfilCalendarioResponse> perfiles) {
         Objects.requireNonNull(actividad.getFechaHoraInicio(),
                 "La actividad (id=" + actividad.getIdActividad() + ") no tiene fechaHoraInicio");
         Objects.requireNonNull(actividad.getFechaHoraFin(),
                 "La actividad (id=" + actividad.getIdActividad() + ") no tiene fechaHoraFin");
+        Proyecto proyecto = actividad.getPlanificacion() != null
+                ? actividad.getPlanificacion().getProyecto()
+                : null;
         return new BloqueoActividadResponse(
                 actividad.getIdActividad(),
                 actividad.getNombre(),
                 actividad.getFechaHoraInicio().minusMinutes(MargenActividad.izquierdo(margenMinutos)),
-                actividad.getFechaHoraFin().plusMinutes(MargenActividad.derecho(margenMinutos)));
+                actividad.getFechaHoraFin().plusMinutes(MargenActividad.derecho(margenMinutos)),
+                proyecto != null ? proyecto.getIdProyecto() : null,
+                proyecto != null ? proyecto.getNombre() : null,
+                perfiles);
     }
 }

@@ -4,7 +4,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -25,6 +28,7 @@ import org.mgroko.backend.calendario.dto.ConfigJornadaRequest;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.JornadaDiaRequest;
 import org.mgroko.backend.calendario.dto.MarcarNoDisponibleRequest;
+import org.mgroko.backend.calendario.dto.PerfilCalendarioResponse;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
 import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
@@ -38,14 +42,17 @@ import org.mgroko.backend.calendario.mapper.CalendarioMapper;
 import org.mgroko.backend.calendario.servicio.DisponibilidadCalculator.Intervalo;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
+import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.mgroko.backend.modelo.JornadaAgenda;
+import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AgendaRepository;
+import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.BloqueoAgendaRepository;
 import org.mgroko.backend.repositorio.JornadaAgendaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
@@ -69,6 +76,7 @@ public class CalendarioService {
     private final JornadaAgendaRepository jornadaAgendaRepository;
     private final BloqueoAgendaRepository bloqueoAgendaRepository;
     private final ActividadRepository actividadRepository;
+    private final AsignacionActividadRepository asignacionActividadRepository;
     private final ConfiguracionSistemaService configuracionSistemaService;
     private final CronogramaService cronogramaService;
     private final DisponibilidadCalculator disponibilidadCalculator = new DisponibilidadCalculator();
@@ -79,6 +87,7 @@ public class CalendarioService {
             JornadaAgendaRepository jornadaAgendaRepository,
             BloqueoAgendaRepository bloqueoAgendaRepository,
             ActividadRepository actividadRepository,
+            AsignacionActividadRepository asignacionActividadRepository,
             ConfiguracionSistemaService configuracionSistemaService,
             CronogramaService cronogramaService) {
         this.usuarioRepository = usuarioRepository;
@@ -86,6 +95,7 @@ public class CalendarioService {
         this.jornadaAgendaRepository = jornadaAgendaRepository;
         this.bloqueoAgendaRepository = bloqueoAgendaRepository;
         this.actividadRepository = actividadRepository;
+        this.asignacionActividadRepository = asignacionActividadRepository;
         this.configuracionSistemaService = configuracionSistemaService;
         this.cronogramaService = cronogramaService;
     }
@@ -104,12 +114,17 @@ public class CalendarioService {
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
         int margen = margenDe(agenda);
+        Map<Long, List<PerfilCalendarioResponse>> perfilesPorActividad =
+                perfilesPorActividad(actividades, idUsuario);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
                 bloqueos.stream().map(CalendarioMapper::toBloqueoResponse).toList(),
                 actividades.stream()
-                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(a, margen))
+                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(
+                                a,
+                                margen,
+                                perfilesPorActividad.getOrDefault(a.getIdActividad(), List.of())))
                         .toList());
     }
 
@@ -143,12 +158,17 @@ public class CalendarioService {
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
         int margen = margenDe(agenda);
+        Map<Long, List<PerfilCalendarioResponse>> perfilesPorActividad =
+                perfilesPorActividad(actividades, idUsuario);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
                 bloqueos.stream().map(CalendarioMapper::toBloqueoResponse).toList(),
                 actividades.stream()
-                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(a, margen))
+                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(
+                                a,
+                                margen,
+                                perfilesPorActividad.getOrDefault(a.getIdActividad(), List.of())))
                         .toList());
     }
 
@@ -636,6 +656,60 @@ public class CalendarioService {
 
     private List<Actividad> actividadesDe(Long idUsuario) {
         return actividadRepository.findActividadesDeUsuario(idUsuario, ESTADOS_ACTIVOS);
+    }
+
+    /**
+     * Agrupa por actividad los perfiles del usuario dueño del calendario que
+     * están asignados a ella. Se consulta en lote para evitar N+1 y se
+     * deduplica por perfil, ordenando por nombre artístico.
+     */
+    private Map<Long, List<PerfilCalendarioResponse>> perfilesPorActividad(
+            List<Actividad> actividades,
+            Long idUsuario) {
+
+        if (actividades.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> ids = actividades.stream()
+                .map(Actividad::getIdActividad)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Map<Long, PerfilCalendarioResponse>> porActividad = new HashMap<>();
+        for (AsignacionActividad asignacion
+                : asignacionActividadRepository.findPerfilesDeUsuarioPorActividades(ids, idUsuario)) {
+
+            Perfil perfil = asignacion.getMiembro() != null
+                    ? asignacion.getMiembro().getPerfil()
+                    : null;
+            if (perfil == null || perfil.getIdPerfil() == null) {
+                continue;
+            }
+
+            porActividad
+                    .computeIfAbsent(
+                            asignacion.getActividad().getIdActividad(),
+                            id -> new LinkedHashMap<>())
+                    .putIfAbsent(
+                            perfil.getIdPerfil(),
+                            new PerfilCalendarioResponse(
+                                    perfil.getIdPerfil(),
+                                    perfil.getNombreArtistico()));
+        }
+
+        Map<Long, List<PerfilCalendarioResponse>> resultado = new HashMap<>();
+        porActividad.forEach((idActividad, perfiles) -> {
+            List<PerfilCalendarioResponse> lista = new ArrayList<>(perfiles.values());
+            lista.sort(Comparator.comparing(
+                    PerfilCalendarioResponse::nombreArtistico,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+            resultado.put(idActividad, List.copyOf(lista));
+        });
+        return resultado;
     }
 
     /**

@@ -86,7 +86,12 @@ Fuente: `security/SecurityConfig.java`.
       "idActividad": 5,
       "nombre": "Diseño UI",
       "fechaHoraInicio": "2026-10-12T08:30:00",
-      "fechaHoraFin": "2026-10-12T11:30:00"
+      "fechaHoraFin": "2026-10-12T11:30:00",
+      "idProyecto": 105,
+      "nombreProyecto": "Desfile Primavera",
+      "perfiles": [
+        { "idPerfil": 12, "nombreArtistico": "Luna" }
+      ]
     }
   ]
 }
@@ -99,6 +104,8 @@ Fuente: `security/SecurityConfig.java`.
 - `jornada.margenActividadMinutos` = `agenda.margen_actividad_min` (`NOT NULL DEFAULT 30`, `chk_margen_positivo >= 0`): siempre un entero ≥ 0, nunca `null`.
 - **`actividades[]` ya viene con el margen aplicado** (`CalendarioMapper.toBloqueoActividadResponse`): `fechaHoraInicio` está *restada* y `fechaHoraFin` *sumada* en la mitad del margen total. Con margen 30, una actividad 09:00–11:00 se devuelve como 08:45–11:15, de modo que dos actividades consecutivas quedan separadas por 30 minutos. **No vuelvas a sumar/restar el margen en el front.**
 - `actividades[]` solo incluye actividades de proyectos en estado **`PUBLICADO` o `CONFIRMADO`**, de membresías con `estado_participacion = 'ACTIVO'` (`ActividadRepository.findActividadesDeUsuario`, `CalendarioService.ESTADOS_ACTIVOS`).
+- `actividades[].idProyecto` / `nombreProyecto` identifican el proyecto de la actividad.
+- `actividades[].perfiles` contiene los perfiles **del usuario dueño del calendario** asignados a la actividad (no los de otros usuarios), deduplicados y ordenados por `nombreArtistico`. Puede ser `[]`. Si el usuario tiene más de un perfil asignado a la misma actividad, se devuelven todos.
 
 ---
 
@@ -252,6 +259,9 @@ No devuelve body: el frontend debe retirar el bloqueo del estado local y re-fetc
 - `idActividad` (Long)
 - `nombre` (String)
 - `fechaHoraInicio` / `fechaHoraFin` (LocalDateTime, **ya extendidos por la mitad del margen total a cada lado**)
+- `idProyecto` (Long)
+- `nombreProyecto` (String)
+- `perfiles` (List<`PerfilCalendarioResponse`>): `idPerfil` (Long) y `nombreArtistico` (String) de los perfiles del usuario dueño del calendario asignados a la actividad
 - *Nota:* bloques derivados, no persistidos; se recalculan en cada `GET`.
 
 ---

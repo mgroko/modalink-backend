@@ -39,6 +39,24 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
     List<AsignacionActividad> findActivasByActividadIds(
             @Param("idsActividades") Collection<Long> idsActividades);
 
+    /**
+     * Perfiles del usuario indicado asignados a las actividades indicadas.
+     * Se usa para identificar de qué perfil proviene cada bloqueo calculado
+     * del calendario cuando el usuario tiene más de uno.
+     */
+    @Query("""
+        SELECT a FROM AsignacionActividad a
+        JOIN FETCH a.actividad act
+        JOIN FETCH a.miembro m
+        JOIN FETCH m.perfil p
+        WHERE act.idActividad IN :idsActividades
+          AND p.usuario.idUsuario = :idUsuario
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<AsignacionActividad> findPerfilesDeUsuarioPorActividades(
+            @Param("idsActividades") Collection<Long> idsActividades,
+            @Param("idUsuario") Long idUsuario);
+
     @Query("""
         SELECT a FROM AsignacionActividad a
         JOIN FETCH a.miembro m

@@ -75,6 +75,9 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
     private ActividadRepository actividadRepository;
 
     @Autowired
+    private AsignacionActividadRepository asignacionActividadRepository;
+
+    @Autowired
     private PaisRepository paisRepository;
 
     @Autowired
@@ -352,6 +355,20 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 usuario.getIdUsuario(), List.of(EstadoProyecto.Publicado, EstadoProyecto.Confirmado));
 
         assertTrue(actividades.isEmpty());
+    }
+
+    @Test
+    void findPerfilesDeUsuarioPorActividades_devuelveElPerfilAsignado() {
+        Usuario usuario = guardarUsuario("find.perfiles@example.com", "88880011");
+        Actividad actividad = crearCadenaActividad(usuario, EstadoProyecto.Publicado,
+                LocalDateTime.of(2026, 9, 15, 10, 0), 120);
+
+        List<AsignacionActividad> asignaciones =
+                asignacionActividadRepository.findPerfilesDeUsuarioPorActividades(
+                        List.of(actividad.getIdActividad()), usuario.getIdUsuario());
+
+        assertEquals(1, asignaciones.size());
+        assertEquals("Luna", asignaciones.get(0).getMiembro().getPerfil().getNombreArtistico());
     }
 
     /**

@@ -18,6 +18,7 @@ import org.mgroko.backend.calendario.dto.ConfigJornadaRequest;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.JornadaDiaRequest;
 import org.mgroko.backend.calendario.dto.MarcarNoDisponibleRequest;
+import org.mgroko.backend.calendario.dto.PerfilCalendarioResponse;
 import org.mgroko.backend.calendario.exception.AgendaNoEncontradaException;
 import org.mgroko.backend.calendario.exception.BloqueoNoEncontradoException;
 import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
@@ -26,12 +27,16 @@ import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
 import org.mgroko.backend.calendario.exception.RangoInvalidoException;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
+import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.mgroko.backend.modelo.JornadaAgenda;
+import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AgendaRepository;
+import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.BloqueoAgendaRepository;
 import org.mgroko.backend.repositorio.JornadaAgendaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
@@ -40,6 +45,7 @@ import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.lenient;
@@ -66,6 +72,9 @@ class CalendarioServiceTest {
 
     @Mock
     private ActividadRepository actividadRepository;
+
+    @Mock
+    private AsignacionActividadRepository asignacionActividadRepository;
 
     @Mock
     private ConfiguracionSistemaService configuracionSistemaService;
@@ -125,6 +134,39 @@ class CalendarioServiceTest {
         assertEquals(1, response.actividades().size());
         assertEquals(LocalDateTime.of(2026, 9, 10, 9, 45), response.actividades().get(0).fechaHoraInicio());
         assertEquals(LocalDateTime.of(2026, 9, 10, 12, 15), response.actividades().get(0).fechaHoraFin());
+    }
+
+    @Test
+    void obtener_incluyePerfilesDelUsuarioAsignadosALaActividad() {
+        mockUsuarioActivo();
+        mockAgenda();
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L)).thenReturn(List.of());
+        when(bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(10L))
+                .thenReturn(List.of());
+        Actividad actividad = actividad(
+                LocalDateTime.of(2026, 9, 10, 10, 0),
+                LocalDateTime.of(2026, 9, 10, 12, 0));
+        when(actividadRepository.findActividadesDeUsuario(anyLong(), anyCollection()))
+                .thenReturn(List.of(actividad));
+
+        Perfil perfil = Perfil.builder()
+                .idPerfil(12L)
+                .nombreArtistico("fulano1")
+                .build();
+        MiembroProyecto miembro = MiembroProyecto.builder().perfil(perfil).build();
+        AsignacionActividad asignacion = AsignacionActividad.builder()
+                .actividad(actividad)
+                .miembro(miembro)
+                .build();
+        when(asignacionActividadRepository.findPerfilesDeUsuarioPorActividades(
+                anyCollection(), eq(1L)))
+                .thenReturn(List.of(asignacion));
+
+        CalendarioResponse response = calendarioService.obtener(1L);
+
+        assertEquals(
+                List.of(new PerfilCalendarioResponse(12L, "fulano1")),
+                response.actividades().get(0).perfiles());
     }
 
     @Test

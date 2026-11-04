@@ -32,6 +32,7 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AgendaRepository;
+import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.BloqueoAgendaRepository;
 import org.mgroko.backend.repositorio.JornadaAgendaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
@@ -48,6 +49,7 @@ class CalendarioVentanaDisponibleTest {
     private final JornadaAgendaRepository jornadaAgendaRepository = mock(JornadaAgendaRepository.class);
     private final BloqueoAgendaRepository bloqueoAgendaRepository = mock(BloqueoAgendaRepository.class);
     private final ActividadRepository actividadRepository = mock(ActividadRepository.class);
+    private final AsignacionActividadRepository asignacionActividadRepository = mock(AsignacionActividadRepository.class);
     private final ConfiguracionSistemaService configuracionSistemaService = mock(ConfiguracionSistemaService.class);
     private final CronogramaService cronogramaService = new CronogramaService(RELOJ);
 
@@ -61,6 +63,7 @@ class CalendarioVentanaDisponibleTest {
                 jornadaAgendaRepository,
                 bloqueoAgendaRepository,
                 actividadRepository,
+                asignacionActividadRepository,
                 configuracionSistemaService,
                 cronogramaService);
 

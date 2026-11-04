@@ -114,7 +114,9 @@ class ObtenerDisponibilidadActividadServiceTest {
 
         ResultadoDisponibilidad resultado = service.obtener(1L, 10L, 100L, 55L, null);
 
-        assertThat(resultado).isSameAs(esperado);
+        assertThat(resultado.miembros()).hasSize(1);
+        assertThat(resultado.miembros().get(0).idPerfil()).isEqualTo(10L);
+        assertThat(resultado.miembros().get(0).nombreArtistico()).isEqualTo("Luna");
         verify(calendarioService).verificarDisponibilidadMiembros(List.of(1L), actividad);
     }
 
@@ -138,8 +140,10 @@ class ObtenerDisponibilidadActividadServiceTest {
         when(calendarioService.verificarDisponibilidadMiembros(List.of(1L, 2L), actividad))
                 .thenReturn(resultado(true));
 
-        service.obtener(1L, 10L, 100L, 55L, List.of(10L, 11L, 12L));
+        ResultadoDisponibilidad resultado = service.obtener(1L, 10L, 100L, 55L, List.of(10L, 11L, 12L));
 
+        assertThat(resultado.miembros()).hasSize(1);
+        assertThat(resultado.miembros().get(0).nombreArtistico()).isEqualTo("Luna");
         verify(calendarioService).verificarDisponibilidadMiembros(List.of(1L, 2L), actividad);
     }
 
@@ -227,7 +231,7 @@ class ObtenerDisponibilidadActividadServiceTest {
         ResultadoDisponibilidad resultado = service.obtener(
                 1L, 10L, 100L, 55L, null);
 
-        assertThat(resultado).isSameAs(esperado);
+        assertThat(resultado.miembros().get(0).nombreArtistico()).isEqualTo("Luna");
         assertThat(resultado.reprogramacionPropuesta()).hasSize(1);
         verify(calendarioService, never()).verificarDisponibilidadMiembros(
                 any(), any());
