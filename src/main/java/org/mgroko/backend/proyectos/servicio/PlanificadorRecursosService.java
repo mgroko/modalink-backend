@@ -67,10 +67,9 @@ public class PlanificadorRecursosService {
     public Resultado planificar(
             Planificacion planificacion,
             List<Actividad> actividades,
-            LocalDateTime fechaInicio,
-            boolean proyectoConfirmado) {
+            LocalDateTime fechaInicio) {
         return planificar(
-                planificacion, actividades, fechaInicio, proyectoConfirmado, false);
+                planificacion, actividades, fechaInicio, false);
     }
 
     /**
@@ -85,13 +84,11 @@ public class PlanificadorRecursosService {
             Planificacion planificacion,
             List<Actividad> actividades,
             LocalDateTime fechaInicio,
-            boolean proyectoConfirmado,
             boolean permitirSinAsignaciones) {
         return planificar(
                 planificacion,
                 actividades,
                 fechaInicio,
-                proyectoConfirmado,
                 permitirSinAsignaciones,
                 Map.of());
     }
@@ -109,7 +106,6 @@ public class PlanificadorRecursosService {
             Planificacion planificacion,
             List<Actividad> actividades,
             LocalDateTime fechaInicio,
-            boolean proyectoConfirmado,
             boolean permitirSinAsignaciones,
             Map<Long, List<Long>> usuariosExtraPorActividad) {
 
@@ -117,7 +113,6 @@ public class PlanificadorRecursosService {
                 planificacion,
                 actividades,
                 fechaInicio,
-                proyectoConfirmado,
                 permitirSinAsignaciones,
                 usuariosExtraPorActividad,
                 Map.of());
@@ -136,7 +131,6 @@ public class PlanificadorRecursosService {
             Planificacion planificacion,
             List<Actividad> actividades,
             LocalDateTime fechaInicio,
-            boolean proyectoConfirmado,
             boolean permitirSinAsignaciones,
             Map<Long, List<Long>> usuariosExtraPorActividad,
             Map<Long, LocalDateTime> iniciosFijosAdicionales) {
@@ -317,25 +311,13 @@ public class PlanificadorRecursosService {
                 continue;
             }
 
-            ResultadoDisponibilidad resultado;
-            try {
-                resultado = calendarioService.verificarDisponibilidadMiembrosEnRango(
-                        usuarios,
-                        actividad,
-                        inicioMinimo,
-                        inicioMaximo,
-                        bloqueosExtra);
-            } catch (RuntimeException ex) {
-                throw new ProyectoNoConfirmableException(
-                        "SIN_DISPONIBILIDAD",
-                        "No se pudo evaluar la disponibilidad de la actividad '"
-                                + actividad.getNombre() + "': " + ex.getMessage(),
-                        List.of(new BloqueoConfirmacionResponse(
-                                "SIN_DISPONIBILIDAD",
-                                "No se pudo evaluar la disponibilidad.",
-                                "ACTIVIDAD",
-                                idActividad)));
-            }
+            ResultadoDisponibilidad resultado =
+                    calendarioService.verificarDisponibilidadMiembrosEnRango(
+                            usuarios,
+                            actividad,
+                            inicioMinimo,
+                            inicioMaximo,
+                            bloqueosExtra);
             disponibilidad.put(idActividad, resultado);
 
             if (!resultado.disponible() || resultado.inicioSeleccionado() == null) {

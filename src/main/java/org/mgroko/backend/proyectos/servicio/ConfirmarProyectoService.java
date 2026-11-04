@@ -92,7 +92,7 @@ public class ConfirmarProyectoService {
         proyectoRepository.saveAndFlush(proyecto);
 
         PlanificadorRecursosService.Resultado plan = planificadorRecursosService
-                .planificar(planificacion, actividades, ahora, true);
+                .planificar(planificacion, actividades, ahora);
 
         for (Actividad actividad : actividades) {
             if (actividad.getEstado() == EstadoActividad.CANCELADA) {

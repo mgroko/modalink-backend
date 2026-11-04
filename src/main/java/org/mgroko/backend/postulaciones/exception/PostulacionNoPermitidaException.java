@@ -7,7 +7,18 @@ package org.mgroko.backend.postulaciones.exception;
  */
 public class PostulacionNoPermitidaException extends RuntimeException {
 
+    private final String codigo;
+
     public PostulacionNoPermitidaException(String mensaje) {
+        this(mensaje, null);
+    }
+
+    public PostulacionNoPermitidaException(String mensaje, String codigo) {
         super(mensaje);
+        this.codigo = codigo;
+    }
+
+    public String getCodigo() {
+        return codigo;
     }
 }

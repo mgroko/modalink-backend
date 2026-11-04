@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -165,7 +167,6 @@ public class ReprogramarProyectoService {
                     planificacion,
                     actividades,
                     fechaInicio,
-                    true,
                     true,
                     usuariosExtraPorActividad);
         } catch (ProyectoNoConfirmableException ex) {
@@ -333,8 +334,11 @@ public class ReprogramarProyectoService {
     /**
      * Simula una asignación sin persistir nada. Devuelve el hueco propuesto
      * para la actividad y el detalle de las actividades que se moverían.
+     *
+     * <p>No lleva {@code @Transactional}: trabaja sobre copias y, si el
+     * planner no encuentra ventana, la excepción de dominio no debe marcar
+     * rollback-only la transacción del llamador.</p>
      */
-    @Transactional(readOnly = true)
     public SimulacionAsignacion simularAsignacion(
             Long idProyecto,
             Long idActividad,
@@ -349,9 +353,9 @@ public class ReprogramarProyectoService {
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
         LocalDateTime fechaInicio = fechaInicio(planificacion);
-        List<Actividad> actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(
-                        planificacion.getIdPlanificacion());
+        List<Actividad> actividades = copiarActividades(
+                actividadRepository.findConPredecesorasByPlanificacion(
+                        planificacion.getIdPlanificacion()));
         Map<Long, Actividad> porId = porId(actividades);
         Set<Long> movibles = idsMoviables(actividades, idActividad);
 
@@ -375,72 +379,112 @@ public class ReprogramarProyectoService {
             }
         }
 
-        try {
-            PlanificadorRecursosService.Resultado plan = planificar(
-                    planificacion,
-                    actividades,
-                    fechaInicio,
-                    Map.of(idActividad, idsUsuarios == null ? List.of() : idsUsuarios),
-                    iniciosFijosAdicionales(actividades, movibles));
+        PlanificadorRecursosService.Resultado plan = planificar(
+                planificacion,
+                actividades,
+                fechaInicio,
+                Map.of(idActividad, idsUsuarios == null ? List.of() : idsUsuarios),
+                iniciosFijosAdicionales(actividades, movibles));
 
-            Actividad objetivo = porId.get(idActividad);
-            LocalDateTime inicioPropuesto = plan.inicios().get(idActividad);
-            LocalDateTime finPropuesto = objetivo != null && inicioPropuesto != null
-                    ? inicioPropuesto.plusMinutes(objetivo.getDuracionMinutos())
-                    : null;
+        Actividad objetivo = porId.get(idActividad);
+        LocalDateTime inicioPropuesto = plan.inicios().get(idActividad);
+        LocalDateTime finPropuesto = objetivo != null && inicioPropuesto != null
+                ? inicioPropuesto.plusMinutes(objetivo.getDuracionMinutos())
+                : null;
 
-            List<ActividadReprogramadaResponse> cambios = new ArrayList<>();
-            for (Long id : movibles) {
-                Actividad actividad = porId.get(id);
-                if (actividad == null) {
-                    continue;
-                }
-                LocalDateTime anterior = iniciosAnteriores.get(id);
-                LocalDateTime nuevo = plan.inicios().get(id);
-                if (!Objects.equals(anterior, nuevo)) {
-                    cambios.add(new ActividadReprogramadaResponse(
-                            actividad.getIdActividad(),
-                            actividad.getNombre(),
-                            actividad.getEstado().name(),
-                            anterior,
-                            nuevo));
-                }
+        List<ActividadReprogramadaResponse> cambios = new ArrayList<>();
+        for (Long id : movibles) {
+            Actividad actividad = porId.get(id);
+            if (actividad == null) {
+                continue;
             }
-
-            ResultadoDisponibilidad disponibilidad =
-                    plan.disponibilidad().get(idActividad);
-            if (disponibilidad == null && inicioPropuesto != null) {
-                disponibilidad = new ResultadoDisponibilidad(
-                        true,
-                        false,
-                        inicioPropuesto,
-                        finPropuesto,
-                        inicioPropuesto,
-                        finPropuesto,
-                        null,
-                        List.of(),
-                        null,
-                        null,
-                        null,
-                        List.of());
-            }
-
-            return new SimulacionAsignacion(
-                    idActividad,
-                    inicioPropuesto,
-                    finPropuesto,
-                    disponibilidad == null
-                            ? null
-                            : disponibilidad.conReprogramacionPropuesta(cambios),
-                    cambios);
-        } finally {
-            for (Long id : movibles) {
-                Actividad actividad = porId.get(id);
-                if (actividad != null) {
-                    actividad.setFechaHoraInicio(iniciosAnteriores.get(id));
-                }
+            LocalDateTime anterior = iniciosAnteriores.get(id);
+            LocalDateTime nuevo = plan.inicios().get(id);
+            if (!Objects.equals(anterior, nuevo)) {
+                cambios.add(new ActividadReprogramadaResponse(
+                        actividad.getIdActividad(),
+                        actividad.getNombre(),
+                        actividad.getEstado().name(),
+                        anterior,
+                        nuevo));
             }
         }
+
+        ResultadoDisponibilidad disponibilidad =
+                plan.disponibilidad().get(idActividad);
+        if (disponibilidad == null && inicioPropuesto != null) {
+            disponibilidad = new ResultadoDisponibilidad(
+                    true,
+                    false,
+                    inicioPropuesto,
+                    finPropuesto,
+                    inicioPropuesto,
+                    finPropuesto,
+                    null,
+                    List.of(),
+                    null,
+                    null,
+                    null,
+                    List.of());
+        }
+
+        return new SimulacionAsignacion(
+                idActividad,
+                inicioPropuesto,
+                finPropuesto,
+                disponibilidad == null
+                        ? null
+                        : disponibilidad.conReprogramacionPropuesta(cambios),
+                cambios);
+    }
+
+    /**
+     * Copia las actividades para simular sin tocar entidades gestionadas.
+     * El planner solo necesita identidad, estado, duración, inicio,
+     * preferencia y predecesoras.
+     */
+    private List<Actividad> copiarActividades(List<Actividad> originales) {
+        Map<Long, Actividad> copias = new LinkedHashMap<>();
+        for (Actividad original : originales) {
+            if (original.getIdActividad() == null) {
+                continue;
+            }
+            copias.put(
+                    original.getIdActividad(),
+                    Actividad.builder()
+                            .idActividad(original.getIdActividad())
+                            .estado(original.getEstado())
+                            .nombre(original.getNombre())
+                            .descripcion(original.getDescripcion())
+                            .duracionMinutos(original.getDuracionMinutos())
+                            .fechaHoraInicio(original.getFechaHoraInicio())
+                            .horarioPreferenciaInicio(
+                                    original.getHorarioPreferenciaInicio())
+                            .planificacion(original.getPlanificacion())
+                            .ubicacion(original.getUbicacion())
+                            .build());
+        }
+
+        for (Actividad original : originales) {
+            Actividad copia = copias.get(original.getIdActividad());
+            if (copia == null || original.getPredecesoras() == null) {
+                continue;
+            }
+            Set<Actividad> predecesoras = new HashSet<>();
+            for (Actividad predecesora : original.getPredecesoras()) {
+                if (predecesora == null || predecesora.getIdActividad() == null) {
+                    continue;
+                }
+                Actividad copiaPredecesora = copias.get(
+                        predecesora.getIdActividad());
+                if (copiaPredecesora != null) {
+                    predecesoras.add(copiaPredecesora);
+                }
+            }
+            copia.setPredecesoras(predecesoras);
+        }
+
+        return new ArrayList<>(copias.values());
     }
 
     private PlanificadorRecursosService.Resultado planificar(
@@ -455,7 +499,6 @@ public class ReprogramarProyectoService {
                     planificacion,
                     actividades,
                     fechaInicio,
-                    true,
                     true,
                     usuariosExtraPorActividad == null
                             ? Map.of()

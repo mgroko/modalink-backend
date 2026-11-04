@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -25,9 +26,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.actividades.dto.RangoFactibleAbsoluto;
 import org.mgroko.backend.actividades.servicio.CronogramaService;
+import org.mgroko.backend.actividades.servicio.EvaluarDisponibilidadActividadService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
-import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
@@ -55,7 +56,9 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
@@ -97,7 +100,9 @@ class AceptarPostulacionServiceTest {
     @Mock
     private NotificacionService notificacionService;
     @Mock
-    private CalendarioService calendarioService;
+    private EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
     @Mock
     private ActividadRepository actividadRepository;
     @Mock
@@ -133,7 +138,8 @@ class AceptarPostulacionServiceTest {
                 cupoRequerimientoService,
                 proyectoSecurityService,
                 notificacionService,
-                calendarioService,
+                evaluarDisponibilidadActividadService,
+                reprogramarProyectoService,
                 actividadRepository,
                 cronogramaService,
                 reloj);
@@ -357,8 +363,8 @@ class AceptarPostulacionServiceTest {
                 .thenReturn(Optional.empty());
         when(asignacionActividadRepository.findActivasByActividadId(55L))
                 .thenReturn(List.of(otraAsignacion));
-        when(calendarioService.verificarDisponibilidadMiembros(
-                anyCollection(), eq(actividad)))
+        when(evaluarDisponibilidadActividadService.evaluar(
+                any(Proyecto.class), eq(actividad), anyList()))
                 .thenReturn(new ResultadoDisponibilidad(
                         true,
                         false,
@@ -421,9 +427,17 @@ class AceptarPostulacionServiceTest {
             assertThat(advertencia.idActividad()).isEqualTo(66L);
             assertThat(advertencia.nombreProyecto()).isEqualTo("Otro proyecto");
         });
-        verify(calendarioService).verificarDisponibilidadMiembros(
-                org.mockito.ArgumentMatchers.argThat(ids -> ids.size() == 2),
-                eq(actividad));
+        verify(evaluarDisponibilidadActividadService).evaluar(
+                any(Proyecto.class),
+                eq(actividad),
+                org.mockito.ArgumentMatchers.argThat(ids -> ids.size() == 2));
+        verify(reprogramarProyectoService).reprogramarActividad(
+                eq(5L),
+                eq(55L),
+                eq(MotivoReprogramacion.ASIGNACION),
+                eq(Map.of(
+                        55L,
+                        List.of(postulante.getUsuario().getIdUsuario()))));
     }
 
     private void prepararCaminoFeliz() {

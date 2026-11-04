@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.mgroko.backend.actividades.servicio.EvaluarDisponibilidadActividadService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
-import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Notificacion;
@@ -63,7 +63,7 @@ public class CrearPostulacionService {
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final NotificacionService notificacionService;
-    private final CalendarioService calendarioService;
+    private final EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
     private final Clock reloj;
 
     public CrearPostulacionService(
@@ -75,7 +75,7 @@ public class CrearPostulacionService {
             MiembroProyectoRepository miembroProyectoRepository,
             CupoRequerimientoService cupoRequerimientoService,
             NotificacionService notificacionService,
-            CalendarioService calendarioService,
+            EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
@@ -85,7 +85,7 @@ public class CrearPostulacionService {
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.notificacionService = notificacionService;
-        this.calendarioService = calendarioService;
+        this.evaluarDisponibilidadActividadService = evaluarDisponibilidadActividadService;
         this.reloj = reloj;
     }
 
@@ -192,10 +192,14 @@ public class CrearPostulacionService {
         validarNoDuplicadoActividad(perfil, requerimiento);
 
         ResultadoDisponibilidad disponibilidad =
-                calendarioService.verificarDisponibilidad(idUsuario, actividad);
+                evaluarDisponibilidadActividadService.evaluar(
+                        proyecto,
+                        actividad,
+                        List.of(idUsuario));
         if (!disponibilidad.disponible()) {
             throw new PostulacionNoPermitidaException(
-                    "No tenés disponibilidad suficiente dentro del rango factible de la actividad.");
+                    "No tenés disponibilidad suficiente dentro del rango factible de la actividad.",
+                    disponibilidad.codigoMotivo());
         }
 
         PostulacionActividad postulacion = PostulacionActividad.builder()

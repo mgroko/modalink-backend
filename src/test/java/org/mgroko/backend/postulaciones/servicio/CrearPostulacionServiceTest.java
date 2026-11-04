@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -21,8 +22,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.actividades.servicio.EvaluarDisponibilidadActividadService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
-import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Notificacion;
@@ -92,7 +93,7 @@ class CrearPostulacionServiceTest {
     @Mock
     private NotificacionService notificacionService;
     @Mock
-    private CalendarioService calendarioService;
+    private EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
 
     private CrearPostulacionService servicio;
 
@@ -107,7 +108,7 @@ class CrearPostulacionServiceTest {
                 miembroProyectoRepository,
                 cupoRequerimientoService,
                 notificacionService,
-                calendarioService,
+                evaluarDisponibilidadActividadService,
                 RELOJ);
     }
 
@@ -363,7 +364,7 @@ class CrearPostulacionServiceTest {
         when(postulacionActividadRepository
                 .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
                         ID_PERFIL, ID_REQUERIMIENTO_ACT)).thenReturn(false);
-        when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
+        when(evaluarDisponibilidadActividadService.evaluar(any(Proyecto.class), eq(requerimiento.getActividad()), eq(List.of(ID_USUARIO))))
                 .thenReturn(new ResultadoDisponibilidad(true, false, AHORA, AHORA.plusHours(2)));
         when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
                 .thenAnswer(invocacion -> {
@@ -402,7 +403,7 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(requerimiento));
         when(cupoRequerimientoService.calcularActividad(requerimiento))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
-        when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
+        when(evaluarDisponibilidadActividadService.evaluar(any(Proyecto.class), eq(requerimiento.getActividad()), eq(List.of(ID_USUARIO))))
                 .thenReturn(new ResultadoDisponibilidad(false, false, AHORA, AHORA.plusHours(2)));
 
         assertThatThrownBy(() -> servicio.darDeAltaPostulacionActividad(
@@ -423,7 +424,7 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(requerimiento));
         when(cupoRequerimientoService.calcularActividad(requerimiento))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
-        when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
+        when(evaluarDisponibilidadActividadService.evaluar(any(Proyecto.class), eq(requerimiento.getActividad()), eq(List.of(ID_USUARIO))))
                 .thenReturn(new ResultadoDisponibilidad(true, true, AHORA, AHORA.plusHours(2)));
         when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
                 .thenAnswer(invocacion -> {
@@ -454,7 +455,7 @@ class CrearPostulacionServiceTest {
                 .isInstanceOf(PostulacionNoPermitidaException.class)
                 .hasMessageContaining("pendientes");
 
-        verify(calendarioService, never()).verificarDisponibilidad(any(), any());
+        verify(evaluarDisponibilidadActividadService, never()).evaluar(any(), any(), anyList());
     }
 
     @Test
@@ -476,7 +477,7 @@ class CrearPostulacionServiceTest {
                 .isInstanceOf(PostulacionNoPermitidaException.class)
                 .hasMessageContaining("Ya existe una postulación");
 
-        verify(calendarioService, never()).verificarDisponibilidad(any(), any());
+        verify(evaluarDisponibilidadActividadService, never()).evaluar(any(), any(), anyList());
     }
 
     @Test
@@ -489,7 +490,7 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(requerimiento));
         when(cupoRequerimientoService.calcularActividad(requerimiento))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
-        when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
+        when(evaluarDisponibilidadActividadService.evaluar(any(Proyecto.class), eq(requerimiento.getActividad()), eq(List.of(ID_USUARIO))))
                 .thenReturn(new ResultadoDisponibilidad(true, false, AHORA, AHORA.plusHours(2)));
         when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
                 .thenThrow(new DataIntegrityViolationException("UQ_perfil_postulacion_act"));
@@ -554,7 +555,7 @@ class CrearPostulacionServiceTest {
                 .thenReturn(Optional.of(miembro("MIEMBRO")));
         when(cupoRequerimientoService.calcularActividad(requerimiento))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
-        when(calendarioService.verificarDisponibilidad(ID_USUARIO, requerimiento.getActividad()))
+        when(evaluarDisponibilidadActividadService.evaluar(any(Proyecto.class), eq(requerimiento.getActividad()), eq(List.of(ID_USUARIO))))
                 .thenReturn(new ResultadoDisponibilidad(true, false, AHORA, AHORA.plusHours(2)));
         when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
                 .thenAnswer(invocacion -> invocacion.getArgument(0));
@@ -583,7 +584,7 @@ class CrearPostulacionServiceTest {
                 .isInstanceOf(PostulacionNoPermitidaException.class)
                 .hasMessageContaining("director");
 
-        verify(calendarioService, never()).verificarDisponibilidad(any(), any());
+        verify(evaluarDisponibilidadActividadService, never()).evaluar(any(), any(), anyList());
     }
 
     // ---------------------------------------------------------------

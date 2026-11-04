@@ -98,7 +98,7 @@ class ReprogramarProyectoServiceTest {
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(pendiente, fija));
         when(planificadorRecursosService.planificar(
-                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true), eq(true),
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true),
                 anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_NUEVO, 2L, INICIO_FIJO),
@@ -193,7 +193,7 @@ class ReprogramarProyectoServiceTest {
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(pendiente));
         when(planificadorRecursosService.planificar(
-                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true), eq(true),
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO), eq(true),
                 anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_NUEVO), Map.of(), null));
@@ -228,7 +228,7 @@ class ReprogramarProyectoServiceTest {
                 .thenReturn(List.of(predecesora, objetivo, sucesora));
         when(planificadorRecursosService.planificar(
                 eq(planificacion), anyList(), eq(INICIO_PROYECTO),
-                eq(true), eq(true), anyMap(), anyMap()))
+                eq(true), anyMap(), anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(
                                 1L, INICIO_VIEJO,
@@ -266,7 +266,7 @@ class ReprogramarProyectoServiceTest {
                 .thenReturn(List.of(predecesora, objetivo));
         when(planificadorRecursosService.planificar(
                 eq(planificacion), anyList(), eq(INICIO_PROYECTO),
-                eq(true), eq(true), anyMap(), anyMap()))
+                eq(true), anyMap(), anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_VIEJO, 2L, INICIO_VIEJO.plusHours(3)),
                         Map.of(),
@@ -297,7 +297,7 @@ class ReprogramarProyectoServiceTest {
                 .thenReturn(INICIO_PROYECTO);
         when(planificadorRecursosService.planificar(
                 eq(planificacion), anyList(), eq(INICIO_PROYECTO),
-                eq(true), eq(true), anyMap()))
+                eq(true), anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_NUEVO),
                         Map.of(),
@@ -348,7 +348,7 @@ class ReprogramarProyectoServiceTest {
                 .thenReturn(INICIO_PROYECTO);
         when(planificadorRecursosService.planificar(
                 eq(planificacion), anyList(), eq(INICIO_PROYECTO),
-                eq(true), eq(true), anyMap(), anyMap()))
+                eq(true), anyMap(), anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_VIEJO, 2L, INICIO_NUEVO),
                         Map.of(),
@@ -379,7 +379,7 @@ class ReprogramarProyectoServiceTest {
                 .thenReturn(INICIO_PROYECTO);
         when(planificadorRecursosService.planificar(
                 eq(planificacion), anyList(), eq(INICIO_PROYECTO),
-                eq(true), eq(true), anyMap(), anyMap()))
+                eq(true), anyMap(), anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(2L, INICIO_NUEVO),
                         Map.of(),

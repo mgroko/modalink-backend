@@ -3,6 +3,8 @@ package org.mgroko.backend.actividades.servicio;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,7 +21,6 @@ import org.mgroko.backend.actividades.exception.ActividadCanceladaException;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
 import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
-import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
@@ -32,7 +33,6 @@ import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.ActividadReprogramadaResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
-import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
@@ -59,10 +59,7 @@ class ObtenerDisponibilidadActividadServiceTest {
     private ProyectoVisibilidadService proyectoVisibilidadService;
 
     @Mock
-    private CalendarioService calendarioService;
-
-    @Mock
-    private ReprogramarProyectoService reprogramarProyectoService;
+    private EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
 
     @InjectMocks
     private ObtenerDisponibilidadActividadService service;
@@ -109,7 +106,8 @@ class ObtenerDisponibilidadActividadServiceTest {
     @Test
     void obtener_sinPerfiles_evaluaPerfilActivo() {
         ResultadoDisponibilidad esperado = resultado(true);
-        when(calendarioService.verificarDisponibilidadMiembros(List.of(1L), actividad))
+        when(evaluarDisponibilidadActividadService.evaluar(
+                any(Proyecto.class), eq(actividad), eq(List.of(1L))))
                 .thenReturn(esperado);
 
         ResultadoDisponibilidad resultado = service.obtener(1L, 10L, 100L, 55L, null);
@@ -117,7 +115,8 @@ class ObtenerDisponibilidadActividadServiceTest {
         assertThat(resultado.miembros()).hasSize(1);
         assertThat(resultado.miembros().get(0).idPerfil()).isEqualTo(10L);
         assertThat(resultado.miembros().get(0).nombreArtistico()).isEqualTo("Luna");
-        verify(calendarioService).verificarDisponibilidadMiembros(List.of(1L), actividad);
+        verify(evaluarDisponibilidadActividadService).evaluar(
+                any(Proyecto.class), eq(actividad), eq(List.of(1L)));
     }
 
     @Test
@@ -137,14 +136,16 @@ class ObtenerDisponibilidadActividadServiceTest {
         when(perfilRepository.findById(12L)).thenReturn(Optional.of(otroUsuario));
         when(perfilRepository.findById(10L)).thenReturn(Optional.of(perfilActivo));
         when(proyectoVisibilidadService.esMiembroActivo(100L, 10L)).thenReturn(true);
-        when(calendarioService.verificarDisponibilidadMiembros(List.of(1L, 2L), actividad))
+        when(evaluarDisponibilidadActividadService.evaluar(
+                any(Proyecto.class), eq(actividad), eq(List.of(1L, 2L))))
                 .thenReturn(resultado(true));
 
         ResultadoDisponibilidad resultado = service.obtener(1L, 10L, 100L, 55L, List.of(10L, 11L, 12L));
 
         assertThat(resultado.miembros()).hasSize(1);
         assertThat(resultado.miembros().get(0).nombreArtistico()).isEqualTo("Luna");
-        verify(calendarioService).verificarDisponibilidadMiembros(List.of(1L, 2L), actividad);
+        verify(evaluarDisponibilidadActividadService).evaluar(
+                any(Proyecto.class), eq(actividad), eq(List.of(1L, 2L)));
     }
 
     @Test
@@ -161,7 +162,8 @@ class ObtenerDisponibilidadActividadServiceTest {
         assertThatThrownBy(() -> service.obtener(1L, 10L, 100L, 55L, List.of(12L)))
                 .isInstanceOf(AccesoDenegadoProyectoException.class);
 
-        verify(calendarioService, never()).verificarDisponibilidadMiembros(any(), any());
+        verify(evaluarDisponibilidadActividadService, never()).evaluar(
+                any(), any(), anyList());
     }
 
     @Test
@@ -209,9 +211,7 @@ class ObtenerDisponibilidadActividadServiceTest {
     }
 
     @Test
-    void obtener_proyectoConfirmadoYPendiente_usaSimulacionDeAsignacion() {
-        actividad.getPlanificacion().getProyecto()
-                .setEstado(org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO);
+    void obtener_pendiente_delegaEnEvaluadorYConservaLaPropuesta() {
         actividad.setEstado(org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE);
 
         LocalDateTime inicio = LocalDateTime.of(2026, 11, 8, 9, 0);
@@ -219,22 +219,15 @@ class ObtenerDisponibilidadActividadServiceTest {
                 55L, "Montaje", "PENDIENTE", null, inicio);
         ResultadoDisponibilidad esperado = resultado(true)
                 .conReprogramacionPropuesta(List.of(cambio));
-        when(reprogramarProyectoService.simularAsignacion(
-                100L, 55L, List.of(1L)))
-                .thenReturn(new ReprogramarProyectoService.SimulacionAsignacion(
-                        55L,
-                        inicio,
-                        inicio.plusMinutes(60),
-                        esperado,
-                        List.of(cambio)));
+        when(evaluarDisponibilidadActividadService.evaluar(
+                any(Proyecto.class), eq(actividad), eq(List.of(1L))))
+                .thenReturn(esperado);
 
         ResultadoDisponibilidad resultado = service.obtener(
                 1L, 10L, 100L, 55L, null);
 
         assertThat(resultado.miembros().get(0).nombreArtistico()).isEqualTo("Luna");
         assertThat(resultado.reprogramacionPropuesta()).hasSize(1);
-        verify(calendarioService, never()).verificarDisponibilidadMiembros(
-                any(), any());
     }
 
     private ResultadoDisponibilidad resultado(boolean disponible) {

@@ -164,6 +164,29 @@ public record ResultadoDisponibilidad(
                 propuesta);
     }
 
+    /**
+     * Devuelve una copia con la bandera de provisionalidad indicada. Se usa
+     * cuando el resultado proviene de una simulación que no conoce el estado
+     * de la fecha de inicio del proyecto.
+     */
+    public ResultadoDisponibilidad conProvisional(boolean valor) {
+        return new ResultadoDisponibilidad(
+                disponible,
+                valor,
+                inicioEvaluado,
+                finEvaluado,
+                inicioSeleccionado,
+                finSeleccionado,
+                motivo,
+                miembros,
+                resultadoPreferencia,
+                desvioMinutos,
+                inicioPreferido,
+                miembrosBloqueantes,
+                codigoMotivo,
+                reprogramacionPropuesta);
+    }
+
     public ResultadoDisponibilidad conCodigoMotivo(String codigo) {
         return new ResultadoDisponibilidad(
                 disponible,

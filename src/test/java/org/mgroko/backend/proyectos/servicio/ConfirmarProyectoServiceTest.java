@@ -82,7 +82,7 @@ class ConfirmarProyectoServiceTest {
         when(proyectoRepository.saveAndFlush(any(Proyecto.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(planificador.planificar(
-                eq(planificacion), anyList(), eq(AHORA), eq(true)))
+                eq(planificacion), anyList(), eq(AHORA)))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, AHORA.plusHours(1)),
                         Map.of(),
@@ -147,7 +147,7 @@ class ConfirmarProyectoServiceTest {
         when(proyectoRepository.saveAndFlush(any(Proyecto.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(planificador.planificar(
-                eq(planificacion), anyList(), eq(AHORA), eq(true)))
+                eq(planificacion), anyList(), eq(AHORA)))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(),
                         Map.of(),

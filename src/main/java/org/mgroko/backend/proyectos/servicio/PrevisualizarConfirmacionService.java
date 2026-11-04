@@ -49,8 +49,7 @@ public class PrevisualizarConfirmacionService {
                         planificadorRecursosService.planificar(
                                 contexto.planificacion(),
                                 contexto.actividades(),
-                                ahora,
-                                false);
+                                ahora);
 
                 List<ActividadProgramadaResponse> horarios = new ArrayList<>();
                 for (Actividad actividad : contexto.actividadesNoCanceladas()) {

@@ -109,7 +109,7 @@ class PlanificadorRecursosServiceTest {
 
         PlanificadorRecursosService.Resultado resultado =
                 service.planificar(
-                        planificacion, List.of(actividad), INICIO, false, true);
+                        planificacion, List.of(actividad), INICIO, true);
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
     }
@@ -149,7 +149,7 @@ class PlanificadorRecursosServiceTest {
                         asignacion(11L, 20L, 30L, segunda)));
 
         assertThatThrownBy(() -> service.planificar(
-                planificacion, List.of(primera, segunda), INICIO, true))
+                planificacion, List.of(primera, segunda), INICIO, false))
                 .isInstanceOf(ProyectoNoConfirmableException.class)
                 .extracting("codigo")
                 .isEqualTo("CRONOGRAMA_NO_VIABLE");
@@ -182,7 +182,7 @@ class PlanificadorRecursosServiceTest {
                         asignacion(11L, 20L, 30L, segunda)));
 
         assertThatThrownBy(() -> service.planificar(
-                planificacion, List.of(primera, segunda), INICIO, true))
+                planificacion, List.of(primera, segunda), INICIO, false))
                 .isInstanceOf(ProyectoNoConfirmableException.class)
                 .extracting("codigo")
                 .isEqualTo("CRONOGRAMA_NO_VIABLE");
@@ -203,7 +203,7 @@ class PlanificadorRecursosServiceTest {
                         asignacion(11L, 20L, 30L, segunda)));
 
         PlanificadorRecursosService.Resultado resultado = service.planificar(
-                planificacion, List.of(primera, segunda), INICIO, true);
+                planificacion, List.of(primera, segunda), INICIO, false);
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
         assertThat(resultado.inicios().get(2L)).isEqualTo(INICIO.plusMinutes(90));
@@ -224,7 +224,7 @@ class PlanificadorRecursosServiceTest {
                         asignacion(11L, 21L, 31L, segunda)));
 
         PlanificadorRecursosService.Resultado resultado = service.planificar(
-                planificacion, List.of(primera, segunda), INICIO, true);
+                planificacion, List.of(primera, segunda), INICIO, false);
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
         assertThat(resultado.inicios().get(2L)).isEqualTo(INICIO.plusMinutes(60));
@@ -244,7 +244,7 @@ class PlanificadorRecursosServiceTest {
                 .thenReturn(disponible(inicioHueco, 60));
 
         PlanificadorRecursosService.Resultado resultado =
-                service.planificar(planificacion, List.of(libre), INICIO, true);
+                service.planificar(planificacion, List.of(libre), INICIO, false);
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(inicioHueco);
     }
@@ -263,7 +263,6 @@ class PlanificadorRecursosServiceTest {
                 planificacion,
                 List.of(pendiente),
                 INICIO,
-                true,
                 true,
                 Map.of(),
                 Map.of(1L, INICIO.plusHours(2)));
@@ -307,7 +306,7 @@ class PlanificadorRecursosServiceTest {
                 .thenAnswer(inv -> disponible(inv.getArgument(2), 30));
 
         PlanificadorRecursosService.Resultado resultado = servicioTarde.planificar(
-                planificacion, List.of(fija, libre), INICIO, true);
+                planificacion, List.of(fija, libre), INICIO, false);
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO);
         assertThat(resultado.inicios().get(2L)).isAfterOrEqualTo(AHORA_TARDE);

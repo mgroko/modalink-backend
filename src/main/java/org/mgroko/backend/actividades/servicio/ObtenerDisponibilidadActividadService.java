@@ -8,7 +8,6 @@ import org.mgroko.backend.actividades.exception.ActividadCanceladaException;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
 import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
-import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
@@ -19,10 +18,8 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
-import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
-import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
@@ -49,22 +46,19 @@ public class ObtenerDisponibilidadActividadService {
     private final PlanificacionRepository planificacionRepository;
     private final PerfilRepository perfilRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
-    private final CalendarioService calendarioService;
-    private final ReprogramarProyectoService reprogramarProyectoService;
+    private final EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
 
     public ObtenerDisponibilidadActividadService(
             ActividadRepository actividadRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
             ProyectoVisibilidadService proyectoVisibilidadService,
-            CalendarioService calendarioService,
-            ReprogramarProyectoService reprogramarProyectoService) {
+            EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
-        this.calendarioService = calendarioService;
-        this.reprogramarProyectoService = reprogramarProyectoService;
+        this.evaluarDisponibilidadActividadService = evaluarDisponibilidadActividadService;
     }
 
     @Transactional(readOnly = true)
@@ -111,52 +105,11 @@ public class ObtenerDisponibilidadActividadService {
                 .distinct()
                 .toList();
 
-        if (proyecto.getEstado() == org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO
-                && actividad.getEstado() == EstadoActividad.PENDIENTE) {
-            try {
-                ReprogramarProyectoService.SimulacionAsignacion simulacion =
-                        reprogramarProyectoService.simularAsignacion(
-                                idProyecto, idActividad, idsUsuarios);
-                if (simulacion.disponibilidad() != null) {
-                    return enriquecerConPerfiles(simulacion.disponibilidad(), perfiles);
-                }
-            } catch (ProyectoNoConfirmableException ex) {
-                return new ResultadoDisponibilidad(
-                        false,
-                        false,
-                        null,
-                        null,
-                        null,
-                        null,
-                        ex.getMessage(),
-                        List.of(),
-                        null,
-                        null,
-                        null,
-                        List.of(),
-                        ex.getCodigo(),
-                        List.of());
-            } catch (RuntimeException ex) {
-                return new ResultadoDisponibilidad(
-                        false,
-                        false,
-                        null,
-                        null,
-                        null,
-                        null,
-                        ex.getMessage(),
-                        List.of(),
-                        null,
-                        null,
-                        null,
-                        List.of(),
-                        "ERROR_SIMULACION_ASIGNACION",
-                        List.of());
-            }
-        }
-
         return enriquecerConPerfiles(
-                calendarioService.verificarDisponibilidadMiembros(idsUsuarios, actividad),
+                evaluarDisponibilidadActividadService.evaluar(
+                        proyecto,
+                        actividad,
+                        idsUsuarios),
                 perfiles);
     }
 

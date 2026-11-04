@@ -5,13 +5,14 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.actividades.dto.RangoFactibleAbsoluto;
 import org.mgroko.backend.actividades.servicio.CronogramaService;
+import org.mgroko.backend.actividades.servicio.EvaluarDisponibilidadActividadService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
-import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
@@ -45,7 +46,9 @@ import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
@@ -80,7 +83,8 @@ public class AceptarPostulacionService {
     private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
-    private final CalendarioService calendarioService;
+    private final EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
+    private final ReprogramarProyectoService reprogramarProyectoService;
     private final ActividadRepository actividadRepository;
     private final CronogramaService cronogramaService;
     private final Clock reloj;
@@ -98,7 +102,8 @@ public class AceptarPostulacionService {
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
             NotificacionService notificacionService,
-            CalendarioService calendarioService,
+            EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService,
+            ReprogramarProyectoService reprogramarProyectoService,
             ActividadRepository actividadRepository,
             CronogramaService cronogramaService,
             Clock reloj) {
@@ -114,7 +119,8 @@ public class AceptarPostulacionService {
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
-        this.calendarioService = calendarioService;
+        this.evaluarDisponibilidadActividadService = evaluarDisponibilidadActividadService;
+        this.reprogramarProyectoService = reprogramarProyectoService;
         this.actividadRepository = actividadRepository;
         this.cronogramaService = cronogramaService;
         this.reloj = reloj;
@@ -276,14 +282,16 @@ public class AceptarPostulacionService {
                     }
                 });
 
-        ResultadoDisponibilidad disponibilidad = calendarioService
-                .verificarDisponibilidadMiembros(
-                        List.copyOf(idsUsuarios),
-                        requerimiento.getActividad());
+        ResultadoDisponibilidad disponibilidad =
+                evaluarDisponibilidadActividadService.evaluar(
+                        proyecto,
+                        requerimiento.getActividad(),
+                        List.copyOf(idsUsuarios));
 
         if (!disponibilidad.disponible()) {
             throw new PostulacionNoPermitidaException(
-                    "No hay disponibilidad común suficiente dentro del rango factible de la actividad.");
+                    "No hay disponibilidad común suficiente dentro del rango factible de la actividad.",
+                    disponibilidad.codigoMotivo());
         }
 
         List<AdvertenciaSobrecompromiso> advertencias = calcularAdvertencias(
@@ -294,6 +302,18 @@ public class AceptarPostulacionService {
 
         if (miembro == null) {
             miembro = crearMiembro(proyecto, postulante, null);
+        }
+
+        if (proyecto.getEstado() != null
+                && proyecto.getEstado().permiteReprogramacion()
+                && requerimiento.getActividad().getEstado() == EstadoActividad.PENDIENTE) {
+            reprogramarProyectoService.reprogramarActividad(
+                    idProyecto,
+                    requerimiento.getActividad().getIdActividad(),
+                    MotivoReprogramacion.ASIGNACION,
+                    Map.of(
+                            requerimiento.getActividad().getIdActividad(),
+                            List.of(postulante.getUsuario().getIdUsuario())));
         }
 
         AsignacionActividad asignacion = asignacionActividadRepository.saveAndFlush(

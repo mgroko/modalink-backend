@@ -754,6 +754,8 @@ public class GlobalExceptionHandler {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("message", ex.getMessage());
         response.put("motivo", disponibilidad != null ? disponibilidad.motivo() : null);
+        response.put("codigoMotivo",
+                disponibilidad != null ? disponibilidad.codigoMotivo() : null);
         response.put("provisional", disponibilidad != null && disponibilidad.provisional());
         response.put("inicioEvaluado",
                 disponibilidad != null ? disponibilidad.inicioEvaluado() : null);
@@ -883,7 +885,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PostulacionNoPermitidaException.class)
     public ResponseEntity<Map<String, Object>> handlePostulacionNoPermitida(
             PostulacionNoPermitidaException ex) {
-        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+        Map<String, Object> response = buildErrorResponse(
+                ex.getMessage(), HttpStatus.CONFLICT).getBody();
+        if (response != null && ex.getCodigo() != null) {
+            response.put("codigoMotivo", ex.getCodigo());
+        }
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(RequerimientoNoEncontradoException.class)
