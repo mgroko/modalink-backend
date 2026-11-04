@@ -27,6 +27,7 @@ import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.proyectos.dto.ResumenReprogramacionResponse;
 import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -165,7 +166,8 @@ class CalendarioControllerTest {
         when(calendarioService.obtenerJornada(1L)).thenReturn(anterior);
         when(calendarioService.configurarJornada(anyLong(), any(ConfigJornadaRequest.class)))
                 .thenReturn(actual);
-        when(jornadaReprogramacionService.reprogramarAfectados(1L))
+        when(jornadaReprogramacionService.reprogramarAfectados(
+                1L, MotivoReprogramacion.CAMBIO_MARGEN))
                 .thenReturn(new ResumenReprogramacionResponse(1, List.of(), List.of()));
 
         mockMvc.perform(put("/calendario/jornada")
@@ -175,7 +177,8 @@ class CalendarioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reprogramacion.totalProyectos").value(1));
 
-        verify(jornadaReprogramacionService).reprogramarAfectados(1L);
+        verify(jornadaReprogramacionService).reprogramarAfectados(
+                1L, MotivoReprogramacion.CAMBIO_MARGEN);
     }
 
     @Test
@@ -237,6 +240,9 @@ class CalendarioControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idBloqueo").value(3));
+
+        verify(jornadaReprogramacionService).reprogramarAfectados(
+                1L, MotivoReprogramacion.CAMBIO_BLOQUEO);
     }
 
     @Test
@@ -310,6 +316,8 @@ class CalendarioControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(calendarioService).marcarDisponible(1L, 3L);
+        verify(jornadaReprogramacionService).reprogramarAfectados(
+                1L, MotivoReprogramacion.CAMBIO_BLOQUEO);
     }
 
     @Test

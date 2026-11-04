@@ -83,7 +83,7 @@ class JornadaReprogramacionServiceTest {
 
     @Test
     void reprogramarAfectados_unExitoYUnFallo_devuelveResumenYNotifica() {
-        when(asignacionActividadRepository.findProyectosConfirmadosDeUsuario(1L))
+        when(asignacionActividadRepository.findProyectosProgramablesDeUsuario(1L))
                 .thenReturn(List.of(100L, 101L));
         when(proyectoRepository.findAllById(List.of(100L, 101L)))
                 .thenReturn(List.of(
@@ -114,6 +114,50 @@ class JornadaReprogramacionServiceTest {
         assertThat(resumen.fallidos().get(0).idProyecto()).isEqualTo(101L);
         assertThat(resumen.fallidos().get(0).codigo()).isEqualTo("SIN_DISPONIBILIDAD");
         verify(notificacionService, atLeast(2)).registrarTodas(any());
+    }
+
+    @Test
+    void reprogramarAfectados_excluyeElProyectoIndicadoYUsaElMotivo() {
+        when(asignacionActividadRepository.findProyectosProgramablesDeUsuario(1L))
+                .thenReturn(List.of(100L, 101L));
+        when(proyectoRepository.findAllById(List.of(101L)))
+                .thenReturn(List.of(proyecto(101L, "Campaña Otoño")));
+        when(reprogramarProyectoService.reprogramar(
+                101L, MotivoReprogramacion.ASIGNACION, null))
+                .thenReturn(resultadoExitoso(101L, "Campaña Otoño"));
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(101L)))
+                .thenReturn(List.of(director(10L)));
+
+        ResumenReprogramacionResponse resumen =
+                service.reprogramarAfectados(
+                        1L, MotivoReprogramacion.ASIGNACION, 100L);
+
+        assertThat(resumen.totalProyectos()).isEqualTo(1);
+        assertThat(resumen.exitosos()).hasSize(1);
+        assertThat(resumen.exitosos().get(0).idProyecto()).isEqualTo(101L);
+        verify(reprogramarProyectoService, org.mockito.Mockito.never())
+                .reprogramar(eq(100L), any(), any());
+        verify(reprogramarProyectoService).reprogramar(
+                101L, MotivoReprogramacion.ASIGNACION, null);
+    }
+
+    @Test
+    void reprogramarProyectos_listaExplicita_reprogramaSoloLosIndicados() {
+        when(proyectoRepository.findAllById(List.of(200L)))
+                .thenReturn(List.of(proyecto(200L, "Proyecto Baja")));
+        when(reprogramarProyectoService.reprogramar(
+                200L, MotivoReprogramacion.BAJA_INTEGRANTE, null))
+                .thenReturn(resultadoExitoso(200L, "Proyecto Baja"));
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(200L)))
+                .thenReturn(List.of(director(10L)));
+
+        ResumenReprogramacionResponse resumen =
+                service.reprogramarProyectos(
+                        List.of(200L), MotivoReprogramacion.BAJA_INTEGRANTE);
+
+        assertThat(resumen.totalProyectos()).isEqualTo(1);
+        verify(reprogramarProyectoService).reprogramar(
+                200L, MotivoReprogramacion.BAJA_INTEGRANTE, null);
     }
 
     @Test

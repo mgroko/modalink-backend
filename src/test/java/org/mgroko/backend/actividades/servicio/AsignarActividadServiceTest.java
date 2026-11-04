@@ -42,12 +42,14 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -93,6 +95,8 @@ class AsignarActividadServiceTest {
     private CalendarioService calendarioService;
     @Mock
     private ReprogramarProyectoService reprogramarProyectoService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private AsignarActividadService service;
 
@@ -118,7 +122,8 @@ class AsignarActividadServiceTest {
                 cupoRequerimientoService,
                 proyectoSecurityService,
                 calendarioService,
-                reprogramarProyectoService);
+                reprogramarProyectoService,
+                eventPublisher);
 
         actor = Perfil.builder()
                 .idPerfil(ID_PERFIL_ACTOR)
@@ -211,6 +216,7 @@ class AsignarActividadServiceTest {
                 MotivoReprogramacion.ASIGNACION,
                 Map.of(ID_ACTIVIDAD, List.of(ID_USUARIO_DESTINO)));
         verify(calendarioService).verificarDisponibilidad(ID_USUARIO_DESTINO, actividad);
+        verify(eventPublisher).publishEvent(any(DisponibilidadModificadaEvent.class));
     }
 
     @Test

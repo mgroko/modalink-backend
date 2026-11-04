@@ -25,6 +25,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
@@ -35,6 +36,7 @@ import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +64,7 @@ public class DesasignarActividadService {
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
     private final ReprogramarProyectoService reprogramarProyectoService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public DesasignarActividadService(
             PerfilRepository perfilRepository,
@@ -72,7 +75,8 @@ public class DesasignarActividadService {
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
             NotificacionService notificacionService,
-            ReprogramarProyectoService reprogramarProyectoService) {
+            ReprogramarProyectoService reprogramarProyectoService,
+            ApplicationEventPublisher eventPublisher) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
@@ -82,6 +86,7 @@ public class DesasignarActividadService {
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
         this.reprogramarProyectoService = reprogramarProyectoService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -146,6 +151,17 @@ public class DesasignarActividadService {
                     idProyecto,
                     MotivoReprogramacion.DESASIGNACION,
                     null);
+        }
+
+        if (proyecto.getEstado() != null
+                && proyecto.getEstado().permiteReprogramacion()
+                && perfil != null
+                && perfil.getUsuario() != null
+                && perfil.getUsuario().getIdUsuario() != null) {
+            eventPublisher.publishEvent(new DisponibilidadModificadaEvent(
+                    perfil.getUsuario().getIdUsuario(),
+                    MotivoReprogramacion.DESASIGNACION,
+                    idProyecto));
         }
 
         CupoRequerimiento cupo = requerimiento != null

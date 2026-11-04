@@ -28,6 +28,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
@@ -41,6 +42,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +74,7 @@ public class AsignarActividadService {
     private final ProyectoSecurityService proyectoSecurityService;
     private final CalendarioService calendarioService;
     private final ReprogramarProyectoService reprogramarProyectoService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AsignarActividadService(
             PerfilRepository perfilRepository,
@@ -84,7 +87,8 @@ public class AsignarActividadService {
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
             CalendarioService calendarioService,
-            ReprogramarProyectoService reprogramarProyectoService) {
+            ReprogramarProyectoService reprogramarProyectoService,
+            ApplicationEventPublisher eventPublisher) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
@@ -96,6 +100,7 @@ public class AsignarActividadService {
         this.proyectoSecurityService = proyectoSecurityService;
         this.calendarioService = calendarioService;
         this.reprogramarProyectoService = reprogramarProyectoService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -203,6 +208,14 @@ public class AsignarActividadService {
                         .actividad(actividad)
                         .requerimientoActividad(requerimiento)
                         .build());
+
+        if (proyecto.getEstado() != null
+                && proyecto.getEstado().permiteReprogramacion()) {
+            eventPublisher.publishEvent(new DisponibilidadModificadaEvent(
+                    perfilDestino.getUsuario().getIdUsuario(),
+                    MotivoReprogramacion.ASIGNACION,
+                    idProyecto));
+        }
 
         boolean requerimientoSatisfecho = requerimiento != null
                 && cupoRequerimientoService.calcularActividad(requerimiento).satisfecho();

@@ -43,6 +43,7 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
@@ -59,6 +60,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,6 +89,7 @@ public class AceptarPostulacionService {
     private final ReprogramarProyectoService reprogramarProyectoService;
     private final ActividadRepository actividadRepository;
     private final CronogramaService cronogramaService;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock reloj;
 
     public AceptarPostulacionService(
@@ -106,6 +109,7 @@ public class AceptarPostulacionService {
             ReprogramarProyectoService reprogramarProyectoService,
             ActividadRepository actividadRepository,
             CronogramaService cronogramaService,
+            ApplicationEventPublisher eventPublisher,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
@@ -123,6 +127,7 @@ public class AceptarPostulacionService {
         this.reprogramarProyectoService = reprogramarProyectoService;
         this.actividadRepository = actividadRepository;
         this.cronogramaService = cronogramaService;
+        this.eventPublisher = eventPublisher;
         this.reloj = reloj;
     }
 
@@ -325,6 +330,14 @@ public class AceptarPostulacionService {
 
         postulacion.setEstado(EstadoSolicitud.ACEPTADA);
         postulacion = postulacionActividadRepository.saveAndFlush(postulacion);
+
+        if (proyecto.getEstado() != null
+                && proyecto.getEstado().permiteReprogramacion()) {
+            eventPublisher.publishEvent(new DisponibilidadModificadaEvent(
+                    postulante.getUsuario().getIdUsuario(),
+                    MotivoReprogramacion.ASIGNACION,
+                    idProyecto));
+        }
 
         notificarAceptacionActividad(
                 postulante, proyecto, requerimiento.getActividad(), postulacion);

@@ -55,6 +55,7 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaExcepti
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
@@ -69,6 +70,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -107,6 +109,8 @@ class AceptarPostulacionServiceTest {
     private ActividadRepository actividadRepository;
     @Mock
     private CronogramaService cronogramaService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private AceptarPostulacionService service;
 
@@ -142,6 +146,7 @@ class AceptarPostulacionServiceTest {
                 reprogramarProyectoService,
                 actividadRepository,
                 cronogramaService,
+                eventPublisher,
                 reloj);
 
         director = Perfil.builder()
@@ -438,6 +443,7 @@ class AceptarPostulacionServiceTest {
                 eq(Map.of(
                         55L,
                         List.of(postulante.getUsuario().getIdUsuario()))));
+        verify(eventPublisher).publishEvent(any(DisponibilidadModificadaEvent.class));
     }
 
     private void prepararCaminoFeliz() {

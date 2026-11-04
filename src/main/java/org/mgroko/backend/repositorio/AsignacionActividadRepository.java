@@ -207,9 +207,9 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
             @Param("idProyecto") Long idProyecto);
 
     /**
-     * Proyectos confirmados en los que el usuario tiene al menos una
-     * asignación activa sobre una actividad no cancelada. Se usa para detectar
-     * el impacto de un cambio de jornada o margen.
+     * Proyectos publicados o confirmados en los que el usuario tiene al menos
+     * una asignación activa sobre una actividad no cancelada. Se usa para
+     * detectar el impacto de un cambio de disponibilidad.
      */
     @Query("""
         SELECT DISTINCT pl.proyecto.idProyecto
@@ -220,11 +220,14 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
         JOIN a.planificacion pl
         WHERE p.usuario.idUsuario = :idUsuario
           AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
-          AND pl.proyecto.estado = org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO
+          AND pl.proyecto.estado IN (
+              org.mgroko.backend.modelo.enums.EstadoProyecto.PUBLICADO,
+              org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO)
           AND a.estado <> org.mgroko.backend.modelo.enums.EstadoActividad.CANCELADA
+          AND a.fechaHoraInicio IS NOT NULL
         ORDER BY pl.proyecto.idProyecto
     """)
-    List<Long> findProyectosConfirmadosDeUsuario(
+    List<Long> findProyectosProgramablesDeUsuario(
             @Param("idUsuario") Long idUsuario);
 
     /**

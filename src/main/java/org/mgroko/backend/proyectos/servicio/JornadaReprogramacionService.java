@@ -1,10 +1,12 @@
 package org.mgroko.backend.proyectos.servicio;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
@@ -34,8 +36,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * Orquesta la reprogramación automática de los proyectos confirmados en los
- * que participa un usuario cuando cambia su jornada o margen.
+ * Orquesta la reprogramación automática de los proyectos publicados o
+ * confirmados en los que participa un usuario cuando cambia su disponibilidad.
  *
  * <p>Cada proyecto se reprograma en su propia transacción. Si uno falla, los
  * demás continúan y el proyecto fallido conserva su plan anterior. Las
@@ -77,36 +79,90 @@ public class JornadaReprogramacionService {
     }
 
     /**
-     * Detecta y reprograma los proyectos confirmados afectados por el cambio
-     * de jornada o margen del usuario.
+     * Reprograma los proyectos publicados o confirmados afectados por un
+     * cambio de jornada o margen.
      */
     public ResumenReprogramacionResponse reprogramarAfectados(Long idUsuario) {
+        return reprogramarAfectados(
+                idUsuario, MotivoReprogramacion.CAMBIO_JORNADA, null);
+    }
+
+    public ResumenReprogramacionResponse reprogramarAfectados(
+            Long idUsuario,
+            MotivoReprogramacion motivo) {
+        return reprogramarAfectados(idUsuario, motivo, null);
+    }
+
+    /**
+     * Detecta y reprograma los proyectos del usuario, excluyendo el proyecto
+     * que ya fue reprogramado por el flujo que originó el cambio.
+     */
+    public ResumenReprogramacionResponse reprogramarAfectados(
+            Long idUsuario,
+            MotivoReprogramacion motivo,
+            Long idProyectoExcluido) {
+
         if (!automatica) {
             return ResumenReprogramacionResponse.vacio();
         }
 
         List<Long> idsProyectos = asignacionActividadRepository
-                .findProyectosConfirmadosDeUsuario(idUsuario);
-        if (idsProyectos.isEmpty()) {
+                .findProyectosProgramablesDeUsuario(idUsuario);
+        return reprogramarProyectos(idsProyectos, motivo, idProyectoExcluido);
+    }
+
+    /**
+     * Reprograma una colección explícita de proyectos. La usa la baja de
+     * integrante para los proyectos capturados antes de cambiar la membresía.
+     */
+    public ResumenReprogramacionResponse reprogramarProyectos(
+            Collection<Long> idsProyectos,
+            MotivoReprogramacion motivo) {
+        return reprogramarProyectos(idsProyectos, motivo, null);
+    }
+
+    public ResumenReprogramacionResponse reprogramarProyectos(
+            Collection<Long> idsProyectos,
+            MotivoReprogramacion motivo,
+            Long idProyectoExcluido) {
+
+        if (!automatica) {
+            return ResumenReprogramacionResponse.vacio();
+        }
+        if (idsProyectos == null || idsProyectos.isEmpty()) {
+            return ResumenReprogramacionResponse.vacio();
+        }
+
+        MotivoReprogramacion motivoEfectivo = motivo != null
+                ? motivo
+                : MotivoReprogramacion.CAMBIO_JORNADA;
+
+        List<Long> ids = idsProyectos.stream()
+                .filter(Objects::nonNull)
+                .filter(id -> !Objects.equals(id, idProyectoExcluido))
+                .distinct()
+                .sorted()
+                .toList();
+        if (ids.isEmpty()) {
             return ResumenReprogramacionResponse.vacio();
         }
 
         Map<Long, String> nombres = new HashMap<>();
-        for (Proyecto proyecto : proyectoRepository.findAllById(idsProyectos)) {
+        for (Proyecto proyecto : proyectoRepository.findAllById(ids)) {
             nombres.put(proyecto.getIdProyecto(), proyecto.getNombre());
         }
 
         List<ReprogramacionProyectoResponse> exitosos = new ArrayList<>();
         List<ReprogramacionFallidaResponse> fallidos = new ArrayList<>();
 
-        for (Long idProyecto : idsProyectos.stream().sorted().toList()) {
+        for (Long idProyecto : ids) {
             String nombre = nombres.getOrDefault(
                     idProyecto, "Proyecto " + idProyecto);
             try {
                 ReprogramacionProyectoResponse resultado =
                         reprogramarProyectoService.reprogramar(
                                 idProyecto,
-                                MotivoReprogramacion.CAMBIO_JORNADA,
+                                motivoEfectivo,
                                 null);
 
                 if (resultado.huboCambios()
@@ -125,8 +181,8 @@ public class JornadaReprogramacionService {
                 fallidos.add(fallo);
                 notificarFallo(fallo);
             } catch (RuntimeException ex) {
-                LOG.error("No se pudo reprogramar el proyecto {} por cambio de jornada.",
-                        idProyecto, ex);
+                LOG.error("No se pudo reprogramar el proyecto {} por {}.",
+                        idProyecto, motivoEfectivo, ex);
                 ReprogramacionFallidaResponse fallo =
                         new ReprogramacionFallidaResponse(
                                 idProyecto,
@@ -321,10 +377,28 @@ public class JornadaReprogramacionService {
         if (MotivoReprogramacion.CAMBIO_ENTREGA.name().equals(motivo)) {
             return "un cambio de fecha de entrega";
         }
+        if (MotivoReprogramacion.CAMBIO_MARGEN.name().equals(motivo)) {
+            return "un cambio de margen";
+        }
+        if (MotivoReprogramacion.CAMBIO_BLOQUEO.name().equals(motivo)) {
+            return "un cambio de bloqueo de agenda";
+        }
+        if (MotivoReprogramacion.ASIGNACION.name().equals(motivo)) {
+            return "una asignación";
+        }
+        if (MotivoReprogramacion.DESASIGNACION.name().equals(motivo)) {
+            return "una desasignación";
+        }
+        if (MotivoReprogramacion.BAJA_INTEGRANTE.name().equals(motivo)) {
+            return "una baja de integrante";
+        }
+        if (MotivoReprogramacion.ELIMINACION_INTEGRANTE.name().equals(motivo)) {
+            return "una eliminación de integrante";
+        }
         if (MotivoReprogramacion.REINTENTO.name().equals(motivo)) {
             return "un reintento manual";
         }
-        return "un cambio de jornada o margen";
+        return "un cambio de jornada";
     }
 
     private record Destinatario(Usuario usuario, Perfil perfil) {

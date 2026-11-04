@@ -38,12 +38,14 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
@@ -84,6 +86,8 @@ class DesasignarActividadServiceTest {
     private NotificacionService notificacionService;
     @Mock
     private ReprogramarProyectoService reprogramarProyectoService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private DesasignarActividadService service;
 
@@ -107,7 +111,8 @@ class DesasignarActividadServiceTest {
                 cupoRequerimientoService,
                 proyectoSecurityService,
                 notificacionService,
-                reprogramarProyectoService);
+                reprogramarProyectoService,
+                eventPublisher);
 
         actor = Perfil.builder()
                 .idPerfil(ID_PERFIL_ACTOR)
@@ -227,6 +232,7 @@ class DesasignarActividadServiceTest {
         assertThat(response.advertencias()).isEmpty();
         verify(reprogramarProyectoService).reprogramar(
                 ID_PROYECTO, MotivoReprogramacion.DESASIGNACION, null);
+        verify(eventPublisher).publishEvent(any(DisponibilidadModificadaEvent.class));
     }
 
     @Test
