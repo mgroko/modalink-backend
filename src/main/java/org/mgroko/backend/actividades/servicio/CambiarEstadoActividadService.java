@@ -115,7 +115,21 @@ public class CambiarEstadoActividadService {
                         idActividad, planificacion.getIdPlanificacion())
                 .orElseThrow(() -> new ActividadNoEncontradaException(idActividad));
 
-        ActividadEstadoValidator.validar(actividad.getEstado(), estadoNuevo);
+        if (estadoNuevo == EstadoActividad.EN_CURSO
+                || estadoNuevo == EstadoActividad.FINALIZADA) {
+            List<Actividad> actividades = actividadRepository
+                    .findConPredecesorasByPlanificacion(
+                            planificacion.getIdPlanificacion());
+            Actividad actividadConPredecesoras = actividades.stream()
+                    .filter(candidata -> candidata.getIdActividad().equals(idActividad))
+                    .findFirst()
+                    .orElse(actividad);
+            ActividadEstadoValidator.validar(
+                    actividadConPredecesoras, estadoNuevo);
+        } else {
+            ActividadEstadoValidator.validar(
+                    actividad.getEstado(), estadoNuevo);
+        }
 
         if ((estadoNuevo == EstadoActividad.EN_CURSO
                 || estadoNuevo == EstadoActividad.FINALIZADA)

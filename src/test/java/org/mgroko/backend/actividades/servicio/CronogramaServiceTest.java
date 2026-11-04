@@ -9,10 +9,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.actividades.dto.CalculoCpm;
+import org.mgroko.backend.actividades.dto.ConflictoCpm;
 import org.mgroko.backend.actividades.dto.NodoCpm;
 import org.mgroko.backend.actividades.dto.ProyeccionCpm;
 import org.mgroko.backend.actividades.exception.CronogramaInviableException;
@@ -312,6 +314,22 @@ class CronogramaServiceTest {
 
         assertThat(cronogramaService.inicioEfectivo(planificacion)).isEqualTo(fechaInicio);
         assertThat(cronogramaService.esTentativa(planificacion)).isFalse();
+    }
+
+    @Test
+    void estadoDe_conConflictoFijo_devuelveConflicto() {
+        CalculoCpm calculo = new CalculoCpm(
+                Map.of(),
+                120L,
+                600L,
+                false,
+                List.of(new ConflictoCpm(
+                        26L,
+                        ConflictoCpm.Tipo.CONFLICTO_FIJO,
+                        "La predecesora 21 termina después del inicio fijo.")));
+
+        assertThat(cronogramaService.estadoDe(calculo))
+                .isEqualTo(EstadoCronograma.CONFLICTO);
     }
 
     @Test

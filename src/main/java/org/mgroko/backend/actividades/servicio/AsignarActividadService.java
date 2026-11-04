@@ -164,13 +164,14 @@ public class AsignarActividadService {
             // El candidato todavía no tiene asignación persistida: se lo pasa
             // al planificador como usuario virtual para mover la actividad a un
             // hueco común antes de insertar la asignación.
-            reprogramarProyectoService.reprogramar(
+            reprogramarProyectoService.reprogramarActividad(
                     idProyecto,
+                    actividad.getIdActividad(),
                     MotivoReprogramacion.ASIGNACION,
-                    null,
                     Map.of(
                             actividad.getIdActividad(),
-                            List.of(perfilDestino.getUsuario().getIdUsuario())));
+                            List.of(perfilDestino.getUsuario().getIdUsuario())),
+                    false);
             actividad = actividadRepository
                     .findByIdActividadAndPlanificacionIdPlanificacion(
                             idActividad, planificacion.getIdPlanificacion())

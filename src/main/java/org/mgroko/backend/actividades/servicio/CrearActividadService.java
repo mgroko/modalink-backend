@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.mgroko.backend.actividades.dto.ActividadResponse;
@@ -132,10 +133,12 @@ public class CrearActividadService {
                 guardada, request.requerimientos());
 
         if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
-            reprogramarProyectoService.reprogramar(
+            reprogramarProyectoService.reprogramarActividad(
                     idProyecto,
+                    guardada.getIdActividad(),
                     MotivoReprogramacion.CREACION_ACTIVIDAD,
-                    null);
+                    Map.of(),
+                    true);
         }
 
         var calculo = planificacion.getFechaEntrega() == null

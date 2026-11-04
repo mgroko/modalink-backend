@@ -3,6 +3,8 @@ package org.mgroko.backend.calendario.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.mgroko.backend.proyectos.dto.ActividadReprogramadaResponse;
+
 /**
  * Resultado de verificar la disponibilidad de un usuario frente al rango
  * factible de una actividad.
@@ -28,6 +30,10 @@ import java.util.List;
  *                            no hay preferencia
  * @param miembrosBloqueantes miembros que impiden la intersección común; vacío
  *                            si no hay intersección o no se pudo aislar a uno
+ * @param codigoMotivo        código estable del motivo (por ejemplo
+ *                            {@code CONFLICTO_FIJO} o {@code SIN_HUECO_COMUN})
+ * @param reprogramacionPropuesta actividades que se moverían si se confirma
+ *                            la asignación; vacío en una consulta normal
  */
 public record ResultadoDisponibilidad(
         boolean disponible,
@@ -41,11 +47,55 @@ public record ResultadoDisponibilidad(
         ResultadoPreferencia resultadoPreferencia,
         Long desvioMinutos,
         LocalDateTime inicioPreferido,
-        List<Long> miembrosBloqueantes) {
+        List<Long> miembrosBloqueantes,
+        String codigoMotivo,
+        List<ActividadReprogramadaResponse> reprogramacionPropuesta) {
+
+    public ResultadoDisponibilidad {
+        miembros = miembros == null ? List.of() : List.copyOf(miembros);
+        miembrosBloqueantes = miembrosBloqueantes == null
+                ? List.of()
+                : List.copyOf(miembrosBloqueantes);
+        reprogramacionPropuesta = reprogramacionPropuesta == null
+                ? List.of()
+                : List.copyOf(reprogramacionPropuesta);
+    }
 
     /**
-     * Constructor histórico. Mantiene la compatibilidad con consumidores que
-     * todavía no leen los campos de preferencia ni el diagnóstico.
+     * Constructor histórico sin código ni propuesta de reprogramación.
+     */
+    public ResultadoDisponibilidad(
+            boolean disponible,
+            boolean provisional,
+            LocalDateTime inicioEvaluado,
+            LocalDateTime finEvaluado,
+            LocalDateTime inicioSeleccionado,
+            LocalDateTime finSeleccionado,
+            String motivo,
+            List<DetalleMiembroDisponibilidad> miembros,
+            ResultadoPreferencia resultadoPreferencia,
+            Long desvioMinutos,
+            LocalDateTime inicioPreferido,
+            List<Long> miembrosBloqueantes) {
+        this(
+                disponible,
+                provisional,
+                inicioEvaluado,
+                finEvaluado,
+                inicioSeleccionado,
+                finSeleccionado,
+                motivo,
+                miembros,
+                resultadoPreferencia,
+                desvioMinutos,
+                inicioPreferido,
+                miembrosBloqueantes,
+                null,
+                List.of());
+    }
+
+    /**
+     * Constructor histórico de ocho argumentos.
      */
     public ResultadoDisponibilidad(
             boolean disponible,
@@ -91,10 +141,44 @@ public record ResultadoDisponibilidad(
         return finSeleccionado != null ? finSeleccionado : finEvaluado;
     }
 
-    public ResultadoDisponibilidad {
-        miembros = miembros == null ? List.of() : List.copyOf(miembros);
-        miembrosBloqueantes = miembrosBloqueantes == null
-                ? List.of()
-                : List.copyOf(miembrosBloqueantes);
+    /**
+     * Devuelve una copia con el detalle de las actividades que se moverían en
+     * una asignación simulada.
+     */
+    public ResultadoDisponibilidad conReprogramacionPropuesta(
+            List<ActividadReprogramadaResponse> propuesta) {
+        return new ResultadoDisponibilidad(
+                disponible,
+                provisional,
+                inicioEvaluado,
+                finEvaluado,
+                inicioSeleccionado,
+                finSeleccionado,
+                motivo,
+                miembros,
+                resultadoPreferencia,
+                desvioMinutos,
+                inicioPreferido,
+                miembrosBloqueantes,
+                codigoMotivo,
+                propuesta);
+    }
+
+    public ResultadoDisponibilidad conCodigoMotivo(String codigo) {
+        return new ResultadoDisponibilidad(
+                disponible,
+                provisional,
+                inicioEvaluado,
+                finEvaluado,
+                inicioSeleccionado,
+                finSeleccionado,
+                motivo,
+                miembros,
+                resultadoPreferencia,
+                desvioMinutos,
+                inicioPreferido,
+                miembrosBloqueantes,
+                codigo,
+                reprogramacionPropuesta);
     }
 }

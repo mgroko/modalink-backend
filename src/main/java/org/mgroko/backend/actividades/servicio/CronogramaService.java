@@ -129,6 +129,9 @@ public class CronogramaService {
         if (calculo == null || calculo.viable() == null) {
             return EstadoCronograma.SIN_FECHA_ENTREGA;
         }
+        if (!calculo.conflictos().isEmpty()) {
+            return EstadoCronograma.CONFLICTO;
+        }
         return Boolean.TRUE.equals(calculo.viable())
                 ? EstadoCronograma.NORMAL
                 : EstadoCronograma.ALERTA_DESBORDE;

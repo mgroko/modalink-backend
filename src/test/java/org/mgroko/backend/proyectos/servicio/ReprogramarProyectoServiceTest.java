@@ -205,6 +205,89 @@ class ReprogramarProyectoServiceTest {
         verify(planificacionRepository).save(planificacion);
     }
 
+    @Test
+    void reprogramarActividad_noMuevePredecesorasYDesplazaSucesorasPendientes() {
+        Proyecto proyecto = proyectoConfirmado();
+        Planificacion planificacion = planificacion(proyecto);
+
+        Actividad predecesora = actividad(
+                1L, "Predecesora", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
+        predecesora.setOrigenInicio(OrigenInicio.CONFIRMADA);
+        Actividad objetivo = actividad(
+                2L, "Objetivo", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO.plusHours(1));
+        objetivo.setPredecesoras(Set.of(predecesora));
+        objetivo.setOrigenInicio(OrigenInicio.CONFIRMADA);
+        Actividad sucesora = actividad(
+                3L, "Sucesora", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO.plusHours(2));
+        sucesora.setPredecesoras(Set.of(objetivo));
+        sucesora.setOrigenInicio(OrigenInicio.CONFIRMADA);
+
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(predecesora, objetivo, sucesora));
+        when(planificadorRecursosService.planificar(
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO),
+                eq(true), eq(true), anyMap()))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(
+                                1L, INICIO_VIEJO,
+                                2L, INICIO_VIEJO.plusHours(2),
+                                3L, INICIO_VIEJO.plusHours(3)),
+                        Map.of(),
+                        null));
+
+        service.reprogramarActividad(
+                100L,
+                2L,
+                MotivoReprogramacion.ASIGNACION,
+                Map.of(2L, List.of(30L)),
+                false);
+
+        assertThat(predecesora.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO);
+        assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO.plusHours(2));
+        assertThat(sucesora.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO.plusHours(3));
+        assertThat(objetivo.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
+        assertThat(sucesora.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
+    }
+
+    @Test
+    void simularAsignacion_devuelvePropuestaYNoModificaLaActividad() {
+        Proyecto proyecto = proyectoConfirmado();
+        Planificacion planificacion = planificacion(proyecto);
+
+        Actividad predecesora = actividad(
+                1L, "Predecesora", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
+        predecesora.setOrigenInicio(OrigenInicio.CONFIRMADA);
+        Actividad objetivo = actividad(
+                2L, "Objetivo", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO.plusHours(1));
+        objetivo.setPredecesoras(Set.of(predecesora));
+        objetivo.setOrigenInicio(OrigenInicio.CONFIRMADA);
+
+        when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyecto(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(predecesora, objetivo));
+        when(planificadorRecursosService.planificar(
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO),
+                eq(true), eq(true), anyMap()))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(1L, INICIO_VIEJO, 2L, INICIO_VIEJO.plusHours(3)),
+                        Map.of(),
+                        null));
+
+        ReprogramarProyectoService.SimulacionAsignacion simulacion =
+                service.simularAsignacion(100L, 2L, List.of(30L));
+
+        assertThat(simulacion.inicioPropuesto()).isEqualTo(INICIO_VIEJO.plusHours(3));
+        assertThat(simulacion.actividadesAfectadas()).hasSize(1);
+        assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO.plusHours(1));
+        assertThat(objetivo.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
+    }
+
     private Proyecto proyectoConfirmado() {
         return Proyecto.builder()
                 .idProyecto(100L)

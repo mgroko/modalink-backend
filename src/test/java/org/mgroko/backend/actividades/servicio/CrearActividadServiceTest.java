@@ -181,8 +181,8 @@ class CrearActividadServiceTest {
         crearActividadService.crear(1L, 10L, 100L, request);
 
         verify(actividadRepository).saveAndFlush(any(Actividad.class));
-        verify(reprogramarProyectoService).reprogramar(
-                100L, MotivoReprogramacion.CREACION_ACTIVIDAD, null);
+        verify(reprogramarProyectoService).reprogramarActividad(
+                100L, 55L, MotivoReprogramacion.CREACION_ACTIVIDAD, Map.of(), true);
     }
 
     @Test

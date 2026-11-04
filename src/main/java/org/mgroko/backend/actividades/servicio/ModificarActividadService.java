@@ -170,6 +170,8 @@ public class ModificarActividadService {
         actualizarDatos(actividad, request, nombre, duracionMinutos);
         actualizarUbicacion(actividad, request);
         actualizarPredecesoras(actividad, request.predecesoras(), planificacion);
+        ActividadEstadoValidator.validarPredecesorasFinalizadas(
+                actividad, request.estado());
         validarSinCiclos(actividad, actividades);
         actualizarRequerimientos(
                 actividad,

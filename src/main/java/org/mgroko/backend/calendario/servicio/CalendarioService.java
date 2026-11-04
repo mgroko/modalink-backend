@@ -195,7 +195,8 @@ public class CalendarioService {
 
         if (idsUsuarios == null || idsUsuarios.isEmpty()) {
             return new ResultadoDisponibilidad(
-                    false, false, null, null, null, null, "SIN_MIEMBROS", List.of());
+                    false, false, null, null, null, null, "SIN_MIEMBROS", List.of())
+                    .conCodigoMotivo("SIN_MIEMBROS");
         }
         idsUsuarios.forEach(this::usuarioActivo);
 
@@ -228,6 +229,8 @@ public class CalendarioService {
                     preferencia == null
                             ? null
                             : rango.inicio().toLocalDate().atTime(preferencia),
+                    List.of(),
+                    codigoConflicto(calculo, actividad.getIdActividad()),
                     List.of());
         }
         return evaluarDisponibilidadEnRango(
@@ -266,13 +269,15 @@ public class CalendarioService {
 
         if (idsUsuarios == null || idsUsuarios.isEmpty()) {
             return new ResultadoDisponibilidad(
-                    false, false, inicio, fin, null, null, "SIN_MIEMBROS", List.of());
+                    false, false, inicio, fin, null, null, "SIN_MIEMBROS", List.of())
+                    .conCodigoMotivo("SIN_MIEMBROS");
         }
         idsUsuarios.forEach(this::usuarioActivo);
 
         if (inicio == null || fin == null || !fin.isAfter(inicio)) {
             return new ResultadoDisponibilidad(
-                    false, false, inicio, fin, null, null, "SIN_HUECO", List.of());
+                    false, false, inicio, fin, null, null, "SIN_HUECO", List.of())
+                    .conCodigoMotivo("SIN_HUECO");
         }
 
         return evaluarDisponibilidadEnRango(
@@ -450,7 +455,20 @@ public class CalendarioService {
                 resultadoPreferencia,
                 desvioMinutos,
                 inicioPreferido,
-                miembrosBloqueantes);
+                miembrosBloqueantes,
+                motivo,
+                List.of());
+    }
+
+    private String codigoConflicto(CalculoCpm calculo, Long idActividad) {
+        return calculo.conflictos().stream()
+                .filter(conflicto -> conflicto.idActividad().equals(idActividad))
+                .map(conflicto -> switch (conflicto.tipo()) {
+                    case CONFLICTO_FIJO -> "CONFLICTO_FIJO";
+                    case FUERA_DE_PROYECTO, DATO_INCONSISTENTE -> "DATOS_INCONSISTENTES";
+                })
+                .findFirst()
+                .orElse("CRONOGRAMA_NO_VIABLE");
     }
 
     /**

@@ -12,5 +12,6 @@ public enum MotivoReprogramacion {
     ASIGNACION,
     DESASIGNACION,
     ELIMINACION_ACTIVIDAD,
+    REPARACION,
     REINTENTO
 }

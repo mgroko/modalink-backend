@@ -29,8 +29,10 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.ActividadReprogramadaResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
@@ -58,6 +60,9 @@ class ObtenerDisponibilidadActividadServiceTest {
 
     @Mock
     private CalendarioService calendarioService;
+
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
 
     @InjectMocks
     private ObtenerDisponibilidadActividadService service;
@@ -197,6 +202,35 @@ class ObtenerDisponibilidadActividadServiceTest {
     void obtener_sinPerfilActivo_lanzaPerfilActivoNoSeleccionado() {
         assertThatThrownBy(() -> service.obtener(1L, null, 100L, 55L, null))
                 .isInstanceOf(PerfilActivoNoSeleccionadoException.class);
+    }
+
+    @Test
+    void obtener_proyectoConfirmadoYPendiente_usaSimulacionDeAsignacion() {
+        actividad.getPlanificacion().getProyecto()
+                .setEstado(org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO);
+        actividad.setEstado(org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE);
+
+        LocalDateTime inicio = LocalDateTime.of(2026, 11, 8, 9, 0);
+        ActividadReprogramadaResponse cambio = new ActividadReprogramadaResponse(
+                55L, "Montaje", "PENDIENTE", null, inicio);
+        ResultadoDisponibilidad esperado = resultado(true)
+                .conReprogramacionPropuesta(List.of(cambio));
+        when(reprogramarProyectoService.simularAsignacion(
+                100L, 55L, List.of(1L)))
+                .thenReturn(new ReprogramarProyectoService.SimulacionAsignacion(
+                        55L,
+                        inicio,
+                        inicio.plusMinutes(60),
+                        esperado,
+                        List.of(cambio)));
+
+        ResultadoDisponibilidad resultado = service.obtener(
+                1L, 10L, 100L, 55L, null);
+
+        assertThat(resultado).isSameAs(esperado);
+        assertThat(resultado.reprogramacionPropuesta()).hasSize(1);
+        verify(calendarioService, never()).verificarDisponibilidadMiembros(
+                any(), any());
     }
 
     private ResultadoDisponibilidad resultado(boolean disponible) {

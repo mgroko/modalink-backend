@@ -16,8 +16,10 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
+import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
@@ -45,18 +47,21 @@ public class ObtenerDisponibilidadActividadService {
     private final PerfilRepository perfilRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final CalendarioService calendarioService;
+    private final ReprogramarProyectoService reprogramarProyectoService;
 
     public ObtenerDisponibilidadActividadService(
             ActividadRepository actividadRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
             ProyectoVisibilidadService proyectoVisibilidadService,
-            CalendarioService calendarioService) {
+            CalendarioService calendarioService,
+            ReprogramarProyectoService reprogramarProyectoService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.calendarioService = calendarioService;
+        this.reprogramarProyectoService = reprogramarProyectoService;
     }
 
     @Transactional(readOnly = true)
@@ -102,6 +107,50 @@ public class ObtenerDisponibilidadActividadService {
                 .map(perfil -> perfil.getUsuario().getIdUsuario())
                 .distinct()
                 .toList();
+
+        if (proyecto.getEstado() == org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO
+                && actividad.getEstado() == EstadoActividad.PENDIENTE) {
+            try {
+                ReprogramarProyectoService.SimulacionAsignacion simulacion =
+                        reprogramarProyectoService.simularAsignacion(
+                                idProyecto, idActividad, idsUsuarios);
+                if (simulacion.disponibilidad() != null) {
+                    return simulacion.disponibilidad();
+                }
+            } catch (ProyectoNoConfirmableException ex) {
+                return new ResultadoDisponibilidad(
+                        false,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null,
+                        ex.getMessage(),
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        ex.getCodigo(),
+                        List.of());
+            } catch (RuntimeException ex) {
+                return new ResultadoDisponibilidad(
+                        false,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null,
+                        ex.getMessage(),
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        "ERROR_SIMULACION_ASIGNACION",
+                        List.of());
+            }
+        }
 
         return calendarioService.verificarDisponibilidadMiembros(idsUsuarios, actividad);
     }
