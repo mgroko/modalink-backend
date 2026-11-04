@@ -137,8 +137,7 @@ public class CrearActividadService {
                     idProyecto,
                     guardada.getIdActividad(),
                     MotivoReprogramacion.CREACION_ACTIVIDAD,
-                    Map.of(),
-                    true);
+                    Map.of());
         }
 
         var calculo = planificacion.getFechaEntrega() == null

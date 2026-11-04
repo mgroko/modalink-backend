@@ -27,7 +27,6 @@ import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -114,6 +113,34 @@ public class PlanificadorRecursosService {
             boolean permitirSinAsignaciones,
             Map<Long, List<Long>> usuariosExtraPorActividad) {
 
+        return planificar(
+                planificacion,
+                actividades,
+                fechaInicio,
+                proyectoConfirmado,
+                permitirSinAsignaciones,
+                usuariosExtraPorActividad,
+                Map.of());
+    }
+
+    /**
+     * Variante que permite anclar actividades adicionales durante una
+     * reprogramación acotada.
+     *
+     * <p>La regla global solo considera inmóviles a {@code EN_CURSO} y
+     * {@code FINALIZADA}. Una reprogramación de una actividad puntual puede
+     * fijar temporalmente el resto de las {@code PENDIENTE} para no moverlas
+     * sin necesidad; ese anclaje es de la operación y no se persiste.</p>
+     */
+    public Resultado planificar(
+            Planificacion planificacion,
+            List<Actividad> actividades,
+            LocalDateTime fechaInicio,
+            boolean proyectoConfirmado,
+            boolean permitirSinAsignaciones,
+            Map<Long, List<Long>> usuariosExtraPorActividad,
+            Map<Long, LocalDateTime> iniciosFijosAdicionales) {
+
         Map<Long, List<Long>> extras = usuariosExtraPorActividad == null
                 ? Map.of()
                 : usuariosExtraPorActividad;
@@ -142,7 +169,11 @@ public class PlanificadorRecursosService {
         }
 
         Map<Long, Long> iniciosFijos = construirIniciosFijos(
-                actividades, fechaInicio, proyectoConfirmado);
+                actividades,
+                fechaInicio,
+                iniciosFijosAdicionales == null
+                        ? Map.of()
+                        : iniciosFijosAdicionales);
 
         long minutosHastaEntrega = Duration.between(fechaInicio, finEntrega).toMinutes();
         LocalDateTime ahora = cronogramaService.ahora();
@@ -434,23 +465,27 @@ public class PlanificadorRecursosService {
     private Map<Long, Long> construirIniciosFijos(
             List<Actividad> actividades,
             LocalDateTime fechaInicio,
-            boolean proyectoConfirmado) {
+            Map<Long, LocalDateTime> iniciosFijosAdicionales) {
 
         Map<Long, Long> fijos = new HashMap<>();
         for (Actividad actividad : actividades) {
             if (actividad.getEstado() == EstadoActividad.CANCELADA) {
                 continue;
             }
-            boolean fija = actividad.getEstado() == EstadoActividad.EN_CURSO
-                    || actividad.getEstado() == EstadoActividad.FINALIZADA
-                    || (proyectoConfirmado
-                            && actividad.getEstado() == EstadoActividad.PENDIENTE
-                            && (actividad.getOrigenInicio() == OrigenInicio.CONFIRMADA
-                                    || actividad.getOrigenInicio() == OrigenInicio.REAL));
+
+            boolean inmóvil = actividad.getEstado() == EstadoActividad.EN_CURSO
+                    || actividad.getEstado() == EstadoActividad.FINALIZADA;
+            LocalDateTime inicioAdicional = iniciosFijosAdicionales.get(
+                    actividad.getIdActividad());
+            boolean fija = inmóvil || inicioAdicional != null;
             if (!fija) {
                 continue;
             }
-            if (actividad.getFechaHoraInicio() == null) {
+
+            LocalDateTime fecha = inicioAdicional != null
+                    ? inicioAdicional
+                    : actividad.getFechaHoraInicio();
+            if (fecha == null) {
                 throw new ProyectoNoConfirmableException(
                         "DATOS_INCONSISTENTES",
                         "La actividad '" + actividad.getNombre()
@@ -463,8 +498,7 @@ public class PlanificadorRecursosService {
             }
             fijos.put(
                     actividad.getIdActividad(),
-                    Duration.between(fechaInicio, actividad.getFechaHoraInicio())
-                            .toMinutes());
+                    Duration.between(fechaInicio, fecha).toMinutes());
         }
         return fijos;
     }

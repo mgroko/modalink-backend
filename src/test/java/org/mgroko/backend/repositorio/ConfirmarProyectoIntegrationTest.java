@@ -24,7 +24,6 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.proyectos.dto.ConfirmarProyectoResponse;
 import org.mgroko.backend.proyectos.dto.PrevisualizacionConfirmacionResponse;
@@ -105,7 +104,6 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(confirmado.getEstado()).isEqualTo(EstadoProyecto.CONFIRMADO);
         assertThat(confirmado.getFechaInicio()).isNotNull();
         assertThat(actividad.getFechaHoraInicio()).isNotNull();
-        assertThat(actividad.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
         assertThat(response.proyecto().estado()).isEqualTo("Confirmado");
         assertThat(response.cronograma().resumen().tentativo()).isFalse();
     }
@@ -143,7 +141,6 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(resumen.totalProyectos()).isEqualTo(1);
         assertThat(resumen.exitosos()).hasSize(1);
         assertThat(despues.getFechaHoraInicio()).isNotEqualTo(inicioAntes);
-        assertThat(despues.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
     }
 
     @Test

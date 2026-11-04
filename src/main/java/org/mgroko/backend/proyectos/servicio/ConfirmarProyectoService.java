@@ -10,7 +10,6 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse;
 import org.mgroko.backend.proyectos.dto.ConfirmarProyectoResponse;
 import org.mgroko.backend.proyectos.evento.ProyectoConfirmadoEvent;
@@ -85,7 +84,6 @@ public class ConfirmarProyectoService {
         for (Actividad actividad : actividades) {
             if (actividad.getEstado() == EstadoActividad.PENDIENTE) {
                 actividad.setFechaHoraInicio(null);
-                actividad.setOrigenInicio(null);
             }
         }
 
@@ -115,11 +113,6 @@ public class ConfirmarProyectoService {
             }
 
             actividad.setFechaHoraInicio(inicio);
-            if (actividad.getEstado() == EstadoActividad.PENDIENTE) {
-                actividad.setOrigenInicio(OrigenInicio.CONFIRMADA);
-            } else {
-                actividad.setOrigenInicio(OrigenInicio.REAL);
-            }
         }
         actividadRepository.saveAll(actividades);
         actividadRepository.flush();

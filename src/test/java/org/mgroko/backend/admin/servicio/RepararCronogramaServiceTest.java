@@ -25,7 +25,6 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
-import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mockito.Mock;
@@ -41,8 +40,6 @@ class RepararCronogramaServiceTest {
     @Mock
     private ActividadRepository actividadRepository;
     @Mock
-    private AsignacionActividadRepository asignacionActividadRepository;
-    @Mock
     private ReprogramarProyectoService reprogramarProyectoService;
 
     private RepararCronogramaService service;
@@ -53,7 +50,6 @@ class RepararCronogramaServiceTest {
                 proyectoRepository,
                 planificacionRepository,
                 actividadRepository,
-                asignacionActividadRepository,
                 reprogramarProyectoService);
     }
 
@@ -110,7 +106,7 @@ class RepararCronogramaServiceTest {
         assertThat(response.totalDetectadas()).isEqualTo(1);
         assertThat(response.totalReparadas()).isZero();
         verify(reprogramarProyectoService, org.mockito.Mockito.never())
-                .reprogramarActividad(any(), any(), any(), any(), eq(true));
+                .reprogramarActividad(any(), any(), any(), any());
     }
 
     @Test
@@ -131,8 +127,6 @@ class RepararCronogramaServiceTest {
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(predecesora, objetivo));
-        when(asignacionActividadRepository.findActivasByActividadId(2L))
-                .thenReturn(List.of());
 
         ReparacionCronogramaResponse response = service.reparar(
                 new RepararCronogramaRequest(false, null, null, null));
@@ -142,8 +136,7 @@ class RepararCronogramaServiceTest {
                 100L,
                 2L,
                 MotivoReprogramacion.REPARACION,
-                Map.of(),
-                true);
+                Map.of());
     }
 
     private Proyecto proyecto() {

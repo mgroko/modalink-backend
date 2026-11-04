@@ -15,11 +15,9 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
-import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.slf4j.Logger;
@@ -37,26 +35,22 @@ public class RepararCronogramaService {
     private static final Logger LOG =
             LoggerFactory.getLogger(RepararCronogramaService.class);
 
-    public static final String TIPO_ORIGEN_REAL_EN_PENDIENTE = "ORIGEN_REAL_EN_PENDIENTE";
     public static final String TIPO_INICIO_ANTES_DE_PREDECESORA = "INICIO_ANTES_DE_PREDECESORA";
     public static final String TIPO_SUCESORA_AVANZO_A_PREDECESORA = "SUCESORA_AVANZO_A_PREDECESORA";
 
     private final ProyectoRepository proyectoRepository;
     private final PlanificacionRepository planificacionRepository;
     private final ActividadRepository actividadRepository;
-    private final AsignacionActividadRepository asignacionActividadRepository;
     private final ReprogramarProyectoService reprogramarProyectoService;
 
     public RepararCronogramaService(
             ProyectoRepository proyectoRepository,
             PlanificacionRepository planificacionRepository,
             ActividadRepository actividadRepository,
-            AsignacionActividadRepository asignacionActividadRepository,
             ReprogramarProyectoService reprogramarProyectoService) {
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.actividadRepository = actividadRepository;
-        this.asignacionActividadRepository = asignacionActividadRepository;
         this.reprogramarProyectoService = reprogramarProyectoService;
     }
 
@@ -145,16 +139,11 @@ public class RepararCronogramaService {
                 }
 
                 try {
-                    boolean tieneAsignaciones = !asignacionActividadRepository
-                            .findActivasByActividadId(inconsistencia.idActividad())
-                            .isEmpty();
-
                     reprogramarProyectoService.reprogramarActividad(
                             inconsistencia.idProyecto(),
                             inconsistencia.idActividad(),
                             MotivoReprogramacion.REPARACION,
-                            Map.of(),
-                            !tieneAsignaciones);
+                            Map.of());
                     reparadas++;
                 } catch (RuntimeException ex) {
                     fallidas++;
@@ -186,17 +175,6 @@ public class RepararCronogramaService {
 
         if (actividad.getEstado() == EstadoActividad.CANCELADA) {
             return null;
-        }
-
-        if (actividad.getEstado() == EstadoActividad.PENDIENTE
-                && actividad.getOrigenInicio() == OrigenInicio.REAL) {
-            return inconsistencia(
-                    proyecto,
-                    actividad,
-                    TIPO_ORIGEN_REAL_EN_PENDIENTE,
-                    "La actividad está PENDIENTE pero su origen de inicio es REAL.",
-                    actividad.getFechaHoraInicio(),
-                    null);
         }
 
         LocalDateTime finMaximoPredecesoras = finMaximoPredecesoras(actividad);

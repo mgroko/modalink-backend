@@ -170,8 +170,7 @@ public class AsignarActividadService {
                     MotivoReprogramacion.ASIGNACION,
                     Map.of(
                             actividad.getIdActividad(),
-                            List.of(perfilDestino.getUsuario().getIdUsuario())),
-                    false);
+                            List.of(perfilDestino.getUsuario().getIdUsuario())));
             actividad = actividadRepository
                     .findByIdActividadAndPlanificacionIdPlanificacion(
                             idActividad, planificacion.getIdPlanificacion())

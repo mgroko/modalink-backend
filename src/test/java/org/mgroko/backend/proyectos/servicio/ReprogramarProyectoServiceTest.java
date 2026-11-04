@@ -31,7 +31,6 @@ import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.dto.ReprogramacionProyectoResponse;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.repositorio.ActividadRepository;
@@ -106,9 +105,7 @@ class ReprogramarProyectoServiceTest {
                 100L, MotivoReprogramacion.CAMBIO_JORNADA, null);
 
         assertThat(pendiente.getFechaHoraInicio()).isEqualTo(INICIO_NUEVO);
-        assertThat(pendiente.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
         assertThat(fija.getFechaHoraInicio()).isEqualTo(INICIO_FIJO);
-        assertThat(fija.getOrigenInicio()).isEqualTo(OrigenInicio.REAL);
         assertThat(resultado.actividades()).hasSize(1);
         assertThat(resultado.actividades().get(0).idActividad()).isEqualTo(1L);
         assertThat(resultado.actividades().get(0).inicioAnterior()).isEqualTo(INICIO_VIEJO);
@@ -212,15 +209,12 @@ class ReprogramarProyectoServiceTest {
 
         Actividad predecesora = actividad(
                 1L, "Predecesora", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
-        predecesora.setOrigenInicio(OrigenInicio.CONFIRMADA);
         Actividad objetivo = actividad(
                 2L, "Objetivo", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO.plusHours(1));
         objetivo.setPredecesoras(Set.of(predecesora));
-        objetivo.setOrigenInicio(OrigenInicio.CONFIRMADA);
         Actividad sucesora = actividad(
                 3L, "Sucesora", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO.plusHours(2));
         sucesora.setPredecesoras(Set.of(objetivo));
-        sucesora.setOrigenInicio(OrigenInicio.CONFIRMADA);
 
         when(proyectoRepository.findByIdParaGestion(100L))
                 .thenReturn(Optional.of(proyecto));
@@ -230,7 +224,7 @@ class ReprogramarProyectoServiceTest {
                 .thenReturn(List.of(predecesora, objetivo, sucesora));
         when(planificadorRecursosService.planificar(
                 eq(planificacion), anyList(), eq(INICIO_PROYECTO),
-                eq(true), eq(true), anyMap()))
+                eq(true), eq(true), anyMap(), anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(
                                 1L, INICIO_VIEJO,
@@ -243,14 +237,11 @@ class ReprogramarProyectoServiceTest {
                 100L,
                 2L,
                 MotivoReprogramacion.ASIGNACION,
-                Map.of(2L, List.of(30L)),
-                false);
+                Map.of(2L, List.of(30L)));
 
         assertThat(predecesora.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO);
         assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO.plusHours(2));
         assertThat(sucesora.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO.plusHours(3));
-        assertThat(objetivo.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
-        assertThat(sucesora.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
     }
 
     @Test
@@ -260,11 +251,9 @@ class ReprogramarProyectoServiceTest {
 
         Actividad predecesora = actividad(
                 1L, "Predecesora", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
-        predecesora.setOrigenInicio(OrigenInicio.CONFIRMADA);
         Actividad objetivo = actividad(
                 2L, "Objetivo", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO.plusHours(1));
         objetivo.setPredecesoras(Set.of(predecesora));
-        objetivo.setOrigenInicio(OrigenInicio.CONFIRMADA);
 
         when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyecto(100L))
@@ -273,7 +262,7 @@ class ReprogramarProyectoServiceTest {
                 .thenReturn(List.of(predecesora, objetivo));
         when(planificadorRecursosService.planificar(
                 eq(planificacion), anyList(), eq(INICIO_PROYECTO),
-                eq(true), eq(true), anyMap()))
+                eq(true), eq(true), anyMap(), anyMap()))
                 .thenReturn(new PlanificadorRecursosService.Resultado(
                         Map.of(1L, INICIO_VIEJO, 2L, INICIO_VIEJO.plusHours(3)),
                         Map.of(),
@@ -285,7 +274,6 @@ class ReprogramarProyectoServiceTest {
         assertThat(simulacion.inicioPropuesto()).isEqualTo(INICIO_VIEJO.plusHours(3));
         assertThat(simulacion.actividadesAfectadas()).hasSize(1);
         assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO.plusHours(1));
-        assertThat(objetivo.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
     }
 
     private Proyecto proyectoConfirmado() {

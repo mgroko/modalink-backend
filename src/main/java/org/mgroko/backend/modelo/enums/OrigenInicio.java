@@ -1,10 +1,12 @@
 package org.mgroko.backend.modelo.enums;
 
 /**
- * Procedencia del inicio de una actividad.
+ * Origen efectivo del inicio de una actividad.
  *
- * <p>Permite distinguir una proyección de una fecha confirmada y de un inicio
- * real, sin depender solo de que {@code fechaHoraInicio} no sea nulo.</p>
+ * <p>Es un valor derivado, no persistido: se calcula a partir del estado de la
+ * actividad, su {@code fechaHoraInicio}, las asignaciones activas y el estado
+ * del proyecto. No debe usarse para decidir movilidad; solo
+ * {@code EN_CURSO} y {@code FINALIZADA} son inmóviles.</p>
  */
 public enum OrigenInicio {
     PROYECTADA,

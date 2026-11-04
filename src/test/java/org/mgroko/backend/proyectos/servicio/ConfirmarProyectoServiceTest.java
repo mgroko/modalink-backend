@@ -23,7 +23,6 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse;
 import org.mgroko.backend.proyectos.evento.ProyectoConfirmadoEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
@@ -96,7 +95,6 @@ class ConfirmarProyectoServiceTest {
         assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.CONFIRMADO);
         assertThat(proyecto.getFechaInicio()).isEqualTo(AHORA);
         assertThat(actividad.getFechaHoraInicio()).isEqualTo(AHORA.plusHours(1));
-        assertThat(actividad.getOrigenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
         verify(eventPublisher).publishEvent(any(ProyectoConfirmadoEvent.class));
         verify(actividadRepository).flush();
     }

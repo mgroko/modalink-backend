@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,6 @@ import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mockito.Mockito;
@@ -231,17 +231,42 @@ class PlanificadorRecursosServiceTest {
     }
 
     @Test
-    void planificar_pendienteConfirmada_seTrataComoFija() {
-        Actividad fija = actividad(1L, "Fija", 60, EstadoActividad.PENDIENTE);
-        fija.setFechaHoraInicio(INICIO.plusHours(2));
-        fija.setOrigenInicio(OrigenInicio.CONFIRMADA);
+    void planificar_pendienteConfirmada_seTrataComoLibre() {
+        Actividad libre = actividad(1L, "Libre", 60, EstadoActividad.PENDIENTE);
+        libre.setFechaHoraInicio(INICIO.plusHours(2));
         Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));
 
         when(asignacionRepository.findActivasByActividadIds(anyCollection()))
-                .thenReturn(List.of(asignacion(10L, 20L, 30L, fija)));
+                .thenReturn(List.of(asignacion(10L, 20L, 30L, libre)));
+        LocalDateTime inicioHueco = INICIO.plusHours(1);
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(libre), any(), any(), anyMap()))
+                .thenReturn(disponible(inicioHueco, 60));
 
         PlanificadorRecursosService.Resultado resultado =
-                service.planificar(planificacion, List.of(fija), INICIO, true);
+                service.planificar(planificacion, List.of(libre), INICIO, true);
+
+        assertThat(resultado.inicios().get(1L)).isEqualTo(inicioHueco);
+    }
+
+    @Test
+    void planificar_pendienteAncladaAdicionalmente_conservaSuInicio() {
+        Actividad pendiente = actividad(
+                1L, "Pendiente", 60, EstadoActividad.PENDIENTE);
+        pendiente.setFechaHoraInicio(INICIO.plusHours(2));
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));
+
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(asignacion(10L, 20L, 30L, pendiente)));
+
+        PlanificadorRecursosService.Resultado resultado = service.planificar(
+                planificacion,
+                List.of(pendiente),
+                INICIO,
+                true,
+                true,
+                Map.of(),
+                Map.of(1L, INICIO.plusHours(2)));
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(INICIO.plusHours(2));
     }
@@ -267,9 +292,8 @@ class PlanificadorRecursosServiceTest {
     @Test
     void planificar_fijaEnElPasado_seConservaYSucesoraEmpiezaAhora() {
         PlanificadorRecursosService servicioTarde = servicioConReloj(RELOJ_TARDE);
-        Actividad fija = actividad(1L, "Fija", 60, EstadoActividad.PENDIENTE);
+        Actividad fija = actividad(1L, "Fija", 60, EstadoActividad.EN_CURSO);
         fija.setFechaHoraInicio(INICIO);
-        fija.setOrigenInicio(OrigenInicio.CONFIRMADA);
         Actividad libre = actividad(2L, "Libre", 30, EstadoActividad.PENDIENTE);
         libre.setPredecesoras(Set.of(fija));
         Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10), INICIO);

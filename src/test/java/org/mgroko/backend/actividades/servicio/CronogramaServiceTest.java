@@ -251,7 +251,7 @@ class CronogramaServiceTest {
     }
 
     @Test
-    void recalcular_pendienteConfirmadaEnProyectoConfirmado_seMantieneFija() {
+    void recalcular_pendienteConfirmadaEnProyectoConfirmado_seReproyecta() {
         Proyecto proyecto = Proyecto.builder()
                 .fechaInicio(LocalDateTime.of(2026, 11, 1, 9, 0))
                 .estado(org.mgroko.backend.modelo.enums.EstadoProyecto.CONFIRMADO)
@@ -261,20 +261,19 @@ class CronogramaServiceTest {
                 .proyecto(proyecto)
                 .build();
 
-        Actividad fija = actividad(
-                1L, "Fija", 60, EstadoActividad.PENDIENTE,
+        Actividad pendiente = actividad(
+                1L, "Pendiente", 60, EstadoActividad.PENDIENTE,
                 LocalDateTime.of(2026, 11, 1, 15, 0));
-        fija.setOrigenInicio(org.mgroko.backend.modelo.enums.OrigenInicio.CONFIRMADA);
 
         Actividad sucesora = actividad(2L, "Sucesora", 60, EstadoActividad.PENDIENTE, null);
-        sucesora.setPredecesoras(Set.of(fija));
+        sucesora.setPredecesoras(Set.of(pendiente));
 
-        cronogramaService.recalcular(planificacion, List.of(fija, sucesora));
+        cronogramaService.recalcular(planificacion, List.of(pendiente, sucesora));
 
-        assertThat(fechaProyectada(planificacion, List.of(fija, sucesora), 1L))
-                .isEqualTo(LocalDateTime.of(2026, 11, 1, 15, 0));
-        assertThat(fechaProyectada(planificacion, List.of(fija, sucesora), 2L))
-                .isEqualTo(LocalDateTime.of(2026, 11, 1, 16, 0));
+        assertThat(fechaProyectada(planificacion, List.of(pendiente, sucesora), 1L))
+                .isEqualTo(LocalDateTime.of(2026, 11, 1, 9, 0));
+        assertThat(fechaProyectada(planificacion, List.of(pendiente, sucesora), 2L))
+                .isEqualTo(LocalDateTime.of(2026, 11, 1, 10, 0));
     }
 
     @Test

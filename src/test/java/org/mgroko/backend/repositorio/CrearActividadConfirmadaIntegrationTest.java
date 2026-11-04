@@ -14,6 +14,7 @@ import org.mgroko.backend.actividades.dto.CronogramaResponse;
 import org.mgroko.backend.actividades.enums.UnidadDuracion;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerCronogramaService;
+import org.mgroko.backend.actividades.servicio.OrigenInicioResolver;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Genero;
@@ -99,7 +100,9 @@ class CrearActividadConfirmadaIntegrationTest extends AbstractPostgresIntegratio
         Actividad nueva = em.find(Actividad.class, creada.idActividad());
         assertThat(nueva).isNotNull();
         assertThat(nueva.getEstado()).isEqualTo(EstadoActividad.PENDIENTE);
-        assertThat(nueva.getOrigenInicio()).isEqualTo(OrigenInicio.PROYECTADA);
+        assertThat(OrigenInicioResolver.resolver(
+                nueva, EstadoProyecto.CONFIRMADO, false))
+                .isEqualTo(OrigenInicio.PROYECTADA);
         assertThat(nueva.getFechaHoraInicio()).isNotNull();
 
         LocalDateTime finMaximoPredecesoras = LocalDateTime.MIN;

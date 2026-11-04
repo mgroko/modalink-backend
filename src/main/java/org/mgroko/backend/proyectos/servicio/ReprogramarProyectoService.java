@@ -21,7 +21,6 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.dto.ActividadReprogramadaResponse;
 import org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse;
 import org.mgroko.backend.proyectos.dto.ConflictoFijoResponse;
@@ -150,15 +149,11 @@ public class ReprogramarProyectoService {
                         planificacion.getIdPlanificacion());
 
         Map<Long, LocalDateTime> iniciosAnteriores = new HashMap<>();
-        Map<Long, OrigenInicio> origenesAnteriores = new HashMap<>();
         for (Actividad actividad : actividades) {
             if (actividad.getEstado() != EstadoActividad.CANCELADA) {
                 iniciosAnteriores.put(
                         actividad.getIdActividad(),
                         actividad.getFechaHoraInicio());
-                origenesAnteriores.put(
-                        actividad.getIdActividad(),
-                        actividad.getOrigenInicio());
             }
         }
 
@@ -179,7 +174,6 @@ public class ReprogramarProyectoService {
         // si fueran reservas. La transacción las restaura si algo falla.
         for (Actividad actividad : pendientes) {
             actividad.setFechaHoraInicio(null);
-            actividad.setOrigenInicio(null);
         }
         actividadRepository.saveAll(actividades);
         actividadRepository.flush();
@@ -229,13 +223,6 @@ public class ReprogramarProyectoService {
 
             LocalDateTime anterior = iniciosAnteriores.get(actividad.getIdActividad());
             actividad.setFechaHoraInicio(inicio);
-            actividad.setOrigenInicio(
-                    actividad.getEstado() == EstadoActividad.PENDIENTE
-                            ? (origenesAnteriores.get(actividad.getIdActividad())
-                                    == OrigenInicio.PROYECTADA
-                                    ? OrigenInicio.PROYECTADA
-                                    : OrigenInicio.CONFIRMADA)
-                            : OrigenInicio.REAL);
 
             if (!Objects.equals(anterior, inicio)) {
                 cambios.add(new ActividadReprogramadaResponse(
@@ -266,18 +253,13 @@ public class ReprogramarProyectoService {
     /**
      * Reprograma solo una actividad y sus sucesoras transitivas
      * {@code PENDIENTE}. Las predecesoras no se mueven.
-     *
-     * @param provisional si la actividad objetivo debe quedar como
-     *                    {@code PROYECTADA} (creación) o {@code CONFIRMADA}
-     *                    (asignación/reintento)
      */
     @Transactional
     public ReprogramacionProyectoResponse reprogramarActividad(
             Long idProyecto,
             Long idActividad,
             MotivoReprogramacion motivo,
-            Map<Long, List<Long>> usuariosExtraPorActividad,
-            boolean provisional) {
+            Map<Long, List<Long>> usuariosExtraPorActividad) {
 
         Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
@@ -306,15 +288,12 @@ public class ReprogramarProyectoService {
                             idActividad)));
         }
 
-        Set<Long> conAsignaciones = idsConAsignaciones(movibles);
-
         Map<Long, LocalDateTime> iniciosAnteriores = new HashMap<>();
         for (Long id : movibles) {
             Actividad actividad = porId.get(id);
             if (actividad != null) {
                 iniciosAnteriores.put(id, actividad.getFechaHoraInicio());
                 actividad.setFechaHoraInicio(null);
-                actividad.setOrigenInicio(null);
             }
         }
         actividadRepository.saveAll(actividades);
@@ -324,7 +303,8 @@ public class ReprogramarProyectoService {
                 planificacion,
                 actividades,
                 fechaInicio,
-                usuariosExtraPorActividad);
+                usuariosExtraPorActividad,
+                iniciosFijosAdicionales(actividades, movibles));
 
         List<ActividadReprogramadaResponse> cambios = new ArrayList<>();
         for (Actividad actividad : actividades) {
@@ -347,18 +327,6 @@ public class ReprogramarProyectoService {
 
             LocalDateTime anterior = iniciosAnteriores.get(actividad.getIdActividad());
             actividad.setFechaHoraInicio(inicio);
-            if (movibles.contains(actividad.getIdActividad())
-                    && actividad.getEstado() == EstadoActividad.PENDIENTE) {
-                boolean sinAsignaciones = !conAsignaciones.contains(
-                        actividad.getIdActividad());
-                actividad.setOrigenInicio(
-                        provisional && sinAsignaciones
-                                ? OrigenInicio.PROYECTADA
-                                : OrigenInicio.CONFIRMADA);
-            } else if (actividad.getEstado() == EstadoActividad.EN_CURSO
-                    || actividad.getEstado() == EstadoActividad.FINALIZADA) {
-                actividad.setOrigenInicio(OrigenInicio.REAL);
-            }
 
             if (!Objects.equals(anterior, inicio)) {
                 cambios.add(new ActividadReprogramadaResponse(
@@ -418,14 +386,11 @@ public class ReprogramarProyectoService {
         }
 
         Map<Long, LocalDateTime> iniciosAnteriores = new HashMap<>();
-        Map<Long, OrigenInicio> origenesAnteriores = new HashMap<>();
         for (Long id : movibles) {
             Actividad actividad = porId.get(id);
             if (actividad != null) {
                 iniciosAnteriores.put(id, actividad.getFechaHoraInicio());
-                origenesAnteriores.put(id, actividad.getOrigenInicio());
                 actividad.setFechaHoraInicio(null);
-                actividad.setOrigenInicio(null);
             }
         }
 
@@ -434,7 +399,8 @@ public class ReprogramarProyectoService {
                     planificacion,
                     actividades,
                     fechaInicio,
-                    Map.of(idActividad, idsUsuarios == null ? List.of() : idsUsuarios));
+                    Map.of(idActividad, idsUsuarios == null ? List.of() : idsUsuarios),
+                    iniciosFijosAdicionales(actividades, movibles));
 
             Actividad objetivo = porId.get(idActividad);
             LocalDateTime inicioPropuesto = plan.inicios().get(idActividad);
@@ -491,7 +457,6 @@ public class ReprogramarProyectoService {
                 Actividad actividad = porId.get(id);
                 if (actividad != null) {
                     actividad.setFechaHoraInicio(iniciosAnteriores.get(id));
-                    actividad.setOrigenInicio(origenesAnteriores.get(id));
                 }
             }
         }
@@ -501,7 +466,8 @@ public class ReprogramarProyectoService {
             Planificacion planificacion,
             List<Actividad> actividades,
             LocalDateTime fechaInicio,
-            Map<Long, List<Long>> usuariosExtraPorActividad) {
+            Map<Long, List<Long>> usuariosExtraPorActividad,
+            Map<Long, LocalDateTime> iniciosFijosAdicionales) {
 
         try {
             return planificadorRecursosService.planificar(
@@ -512,7 +478,10 @@ public class ReprogramarProyectoService {
                     true,
                     usuariosExtraPorActividad == null
                             ? Map.of()
-                            : usuariosExtraPorActividad);
+                            : usuariosExtraPorActividad,
+                    iniciosFijosAdicionales == null
+                            ? Map.of()
+                            : iniciosFijosAdicionales);
         } catch (ProyectoNoConfirmableException ex) {
             throw ex;
         } catch (RuntimeException ex) {
@@ -711,19 +680,26 @@ public class ReprogramarProyectoService {
         return conflictos;
     }
 
-    private Set<Long> idsConAsignaciones(Collection<Long> idsActividades) {
-        Set<Long> ids = new LinkedHashSet<>();
-        if (idsActividades == null || idsActividades.isEmpty()) {
-            return ids;
-        }
-        for (AsignacionActividad asignacion
-                : asignacionActividadRepository.findActivasByActividadIds(idsActividades)) {
-            if (asignacion.getActividad() != null
-                    && asignacion.getActividad().getIdActividad() != null) {
-                ids.add(asignacion.getActividad().getIdActividad());
+    /**
+     * Ancla temporalmente las {@code PENDIENTE} que no forman parte de la
+     * reprogramación acotada. El anclaje es solo para esta operación: no se
+     * persiste ni cambia la regla global de movilidad.
+     */
+    private Map<Long, LocalDateTime> iniciosFijosAdicionales(
+            List<Actividad> actividades,
+            Set<Long> movibles) {
+
+        Map<Long, LocalDateTime> fijos = new HashMap<>();
+        for (Actividad actividad : actividades) {
+            if (actividad.getEstado() == EstadoActividad.PENDIENTE
+                    && !movibles.contains(actividad.getIdActividad())
+                    && actividad.getFechaHoraInicio() != null) {
+                fijos.put(
+                        actividad.getIdActividad(),
+                        actividad.getFechaHoraInicio());
             }
         }
-        return ids;
+        return fijos;
     }
 
     private List<Long> usuariosDe(Collection<AsignacionActividad> asignaciones) {

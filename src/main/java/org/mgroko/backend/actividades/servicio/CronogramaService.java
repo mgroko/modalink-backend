@@ -28,8 +28,6 @@ import org.mgroko.backend.actividades.dto.RangoFactible;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
-import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.springframework.stereotype.Service;
 
 /**
@@ -517,19 +515,15 @@ public class CronogramaService {
     /**
      * Offset fijo de las actividades que no se pueden reprogramar.
      *
-     * <p>Una actividad está fija cuando ya se ejecutó o está en ejecución, o
-     * cuando es una {@code PENDIENTE} de un proyecto confirmado cuyo inicio
-     * tiene origen {@link OrigenInicio#CONFIRMADA} o
-     * {@link OrigenInicio#REAL}. Las proyecciones de proyectos no confirmados
-     * no se fijan: son datos de lectura y deben recalcularse.</p>
+     * <p>Solo se anclan las actividades {@code EN_CURSO} y
+     * {@code FINALIZADA}. Toda {@code PENDIENTE} es reprogramable, aunque
+     * tenga un inicio persistido: ese inicio es una proyección y no una
+     * restricción dura.</p>
      */
     private Map<Long, Long> iniciosFijos(
             Planificacion planificacion,
             List<Actividad> actividades,
             LocalDateTime inicio) {
-
-        boolean proyectoConfirmado = planificacion.getProyecto() != null
-                && planificacion.getProyecto().getEstado() == EstadoProyecto.CONFIRMADO;
 
         Map<Long, Long> fijos = new HashMap<>();
         for (Actividad actividad : actividades) {
@@ -537,12 +531,7 @@ public class CronogramaService {
                 continue;
             }
 
-            boolean fija = actividad.getEstado() == EstadoActividad.EN_CURSO
-                    || actividad.getEstado() == EstadoActividad.FINALIZADA
-                    || (proyectoConfirmado
-                            && actividad.getEstado() == EstadoActividad.PENDIENTE
-                            && (actividad.getOrigenInicio() == OrigenInicio.CONFIRMADA
-                                    || actividad.getOrigenInicio() == OrigenInicio.REAL));
+            boolean fija = OrigenInicioResolver.esInmovible(actividad);
 
             if (!fija) {
                 continue;
