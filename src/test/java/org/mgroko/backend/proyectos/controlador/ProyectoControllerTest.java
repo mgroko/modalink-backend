@@ -252,6 +252,7 @@ class ProyectoControllerTest {
                 false,
                 0L,
                 2,
+                false,
                 false);
         var moodboardResp = new org.mgroko.backend.proyectos.dto.MoodboardResponse(
                 77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0), List.of());
@@ -775,6 +776,30 @@ class ProyectoControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("No se puede modificar un proyecto en estado Finalizado."));
+    }
+
+    @Test
+    void modificar_requerimientoGeneralProtegido_devuelve409ConCodigo() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.ModificarProyectoRequest(
+                "Nueva descripción", Privacidad.Publico, true, null, null, null, null, null);
+
+        when(modificarProyectoService.modificar(
+                eq(1L), eq(10L), eq(100L),
+                any(org.mgroko.backend.proyectos.dto.ModificarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception
+                        .RequerimientoGralProtegidoException(28L));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/proyectos/100")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("REQUERIMIENTO_CON_VINCULOS"))
+                .andExpect(jsonPath("$.idRequerimientoGral").value(28L));
     }
 
     // ---------------------------------------------------------------------

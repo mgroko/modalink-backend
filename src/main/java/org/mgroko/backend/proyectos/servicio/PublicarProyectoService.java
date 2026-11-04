@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -71,6 +72,7 @@ public class PublicarProyectoService {
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
     private final ObjetivoRepository objetivoRepository;
+    private final RequerimientoGralProteccionService requerimientoGralProteccionService;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
@@ -85,6 +87,7 @@ public class PublicarProyectoService {
             RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             ObjetivoRepository objetivoRepository,
+            RequerimientoGralProteccionService requerimientoGralProteccionService,
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
             BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy) {
@@ -97,6 +100,7 @@ public class PublicarProyectoService {
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
         this.objetivoRepository = objetivoRepository;
+        this.requerimientoGralProteccionService = requerimientoGralProteccionService;
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
@@ -158,9 +162,16 @@ public class PublicarProyectoService {
 
         List<Objetivo> objetivos = objetivoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto());
 
+        List<RequerimientoGralProyecto> requerimientosEntidad =
+                requerimientoGralProyectoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto());
+        Map<Long, Boolean> protegidos = requerimientoGralProteccionService
+                .calcularProtegidos(requerimientosEntidad, proyecto.getEstado());
+
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
-        for (RequerimientoGralProyecto rg : requerimientoGralProyectoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto())) {
-            requerimientos.add(armarRequerimientoResponse(rg));
+        for (RequerimientoGralProyecto rg : requerimientosEntidad) {
+            requerimientos.add(armarRequerimientoResponse(
+                    rg,
+                    protegidos.getOrDefault(rg.getIdRequerimientoGral(), Boolean.FALSE)));
         }
 
         MoodboardResponse moodboardResponse = moodboardRepository.findByProyectoIdProyecto(proyecto.getIdProyecto())
@@ -219,7 +230,9 @@ public class PublicarProyectoService {
                 .orElse(null);
     }
 
-    private RequerimientoGralResponse armarRequerimientoResponse(RequerimientoGralProyecto rg) {
+    private RequerimientoGralResponse armarRequerimientoResponse(
+            RequerimientoGralProyecto rg,
+            Boolean protegido) {
         List<CaracteristicaRequerimientoResponse> caracts = new ArrayList<>();
         for (RequerimientoGralCaract caract : rg.getCaracteristicas()) {
             CaracteristicaTecnica ct = caract.getCaracteristica();
@@ -255,6 +268,7 @@ public class PublicarProyectoService {
                 cupo.satisfecho(),
                 cupo.cubiertos(),
                 cupo.faltantes(),
-                Boolean.FALSE);
+                Boolean.FALSE,
+                protegido);
     }
 }

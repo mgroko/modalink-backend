@@ -14,5 +14,6 @@ public record RequerimientoGralResponse(
         Boolean satisfecho,
         Long cubiertos,
         Integer faltantes,
-        Boolean puedePostularse
+        Boolean puedePostularse,
+        Boolean protegido
 ) {}

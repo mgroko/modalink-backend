@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.mgroko.backend.modelo.InvitacionGral;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -31,4 +32,24 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
         WHERE i.idInvitacionGral IN :ids
     """)
     List<ProyectoDeEntidad> findProyectoPorIds(@Param("ids") Collection<Long> ids);
+
+    boolean existsByRequerimientoGral_IdRequerimientoGralAndEstado(
+            Long idRequerimientoGral, EstadoSolicitud estado);
+
+    void deleteByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
+
+    /**
+     * Devuelve los requerimientos generales del conjunto que tienen al menos
+     * una invitación en el estado indicado. Se usa para calcular en bloque si
+     * un requerimiento está protegido en UC-36.
+     */
+    @Query("""
+        SELECT DISTINCT i.requerimientoGral.idRequerimientoGral
+        FROM InvitacionGral i
+        WHERE i.requerimientoGral.idRequerimientoGral IN :ids
+          AND i.estado = :estado
+    """)
+    List<Long> findIdsRequerimientoGralPorEstado(
+            @Param("ids") Collection<Long> ids,
+            @Param("estado") EstadoSolicitud estado);
 }

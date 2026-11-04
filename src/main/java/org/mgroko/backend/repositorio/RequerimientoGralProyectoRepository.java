@@ -50,4 +50,17 @@ public interface RequerimientoGralProyectoRepository extends JpaRepository<Reque
     """)
     Optional<RequerimientoGralProyecto> findByIdParaGestion(
             @Param("idRequerimientoGral") Long idRequerimientoGral);
+
+    /**
+     * Carga y bloquea los requerimientos generales de un proyecto antes de
+     * validar protección y aplicar cambios. Se usa en UC-36 para evitar
+     * carreras entre la validación de vínculos y el borrado.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT r FROM RequerimientoGralProyecto r
+        WHERE r.proyecto.idProyecto = :idProyecto
+    """)
+    List<RequerimientoGralProyecto> findByProyectoIdProyectoForUpdate(
+            @Param("idProyecto") Long idProyecto);
 }

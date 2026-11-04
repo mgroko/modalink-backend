@@ -197,4 +197,19 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     List<CubiertosPorRequerimiento> countActivosPorRequerimientoGralIds(
             @Param("ids") Collection<Long> ids);
+
+    /**
+     * Indica si existe cualquier fila de miembro vinculada al requerimiento,
+     * sin importar su estado de participación. Se usa en UC-36 porque la FK de
+     * miembros_proyecto impide borrar un requerimiento con historial.
+     */
+    boolean existsByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
+
+    @Query("""
+        SELECT DISTINCT mp.requerimientoGral.idRequerimientoGral
+        FROM MiembroProyecto mp
+        WHERE mp.requerimientoGral.idRequerimientoGral IN :ids
+    """)
+    List<Long> findIdsRequerimientoGralConMiembros(
+            @Param("ids") Collection<Long> ids);
 }

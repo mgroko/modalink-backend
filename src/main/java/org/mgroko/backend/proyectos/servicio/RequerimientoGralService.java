@@ -101,6 +101,56 @@ public class RequerimientoGralService {
     }
 
     /**
+     * Actualiza un requerimiento existente conservando su identificador y sus
+     * vínculos. Las características se sincronizan en el lugar para no chocar
+     * con el índice único {@code (id_requerimiento_gral, id_caracteristica)}.
+     */
+    public RequerimientoGralResponse actualizar(
+            RequerimientoGralProyecto requerimiento,
+            Long idProfesion,
+            Integer cantidad,
+            String descripcion,
+            List<CrearRequerimientoCaractRequest> caracteristicas,
+            List<Long> habilidades) {
+
+        Profesion profesion = profesionRepository.findById(idProfesion)
+                .orElseThrow(() -> new ProfesionNoEncontradaException(
+                        "Profesión no encontrada: " + idProfesion));
+
+        requerimiento.setProfesion(profesion);
+        requerimiento.setCantidad(cantidad);
+        requerimiento.setDescripcion(descripcion != null ? descripcion.trim() : null);
+
+        // Se borran solo los valores; las filas de requerimiento_gral_caract se
+        // actualizan en el lugar para no chocar con el índice único.
+        for (RequerimientoGralCaract caracteristica : requerimiento.getCaracteristicas()) {
+            if (caracteristica.getIdReqGralCaract() != null) {
+                requerimientoGralCaractValorRepository
+                        .deleteByIdReqGralCaract(caracteristica.getIdReqGralCaract());
+            }
+        }
+
+        Map<Long, List<Long>> idsValoresPorCaracteristica = new HashMap<>();
+        sincronizarCaracteristicas(
+                requerimiento, caracteristicas, idsValoresPorCaracteristica);
+
+        if (requerimiento.getHabilidades() == null) {
+            requerimiento.setHabilidades(resolverHabilidades(habilidades));
+        } else {
+            requerimiento.getHabilidades().clear();
+            requerimiento.getHabilidades().addAll(resolverHabilidades(habilidades));
+        }
+
+        RequerimientoGralProyecto guardado =
+                requerimientoGralProyectoRepository.saveAndFlush(requerimiento);
+
+        persistirValoresCaracteristicas(
+                guardado.getCaracteristicas(), idsValoresPorCaracteristica);
+
+        return toResponse(guardado, idsValoresPorCaracteristica);
+    }
+
+    /**
      * Elimina un requerimiento junto con sus valores de características
      * enumeradas (que no tienen cascade desde el requerimiento).
      */
@@ -148,6 +198,7 @@ public class RequerimientoGralService {
                 Boolean.FALSE,
                 0L,
                 cantidad,
+                Boolean.FALSE,
                 Boolean.FALSE);
     }
 
@@ -163,26 +214,8 @@ public class RequerimientoGralService {
 
         Set<Long> vistas = new HashSet<>();
         for (CrearRequerimientoCaractRequest carReq : caracteristicasRequest) {
-            if (!vistas.add(carReq.idCaracteristica())) {
-                throw new RequerimientoInvalidoException(
-                        "La característica técnica " + carReq.idCaracteristica() + " está duplicada en el requerimiento.");
-            }
-
-            CaracteristicaTecnica ct = caracteristicaTecnicaRepository.findById(carReq.idCaracteristica())
-                    .orElseThrow(() -> new CaracteristicaNoEncontradaException(
-                            "Característica técnica no encontrada: " + carReq.idCaracteristica()));
-
-            if (!ct.getProfesion().getIdProfesion().equals(requerimiento.getProfesion().getIdProfesion())) {
-                throw new CaracteristicaProfesionNoCoincideException(
-                        "La característica técnica " + carReq.idCaracteristica()
-                                + " no corresponde a la profesión del requerimiento.");
-            }
-
-            validarRangoYValores(ct, carReq);
-
-            if (carReq.valores() != null && !carReq.valores().isEmpty()) {
-                idsValoresPorCaracteristica.put(ct.getIdCaracteristica(), carReq.valores());
-            }
+            CaracteristicaTecnica ct = resolverCaracteristica(requerimiento, carReq, vistas);
+            registrarValores(ct, carReq, idsValoresPorCaracteristica);
 
             resultado.add(RequerimientoGralCaract.builder()
                     .requerimientoGral(requerimiento)
@@ -193,6 +226,88 @@ public class RequerimientoGralService {
         }
 
         return resultado;
+    }
+
+    /**
+     * Sincroniza las características de un requerimiento existente sin borrar
+     * y recrear las filas que se mantienen. Evita el choque con el índice
+     * único {@code (id_requerimiento_gral, id_caracteristica)} cuando
+     * Hibernate intenta insertar la nueva fila antes del orphan removal de la
+     * anterior.
+     */
+    private void sincronizarCaracteristicas(
+            RequerimientoGralProyecto requerimiento,
+            List<CrearRequerimientoCaractRequest> caracteristicasRequest,
+            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+
+        Map<Long, RequerimientoGralCaract> actuales = new HashMap<>();
+        for (RequerimientoGralCaract actual : requerimiento.getCaracteristicas()) {
+            actuales.put(actual.getCaracteristica().getIdCaracteristica(), actual);
+        }
+
+        Set<Long> solicitadas = new HashSet<>();
+        Set<Long> vistas = new HashSet<>();
+
+        if (caracteristicasRequest != null) {
+            for (CrearRequerimientoCaractRequest carReq : caracteristicasRequest) {
+                CaracteristicaTecnica ct = resolverCaracteristica(requerimiento, carReq, vistas);
+                solicitadas.add(ct.getIdCaracteristica());
+                registrarValores(ct, carReq, idsValoresPorCaracteristica);
+
+                RequerimientoGralCaract actual = actuales.get(ct.getIdCaracteristica());
+                if (actual != null) {
+                    actual.setValorMin(carReq.valorMin());
+                    actual.setValorMax(carReq.valorMax());
+                } else {
+                    requerimiento.getCaracteristicas().add(RequerimientoGralCaract.builder()
+                            .requerimientoGral(requerimiento)
+                            .caracteristica(ct)
+                            .valorMin(carReq.valorMin())
+                            .valorMax(carReq.valorMax())
+                            .build());
+                }
+            }
+        }
+
+        requerimiento.getCaracteristicas().removeIf(actual ->
+                !solicitadas.contains(actual.getCaracteristica().getIdCaracteristica()));
+    }
+
+    private CaracteristicaTecnica resolverCaracteristica(
+            RequerimientoGralProyecto requerimiento,
+            CrearRequerimientoCaractRequest carReq,
+            Set<Long> vistas) {
+
+        if (!vistas.add(carReq.idCaracteristica())) {
+            throw new RequerimientoInvalidoException(
+                    "La característica técnica " + carReq.idCaracteristica()
+                            + " está duplicada en el requerimiento.");
+        }
+
+        CaracteristicaTecnica ct = caracteristicaTecnicaRepository
+                .findById(carReq.idCaracteristica())
+                .orElseThrow(() -> new CaracteristicaNoEncontradaException(
+                        "Característica técnica no encontrada: " + carReq.idCaracteristica()));
+
+        if (!ct.getProfesion().getIdProfesion()
+                .equals(requerimiento.getProfesion().getIdProfesion())) {
+            throw new CaracteristicaProfesionNoCoincideException(
+                    "La característica técnica " + carReq.idCaracteristica()
+                            + " no corresponde a la profesión del requerimiento.");
+        }
+
+        validarRangoYValores(ct, carReq);
+        return ct;
+    }
+
+    private void registrarValores(
+            CaracteristicaTecnica ct,
+            CrearRequerimientoCaractRequest carReq,
+            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+
+        if (carReq.valores() != null && !carReq.valores().isEmpty()) {
+            idsValoresPorCaracteristica.put(ct.getIdCaracteristica(), carReq.valores());
+        }
     }
 
     private void validarRangoYValores(CaracteristicaTecnica ct, CrearRequerimientoCaractRequest carReq) {

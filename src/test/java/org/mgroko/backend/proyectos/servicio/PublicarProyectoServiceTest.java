@@ -88,6 +88,9 @@ class PublicarProyectoServiceTest {
     private ObjetivoRepository objetivoRepository;
 
     @Mock
+    private RequerimientoGralProteccionService requerimientoGralProteccionService;
+
+    @Mock
     private CupoRequerimientoService cupoRequerimientoService;
 
     @Mock

@@ -73,6 +73,23 @@ public interface PostulacionGralRepository
     boolean existsByRequerimientoGralIdRequerimientoGralAndEstado(
             Long idRequerimientoGral, EstadoSolicitud estado);
 
+    void deleteByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
+
+    /**
+     * Devuelve los requerimientos generales del conjunto que tienen al menos
+     * una postulación en el estado indicado. Se usa para calcular en bloque si
+     * un requerimiento está protegido en UC-36.
+     */
+    @Query("""
+        SELECT DISTINCT p.requerimientoGral.idRequerimientoGral
+        FROM PostulacionGral p
+        WHERE p.requerimientoGral.idRequerimientoGral IN :ids
+          AND p.estado = :estado
+    """)
+    List<Long> findIdsRequerimientoGralPorEstado(
+            @Param("ids") Collection<Long> ids,
+            @Param("estado") EstadoSolicitud estado);
+
     /**
      * Indica si el perfil ya se postuló al requerimiento general, sin importar
      * el estado de la postulación. La base también lo garantiza con el índice

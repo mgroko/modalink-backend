@@ -402,6 +402,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoGralProtegido(
+            org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "REQUERIMIENTO_CON_VINCULOS");
+        response.put("idRequerimientoGral", ex.getIdRequerimientoGral());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {

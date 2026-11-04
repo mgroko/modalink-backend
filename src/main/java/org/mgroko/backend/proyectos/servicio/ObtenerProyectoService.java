@@ -64,6 +64,7 @@ public class ObtenerProyectoService {
     private final ObjetivoRepository objetivoRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
+    private final RequerimientoGralProteccionService requerimientoGralProteccionService;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final MoodboardRepository moodboardRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
@@ -79,6 +80,7 @@ public class ObtenerProyectoService {
             ObjetivoRepository objetivoRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
+            RequerimientoGralProteccionService requerimientoGralProteccionService,
             CupoRequerimientoService cupoRequerimientoService,
             MoodboardRepository moodboardRepository,
             ProyectoVisibilidadService proyectoVisibilidadService,
@@ -92,6 +94,7 @@ public class ObtenerProyectoService {
         this.objetivoRepository = objetivoRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
+        this.requerimientoGralProteccionService = requerimientoGralProteccionService;
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.moodboardRepository = moodboardRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
@@ -163,6 +166,9 @@ public class ObtenerProyectoService {
                 cargarValoresCaracteristicas(requerimientosEntidad);
         Map<Long, CupoRequerimiento> cuposPorRequerimiento =
                 cupoRequerimientoService.calcularGenerales(requerimientosEntidad);
+        Map<Long, Boolean> protegidosPorRequerimiento =
+                requerimientoGralProteccionService.calcularProtegidos(
+                        requerimientosEntidad, proyecto.getEstado());
 
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
         for (RequerimientoGralProyecto rg : requerimientosEntidad) {
@@ -185,7 +191,9 @@ public class ObtenerProyectoService {
                     aceptaPostulacionGral,
                     profesionCoincide,
                     valoresPorCaracteristica,
-                    cupo));
+                    cupo,
+                    protegidosPorRequerimiento.getOrDefault(
+                            rg.getIdRequerimientoGral(), Boolean.FALSE)));
         }
 
         MoodboardResponse moodboardResponse = moodboardRepository.findByProyectoIdProyecto(idProyecto)
@@ -287,7 +295,8 @@ public class ObtenerProyectoService {
             boolean aceptaPostulacionGral,
             boolean profesionCoincide,
             Map<Long, List<Long>> valoresPorCaracteristica,
-            CupoRequerimiento cupo) {
+            CupoRequerimiento cupo,
+            Boolean protegido) {
 
         List<CaracteristicaRequerimientoResponse> caracts = new ArrayList<>();
         for (RequerimientoGralCaract caract : rg.getCaracteristicas()) {
@@ -325,7 +334,8 @@ public class ObtenerProyectoService {
                 cupo.satisfecho(),
                 cupo.cubiertos(),
                 cupo.faltantes(),
-                puedePostularse);
+                puedePostularse,
+                protegido);
     }
 
     /**

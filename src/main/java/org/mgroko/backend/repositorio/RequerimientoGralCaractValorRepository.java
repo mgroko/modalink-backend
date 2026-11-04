@@ -6,6 +6,7 @@ import java.util.List;
 import org.mgroko.backend.modelo.RequerimientoGralCaractValor;
 import org.mgroko.backend.modelo.RequerimientoGralCaractValorId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,4 +26,8 @@ public interface RequerimientoGralCaractValorRepository
     """)
     List<RequerimientoGralCaractValor> findByIdReqGralCaractIn(
             @Param("idsReqGralCaract") Collection<Long> idsReqGralCaract);
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM RequerimientoGralCaractValor v WHERE v.idReqGralCaract = :idReqGralCaract")
+    int deleteByIdReqGralCaract(@Param("idReqGralCaract") Long idReqGralCaract);
 }

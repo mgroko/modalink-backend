@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -77,6 +78,9 @@ class ObtenerProyectoServiceTest {
 
     @Mock
     private RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
+
+    @Mock
+    private RequerimientoGralProteccionService requerimientoGralProteccionService;
 
     @Mock
     private CupoRequerimientoService cupoRequerimientoService;
@@ -353,6 +357,9 @@ class ObtenerProyectoServiceTest {
                 .descripcion("Dos modelos")
                 .build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(rg));
+        when(requerimientoGralProteccionService.calcularProtegidos(
+                List.of(rg), EstadoProyecto.BORRADOR))
+                .thenReturn(Map.of(10L, true));
 
         ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 100L);
 
@@ -361,6 +368,7 @@ class ObtenerProyectoServiceTest {
         assertThat(response.requerimientosGral().get(0).nombreProfesion()).isEqualTo("Modelo");
         assertThat(response.requerimientosGral().get(0).cantidad()).isEqualTo(2);
         assertThat(response.requerimientosGral().get(0).puedePostularse()).isFalse();
+        assertThat(response.requerimientosGral().get(0).protegido()).isTrue();
 
         assertThat(response.rolUsuario()).isEqualTo(RolProyectoUsuario.MIEMBRO);
         assertThat(response.esMiembro()).isTrue();

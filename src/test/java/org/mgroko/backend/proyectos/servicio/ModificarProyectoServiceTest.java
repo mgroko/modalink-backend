@@ -2,6 +2,7 @@ package org.mgroko.backend.proyectos.servicio;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -40,14 +41,16 @@ import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableExcepti
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
-import org.mgroko.backend.proyectos.exception.RequerimientoSatisfechoException;
+import org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException;
 import org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
@@ -97,6 +100,15 @@ class ModificarProyectoServiceTest {
 
     @Mock
     private RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
+
+    @Mock
+    private PostulacionGralRepository postulacionGralRepository;
+
+    @Mock
+    private InvitacionGralRepository invitacionGralRepository;
+
+    @Mock
+    private RequerimientoGralProteccionService requerimientoGralProteccionService;
 
     @Mock
     private CupoRequerimientoService cupoRequerimientoService;
@@ -192,6 +204,12 @@ class ModificarProyectoServiceTest {
         when(objetivoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
         when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.of(moodboard));
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(List.of());
+        when(requerimientoGralProteccionService.calcularProtegidos(any(), any()))
+                .thenReturn(Map.of());
+        when(requerimientoGralProteccionService.estaProtegido(any(), any()))
+                .thenReturn(false);
         when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
                 100L, EstadoActividad.CANCELADA)).thenReturn(true);
         when(proyectoRepository.save(any(Proyecto.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -332,12 +350,13 @@ class ModificarProyectoServiceTest {
     }
 
     @Test
-    void modificar_requerimientoSatisfechoEnRequest_lanzaExcepcion() {
-        RequerimientoGralProyecto satisfecho = RequerimientoGralProyecto.builder()
+    void modificar_requerimientoProtegidoModificado_lanzaExcepcion() {
+        RequerimientoGralProyecto protegido = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
-        when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(satisfecho));
-        when(cupoRequerimientoService.calcularGeneral(satisfecho))
-                .thenReturn(new CupoRequerimiento(1, 1, 0, true));
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(List.of(protegido));
+        when(requerimientoGralProteccionService.estaProtegido(protegido, EstadoProyecto.BORRADOR))
+                .thenReturn(true);
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
                 "Desc", Privacidad.PUBLICO, false, null, null, null,
@@ -345,11 +364,14 @@ class ModificarProyectoServiceTest {
                 null);
 
         assertThatThrownBy(() -> modificarProyectoService.modificar(1L, 10L, 100L, request))
-                .isInstanceOf(RequerimientoSatisfechoException.class)
+                .isInstanceOf(RequerimientoGralProtegidoException.class)
                 .hasMessageContaining("20");
 
         verify(requerimientoGralService, never()).eliminar(any());
-        verify(requerimientoGralService, never()).persistir(any(), anyLong(), any(), any(), any(), any());
+        verify(requerimientoGralService, never())
+                .persistir(any(), anyLong(), any(), any(), any(), any());
+        verify(requerimientoGralService, never())
+                .actualizar(any(), anyLong(), any(), any(), any(), any());
     }
 
     @Test
@@ -405,32 +427,136 @@ class ModificarProyectoServiceTest {
     }
 
     @Test
-    void modificar_requerimientos_reemplazaNoSatisfechosYConservaSatisfechos() {
-        RequerimientoGralProyecto noSatisfecho = RequerimientoGralProyecto.builder()
+    void modificar_requerimientos_actualizaNoProtegidoYConservaProtegidoOmitido() {
+        RequerimientoGralProyecto noProtegido = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(10L).proyecto(proyecto).cantidad(1).build();
-        RequerimientoGralProyecto satisfecho = RequerimientoGralProyecto.builder()
+        RequerimientoGralProyecto protegido = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
-        when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L))
-                .thenReturn(List.of(noSatisfecho, satisfecho));
-        when(cupoRequerimientoService.calcularGeneral(noSatisfecho))
-                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
-        when(cupoRequerimientoService.calcularGeneral(satisfecho))
-                .thenReturn(new CupoRequerimiento(1, 1, 0, true));
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(List.of(noProtegido, protegido));
+        when(requerimientoGralProteccionService.estaProtegido(noProtegido, EstadoProyecto.BORRADOR))
+                .thenReturn(false);
+        when(requerimientoGralProteccionService.estaProtegido(protegido, EstadoProyecto.BORRADOR))
+                .thenReturn(true);
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
                 "Desc", Privacidad.PUBLICO, false, null, null, null,
-                List.of(new ModificarRequerimientoGralRequest(10L, 3, 2L, "recreado", null, null)),
+                List.of(new ModificarRequerimientoGralRequest(10L, 3, 2L, "actualizado", null, null)),
                 null);
+
+        modificarProyectoService.modificar(1L, 10L, 100L, request);
+
+        verify(requerimientoGralService).actualizar(
+                eq(noProtegido), eq(2L), eq(3), eq("actualizado"), any(), any());
+        verify(requerimientoGralService, never()).eliminar(any());
+        verify(requerimientoGralService, never())
+                .persistir(any(), anyLong(), any(), any(), any(), any());
+        verify(requerimientoGralService, never())
+                .actualizar(eq(protegido), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void modificar_requerimientoNoProtegidoOmitido_seEliminaYLimpiaVinculos() {
+        RequerimientoGralProyecto noProtegido = RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(10L).proyecto(proyecto).cantidad(1).build();
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(List.of(noProtegido));
+        when(requerimientoGralProteccionService.estaProtegido(noProtegido, EstadoProyecto.BORRADOR))
+                .thenReturn(false);
+
+        ModificarProyectoRequest request = new ModificarProyectoRequest(
+                "Desc", Privacidad.PUBLICO, false, null, null, null, List.of(), null);
+
+        modificarProyectoService.modificar(1L, 10L, 100L, request);
+
+        verify(postulacionGralRepository)
+                .deleteByRequerimientoGral_IdRequerimientoGral(10L);
+        verify(invitacionGralRepository)
+                .deleteByRequerimientoGral_IdRequerimientoGral(10L);
+        verify(requerimientoGralService).eliminar(noProtegido);
+    }
+
+    @Test
+    void modificar_requerimientoProtegidoOmitido_seConserva() {
+        RequerimientoGralProyecto protegido = RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(List.of(protegido));
+        when(requerimientoGralProteccionService.estaProtegido(protegido, EstadoProyecto.BORRADOR))
+                .thenReturn(true);
+
+        ModificarProyectoRequest request = new ModificarProyectoRequest(
+                "Desc", Privacidad.PUBLICO, false, null, null, null, List.of(), null);
+
+        modificarProyectoService.modificar(1L, 10L, 100L, request);
+
+        verify(requerimientoGralService, never()).eliminar(any());
+        verify(postulacionGralRepository, never())
+                .deleteByRequerimientoGral_IdRequerimientoGral(anyLong());
+    }
+
+    @Test
+    void modificar_requerimientoNuevo_seCrea() {
+        ModificarProyectoRequest request = new ModificarProyectoRequest(
+                "Desc", Privacidad.PUBLICO, false, null, null, null,
+                List.of(new ModificarRequerimientoGralRequest(null, 1, 2L, "nuevo", null, null)),
+                null);
+
+        modificarProyectoService.modificar(1L, 10L, 100L, request);
+
+        verify(requerimientoGralService).persistir(
+                eq(proyecto), eq(2L), eq(1), eq("nuevo"), any(), any());
+    }
+
+    @Test
+    void modificar_requerimientoSinCambios_noValidaProteccionNiActualiza() {
+        org.mgroko.backend.modelo.Profesion profesion =
+                org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).build();
+        RequerimientoGralProyecto existente = RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(10L)
+                .proyecto(proyecto)
+                .cantidad(1)
+                .descripcion("igual")
+                .profesion(profesion)
+                .build();
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(List.of(existente));
+
+        ModificarProyectoRequest request = new ModificarProyectoRequest(
+                "Desc", Privacidad.PUBLICO, false, null, null, null,
+                List.of(new ModificarRequerimientoGralRequest(10L, 1, 2L, "igual", null, null)),
+                null);
+
+        modificarProyectoService.modificar(1L, 10L, 100L, request);
+
+        verify(requerimientoGralProteccionService, never()).estaProtegido(any(), any());
+        verify(requerimientoGralService, never())
+                .actualizar(any(), anyLong(), any(), any(), any(), any());
+        verify(requerimientoGralService, never()).eliminar(any());
+    }
+
+    @Test
+    void modificar_confirmado_permiteDescripcionObjetivosYMoodboard() {
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyecto.setFechaInicio(java.time.LocalDateTime.now().minusDays(1));
+
+        ModificarProyectoRequest request = new ModificarProyectoRequest(
+                "Descripción confirmada",
+                Privacidad.PRIVADO,
+                true,
+                null,
+                new UbicacionRequest("12345", "06"),
+                List.of(new org.mgroko.backend.proyectos.dto.CrearObjetivoRequest(
+                        "Objetivo nuevo", "Detalle")),
+                null,
+                new CrearMoodboardRequest("Paleta nueva"));
 
         ProyectoResponse response = modificarProyectoService.modificar(1L, 10L, 100L, request);
 
-        assertThat(response.requerimientosGral())
-                .allSatisfy(requerimiento -> assertThat(requerimiento.puedePostularse()).isFalse());
-
-        verify(requerimientoGralService).eliminar(noSatisfecho);
-        verify(requerimientoGralService, never()).eliminar(satisfecho);
-        verify(requerimientoGralService).persistir(
-                eq(proyecto), eq(2L), eq(3), eq("recreado"), any(), any());
+        assertThat(response.descripcion()).isEqualTo("Descripción confirmada");
+        assertThat(moodboard.getDescripcion()).isEqualTo("Paleta nueva");
+        verify(objetivoRepository).save(any());
+        verify(moodboardRepository).save(moodboard);
     }
 
     @Test
