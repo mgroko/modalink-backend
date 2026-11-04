@@ -62,6 +62,7 @@ public class BuscarActividadService {
     private final PerfilRepository perfilRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
+    private final ActividadOrigenService actividadOrigenService;
 
     public BuscarActividadService(
             ActividadRepository actividadRepository,
@@ -71,7 +72,8 @@ public class BuscarActividadService {
             ProyectoVisibilidadService proyectoVisibilidadService,
             PerfilRepository perfilRepository,
             MiembroProyectoRepository miembroProyectoRepository,
-            CupoRequerimientoService cupoRequerimientoService) {
+            CupoRequerimientoService cupoRequerimientoService,
+            ActividadOrigenService actividadOrigenService) {
         this.actividadRepository = actividadRepository;
         this.proyectoRepository = proyectoRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
@@ -80,6 +82,7 @@ public class BuscarActividadService {
         this.perfilRepository = perfilRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
+        this.actividadOrigenService = actividadOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -117,13 +120,15 @@ public class BuscarActividadService {
 
         Map<Long, List<ActividadVinculadaResponse>> predecesoras =
                 buscarPredecesoras(actividades);
+        var origenes = actividadOrigenService.calcular(actividades);
 
         List<ActividadBusquedaResponse> contenido = actividades.stream()
                 .map(actividad -> ActividadMapper.toBusquedaResponse(
                         actividad,
                         proyecto,
                         requerimientos.getOrDefault(actividad.getIdActividad(), List.of()),
-                        predecesoras.getOrDefault(actividad.getIdActividad(), List.of())))
+                        predecesoras.getOrDefault(actividad.getIdActividad(), List.of()),
+                        origenes.get(actividad.getIdActividad())))
                 .toList();
 
         Page<ActividadBusquedaResponse> pagina = new PageImpl<>(

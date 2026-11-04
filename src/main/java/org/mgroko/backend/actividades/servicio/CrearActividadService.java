@@ -158,7 +158,8 @@ public class CrearActividadService {
                 estadoCronograma,
                 calculo,
                 calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
-                calculo == null || cronogramaService.esTentativa(planificacion));
+                calculo == null || cronogramaService.esTentativa(planificacion),
+                OrigenInicioResolver.resolver(guardada, proyecto, false));
     }
 
     private void validarEstadoProyecto(Proyecto proyecto) {

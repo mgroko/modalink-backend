@@ -2,6 +2,7 @@ package org.mgroko.backend.actividades.servicio;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,6 +60,9 @@ class ObtenerCronogramaServiceTest {
     @Mock
     private CronogramaService cronogramaService;
 
+    @Mock
+    private ActividadOrigenService actividadOrigenService;
+
     @InjectMocks
     private ObtenerCronogramaService service;
 
@@ -70,6 +74,7 @@ class ObtenerCronogramaServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(actividadOrigenService.calcular(anyList())).thenReturn(Map.of());
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
         Perfil perfil = Perfil.builder()
                 .idPerfil(10L)

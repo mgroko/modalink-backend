@@ -3,6 +3,8 @@ package org.mgroko.backend.actividades.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.mgroko.backend.modelo.enums.OrigenInicio;
+
 /**
  * Fila del cronograma (UC-33) para el Gantt y la tabla CPM detallada.
  *
@@ -32,7 +34,8 @@ public record ActividadCronogramaResponse(
         Boolean fijo,
         Boolean tentativo,
         LocalDateTime inicioPersistido,
-        LocalDateTime finPersistido) {
+        LocalDateTime finPersistido,
+        OrigenInicio origenInicio) {
 
     public ActividadCronogramaResponse {
         predecesoras = predecesoras == null ? List.of() : List.copyOf(predecesoras);

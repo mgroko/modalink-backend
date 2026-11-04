@@ -53,18 +53,21 @@ public class ListarActividadesPlanificacionService {
     private final PerfilRepository perfilRepository;
     private final ProyectoSecurityService proyectoSecurityService;
     private final AsignacionActividadRepository asignacionActividadRepository;
+    private final ActividadOrigenService actividadOrigenService;
 
     public ListarActividadesPlanificacionService(
             ActividadRepository actividadRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
             ProyectoSecurityService proyectoSecurityService,
-            AsignacionActividadRepository asignacionActividadRepository) {
+            AsignacionActividadRepository asignacionActividadRepository,
+            ActividadOrigenService actividadOrigenService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoSecurityService = proyectoSecurityService;
         this.asignacionActividadRepository = asignacionActividadRepository;
+        this.actividadOrigenService = actividadOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -124,12 +127,14 @@ public class ListarActividadesPlanificacionService {
         Map<Long, List<ProfesionalAsignadoResponse>> responsables = ids.isEmpty()
                 ? Map.of()
                 : cargarResponsables(ids);
+        var origenes = actividadOrigenService.calcular(pagina);
 
         List<ActividadPlanificacionResponse> contenido = pagina.stream()
                 .map(actividad -> ActividadMapper.toPlanificacionResponse(
                         actividad,
                         predecesoras.getOrDefault(actividad.getIdActividad(), List.of()),
-                        responsables.getOrDefault(actividad.getIdActividad(), List.of())))
+                        responsables.getOrDefault(actividad.getIdActividad(), List.of()),
+                        origenes.get(actividad.getIdActividad())))
                 .toList();
 
         Page<ActividadPlanificacionResponse> resultado =

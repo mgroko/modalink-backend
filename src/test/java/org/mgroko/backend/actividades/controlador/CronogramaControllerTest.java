@@ -74,6 +74,7 @@ class CronogramaControllerTest {
                         false,
                         false,
                         null,
+                        null,
                         null)),
                 List.of());
 

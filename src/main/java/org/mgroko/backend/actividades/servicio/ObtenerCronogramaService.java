@@ -43,18 +43,21 @@ public class ObtenerCronogramaService {
     private final PerfilRepository perfilRepository;
     private final ProyectoSecurityService proyectoSecurityService;
     private final CronogramaService cronogramaService;
+    private final ActividadOrigenService actividadOrigenService;
 
     public ObtenerCronogramaService(
             ActividadRepository actividadRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
             ProyectoSecurityService proyectoSecurityService,
-            CronogramaService cronogramaService) {
+            CronogramaService cronogramaService,
+            ActividadOrigenService actividadOrigenService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoSecurityService = proyectoSecurityService;
         this.cronogramaService = cronogramaService;
+        this.actividadOrigenService = actividadOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -113,6 +116,8 @@ public class ObtenerCronogramaService {
                 rutaCritica.size(),
                 rutaCritica);
 
+        var origenes = actividadOrigenService.calcular(todas);
+
         List<ActividadCronogramaResponse> actividades = new ArrayList<>();
         for (Actividad actividad : OrdenActividades.topologico(todas)) {
             NodoCpm nodo = calculo.nodos().get(actividad.getIdActividad());
@@ -134,7 +139,8 @@ public class ObtenerCronogramaService {
                     nodo,
                     inicio,
                     tentativo,
-                    predecesoras));
+                    predecesoras,
+                    origenes.get(actividad.getIdActividad())));
         }
 
         return new CronogramaResponse(resumen, actividades, calculo.conflictos());

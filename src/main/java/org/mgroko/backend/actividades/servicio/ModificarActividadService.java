@@ -82,6 +82,7 @@ public class ModificarActividadService {
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final ReprogramarProyectoService reprogramarProyectoService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ActividadOrigenService actividadOrigenService;
 
     public ModificarActividadService(
             ActividadRepository actividadRepository,
@@ -99,7 +100,8 @@ public class ModificarActividadService {
             CronogramaService cronogramaService,
             AsignacionActividadRepository asignacionActividadRepository,
             ReprogramarProyectoService reprogramarProyectoService,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            ActividadOrigenService actividadOrigenService) {
         this.actividadRepository = actividadRepository;
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
@@ -116,6 +118,7 @@ public class ModificarActividadService {
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.reprogramarProyectoService = reprogramarProyectoService;
         this.eventPublisher = eventPublisher;
+        this.actividadOrigenService = actividadOrigenService;
     }
 
     @Transactional
@@ -230,7 +233,8 @@ public class ModificarActividadService {
                 estadoCronograma,
                 calculo,
                 calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
-                calculo == null || cronogramaService.esTentativa(planificacion));
+                calculo == null || cronogramaService.esTentativa(planificacion),
+                actividadOrigenService.calcular(guardada));
     }
 
     private void validarEstadoProyecto(Proyecto proyecto) {

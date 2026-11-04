@@ -26,6 +26,7 @@ import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
+import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
@@ -40,6 +41,17 @@ public final class ActividadMapper {
             List<RequerimientoActividadResumenResponse> requerimientos,
             List<ActividadVinculadaResponse> predecesoras) {
 
+        return toBusquedaResponse(
+                actividad, proyecto, requerimientos, predecesoras, null);
+    }
+
+    public static ActividadBusquedaResponse toBusquedaResponse(
+            Actividad actividad,
+            Proyecto proyecto,
+            List<RequerimientoActividadResumenResponse> requerimientos,
+            List<ActividadVinculadaResponse> predecesoras,
+            OrigenInicio origenInicio) {
+
         return new ActividadBusquedaResponse(
                 actividad.getIdActividad(),
                 proyecto.getIdProyecto(),
@@ -52,7 +64,8 @@ public final class ActividadMapper {
                 actividad.getHorarioPreferenciaInicio(),
                 actividad.getEstado() != null ? actividad.getEstado().name() : null,
                 requerimientos != null ? requerimientos : List.of(),
-                predecesoras != null ? predecesoras : List.of()
+                predecesoras != null ? predecesoras : List.of(),
+                origenInicio
         );
     }
 
@@ -147,6 +160,27 @@ public final class ActividadMapper {
             LocalDateTime inicioProyeccion,
             boolean tentativa) {
 
+        return toResponse(
+                actividad,
+                requerimientos,
+                profesionalesAsignados,
+                estadoCronograma,
+                calculo,
+                inicioProyeccion,
+                tentativa,
+                null);
+    }
+
+    public static ActividadResponse toResponse(
+            Actividad actividad,
+            List<RequerimientoActividadResponse> requerimientos,
+            List<ProfesionalAsignadoResponse> profesionalesAsignados,
+            EstadoCronograma estadoCronograma,
+            CalculoCpm calculo,
+            LocalDateTime inicioProyeccion,
+            boolean tentativa,
+            OrigenInicio origenInicio) {
+
         Proyecto proyecto = actividad.getPlanificacion().getProyecto();
 
         List<ActividadVinculadaResponse> predecesoras = actividad.getPredecesoras().stream()
@@ -202,7 +236,8 @@ public final class ActividadMapper {
                 calculo == null ? null : tentativa,
                 nodo == null ? null : nodo.conflicto(),
                 nodo == null ? null : nodo.motivoConflicto(),
-                calculo == null ? null : calculo.parcial()
+                calculo == null ? null : calculo.parcial(),
+                origenInicio
         );
     }
 
@@ -236,6 +271,16 @@ public final class ActividadMapper {
             List<ActividadVinculadaResponse> predecesoras,
             List<ProfesionalAsignadoResponse> responsables) {
 
+        return toPlanificacionResponse(
+                actividad, predecesoras, responsables, null);
+    }
+
+    public static ActividadPlanificacionResponse toPlanificacionResponse(
+            Actividad actividad,
+            List<ActividadVinculadaResponse> predecesoras,
+            List<ProfesionalAsignadoResponse> responsables,
+            OrigenInicio origenInicio) {
+
         return new ActividadPlanificacionResponse(
                 actividad.getIdActividad(),
                 actividad.getNombre(),
@@ -245,7 +290,8 @@ public final class ActividadMapper {
                 actividad.getFechaHoraInicio(),
                 actividad.getFechaHoraFin(),
                 predecesoras,
-                responsables);
+                responsables,
+                origenInicio);
     }
 
     public static ActividadCronogramaResponse toCronogramaResponse(
@@ -254,6 +300,23 @@ public final class ActividadMapper {
             LocalDateTime inicioProyeccion,
             boolean tentativo,
             List<ActividadVinculadaResponse> predecesoras) {
+
+        return toCronogramaResponse(
+                actividad,
+                nodo,
+                inicioProyeccion,
+                tentativo,
+                predecesoras,
+                null);
+    }
+
+    public static ActividadCronogramaResponse toCronogramaResponse(
+            Actividad actividad,
+            NodoCpm nodo,
+            LocalDateTime inicioProyeccion,
+            boolean tentativo,
+            List<ActividadVinculadaResponse> predecesoras,
+            OrigenInicio origenInicio) {
 
         LocalDateTime inicioProyectado = inicioProyeccion.plusMinutes(nodo.inicioTemprano());
         LocalDateTime finProyectado = inicioProyeccion.plusMinutes(nodo.finTemprano());
@@ -280,6 +343,7 @@ public final class ActividadMapper {
                 nodo.fijo(),
                 tentativo,
                 actividad.getFechaHoraInicio(),
-                actividad.getFechaHoraFin());
+                actividad.getFechaHoraFin(),
+                origenInicio);
     }
 }

@@ -3,6 +3,8 @@ package org.mgroko.backend.actividades.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.mgroko.backend.modelo.enums.OrigenInicio;
+
 /**
  * Fila de la tabla de Planificación (UC-52).
  *
@@ -22,7 +24,8 @@ public record ActividadPlanificacionResponse(
         LocalDateTime fechaHoraInicio,
         LocalDateTime fechaHoraFin,
         List<ActividadVinculadaResponse> predecesoras,
-        List<ProfesionalAsignadoResponse> responsables) {
+        List<ProfesionalAsignadoResponse> responsables,
+        OrigenInicio origenInicio) {
 
     public ActividadPlanificacionResponse {
         predecesoras = predecesoras == null ? List.of() : List.copyOf(predecesoras);

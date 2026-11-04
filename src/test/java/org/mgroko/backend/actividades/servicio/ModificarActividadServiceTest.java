@@ -118,6 +118,9 @@ class ModificarActividadServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private ActividadOrigenService actividadOrigenService;
+
     @InjectMocks
     private ModificarActividadService modificarActividadService;
 

@@ -44,7 +44,9 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,6 +87,9 @@ class BuscarActividadServiceTest {
     @Mock
     private CupoRequerimientoService cupoRequerimientoService;
 
+    @Mock
+    private ActividadOrigenService actividadOrigenService;
+
     @InjectMocks
     private BuscarActividadService buscarActividadService;
 
@@ -93,6 +98,7 @@ class BuscarActividadServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(actividadOrigenService.calcular(anyList())).thenReturn(Map.of());
         proyecto = Proyecto.builder()
                 .idProyecto(100L)
                 .nombre("Desfile Primavera")

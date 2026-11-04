@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -63,6 +65,9 @@ class ListarActividadesPlanificacionServiceTest {
     @Mock
     private AsignacionActividadRepository asignacionActividadRepository;
 
+    @Mock
+    private ActividadOrigenService actividadOrigenService;
+
     @InjectMocks
     private ListarActividadesPlanificacionService service;
 
@@ -73,6 +78,7 @@ class ListarActividadesPlanificacionServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(actividadOrigenService.calcular(anyList())).thenReturn(Map.of());
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
         perfil = Perfil.builder()
                 .idPerfil(10L)

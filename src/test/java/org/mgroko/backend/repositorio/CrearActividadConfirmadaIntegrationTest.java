@@ -134,6 +134,15 @@ class CrearActividadConfirmadaIntegrationTest extends AbstractPostgresIntegratio
 
         assertThat(filaNueva.conflicto()).isFalse();
         assertThat(filaNueva.motivoConflicto()).isNull();
+        assertThat(filaNueva.origenInicio()).isEqualTo(OrigenInicio.PROYECTADA);
+
+        var filaAsignada = cronograma.actividades().stream()
+                .filter(actividad -> actividad.idActividad()
+                        .equals(datos.idsActividades().get(0)))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(filaAsignada.origenInicio()).isEqualTo(OrigenInicio.CONFIRMADA);
     }
 
     private Datos crearProyectoConfirmadoConTresActividades() {

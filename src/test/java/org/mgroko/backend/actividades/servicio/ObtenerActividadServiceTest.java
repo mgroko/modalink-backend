@@ -66,6 +66,9 @@ class ObtenerActividadServiceTest {
     @Mock
     private AsignacionActividadRepository asignacionActividadRepository;
 
+    @Mock
+    private ActividadOrigenService actividadOrigenService;
+
     @InjectMocks
     private ObtenerActividadService obtenerActividadService;
 

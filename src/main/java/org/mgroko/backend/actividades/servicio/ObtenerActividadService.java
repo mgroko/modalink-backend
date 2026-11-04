@@ -37,6 +37,7 @@ public class ObtenerActividadService {
     private final RequerimientoProteccionService requerimientoProteccionService;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final CronogramaService cronogramaService;
+    private final ActividadOrigenService actividadOrigenService;
 
     public ObtenerActividadService(
             ActividadRepository actividadRepository,
@@ -46,7 +47,8 @@ public class ObtenerActividadService {
             RequerimientoActividadService requerimientoActividadService,
             RequerimientoProteccionService requerimientoProteccionService,
             AsignacionActividadRepository asignacionActividadRepository,
-            CronogramaService cronogramaService) {
+            CronogramaService cronogramaService,
+            ActividadOrigenService actividadOrigenService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
@@ -55,6 +57,7 @@ public class ObtenerActividadService {
         this.requerimientoProteccionService = requerimientoProteccionService;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.cronogramaService = cronogramaService;
+        this.actividadOrigenService = actividadOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -121,6 +124,7 @@ public class ObtenerActividadService {
                 estadoCronograma,
                 calculo,
                 calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
-                calculo == null || cronogramaService.esTentativa(planificacion));
+                calculo == null || cronogramaService.esTentativa(planificacion),
+                actividadOrigenService.calcular(actividad));
     }
 }

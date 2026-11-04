@@ -3,8 +3,10 @@ package org.mgroko.backend.repositorio;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.mgroko.backend.modelo.AsignacionActividad;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -38,6 +40,27 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
     """)
     List<AsignacionActividad> findActivasByActividadIds(
             @Param("idsActividades") Collection<Long> idsActividades);
+
+    /**
+     * Actividades con al menos una asignación de un miembro activo.
+     *
+     * <p>Cuando el historial agregue {@code fecha_archivado} a los
+     * requerimientos, esta consulta debe excluir los requerimientos
+     * archivados.</p>
+     */
+    @Query("""
+        SELECT DISTINCT aa.actividad.idActividad
+        FROM AsignacionActividad aa
+        JOIN aa.miembro m
+        WHERE aa.actividad.idActividad IN :idsActividades
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    Set<Long> findIdsActividadesConAsignacionesActivas(
+            @Param("idsActividades") Collection<Long> idsActividades);
+
+    boolean existsByActividad_IdActividadAndMiembro_EstadoParticipacion(
+            Long idActividad,
+            EstadoParticipacion estadoParticipacion);
 
     /**
      * Perfiles del usuario indicado asignados a las actividades indicadas.

@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.ubicacion.dto.UbicacionResponse;
 
 public record ActividadResponse(
@@ -35,7 +36,8 @@ public record ActividadResponse(
         Boolean tentativo,
         Boolean conflicto,
         String motivoConflicto,
-        Boolean parcial
+        Boolean parcial,
+        OrigenInicio origenInicio
 ) {
     public ActividadResponse(
             Long idActividad,
@@ -84,6 +86,7 @@ public record ActividadResponse(
                 null,
                 null,
                 tentative == null ? null : Boolean.valueOf(tentative),
+                null,
                 null,
                 null,
                 null);

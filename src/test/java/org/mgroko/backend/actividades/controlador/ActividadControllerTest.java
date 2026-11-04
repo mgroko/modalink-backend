@@ -421,7 +421,8 @@ class ActividadControllerTest {
                 LocalDateTime.of(2026, 11, 1, 22, 29),
                 LocalDateTime.of(2026, 11, 1, 23, 59),
                 List.of(),
-                List.of(responsable));
+                List.of(responsable),
+                null);
 
         org.mgroko.backend.common.dto.PaginaResponse<ActividadPlanificacionResponse> pagina =
                 new org.mgroko.backend.common.dto.PaginaResponse<>(
