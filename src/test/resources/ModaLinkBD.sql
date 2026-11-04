@@ -3624,7 +3624,9 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('PERFIL_REPORTADO',      'Perfil reportado',     'ADMINISTRACION', 'ALTA'),
     ('INTEGRANTE_ELIMINADO',  'Integrante eliminado', 'PROYECTO',       'ALTA'),
     ('INTEGRANTE_BAJA_VOLUNTARIA', 'Baja voluntaria de integrante', 'PROYECTO', 'ALTA'),
-    ('ACTIVIDAD_DESASIGNADA', 'Actividad desasignada', 'ACTIVIDAD',     'MEDIA')
+    ('ACTIVIDAD_DESASIGNADA', 'Actividad desasignada', 'ACTIVIDAD',     'MEDIA'),
+    ('HABILIDAD_MODIFICADA',  'Habilidad modificada',  'ADMINISTRACION', 'MEDIA'),
+    ('HABILIDAD_ELIMINADA',   'Habilidad eliminada',   'ADMINISTRACION', 'MEDIA')
 
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,
@@ -3672,7 +3674,11 @@ INSERT INTO permiso_global (id_permiso_global, nombre) VALUES
     (5, 'CREAR_CARACTERISTICA'),
     (6, 'MODIFICAR_CARACTERISTICA'),
     (7, 'ELIMINAR_CARACTERISTICA'),
-    (8, 'ADMINISTRAR_CONFIGURACION')
+    (8, 'ADMINISTRAR_CONFIGURACION'),
+    (9, 'VER_HABILIDADES'),
+    (10, 'CREAR_HABILIDAD'),
+    (11, 'MODIFICAR_HABILIDAD'),
+    (12, 'ELIMINAR_HABILIDAD')
 ON CONFLICT (id_permiso_global) DO UPDATE SET nombre = EXCLUDED.nombre;
 
 INSERT INTO permiso_proyecto (id_permiso_proyecto, nombre) VALUES

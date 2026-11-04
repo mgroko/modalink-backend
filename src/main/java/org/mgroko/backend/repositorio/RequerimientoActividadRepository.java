@@ -15,6 +15,8 @@ import jakarta.persistence.LockModeType;
 
 public interface RequerimientoActividadRepository extends JpaRepository<RequerimientoActividad, Long> {
 
+    boolean existsByHabilidades_IdHabilidad(Long idHabilidad);
+
     @Query("""
         SELECT r FROM RequerimientoActividad r
         JOIN FETCH r.actividad

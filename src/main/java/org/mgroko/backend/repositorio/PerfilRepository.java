@@ -101,4 +101,19 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      */
     @Query("select p.idPerfil from Perfil p where p.estado = :estado and p.imagen is not null")
     List<Long> buscarIdsConFoto(@Param("estado") EstadoPerfil estado);
+
+    /**
+     * Identificadores de los perfiles que tienen asociada una habilidad.
+     * Se usa para notificar a los perfiles afectados cuando el administrador
+     * modifica o elimina una habilidad del catálogo.
+     *
+     * @param idHabilidad identificador de la habilidad
+     * @return identificadores de los perfiles asociados
+     */
+    @Query("""
+        SELECT p.idPerfil FROM Perfil p
+        JOIN p.habilidades h
+        WHERE h.idHabilidad = :idHabilidad
+    """)
+    List<Long> findIdsPerfilByHabilidad(@Param("idHabilidad") Long idHabilidad);
 }

@@ -10,6 +10,8 @@ import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
 import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
+import org.mgroko.backend.admin.exception.HabilidadDuplicadaException;
+import org.mgroko.backend.admin.exception.HabilidadEnUsoException;
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
 import org.mgroko.backend.admin.exception.UnidadMedidaDuplicadaException;
 import org.mgroko.backend.admin.exception.UnidadMedidaEnUsoException;
@@ -37,6 +39,8 @@ import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaValorNoCoincideException;
+import org.mgroko.backend.perfiles.exception.HabilidadNoAsociadaException;
+import org.mgroko.backend.perfiles.exception.HabilidadYaAsociadaException;
 import org.mgroko.backend.perfiles.exception.IdValorObligatorioException;
 import org.mgroko.backend.perfiles.exception.ImagenNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
@@ -625,6 +629,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ValorEnUsoException.class)
     public ResponseEntity<Map<String, Object>> handleValorEnUso(ValorEnUsoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(HabilidadDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadDuplicada(HabilidadDuplicadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(HabilidadEnUsoException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadEnUso(HabilidadEnUsoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(HabilidadYaAsociadaException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadYaAsociada(
+            HabilidadYaAsociadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(HabilidadNoAsociadaException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadNoAsociada(
+            HabilidadNoAsociadaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 

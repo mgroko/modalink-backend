@@ -41,6 +41,8 @@ public class NotificacionService {
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
     public static final String TIPO_HITO_CUMPLIDO = "HITO_CUMPLIDO";
     public static final String TIPO_PERFIL_REPORTADO = "PERFIL_REPORTADO";
+    public static final String TIPO_HABILIDAD_MODIFICADA = "HABILIDAD_MODIFICADA";
+    public static final String TIPO_HABILIDAD_ELIMINADA = "HABILIDAD_ELIMINADA";
     public static final String TIPO_INTEGRANTE_ELIMINADO = "INTEGRANTE_ELIMINADO";
     public static final String TIPO_INTEGRANTE_BAJA_VOLUNTARIA =
             "INTEGRANTE_BAJA_VOLUNTARIA";

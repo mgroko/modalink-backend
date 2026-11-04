@@ -14,6 +14,8 @@ import jakarta.persistence.LockModeType;
 
 public interface RequerimientoGralProyectoRepository extends JpaRepository<RequerimientoGralProyecto, Long> {
 
+    boolean existsByHabilidades_IdHabilidad(Long idHabilidad);
+
     @EntityGraph(attributePaths = {
             "profesion",
             "habilidades",
