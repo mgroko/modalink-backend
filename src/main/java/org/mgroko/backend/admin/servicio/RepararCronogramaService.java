@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.mgroko.backend.admin.dto.InconsistenciaCronogramaResponse;
@@ -18,6 +20,7 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.slf4j.Logger;
@@ -26,8 +29,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Detección y reparación controlada de inconsistencias en cronogramas
- * confirmados. No se ejecuta automáticamente: solo desde el endpoint admin.
+ * Detección y reparación controlada de inconsistencias en cronogramas de
+ * proyectos publicados o confirmados.
+ *
+ * <p>La detección es de solo lectura. La reparación solo mueve actividades
+ * {@code PENDIENTE}; las actividades {@code EN_CURSO} y {@code FINALIZADA} se
+ * reportan para intervención manual. El servicio puede ejecutarse desde el
+ * endpoint admin o desde el job periódico de reconciliación.</p>
  */
 @Service
 public class RepararCronogramaService {
@@ -35,22 +43,36 @@ public class RepararCronogramaService {
     private static final Logger LOG =
             LoggerFactory.getLogger(RepararCronogramaService.class);
 
-    public static final String TIPO_INICIO_ANTES_DE_PREDECESORA = "INICIO_ANTES_DE_PREDECESORA";
-    public static final String TIPO_SUCESORA_AVANZO_A_PREDECESORA = "SUCESORA_AVANZO_A_PREDECESORA";
+    private static final List<EstadoProyecto> ESTADOS_PROGRAMABLES =
+            List.of(EstadoProyecto.PUBLICADO, EstadoProyecto.CONFIRMADO);
+
+    public static final String TIPO_INICIO_ANTES_DE_PREDECESORA =
+            "INICIO_ANTES_DE_PREDECESORA";
+    public static final String TIPO_SUCESORA_AVANZO_A_PREDECESORA =
+            "SUCESORA_AVANZO_A_PREDECESORA";
+    public static final String TIPO_INICIO_ANTES_DE_PROYECTO =
+            "INICIO_ANTES_DE_PROYECTO";
+    public static final String TIPO_ACTIVIDAD_EJECUTADA_SIN_INICIO =
+            "ACTIVIDAD_EJECUTADA_SIN_INICIO";
+    public static final String TIPO_PENDIENTE_SIN_INICIO_CON_ASIGNACIONES =
+            "PENDIENTE_SIN_INICIO_CON_ASIGNACIONES";
 
     private final ProyectoRepository proyectoRepository;
     private final PlanificacionRepository planificacionRepository;
     private final ActividadRepository actividadRepository;
+    private final AsignacionActividadRepository asignacionActividadRepository;
     private final ReprogramarProyectoService reprogramarProyectoService;
 
     public RepararCronogramaService(
             ProyectoRepository proyectoRepository,
             PlanificacionRepository planificacionRepository,
             ActividadRepository actividadRepository,
+            AsignacionActividadRepository asignacionActividadRepository,
             ReprogramarProyectoService reprogramarProyectoService) {
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.actividadRepository = actividadRepository;
+        this.asignacionActividadRepository = asignacionActividadRepository;
         this.reprogramarProyectoService = reprogramarProyectoService;
     }
 
@@ -64,7 +86,7 @@ public class RepararCronogramaService {
                 ? proyectoRepository.findById(idProyecto)
                         .map(List::of)
                         .orElse(List.of())
-                : proyectoRepository.findByEstado(EstadoProyecto.CONFIRMADO);
+                : proyectoRepository.findByEstadoIn(ESTADOS_PROGRAMABLES);
 
         int max = limite == null ? Integer.MAX_VALUE : Math.max(1, limite);
         List<InconsistenciaCronogramaResponse> resultado = new ArrayList<>();
@@ -74,7 +96,8 @@ public class RepararCronogramaService {
             if (procesados >= max) {
                 break;
             }
-            if (proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
+            if (proyecto.getEstado() == null
+                    || !proyecto.getEstado().permiteReprogramacion()) {
                 continue;
             }
             procesados++;
@@ -89,6 +112,10 @@ public class RepararCronogramaService {
             List<Actividad> actividades = actividadRepository
                     .findConPredecesorasByPlanificacion(
                             planificacion.getIdPlanificacion());
+            Set<Long> conAsignacionesActivas = proyecto.getEstado()
+                    == EstadoProyecto.CONFIRMADO
+                            ? idsConAsignacionesActivas(actividades)
+                            : Set.of();
 
             for (Actividad actividad : actividades) {
                 if (idActividad != null
@@ -96,7 +123,8 @@ public class RepararCronogramaService {
                     continue;
                 }
                 InconsistenciaCronogramaResponse inconsistencia =
-                        detectarActividad(proyecto, actividad);
+                        detectarActividad(
+                                proyecto, actividad, conAsignacionesActivas);
                 if (inconsistencia != null) {
                     resultado.add(inconsistencia);
                 }
@@ -130,11 +158,9 @@ public class RepararCronogramaService {
         for (Map.Entry<Long, List<InconsistenciaCronogramaResponse>> entry
                 : porProyecto.entrySet()) {
             for (InconsistenciaCronogramaResponse inconsistencia : entry.getValue()) {
-                if (TIPO_SUCESORA_AVANZO_A_PREDECESORA.equals(inconsistencia.tipo())) {
+                if (!esReparable(inconsistencia.tipo())) {
                     fallidas++;
-                    errores.add("Proyecto " + inconsistencia.idProyecto()
-                            + ", actividad " + inconsistencia.idActividad()
-                            + ": requiere intervención manual; no se mueven actividades en curso o finalizadas.");
+                    errores.add(mensajeNoReparable(inconsistencia));
                     continue;
                 }
 
@@ -171,18 +197,105 @@ public class RepararCronogramaService {
 
     private InconsistenciaCronogramaResponse detectarActividad(
             Proyecto proyecto,
-            Actividad actividad) {
+            Actividad actividad,
+            Set<Long> conAsignacionesActivas) {
 
-        if (actividad.getEstado() == EstadoActividad.CANCELADA) {
+        if (actividad == null
+                || actividad.getEstado() == null
+                || actividad.getEstado() == EstadoActividad.CANCELADA) {
             return null;
         }
 
-        LocalDateTime finMaximoPredecesoras = finMaximoPredecesoras(actividad);
+        if (actividad.getEstado() == EstadoActividad.EN_CURSO
+                || actividad.getEstado() == EstadoActividad.FINALIZADA) {
+            return detectarEjecutada(proyecto, actividad);
+        }
 
-        if (actividad.getEstado() == EstadoActividad.PENDIENTE
-                && actividad.getFechaHoraInicio() != null
-                && finMaximoPredecesoras != null
-                && actividad.getFechaHoraInicio().isBefore(finMaximoPredecesoras)) {
+        if (actividad.getEstado() != EstadoActividad.PENDIENTE) {
+            return null;
+        }
+
+        return detectarPendiente(
+                proyecto, actividad, conAsignacionesActivas);
+    }
+
+    /**
+     * Una actividad ya ejecutada no puede repararse automáticamente: su inicio
+     * real no se puede reconstruir. Si no lo tiene, se reporta.
+     */
+    private InconsistenciaCronogramaResponse detectarEjecutada(
+            Proyecto proyecto,
+            Actividad actividad) {
+
+        if (actividad.getFechaHoraInicio() == null) {
+            return inconsistencia(
+                    proyecto,
+                    actividad,
+                    TIPO_ACTIVIDAD_EJECUTADA_SIN_INICIO,
+                    "La actividad está " + actividad.getEstado()
+                            + " pero no tiene inicio registrado.",
+                    null,
+                    null);
+        }
+
+        for (Actividad predecesora : predecesoras(actividad)) {
+            if (predecesora == null
+                    || predecesora.getEstado() == EstadoActividad.CANCELADA) {
+                continue;
+            }
+            if (predecesora.getEstado() != EstadoActividad.FINALIZADA) {
+                return inconsistencia(
+                        proyecto,
+                        actividad,
+                        TIPO_SUCESORA_AVANZO_A_PREDECESORA,
+                        "La actividad está " + actividad.getEstado()
+                                + " pero su predecesora "
+                                + predecesora.getIdActividad()
+                                + " está " + predecesora.getEstado() + ".",
+                        actividad.getFechaHoraInicio(),
+                        predecesora.getFechaHoraFin());
+            }
+        }
+
+        return null;
+    }
+
+    private InconsistenciaCronogramaResponse detectarPendiente(
+            Proyecto proyecto,
+            Actividad actividad,
+            Set<Long> conAsignacionesActivas) {
+
+        if (actividad.getFechaHoraInicio() == null) {
+            if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO
+                    && conAsignacionesActivas.contains(actividad.getIdActividad())) {
+                return inconsistencia(
+                        proyecto,
+                        actividad,
+                        TIPO_PENDIENTE_SIN_INICIO_CON_ASIGNACIONES,
+                        "La actividad tiene asignaciones activas pero no tiene "
+                                + "inicio planificado.",
+                        null,
+                        null);
+            }
+            return null;
+        }
+
+        if (proyecto.getFechaInicio() != null
+                && actividad.getFechaHoraInicio()
+                        .isBefore(proyecto.getFechaInicio())) {
+            return inconsistencia(
+                    proyecto,
+                    actividad,
+                    TIPO_INICIO_ANTES_DE_PROYECTO,
+                    "La actividad comienza antes del inicio del proyecto.",
+                    actividad.getFechaHoraInicio(),
+                    proyecto.getFechaInicio());
+        }
+
+        LocalDateTime finMaximoPredecesoras = finMaximoPredecesoras(actividad);
+        if (finMaximoPredecesoras != null
+                && actividad.getFechaHoraInicio()
+                        .isBefore(finMaximoPredecesoras)) {
             return inconsistencia(
                     proyecto,
                     actividad,
@@ -192,34 +305,57 @@ public class RepararCronogramaService {
                     finMaximoPredecesoras);
         }
 
-        if (actividad.getEstado() == EstadoActividad.EN_CURSO
-                || actividad.getEstado() == EstadoActividad.FINALIZADA) {
-            for (Actividad predecesora : actividad.getPredecesoras()) {
-                if (predecesora == null
-                        || predecesora.getEstado() == EstadoActividad.CANCELADA) {
-                    continue;
-                }
-                if (predecesora.getEstado() != EstadoActividad.FINALIZADA) {
-                    return inconsistencia(
-                            proyecto,
-                            actividad,
-                            TIPO_SUCESORA_AVANZO_A_PREDECESORA,
-                            "La actividad está " + actividad.getEstado()
-                                    + " pero su predecesora "
-                                    + predecesora.getIdActividad()
-                                    + " está " + predecesora.getEstado() + ".",
-                            actividad.getFechaHoraInicio(),
-                            predecesora.getFechaHoraFin());
-                }
-            }
+        return null;
+    }
+
+    private Set<Long> idsConAsignacionesActivas(List<Actividad> actividades) {
+        Set<Long> ids = actividades.stream()
+                .filter(Objects::nonNull)
+                .filter(actividad -> actividad.getEstado() == EstadoActividad.PENDIENTE)
+                .filter(actividad -> actividad.getFechaHoraInicio() == null)
+                .map(Actividad::getIdActividad)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (ids.isEmpty()) {
+            return Set.of();
         }
 
-        return null;
+        Set<Long> resultado = asignacionActividadRepository
+                .findIdsActividadesConAsignacionesActivas(ids);
+        return resultado == null ? Set.of() : resultado;
+    }
+
+    private boolean esReparable(String tipo) {
+        return TIPO_INICIO_ANTES_DE_PREDECESORA.equals(tipo)
+                || TIPO_INICIO_ANTES_DE_PROYECTO.equals(tipo)
+                || TIPO_PENDIENTE_SIN_INICIO_CON_ASIGNACIONES.equals(tipo);
+    }
+
+    private String mensajeNoReparable(InconsistenciaCronogramaResponse inconsistencia) {
+        String prefijo = "Proyecto " + inconsistencia.idProyecto()
+                + ", actividad " + inconsistencia.idActividad() + ": ";
+
+        if (TIPO_SUCESORA_AVANZO_A_PREDECESORA.equals(inconsistencia.tipo())) {
+            return prefijo
+                    + "requiere intervención manual; no se mueven actividades en curso o finalizadas.";
+        }
+        if (TIPO_ACTIVIDAD_EJECUTADA_SIN_INICIO.equals(inconsistencia.tipo())) {
+            return prefijo
+                    + "requiere intervención manual; la actividad ya está en curso o finalizada y no tiene inicio registrado.";
+        }
+        return prefijo + "requiere intervención manual. " + inconsistencia.detalle();
+    }
+
+    private List<Actividad> predecesoras(Actividad actividad) {
+        return actividad.getPredecesoras() == null
+                ? List.of()
+                : new ArrayList<>(actividad.getPredecesoras());
     }
 
     private LocalDateTime finMaximoPredecesoras(Actividad actividad) {
         LocalDateTime maximo = null;
-        for (Actividad predecesora : actividad.getPredecesoras()) {
+        for (Actividad predecesora : predecesoras(actividad)) {
             if (predecesora == null
                     || predecesora.getEstado() == EstadoActividad.CANCELADA
                     || predecesora.getFechaHoraFin() == null) {

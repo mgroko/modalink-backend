@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Mantenimiento administrativo del cronograma. No se ejecuta automáticamente.
+ * Mantenimiento administrativo del cronograma. Puede ejecutarse manualmente
+ * desde estos endpoints o periódicamente desde el job de reconciliación.
  */
 @RestController
 @RequestMapping("/admin/cronograma")

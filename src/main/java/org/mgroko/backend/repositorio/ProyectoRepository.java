@@ -22,6 +22,8 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSp
 
     Page<Proyecto> findByEstadoIn(List<EstadoProyecto> estados, Pageable pageable);
 
+    List<Proyecto> findByEstadoIn(List<EstadoProyecto> estados);
+
     List<Proyecto> findByEstado(EstadoProyecto estado);
 
     Page<Proyecto> findByEstadoNot(EstadoProyecto estado, Pageable pageable);

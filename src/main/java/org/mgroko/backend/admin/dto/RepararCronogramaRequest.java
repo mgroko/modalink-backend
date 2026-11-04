@@ -1,7 +1,8 @@
 package org.mgroko.backend.admin.dto;
 
 /**
- * Parámetros de la reparación controlada de cronogramas.
+ * Parámetros de la reparación controlada de cronogramas publicados o
+ * confirmados.
  *
  * @param dryRun     {@code true} para previsualizar sin persistir
  * @param idProyecto proyecto puntual; {@code null} para todos
