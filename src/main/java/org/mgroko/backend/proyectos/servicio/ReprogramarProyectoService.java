@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.mgroko.backend.actividades.servicio.CronogramaService;
 import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
@@ -60,6 +61,7 @@ public class ReprogramarProyectoService {
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final PlanificadorRecursosService planificadorRecursosService;
     private final CalendarioService calendarioService;
+    private final CronogramaService cronogramaService;
 
     public ReprogramarProyectoService(
             ProyectoRepository proyectoRepository,
@@ -67,13 +69,15 @@ public class ReprogramarProyectoService {
             ActividadRepository actividadRepository,
             AsignacionActividadRepository asignacionActividadRepository,
             PlanificadorRecursosService planificadorRecursosService,
-            CalendarioService calendarioService) {
+            CalendarioService calendarioService,
+            CronogramaService cronogramaService) {
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.actividadRepository = actividadRepository;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.planificadorRecursosService = planificadorRecursosService;
         this.calendarioService = calendarioService;
+        this.cronogramaService = cronogramaService;
     }
 
     /**
@@ -108,20 +112,7 @@ public class ReprogramarProyectoService {
         Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
-        if (proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
-            throw new ProyectoNoConfirmableException(
-                    "ESTADO_PROYECTO_INVALIDO",
-                    "Solo se puede reprogramar un proyecto confirmado. Estado actual: "
-                            + (proyecto.getEstado() != null
-                                    ? proyecto.getEstado().getNombre()
-                                    : "desconocido")
-                            + ".",
-                    List.of(new BloqueoConfirmacionResponse(
-                            "ESTADO_PROYECTO_INVALIDO",
-                            "El proyecto no está confirmado.",
-                            "PROYECTO",
-                            idProyecto)));
-        }
+        validarProyectoProgramable(proyecto);
 
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyectoForUpdate(idProyecto)
@@ -132,17 +123,7 @@ public class ReprogramarProyectoService {
             planificacionRepository.save(planificacion);
         }
 
-        LocalDateTime fechaInicio = proyecto.getFechaInicio();
-        if (fechaInicio == null) {
-            throw new ProyectoNoConfirmableException(
-                    "DATOS_INCONSISTENTES",
-                    "El proyecto confirmado no tiene fecha de inicio.",
-                    List.of(new BloqueoConfirmacionResponse(
-                            "DATOS_INCONSISTENTES",
-                            "Proyecto confirmado sin fecha de inicio.",
-                            "PROYECTO",
-                            idProyecto)));
-        }
+        LocalDateTime fechaInicio = fechaInicio(planificacion);
 
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(
@@ -263,13 +244,13 @@ public class ReprogramarProyectoService {
 
         Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
-        validarProyectoConfirmado(proyecto);
+        validarProyectoProgramable(proyecto);
 
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyectoForUpdate(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
-        LocalDateTime fechaInicio = fechaInicio(proyecto);
+        LocalDateTime fechaInicio = fechaInicio(planificacion);
 
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(
@@ -361,13 +342,13 @@ public class ReprogramarProyectoService {
 
         Proyecto proyecto = proyectoRepository.findById(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
-        validarProyectoConfirmado(proyecto);
+        validarProyectoProgramable(proyecto);
 
         Planificacion planificacion = planificacionRepository
                 .findByProyectoIdProyecto(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
-        LocalDateTime fechaInicio = fechaInicio(proyecto);
+        LocalDateTime fechaInicio = fechaInicio(planificacion);
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(
                         planificacion.getIdPlanificacion());
@@ -498,36 +479,44 @@ public class ReprogramarProyectoService {
         }
     }
 
-    private void validarProyectoConfirmado(Proyecto proyecto) {
-        if (proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
+    private void validarProyectoProgramable(Proyecto proyecto) {
+        EstadoProyecto estado = proyecto.getEstado();
+        if (estado == null || !estado.permiteReprogramacion()) {
             throw new ProyectoNoConfirmableException(
                     "ESTADO_PROYECTO_INVALIDO",
-                    "Solo se puede reprogramar un proyecto confirmado. Estado actual: "
-                            + (proyecto.getEstado() != null
-                                    ? proyecto.getEstado().getNombre()
+                    "Solo se puede reprogramar un proyecto publicado o confirmado. Estado actual: "
+                            + (estado != null
+                                    ? estado.getNombre()
                                     : "desconocido")
                             + ".",
                     List.of(new BloqueoConfirmacionResponse(
                             "ESTADO_PROYECTO_INVALIDO",
-                            "El proyecto no está confirmado.",
+                            "El proyecto no admite reprogramación.",
                             "PROYECTO",
                             proyecto.getIdProyecto())));
         }
     }
 
-    private LocalDateTime fechaInicio(Proyecto proyecto) {
-        LocalDateTime fechaInicio = proyecto.getFechaInicio();
-        if (fechaInicio == null) {
-            throw new ProyectoNoConfirmableException(
-                    "DATOS_INCONSISTENTES",
-                    "El proyecto confirmado no tiene fecha de inicio.",
-                    List.of(new BloqueoConfirmacionResponse(
-                            "DATOS_INCONSISTENTES",
-                            "Proyecto confirmado sin fecha de inicio.",
-                            "PROYECTO",
-                            proyecto.getIdProyecto())));
+    private LocalDateTime fechaInicio(Planificacion planificacion) {
+        Proyecto proyecto = planificacion.getProyecto();
+        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+            LocalDateTime fechaInicio = proyecto.getFechaInicio();
+            if (fechaInicio == null) {
+                throw new ProyectoNoConfirmableException(
+                        "DATOS_INCONSISTENTES",
+                        "El proyecto confirmado no tiene fecha de inicio.",
+                        List.of(new BloqueoConfirmacionResponse(
+                                "DATOS_INCONSISTENTES",
+                                "Proyecto confirmado sin fecha de inicio.",
+                                "PROYECTO",
+                                proyecto.getIdProyecto())));
+            }
+            return fechaInicio;
         }
-        return fechaInicio;
+
+        // Un proyecto publicado aún no tiene fecha de inicio confirmada: se
+        // usa el inicio efectivo (hoy) como origen de la planificación.
+        return cronogramaService.inicioEfectivo(planificacion);
     }
 
     private Map<Long, Actividad> porId(List<Actividad> actividades) {

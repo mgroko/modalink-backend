@@ -139,11 +139,11 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 "SELECT fecha_hora_inicio FROM actividad WHERE id_actividad = ?",
                 Timestamp.class,
                 escenario.idActividadSucesora()).toLocalDateTime();
-        // Fase 2: eliminar no persiste proyecciones; las fechas ya persistidas
-        // se conservan aunque se reconecten las dependencias. PostgreSQL guarda
-        // microsegundos, por eso se comparan sin nanosegundos.
-        assertThat(inicioPrevia).isEqualToIgnoringNanos(escenario.inicioActividadPrevia());
-        assertThat(inicioSucesora).isEqualToIgnoringNanos(escenario.inicioActividadSucesora());
+        // La eliminación reprograma el proyecto publicado: las fechas pueden
+        // cambiar, pero la sucesora debe quedar después de su predecesora.
+        assertThat(inicioPrevia).isNotNull();
+        assertThat(inicioSucesora).isNotNull();
+        assertThat(inicioSucesora).isAfter(inicioPrevia);
 
         verificarNotificacion(
                 escenario.idUsuarioDirector(),

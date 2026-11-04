@@ -44,6 +44,7 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
@@ -204,6 +205,11 @@ class AsignarActividadServiceTest {
         assertThat(response.requerimientoSatisfecho()).isTrue();
         assertThat(response.idMiembro()).isEqualTo(ID_MIEMBRO);
         assertThat(response.idPerfil()).isEqualTo(ID_PERFIL_DESTINO);
+        verify(reprogramarProyectoService).reprogramarActividad(
+                ID_PROYECTO,
+                ID_ACTIVIDAD,
+                MotivoReprogramacion.ASIGNACION,
+                Map.of(ID_ACTIVIDAD, List.of(ID_USUARIO_DESTINO)));
         verify(calendarioService).verificarDisponibilidad(ID_USUARIO_DESTINO, actividad);
     }
 

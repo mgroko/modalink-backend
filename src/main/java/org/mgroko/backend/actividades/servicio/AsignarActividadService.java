@@ -28,6 +28,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
@@ -157,20 +158,29 @@ public class AsignarActividadService {
                     "El miembro ya está asignado a esta actividad.");
         }
 
-        boolean reprogramar = proyecto.getEstado() == EstadoProyecto.CONFIRMADO
+        boolean reprogramar = proyecto.getEstado() != null
+                && proyecto.getEstado().permiteReprogramacion()
                 && actividad.getEstado() == EstadoActividad.PENDIENTE;
 
         if (reprogramar) {
             // El candidato todavía no tiene asignación persistida: se lo pasa
             // al planificador como usuario virtual para mover la actividad a un
             // hueco común antes de insertar la asignación.
-            reprogramarProyectoService.reprogramarActividad(
-                    idProyecto,
-                    actividad.getIdActividad(),
-                    MotivoReprogramacion.ASIGNACION,
-                    Map.of(
-                            actividad.getIdActividad(),
-                            List.of(perfilDestino.getUsuario().getIdUsuario())));
+            try {
+                reprogramarProyectoService.reprogramarActividad(
+                        idProyecto,
+                        actividad.getIdActividad(),
+                        MotivoReprogramacion.ASIGNACION,
+                        Map.of(
+                                actividad.getIdActividad(),
+                                List.of(perfilDestino.getUsuario().getIdUsuario())));
+            } catch (ProyectoNoConfirmableException ex) {
+                if ("SIN_DISPONIBILIDAD".equals(ex.getCodigo())) {
+                    throw new AsignacionNoDisponibleException(
+                            disponibilidadNoDisponible(ex, proyecto));
+                }
+                throw ex;
+            }
             actividad = actividadRepository
                     .findByIdActividadAndPlanificacionIdPlanificacion(
                             idActividad, planificacion.getIdPlanificacion())
@@ -245,6 +255,27 @@ public class AsignarActividadService {
                     "La actividad no admite asignaciones en estado "
                             + actividad.getEstado().name() + ".");
         }
+    }
+
+    private ResultadoDisponibilidad disponibilidadNoDisponible(
+            ProyectoNoConfirmableException ex,
+            Proyecto proyecto) {
+
+        return new ResultadoDisponibilidad(
+                false,
+                proyecto.getFechaInicio() == null,
+                null,
+                null,
+                null,
+                null,
+                ex.getMessage(),
+                List.of(),
+                null,
+                null,
+                null,
+                List.of(),
+                ex.getCodigo(),
+                List.of());
     }
 
     private ResultadoDisponibilidad verificarDisponibilidad(

@@ -187,7 +187,9 @@ public class ModificarActividadService {
             ActividadDependencias.reconectarSucesoras(
                     actividadRepository, guardada, paraReconectar);
 
-            if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+            if (proyecto.getEstado() != null
+                    && proyecto.getEstado().permiteReprogramacion()
+                    && planificacion.getFechaEntrega() != null) {
                 reprogramarProyectoService.reprogramar(
                         idProyecto,
                         MotivoReprogramacion.CANCELACION_ACTIVIDAD,

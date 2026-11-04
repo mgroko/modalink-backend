@@ -204,7 +204,9 @@ public class EliminarActividadService {
         actividadRepository.delete(actividad);
         actividadRepository.flush();
 
-        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+        if (proyecto.getEstado() != null
+                && proyecto.getEstado().permiteReprogramacion()
+                && planificacion.getFechaEntrega() != null) {
             reprogramarProyectoService.reprogramar(
                     idProyecto,
                     MotivoReprogramacion.ELIMINACION_ACTIVIDAD,

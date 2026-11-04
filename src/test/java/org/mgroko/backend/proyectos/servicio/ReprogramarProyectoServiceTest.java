@@ -21,6 +21,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.actividades.servicio.CronogramaService;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
@@ -64,6 +65,8 @@ class ReprogramarProyectoServiceTest {
     private PlanificadorRecursosService planificadorRecursosService;
     @Mock
     private CalendarioService calendarioService;
+    @Mock
+    private CronogramaService cronogramaService;
 
     private ReprogramarProyectoService service;
 
@@ -75,7 +78,8 @@ class ReprogramarProyectoServiceTest {
                 actividadRepository,
                 asignacionActividadRepository,
                 planificadorRecursosService,
-                calendarioService);
+                calendarioService,
+                cronogramaService);
     }
 
     @Test
@@ -115,9 +119,9 @@ class ReprogramarProyectoServiceTest {
     }
 
     @Test
-    void reprogramar_proyectoNoConfirmado_lanzaExcepcion() {
+    void reprogramar_proyectoFinalizado_lanzaExcepcion() {
         Proyecto proyecto = proyectoConfirmado();
-        proyecto.setEstado(EstadoProyecto.PUBLICADO);
+        proyecto.setEstado(EstadoProyecto.FINALIZADO);
         when(proyectoRepository.findByIdParaGestion(100L))
                 .thenReturn(Optional.of(proyecto));
 
@@ -276,12 +280,132 @@ class ReprogramarProyectoServiceTest {
         assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO.plusHours(1));
     }
 
+    @Test
+    void reprogramar_proyectoPublicado_usaInicioEfectivoYReplanifica() {
+        Proyecto proyecto = proyectoPublicado();
+        Planificacion planificacion = planificacion(proyecto);
+        Actividad pendiente = actividad(
+                1L, "Pendiente", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
+
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(pendiente));
+        when(cronogramaService.inicioEfectivo(planificacion))
+                .thenReturn(INICIO_PROYECTO);
+        when(planificadorRecursosService.planificar(
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO),
+                eq(true), eq(true), anyMap()))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(1L, INICIO_NUEVO),
+                        Map.of(),
+                        null));
+
+        ReprogramacionProyectoResponse resultado = service.reprogramar(
+                100L, MotivoReprogramacion.CAMBIO_JORNADA, null);
+
+        assertThat(pendiente.getFechaHoraInicio()).isEqualTo(INICIO_NUEVO);
+        assertThat(resultado.actividades()).hasSize(1);
+        verify(cronogramaService).inicioEfectivo(planificacion);
+    }
+
+    @Test
+    void reprogramar_proyectoBorrador_lanzaExcepcion() {
+        Proyecto proyecto = Proyecto.builder()
+                .idProyecto(100L)
+                .nombre("Borrador")
+                .estado(EstadoProyecto.BORRADOR)
+                .build();
+
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
+
+        assertThatThrownBy(() -> service.reprogramar(
+                100L, MotivoReprogramacion.CAMBIO_JORNADA, null))
+                .isInstanceOf(ProyectoNoConfirmableException.class)
+                .extracting("codigo")
+                .isEqualTo("ESTADO_PROYECTO_INVALIDO");
+    }
+
+    @Test
+    void reprogramarActividad_proyectoPublicado_mueveLaActividad() {
+        Proyecto proyecto = proyectoPublicado();
+        Planificacion planificacion = planificacion(proyecto);
+        Actividad otra = actividad(
+                1L, "Otra", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
+        Actividad objetivo = actividad(
+                2L, "Objetivo", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO.plusHours(1));
+
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(otra, objetivo));
+        when(cronogramaService.inicioEfectivo(planificacion))
+                .thenReturn(INICIO_PROYECTO);
+        when(planificadorRecursosService.planificar(
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO),
+                eq(true), eq(true), anyMap(), anyMap()))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(1L, INICIO_VIEJO, 2L, INICIO_NUEVO),
+                        Map.of(),
+                        null));
+
+        service.reprogramarActividad(
+                100L,
+                2L,
+                MotivoReprogramacion.ASIGNACION,
+                Map.of(2L, List.of(30L)));
+
+        assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_NUEVO);
+    }
+
+    @Test
+    void simularAsignacion_proyectoPublicado_devuelveSimulacion() {
+        Proyecto proyecto = proyectoPublicado();
+        Planificacion planificacion = planificacion(proyecto);
+        Actividad objetivo = actividad(
+                2L, "Objetivo", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
+
+        when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyecto(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(objetivo));
+        when(cronogramaService.inicioEfectivo(planificacion))
+                .thenReturn(INICIO_PROYECTO);
+        when(planificadorRecursosService.planificar(
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO),
+                eq(true), eq(true), anyMap(), anyMap()))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(2L, INICIO_NUEVO),
+                        Map.of(),
+                        null));
+
+        ReprogramarProyectoService.SimulacionAsignacion simulacion =
+                service.simularAsignacion(100L, 2L, List.of(30L));
+
+        assertThat(simulacion.inicioPropuesto()).isEqualTo(INICIO_NUEVO);
+        assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_VIEJO);
+    }
+
     private Proyecto proyectoConfirmado() {
         return Proyecto.builder()
                 .idProyecto(100L)
                 .nombre("Desfile Primavera")
                 .estado(EstadoProyecto.CONFIRMADO)
                 .fechaInicio(INICIO_PROYECTO)
+                .build();
+    }
+
+    private Proyecto proyectoPublicado() {
+        return Proyecto.builder()
+                .idProyecto(100L)
+                .nombre("Desfile Primavera")
+                .estado(EstadoProyecto.PUBLICADO)
                 .build();
     }
 

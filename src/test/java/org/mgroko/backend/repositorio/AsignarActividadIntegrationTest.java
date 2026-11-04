@@ -136,7 +136,8 @@ class AsignarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
         LocalDateTime fechaInicio = jdbcTemplate.queryForObject("""
                 SELECT fecha_hora_inicio FROM actividad WHERE id_actividad = ?
                 """, LocalDateTime.class, idActividad);
-        assertThat(fechaInicio).isNull();
+        assertThat(response.inicioSeleccionado()).isNotNull();
+        assertThat(fechaInicio).isNotNull();
     }
 
     @Test

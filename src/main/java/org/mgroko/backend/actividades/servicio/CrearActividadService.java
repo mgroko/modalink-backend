@@ -132,7 +132,9 @@ public class CrearActividadService {
         List<RequerimientoActividadResponse> requerimientos = persistirRequerimientos(
                 guardada, request.requerimientos());
 
-        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO) {
+        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO
+                || (proyecto.getEstado() == EstadoProyecto.PUBLICADO
+                        && planificacion.getFechaEntrega() != null)) {
             reprogramarProyectoService.reprogramarActividad(
                     idProyecto,
                     guardada.getIdActividad(),
