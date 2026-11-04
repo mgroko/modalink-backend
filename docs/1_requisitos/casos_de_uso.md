@@ -768,11 +768,12 @@
 | **Precondición**  | El proyecto está en estado “Confirmado”. La fecha de finalización estipulada en el cronograma del proyecto es menor o igual a la fecha actual del sistema. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que quiere finalizar (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema solicita al director de proyecto que califique al equipo. |
-|  | 3 | El director de proyecto califica el desempeño de cada uno de los participantes. (ver caso de uso UC-16 Buscar perfil) |
-|  | 4 | El sistema ofrece la opción de subir imágenes del resultado del proyecto.   |
-|  | 5 | El director de proyecto confirma la finalización del proyecto. |
-|  | 6 | El sistema actualiza el estado del proyecto a Finalizado. |
+|  | 2 | El sistema verifica que las actividades estén en estado ‘finalizada’. (en caso contrario, ‘Cancelada’) |
+|  | 3 | El sistema solicita al director de proyecto que califique al equipo. |
+|  | 4 | El director de proyecto califica el desempeño de cada uno de los participantes. (ver caso de uso UC-16 Buscar perfil) |
+|  | 5 | El sistema ofrece la opción de subir imágenes del resultado del proyecto. (Ver caso de uso UC-19 Alta publicación)  |
+|  | 6 | El director de proyecto confirma la finalización del proyecto. |
+|  | 7 | El sistema actualiza el estado del proyecto a Finalizado. |
 | **Postcondición** | El sistema, por cada participante crea una solicitud para notificar que califiquen al resto del equipo. El sistema cambia el estado del proyecto de “Confirmado” a “Finalizado” con la fecha actual del sistema. El proyecto finalizado se indexa automáticamente en el historial de proyectos de los perfiles de todos los integrantes. |  |
 | **Flujo alternativo** | 3.1 | Si el director de proyecto decide subir imágenes del resultado del proyecto, véase el caso de uso “Alta publicación”. Luego el caso de uso continúa desde el paso 5\. |
 | **Excepciones** | **Paso** | **Acción** |
