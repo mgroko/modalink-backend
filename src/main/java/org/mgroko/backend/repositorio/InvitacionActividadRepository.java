@@ -2,13 +2,17 @@ package org.mgroko.backend.repositorio;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.modelo.InvitacionActividad;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface InvitacionActividadRepository extends JpaRepository<InvitacionActividad, Long> {
 
@@ -64,6 +68,23 @@ public interface InvitacionActividadRepository extends JpaRepository<InvitacionA
         ORDER BY i.fechaEnvio DESC, i.idInvitacion DESC
     """)
     List<InvitacionActividad> buscarPorPerfil(@Param("idPerfil") Long idPerfil);
+
+    /**
+     * Recupera una invitación de actividad con remitente, requerimiento,
+     * actividad y proyecto bloqueados para la baja de UC-32.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT i FROM InvitacionActividad i
+        JOIN FETCH i.perfilRemitente r
+        JOIN FETCH i.requerimiento req
+        JOIN FETCH req.actividad a
+        JOIN FETCH a.planificacion pl
+        JOIN FETCH pl.proyecto p
+        WHERE i.idInvitacion = :idInvitacion
+    """)
+    Optional<InvitacionActividad> findByIdForUpdate(
+            @Param("idInvitacion") Long idInvitacion);
 
     @Query("""
         SELECT i FROM InvitacionActividad i

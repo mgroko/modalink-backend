@@ -617,6 +617,19 @@ validar el estado de la invitación al confirmar la operación, para evitar
 eliminar una invitación que haya sido aceptada o rechazada entre la consulta y
 la confirmación.
 
+La implementación expone dos endpoints `DELETE`, uno por tipo:
+
+```http
+DELETE /proyectos/{idProyecto}/invitaciones/general/{idInvitacion}
+DELETE /proyectos/{idProyecto}/invitaciones/actividad/{idInvitacion}
+```
+
+Sólo el Director que envió la invitación puede eliminarla. El backend valida
+`ELIMINAR_INVITACION`, rol Director activo, pertenencia al proyecto, remitente y
+estado `PENDIENTE`. La fila se bloquea con `PESSIMISTIC_WRITE` para evitar
+carreras con UC-28. El borrado es físico y no genera notificación. La respuesta
+exitosa es `204 No Content`.
+
 ## UC-38 — Eliminar integrante
 
 El director elimina a un integrante activo del proyecto. La baja se registra

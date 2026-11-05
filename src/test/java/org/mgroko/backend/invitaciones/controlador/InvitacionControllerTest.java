@@ -1,9 +1,11 @@
 package org.mgroko.backend.invitaciones.controlador;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,12 +22,15 @@ import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.PerfilInvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.TipoInvitacion;
+import org.mgroko.backend.invitaciones.exception.InvitacionNoEncontradaException;
 import org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException;
 import org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException;
 import org.mgroko.backend.invitaciones.servicio.BuscarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
+import org.mgroko.backend.invitaciones.servicio.EliminarInvitacionService;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -47,6 +52,76 @@ class InvitacionControllerTest {
 
     @MockitoBean
     private BuscarInvitacionService buscarInvitacionService;
+
+    @MockitoBean
+    private EliminarInvitacionService eliminarInvitacionService;
+
+    @Test
+    void eliminarGeneral_conPerfilActivo_devuelve204() throws Exception {
+        mockMvc.perform(delete("/proyectos/5/invitaciones/general/77")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarInvitacionService)
+                .eliminarInvitacionGeneral(1L, 10L, 5L, 77L);
+    }
+
+    @Test
+    void eliminarActividad_conPerfilActivo_devuelve204() throws Exception {
+        mockMvc.perform(delete("/proyectos/5/invitaciones/actividad/88")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarInvitacionService)
+                .eliminarInvitacionActividad(1L, 10L, 5L, 88L);
+    }
+
+    @Test
+    void eliminarGeneral_sinPerfilActivo_noInvocaAlServicio() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+        mockMvc.perform(delete("/proyectos/5/invitaciones/general/77").principal(auth))
+                .andExpect(status().isNotFound());
+
+        verify(eliminarInvitacionService, never())
+                .eliminarInvitacionGeneral(any(), any(), any(), any());
+    }
+
+    @Test
+    void eliminarGeneral_inexistente_devuelve404() throws Exception {
+        doThrow(new InvitacionNoEncontradaException())
+                .when(eliminarInvitacionService)
+                .eliminarInvitacionGeneral(1L, 10L, 5L, 77L);
+
+        mockMvc.perform(delete("/proyectos/5/invitaciones/general/77")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void eliminarGeneral_noPendiente_devuelve409() throws Exception {
+        doThrow(new InvitacionNoPermitidaException(
+                        "Sólo se pueden eliminar invitaciones pendientes.",
+                        EliminarInvitacionService.CODIGO_INVITACION_NO_PENDIENTE))
+                .when(eliminarInvitacionService)
+                .eliminarInvitacionGeneral(1L, 10L, 5L, 77L);
+
+        mockMvc.perform(delete("/proyectos/5/invitaciones/general/77")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("INVITACION_NO_PENDIENTE"));
+    }
+
+    @Test
+    void eliminarActividad_sinPermiso_devuelve403() throws Exception {
+        doThrow(new AccesoDenegadoProyectoException("Sin permiso"))
+                .when(eliminarInvitacionService)
+                .eliminarInvitacionActividad(1L, 10L, 5L, 88L);
+
+        mockMvc.perform(delete("/proyectos/5/invitaciones/actividad/88")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isForbidden());
+    }
 
     @Test
     void buscar_conPerfilActivo_devuelvePagina() throws Exception {

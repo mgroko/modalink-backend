@@ -220,6 +220,17 @@
 | **Precondición** | El usuario inició sesión y tiene un perfil activo. |
 | **Postcondición** | No se modifican datos. |
 
+| Nombre | darDeBajaInvitacion(unaInvitacion) |
+| :---- | :---- |
+| **Responsabilidades** | Eliminar físicamente una invitación a proyecto que todavía está pendiente. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-32 |
+| **Notas** | Sólo puede ejecutarla el Director que envió la invitación, con permiso `ELIMINAR_INVITACION` y rol Director activo en el proyecto. |
+| **Excepciones** | La invitación no existe, pertenece a otro proyecto, no está en estado `PENDIENTE` o el actor no es el remitente. |
+| **Salida** | \- |
+| **Precondición** | La invitación está en estado `PENDIENTE`, pertenece al proyecto indicado y el perfil activo es su remitente. |
+| **Postcondición** | Se eliminó la instancia de Invitacion. No se crea una notificación. |
+
 | Nombre | invitarAProyecto(unProyecto, unPerfil, mensaje) |
 | :---- | :---- |
 | **Responsabilidades** | Se encarga de emitir una invitación de incorporación a un proyecto dirigida a un perfil registrado en el sistema.  |

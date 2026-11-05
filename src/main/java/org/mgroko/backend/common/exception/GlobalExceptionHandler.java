@@ -912,6 +912,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.invitaciones.exception.InvitacionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleInvitacionNoEncontrada(
+            org.mgroko.backend.invitaciones.exception.InvitacionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException.class)
     public ResponseEntity<Map<String, Object>> handleInvitacionNoPermitida(
             org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException ex) {
