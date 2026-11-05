@@ -82,6 +82,9 @@ public interface PostulacionActividadRepository
     boolean existsByRequerimiento_IdRequerimientoAndEstado(
             Long idRequerimiento, EstadoSolicitud estado);
 
+    boolean existsByRequerimiento_IdRequerimientoAndPerfil_IdPerfil(
+            Long idRequerimiento, Long idPerfil);
+
     boolean existsByRequerimiento_IdRequerimiento(Long idRequerimiento);
 
     void deleteByRequerimiento_IdRequerimiento(Long idRequerimiento);
@@ -125,6 +128,43 @@ public interface PostulacionActividadRepository
           AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
     """)
     List<PostulacionActividad> findPendientesDeProyectoConPerfil(@Param("idProyecto") Long idProyecto);
+
+    @Query("""
+        SELECT p FROM PostulacionActividad p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH p.requerimiento r
+        JOIN FETCH r.actividad a
+        JOIN FETCH a.planificacion pl
+        JOIN FETCH pl.proyecto proy
+        WHERE proy.idProyecto = :idProyecto
+          AND perfil.idPerfil = :idPerfil
+          AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<PostulacionActividad> findPendientesDeProyectoYPerfil(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT p FROM PostulacionActividad p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH p.requerimiento r
+        WHERE perfil.idPerfil = :idPerfil
+          AND r.idRequerimiento IN :idsRequerimiento
+          AND p.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<PostulacionActividad> findHistoricasPorPerfilYRequerimientos(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idsRequerimiento") Collection<Long> idsRequerimiento);
+
+    @Query("""
+        SELECT p FROM PostulacionActividad p
+        JOIN FETCH p.perfil perfil
+        WHERE p.requerimiento.idRequerimiento = :idRequerimiento
+          AND p.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<PostulacionActividad> findHistoricasPorRequerimiento(
+            @Param("idRequerimiento") Long idRequerimiento);
 
     @Query("""
         SELECT p FROM PostulacionActividad p

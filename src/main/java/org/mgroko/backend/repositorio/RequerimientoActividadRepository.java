@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -21,14 +22,28 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
         SELECT r FROM RequerimientoActividad r
         JOIN FETCH r.actividad
         WHERE r.actividad.idActividad = :idActividad
+          AND r.fechaArchivado IS NULL
     """)
     List<RequerimientoActividad> findByActividad_IdActividad(
+            @Param("idActividad") Long idActividad);
+
+    /**
+     * Incluye snapshots históricos. Se usa únicamente para la limpieza física
+     * de una actividad, no para consultas operativas.
+     */
+    @Query("""
+        SELECT r FROM RequerimientoActividad r
+        JOIN FETCH r.actividad
+        WHERE r.actividad.idActividad = :idActividad
+    """)
+    List<RequerimientoActividad> findByActividad_IdActividadIncludingArchived(
             @Param("idActividad") Long idActividad);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT r FROM RequerimientoActividad r
         WHERE r.actividad.idActividad = :idActividad
+          AND r.fechaArchivado IS NULL
     """)
     List<RequerimientoActividad> findByActividadIdForUpdate(
             @Param("idActividad") Long idActividad);
@@ -46,6 +61,7 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
         JOIN FETCH r.profesion
         JOIN FETCH r.actividad
         WHERE r.actividad.idActividad = :idActividad
+          AND r.fechaArchivado IS NULL
         ORDER BY r.idRequerimiento ASC
     """)
     List<RequerimientoActividad> findConProfesionByActividadId(
@@ -66,6 +82,7 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
         LEFT JOIN FETCH caracteristica.caracteristica
         LEFT JOIN FETCH r.habilidades
         WHERE r.actividad.idActividad IN :idsActividades
+          AND r.fechaArchivado IS NULL
         ORDER BY r.actividad.idActividad ASC, r.idRequerimiento ASC
     """)
     List<RequerimientoActividad> findConProfesionByActividadIds(
@@ -86,6 +103,7 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
         FROM RequerimientoActividad ra
         WHERE ra.actividad.planificacion.proyecto.idProyecto = :idProyecto
           AND ra.actividad.estado <> :estadoExcluido
+          AND ra.fechaArchivado IS NULL
     """)
     boolean existsByProyectoExcluyendoEstado(
             @Param("idProyecto") Long idProyecto,
@@ -107,6 +125,7 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
         JOIN FETCH a.planificacion p
         JOIN FETCH p.proyecto
         WHERE r.idRequerimiento = :idRequerimiento
+          AND r.fechaArchivado IS NULL
     """)
     Optional<RequerimientoActividad> findByIdConActividadYProyecto(
             @Param("idRequerimiento") Long idRequerimiento);
@@ -119,7 +138,22 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
         JOIN FETCH actividad.planificacion planificacion
         JOIN FETCH planificacion.proyecto
         WHERE r.idRequerimiento = :idRequerimiento
+          AND r.fechaArchivado IS NULL
     """)
     Optional<RequerimientoActividad> findByIdParaGestion(
             @Param("idRequerimiento") Long idRequerimiento);
+
+    /**
+     * Último snapshot de un requerimiento activo. Se usa para reutilizarlo
+     * cuando el activo no cambió.
+     */
+    @EntityGraph(attributePaths = {
+            "actividad",
+            "profesion",
+            "habilidades",
+            "caracteristicas",
+            "caracteristicas.caracteristica"
+    })
+    Optional<RequerimientoActividad> findFirstByIdRequerimientoOrigenOrderByFechaArchivadoDesc(
+            @Param("idRequerimientoOrigen") Long idRequerimientoOrigen);
 }

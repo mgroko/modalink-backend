@@ -73,6 +73,11 @@ public interface PostulacionGralRepository
     boolean existsByRequerimientoGralIdRequerimientoGralAndEstado(
             Long idRequerimientoGral, EstadoSolicitud estado);
 
+    boolean existsByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
+
+    boolean existsByRequerimientoGral_IdRequerimientoGralAndPerfil_IdPerfil(
+            Long idRequerimientoGral, Long idPerfil);
+
     void deleteByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
 
     /**
@@ -128,6 +133,41 @@ public interface PostulacionGralRepository
           AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
     """)
     List<PostulacionGral> findPendientesDeProyectoConPerfil(@Param("idProyecto") Long idProyecto);
+
+    @Query("""
+        SELECT p FROM PostulacionGral p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH p.requerimientoGral r
+        JOIN FETCH r.proyecto proy
+        WHERE proy.idProyecto = :idProyecto
+          AND perfil.idPerfil = :idPerfil
+          AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<PostulacionGral> findPendientesDeProyectoYPerfil(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT p FROM PostulacionGral p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH p.requerimientoGral r
+        WHERE perfil.idPerfil = :idPerfil
+          AND r.idRequerimientoGral IN :idsRequerimiento
+          AND p.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<PostulacionGral> findHistoricasPorPerfilYRequerimientos(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idsRequerimiento") Collection<Long> idsRequerimiento);
+
+    @Query("""
+        SELECT p FROM PostulacionGral p
+        JOIN FETCH p.perfil perfil
+        WHERE p.requerimientoGral.idRequerimientoGral = :idRequerimientoGral
+          AND p.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<PostulacionGral> findHistoricasPorRequerimientoGral(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
 
     /**
      * Resuelve el proyecto de cada postulación general indicada. Se usa para

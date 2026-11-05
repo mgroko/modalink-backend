@@ -113,6 +113,8 @@ public class RequerimientoGralService {
             List<CrearRequerimientoCaractRequest> caracteristicas,
             List<Long> habilidades) {
 
+        validarNoEsSnapshot(requerimiento);
+
         Profesion profesion = profesionRepository.findById(idProfesion)
                 .orElseThrow(() -> new ProfesionNoEncontradaException(
                         "Profesión no encontrada: " + idProfesion));
@@ -155,6 +157,7 @@ public class RequerimientoGralService {
      * enumeradas (que no tienen cascade desde el requerimiento).
      */
     public void eliminar(RequerimientoGralProyecto requerimiento) {
+        validarNoEsSnapshot(requerimiento);
         for (RequerimientoGralCaract caract : requerimiento.getCaracteristicas()) {
             List<RequerimientoGralCaractValor> valores =
                     requerimientoGralCaractValorRepository.findByIdReqGralCaract(caract.getIdReqGralCaract());
@@ -163,6 +166,13 @@ public class RequerimientoGralService {
             }
         }
         requerimientoGralProyectoRepository.delete(requerimiento);
+    }
+
+    private void validarNoEsSnapshot(RequerimientoGralProyecto requerimiento) {
+        if (requerimiento != null && requerimiento.getFechaArchivado() != null) {
+            throw new RequerimientoInvalidoException(
+                    "Un requerimiento archivado es inmutable y no puede modificarse ni eliminarse.");
+        }
     }
 
     private RequerimientoGralResponse toResponse(

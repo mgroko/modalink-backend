@@ -6,7 +6,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.mgroko.backend.modelo.AsignacionActividad;
-import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -42,25 +41,31 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
             @Param("idsActividades") Collection<Long> idsActividades);
 
     /**
-     * Actividades con al menos una asignación de un miembro activo.
-     *
-     * <p>Cuando el historial agregue {@code fecha_archivado} a los
-     * requerimientos, esta consulta debe excluir los requerimientos
-     * archivados.</p>
+     * Actividades con al menos una asignación de un miembro activo sobre un
+     * requerimiento activo o una asignación directa sin requerimiento.
      */
     @Query("""
         SELECT DISTINCT aa.actividad.idActividad
         FROM AsignacionActividad aa
         JOIN aa.miembro m
+        LEFT JOIN aa.requerimientoActividad r
         WHERE aa.actividad.idActividad IN :idsActividades
           AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND (r IS NULL OR r.fechaArchivado IS NULL)
     """)
     Set<Long> findIdsActividadesConAsignacionesActivas(
             @Param("idsActividades") Collection<Long> idsActividades);
 
-    boolean existsByActividad_IdActividadAndMiembro_EstadoParticipacion(
-            Long idActividad,
-            EstadoParticipacion estadoParticipacion);
+    @Query("""
+        SELECT CASE WHEN COUNT(aa) > 0 THEN TRUE ELSE FALSE END
+        FROM AsignacionActividad aa
+        JOIN aa.miembro m
+        LEFT JOIN aa.requerimientoActividad r
+        WHERE aa.actividad.idActividad = :idActividad
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND (r IS NULL OR r.fechaArchivado IS NULL)
+    """)
+    boolean existsAsignacionActiva(@Param("idActividad") Long idActividad);
 
     /**
      * Perfiles del usuario indicado asignados a las actividades indicadas.
@@ -174,16 +179,59 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
             @Param("idRequerimiento") Long idRequerimiento);
 
     /**
-     * Cuenta todas las asignaciones de un requerimiento, sin importar el
-     * estado de participación del miembro. Se usa para el cupo histórico de
-     * actividades finalizadas o canceladas.
+     * Cuenta todas las asignaciones de un requerimiento y de sus snapshots,
+     * sin importar el estado de participación del miembro. Se usa para el cupo
+     * histórico de actividades finalizadas o canceladas.
      */
     @Query("""
         SELECT COUNT(aa) FROM AsignacionActividad aa
         WHERE aa.requerimientoActividad.idRequerimiento = :idRequerimiento
+           OR aa.requerimientoActividad.idRequerimientoOrigen = :idRequerimiento
     """)
     long countTodasPorRequerimientoActividad(
             @Param("idRequerimiento") Long idRequerimiento);
+
+    boolean existsByRequerimientoActividad_IdRequerimiento(Long idRequerimiento);
+
+    /**
+     * Asignaciones de una membresía concreta, incluyendo las que ya apuntan a
+     * snapshots. Se usa al dar de baja para repuntar el historial.
+     */
+    @Query("""
+        SELECT a FROM AsignacionActividad a
+        JOIN FETCH a.miembro m
+        JOIN FETCH a.actividad act
+        LEFT JOIN FETCH a.requerimientoActividad r
+        LEFT JOIN FETCH r.profesion
+        WHERE m.idMiembro = :idMiembro
+        ORDER BY act.nombre ASC, a.idAsignacionAct ASC
+    """)
+    List<AsignacionActividad> findByMiembroConActividadYRequerimiento(
+            @Param("idMiembro") Long idMiembro);
+
+    @Query("""
+        SELECT a FROM AsignacionActividad a
+        JOIN FETCH a.miembro m
+        LEFT JOIN FETCH a.requerimientoActividad r
+        WHERE r.idRequerimiento = :idRequerimiento
+    """)
+    List<AsignacionActividad> findByRequerimientoActividad_IdRequerimiento(
+            @Param("idRequerimiento") Long idRequerimiento);
+
+    /**
+     * Asignaciones de miembros históricos para la auditoría de bajas.
+     */
+    @Query("""
+        SELECT a FROM AsignacionActividad a
+        JOIN FETCH a.miembro m
+        JOIN FETCH a.actividad act
+        LEFT JOIN FETCH a.requerimientoActividad r
+        LEFT JOIN FETCH r.profesion
+        WHERE m.idMiembro IN :idsMiembros
+        ORDER BY act.nombre ASC, a.idAsignacionAct ASC
+    """)
+    List<AsignacionActividad> findHistoricasPorMiembrosConActividadYRequerimiento(
+            @Param("idsMiembros") Collection<Long> idsMiembros);
 
     /**
      * Cuenta las asignaciones activas de cada requerimiento indicado en una
@@ -203,16 +251,19 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
             @Param("ids") Collection<Long> ids);
 
     /**
-     * Cuenta todas las asignaciones de cada requerimiento indicado, sin
-     * importar el estado del miembro. Se usa para el cupo histórico de
-     * actividades finalizadas o canceladas.
+     * Cuenta todas las asignaciones de cada requerimiento indicado y de sus
+     * snapshots, sin importar el estado del miembro. Se usa para el cupo
+     * histórico de actividades finalizadas o canceladas.
      */
     @Query("""
-        SELECT aa.requerimientoActividad.idRequerimiento AS idRequerimiento,
+        SELECT COALESCE(aa.requerimientoActividad.idRequerimientoOrigen,
+                        aa.requerimientoActividad.idRequerimiento) AS idRequerimiento,
                COUNT(aa) AS cubiertos
         FROM AsignacionActividad aa
-        WHERE aa.requerimientoActividad.idRequerimiento IN :ids
-        GROUP BY aa.requerimientoActividad.idRequerimiento
+        WHERE COALESCE(aa.requerimientoActividad.idRequerimientoOrigen,
+                       aa.requerimientoActividad.idRequerimiento) IN :ids
+        GROUP BY COALESCE(aa.requerimientoActividad.idRequerimientoOrigen,
+                          aa.requerimientoActividad.idRequerimiento)
     """)
     List<CubiertosPorRequerimiento> countTodasPorRequerimientoIds(
             @Param("ids") Collection<Long> ids);

@@ -32,48 +32,48 @@ class RequerimientoProteccionServiceTest {
     @Test
     void sinVinculos_noEstaProtegido() {
         assertThat(service.estaProtegido(7L)).isFalse();
-        assertThat(service.estaProtegido(7L, true)).isFalse();
     }
 
     @Test
-    void postulacionAceptada_protegeSiempre() {
-        when(postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimientoAndEstado(
-                        7L, EstadoSolicitud.ACEPTADA))
-                .thenReturn(true);
+    void asignacionActiva_protege() {
+        when(asignacionActividadRepository
+                .countActivasPorRequerimientoActividad(7L))
+                .thenReturn(1L);
 
         assertThat(service.estaProtegido(7L)).isTrue();
-        assertThat(service.estaProtegido(7L, false)).isTrue();
     }
 
     @Test
-    void postulacionPendiente_soloProtegeEnConfirmado() {
+    void asignacionHistorica_noProtege() {
+        when(asignacionActividadRepository
+                .countActivasPorRequerimientoActividad(7L))
+                .thenReturn(0L);
+
+        assertThat(service.estaProtegido(7L)).isFalse();
+    }
+
+    @Test
+    void postulacionPendiente_protege() {
         when(postulacionActividadRepository
                 .existsByRequerimiento_IdRequerimientoAndEstado(
                         7L, EstadoSolicitud.PENDIENTE))
                 .thenReturn(true);
 
-        assertThat(service.estaProtegido(7L)).isFalse();
-        assertThat(service.estaProtegido(7L, true)).isTrue();
+        assertThat(service.estaProtegido(7L)).isTrue();
     }
 
     @Test
-    void invitacionPendiente_soloProtegeEnConfirmado() {
+    void invitacionPendiente_protege() {
         when(invitacionActividadRepository
                 .existsByRequerimiento_IdRequerimientoAndEstado(
                         7L, EstadoSolicitud.PENDIENTE))
                 .thenReturn(true);
 
-        assertThat(service.estaProtegido(7L)).isFalse();
-        assertThat(service.estaProtegido(7L, true)).isTrue();
+        assertThat(service.estaProtegido(7L)).isTrue();
     }
 
     @Test
-    void asignacion_protegeSiempre() {
-        when(asignacionActividadRepository
-                .countTodasPorRequerimientoActividad(7L))
-                .thenReturn(1L);
-
-        assertThat(service.estaProtegido(7L)).isTrue();
+    void postulacionAceptadaDeInactivo_noProtege() {
+        assertThat(service.estaProtegido(7L)).isFalse();
     }
 }

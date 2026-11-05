@@ -2,6 +2,7 @@ package org.mgroko.backend.modelo;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +31,12 @@ public class RequerimientoGralProyecto {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_profesion", nullable = false)
     private Profesion profesion;
+
+    @Column(name = "fecha_archivado")
+    private LocalDateTime fechaArchivado;
+
+    @Column(name = "id_requerimiento_origen")
+    private Long idRequerimientoOrigen;
 
     @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)

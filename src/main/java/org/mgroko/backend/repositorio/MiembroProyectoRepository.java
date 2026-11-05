@@ -200,10 +200,17 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
 
     /**
      * Indica si existe cualquier fila de miembro vinculada al requerimiento,
-     * sin importar su estado de participación. Se usa en UC-36 porque la FK de
-     * miembros_proyecto impide borrar un requerimiento con historial.
+     * sin importar su estado de participación. Se usa para detectar historial
+     * que debe preservarse al editar o eliminar un requerimiento.
      */
     boolean existsByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
+
+    List<MiembroProyecto> findByRequerimientoGral_IdRequerimientoGral(
+            Long idRequerimientoGral);
+
+    boolean existsByRequerimientoGral_IdRequerimientoGralAndEstadoParticipacion(
+            Long idRequerimientoGral,
+            EstadoParticipacion estadoParticipacion);
 
     @Query("""
         SELECT DISTINCT mp.requerimientoGral.idRequerimientoGral
@@ -212,4 +219,30 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     List<Long> findIdsRequerimientoGralConMiembros(
             @Param("ids") Collection<Long> ids);
+
+    @Query("""
+        SELECT DISTINCT mp.requerimientoGral.idRequerimientoGral
+        FROM MiembroProyecto mp
+        WHERE mp.requerimientoGral.idRequerimientoGral IN :ids
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<Long> findIdsRequerimientoGralConMiembrosActivos(
+            @Param("ids") Collection<Long> ids);
+
+    /**
+     * Membresías históricas del proyecto para la auditoría de bajas.
+     */
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH mp.rolProyecto r
+        LEFT JOIN FETCH mp.perfilAutorBaja autor
+        LEFT JOIN FETCH autor.usuario
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion <> org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        ORDER BY mp.fechaBaja DESC, mp.idMiembro DESC
+    """)
+    List<MiembroProyecto> findHistoricosDeProyectoParaAuditoria(
+            @Param("idProyecto") Long idProyecto);
 }

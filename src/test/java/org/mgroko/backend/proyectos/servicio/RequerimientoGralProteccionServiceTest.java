@@ -9,9 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
-import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
-import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
@@ -25,9 +24,6 @@ import org.mockito.quality.Strictness;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class RequerimientoGralProteccionServiceTest {
-
-    @Mock
-    private CupoRequerimientoService cupoRequerimientoService;
 
     @Mock
     private MiembroProyectoRepository miembroProyectoRepository;
@@ -52,130 +48,70 @@ class RequerimientoGralProteccionServiceTest {
                 .build();
     }
 
-    private CupoRequerimiento cupo(boolean satisfecho) {
-        return satisfecho
-                ? new CupoRequerimiento(1, 1, 0, true)
-                : new CupoRequerimiento(1, 0, 1, false);
+    @Test
+    void sinVinculos_noEsProtegido() {
+        assertThat(proteccionService.estaProtegido(requerimiento)).isFalse();
     }
 
     @Test
-    void estaProtegido_cupoSatisfecho_esProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(true));
-
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.BORRADOR)).isTrue();
-    }
-
-    @Test
-    void estaProtegido_sinVinculos_noEsProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(false));
-
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.BORRADOR)).isFalse();
-    }
-
-    @Test
-    void estaProtegido_conMiembro_esProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(false));
+    void conMiembroActivo_esProtegido() {
         when(miembroProyectoRepository
-                .existsByRequerimientoGral_IdRequerimientoGral(10L))
+                .existsByRequerimientoGral_IdRequerimientoGralAndEstadoParticipacion(
+                        10L, EstadoParticipacion.ACTIVO))
                 .thenReturn(true);
 
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.PUBLICADO)).isTrue();
+        assertThat(proteccionService.estaProtegido(requerimiento)).isTrue();
     }
 
     @Test
-    void estaProtegido_conPostulacionAceptada_esProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(false));
+    void conMiembroHistorico_noEsProtegido() {
+        assertThat(proteccionService.estaProtegido(requerimiento)).isFalse();
+    }
+
+    @Test
+    void conPostulacionPendiente_esProtegido() {
         when(postulacionGralRepository
                 .existsByRequerimientoGralIdRequerimientoGralAndEstado(
-                        10L, EstadoSolicitud.ACEPTADA))
+                        10L, EstadoSolicitud.PENDIENTE))
                 .thenReturn(true);
 
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.PUBLICADO)).isTrue();
+        assertThat(proteccionService.estaProtegido(requerimiento)).isTrue();
     }
 
     @Test
-    void estaProtegido_conInvitacionAceptada_esProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(false));
+    void conInvitacionPendiente_esProtegido() {
         when(invitacionGralRepository
                 .existsByRequerimientoGral_IdRequerimientoGralAndEstado(
-                        10L, EstadoSolicitud.ACEPTADA))
-                .thenReturn(true);
-
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.PUBLICADO)).isTrue();
-    }
-
-    @Test
-    void estaProtegido_pendienteEnConfirmado_esProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(false));
-        when(postulacionGralRepository
-                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
                         10L, EstadoSolicitud.PENDIENTE))
                 .thenReturn(true);
 
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.CONFIRMADO)).isTrue();
+        assertThat(proteccionService.estaProtegido(requerimiento)).isTrue();
     }
 
     @Test
-    void estaProtegido_pendienteEnPublicado_noEsProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(false));
-        when(postulacionGralRepository
-                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
-                        10L, EstadoSolicitud.PENDIENTE))
-                .thenReturn(true);
-
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.PUBLICADO)).isFalse();
+    void conAceptadaDeInactivo_noEsProtegido() {
+        assertThat(proteccionService.estaProtegido(requerimiento)).isFalse();
     }
 
     @Test
-    void estaProtegido_soloRechazadas_noEsProtegido() {
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(cupo(false));
-
-        assertThat(proteccionService.estaProtegido(
-                requerimiento, EstadoProyecto.CONFIRMADO)).isFalse();
-    }
-
-    @Test
-    void calcularProtegidos_combinaCupoMiembrosYPendientes() {
-        RequerimientoGralProyecto satisfecho = requerimiento(10L);
+    void calcularProtegidos_combinaMiembrosActivosYPendientes() {
         RequerimientoGralProyecto conMiembro = requerimiento(20L);
         RequerimientoGralProyecto conPendiente = requerimiento(30L);
         RequerimientoGralProyecto libre = requerimiento(40L);
         List<RequerimientoGralProyecto> requerimientos =
-                List.of(satisfecho, conMiembro, conPendiente, libre);
+                List.of(conMiembro, conPendiente, libre);
 
-        when(cupoRequerimientoService.calcularGenerales(requerimientos))
-                .thenReturn(Map.of(
-                        10L, cupo(true),
-                        20L, cupo(false),
-                        30L, cupo(false),
-                        40L, cupo(false)));
-        when(miembroProyectoRepository.findIdsRequerimientoGralConMiembros(
-                List.of(10L, 20L, 30L, 40L)))
+        when(miembroProyectoRepository.findIdsRequerimientoGralConMiembrosActivos(
+                List.of(20L, 30L, 40L)))
                 .thenReturn(List.of(20L));
         when(postulacionGralRepository.findIdsRequerimientoGralPorEstado(
-                List.of(10L, 20L, 30L, 40L), EstadoSolicitud.PENDIENTE))
+                List.of(20L, 30L, 40L), EstadoSolicitud.PENDIENTE))
                 .thenReturn(List.of(30L));
 
         Map<Long, Boolean> resultado = proteccionService.calcularProtegidos(
-                requerimientos, EstadoProyecto.CONFIRMADO);
+                requerimientos);
 
         assertThat(resultado)
-                .containsEntry(10L, true)
                 .containsEntry(20L, true)
                 .containsEntry(30L, true)
                 .containsEntry(40L, false);

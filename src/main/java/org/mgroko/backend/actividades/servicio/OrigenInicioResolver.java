@@ -14,6 +14,10 @@ import org.mgroko.backend.modelo.enums.OrigenInicio;
  * Solo {@link EstadoActividad#EN_CURSO} y
  * {@link EstadoActividad#FINALIZADA} son inmóviles; toda
  * {@link EstadoActividad#PENDIENTE} es reprogramable.</p>
+ *
+ * <p>Para el cálculo de asignaciones activas se cuenta un miembro activo con
+ * requerimiento activo y una asignación directa sin requerimiento. Un
+ * requerimiento archivado no cuenta.</p>
  */
 public final class OrigenInicioResolver {
 

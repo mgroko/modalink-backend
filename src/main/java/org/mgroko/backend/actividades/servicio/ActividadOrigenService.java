@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Proyecto;
-import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.springframework.stereotype.Service;
@@ -18,8 +17,9 @@ import org.springframework.stereotype.Service;
  * Calcula el origen efectivo de una o varias actividades.
  *
  * <p>Resuelve en lote las asignaciones activas para evitar una consulta por
- * fila. El filtro de requerimientos archivados se agregará cuando el historial
- * incorpore {@code fecha_archivado}.</p>
+ * fila. Cuenta asignaciones de miembros activos sobre requerimientos activos
+ * y asignaciones directas sin requerimiento; no cuenta requerimientos
+ * archivados.</p>
  */
 @Service
 public class ActividadOrigenService {
@@ -38,9 +38,7 @@ public class ActividadOrigenService {
         }
 
         boolean tieneAsignacionesActivas = asignacionActividadRepository
-                .existsByActividad_IdActividadAndMiembro_EstadoParticipacion(
-                        actividad.getIdActividad(),
-                        EstadoParticipacion.ACTIVO);
+                .existsAsignacionActiva(actividad.getIdActividad());
         return OrigenInicioResolver.resolver(
                 actividad, proyectoDe(actividad), tieneAsignacionesActivas);
     }

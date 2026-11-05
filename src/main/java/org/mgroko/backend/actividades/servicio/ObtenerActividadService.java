@@ -95,10 +95,7 @@ public class ObtenerActividadService {
                         .stream()
                         .map(requerimiento -> requerimiento.conProtegido(
                                 requerimientoProteccionService.estaProtegido(
-                                        requerimiento.idRequerimiento(),
-                                        planificacion.getProyecto() != null
-                                                && planificacion.getProyecto().getEstado()
-                                                        == EstadoProyecto.CONFIRMADO)))
+                                        requerimiento.idRequerimiento())))
                         .toList();
 
         List<AsignacionActividad> asignaciones = actividad.getEstado() == EstadoActividad.PENDIENTE

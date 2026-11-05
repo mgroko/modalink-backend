@@ -22,7 +22,13 @@ public interface RequerimientoGralProyectoRepository extends JpaRepository<Reque
             "caracteristicas",
             "caracteristicas.caracteristica"
     })
-    List<RequerimientoGralProyecto> findByProyectoIdProyecto(Long idProyecto);
+    @Query("""
+        SELECT r FROM RequerimientoGralProyecto r
+        WHERE r.proyecto.idProyecto = :idProyecto
+          AND r.fechaArchivado IS NULL
+    """)
+    List<RequerimientoGralProyecto> findByProyectoIdProyecto(
+            @Param("idProyecto") Long idProyecto);
 
     /**
      * Recupera un requerimiento general junto con su profesión y su proyecto.
@@ -37,6 +43,7 @@ public interface RequerimientoGralProyectoRepository extends JpaRepository<Reque
         JOIN FETCH r.profesion
         JOIN FETCH r.proyecto
         WHERE r.idRequerimientoGral = :idRequerimientoGral
+          AND r.fechaArchivado IS NULL
     """)
     Optional<RequerimientoGralProyecto> findByIdConProyecto(
             @Param("idRequerimientoGral") Long idRequerimientoGral);
@@ -47,6 +54,7 @@ public interface RequerimientoGralProyectoRepository extends JpaRepository<Reque
         JOIN FETCH r.profesion
         JOIN FETCH r.proyecto
         WHERE r.idRequerimientoGral = :idRequerimientoGral
+          AND r.fechaArchivado IS NULL
     """)
     Optional<RequerimientoGralProyecto> findByIdParaGestion(
             @Param("idRequerimientoGral") Long idRequerimientoGral);
@@ -60,7 +68,21 @@ public interface RequerimientoGralProyectoRepository extends JpaRepository<Reque
     @Query("""
         SELECT r FROM RequerimientoGralProyecto r
         WHERE r.proyecto.idProyecto = :idProyecto
+          AND r.fechaArchivado IS NULL
     """)
     List<RequerimientoGralProyecto> findByProyectoIdProyectoForUpdate(
             @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Último snapshot de un requerimiento general activo.
+     */
+    @EntityGraph(attributePaths = {
+            "proyecto",
+            "profesion",
+            "habilidades",
+            "caracteristicas",
+            "caracteristicas.caracteristica"
+    })
+    Optional<RequerimientoGralProyecto> findFirstByIdRequerimientoOrigenOrderByFechaArchivadoDesc(
+            @Param("idRequerimientoOrigen") Long idRequerimientoOrigen);
 }

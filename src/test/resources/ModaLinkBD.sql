@@ -1048,6 +1048,7 @@ CREATE TABLE miembros_proyecto(
     fecha_alta              timestamp       DEFAULT CURRENT_TIMESTAMP NOT NULL,
     fecha_baja              timestamp,
     id_requerimiento_gral   int8,
+    id_perfil_autor_baja    int8,
     CONSTRAINT chk_estado_participacion CHECK (estado_participacion IN ('ACTIVO', 'BAJA_VOLUNTARIA', 'ELIMINADO')),
     CONSTRAINT chk_miembro_fechas CHECK (fecha_baja IS NULL OR fecha_baja >= fecha_alta),
     CONSTRAINT "PK_miembro_proyecto" PRIMARY KEY (id_miembro)
@@ -2040,6 +2041,8 @@ CREATE TABLE requerimiento_actividad(
     descripcion             varchar(200),
     id_profesion            int8            NOT NULL,
     id_actividad            int8            NOT NULL,
+    fecha_archivado         timestamp,
+    id_requerimiento_origen int8,
     CONSTRAINT chk_requerimiento_act_cantidad CHECK (cantidad > 0),
     CONSTRAINT "PK_requerimiento_actividad" PRIMARY KEY (id_requerimiento_act)
 )
@@ -2111,6 +2114,8 @@ CREATE TABLE requerimiento_gral_proyecto(
     descripcion              varchar(200),
     id_proyecto              int8            NOT NULL,
     id_profesion             int8            NOT NULL,
+    fecha_archivado          timestamp,
+    id_requerimiento_origen  int8,
     CONSTRAINT chk_requerimiento_gral_cantidad CHECK (cantidad > 0),
     CONSTRAINT "PK_requerimiento_gral_proyecto" PRIMARY KEY (id_requerimiento_gral)
 )
@@ -3940,3 +3945,25 @@ LEFT JOIN profesion pr
 JOIN rol_proyecto rp
   ON rp.id_rol_proyecto = mp.id_rol_proyecto
 ORDER BY mp.id_proyecto, mp.id_perfil, aa.id_actividad;
+
+-- ============================================================================
+-- HISTORIAL INMUTABLE DE REQUERIMIENTOS Y AUTOR DE BAJA
+-- ============================================================================
+ALTER TABLE miembros_proyecto
+    ADD CONSTRAINT "Refperfil_autor_baja_miembro"
+    FOREIGN KEY (id_perfil_autor_baja)
+    REFERENCES perfil(id_perfil);
+
+CREATE INDEX "IDX_req_act_origen"
+    ON requerimiento_actividad(id_requerimiento_origen);
+
+CREATE INDEX "IDX_req_gral_origen"
+    ON requerimiento_gral_proyecto(id_requerimiento_origen);
+
+CREATE INDEX "IDX_req_act_activo"
+    ON requerimiento_actividad(id_actividad)
+    WHERE fecha_archivado IS NULL;
+
+CREATE INDEX "IDX_req_gral_activo"
+    ON requerimiento_gral_proyecto(id_proyecto)
+    WHERE fecha_archivado IS NULL;

@@ -55,6 +55,7 @@ class DarseDeBajaProyectoServiceTest {
     private PlanificacionRepository planificacionRepository;
     private MiembroProyectoRepository miembroProyectoRepository;
     private NotificacionService notificacionService;
+    private RequerimientoSnapshotService requerimientoSnapshotService;
     private final Clock reloj = Clock.fixed(
             Instant.parse("2026-10-31T12:00:00Z"),
             ZoneOffset.UTC);
@@ -77,12 +78,15 @@ class DarseDeBajaProyectoServiceTest {
         planificacionRepository = org.mockito.Mockito.mock(PlanificacionRepository.class);
         miembroProyectoRepository = org.mockito.Mockito.mock(MiembroProyectoRepository.class);
         notificacionService = org.mockito.Mockito.mock(NotificacionService.class);
+        requerimientoSnapshotService =
+                org.mockito.Mockito.mock(RequerimientoSnapshotService.class);
 
         service = new DarseDeBajaProyectoService(
                 perfilRepository,
                 planificacionRepository,
                 miembroProyectoRepository,
                 notificacionService,
+                requerimientoSnapshotService,
                 reloj);
 
         Usuario usuarioActor = Usuario.builder().idUsuario(1L).build();

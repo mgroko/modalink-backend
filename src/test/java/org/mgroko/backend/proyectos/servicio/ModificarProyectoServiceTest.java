@@ -1,6 +1,9 @@
 package org.mgroko.backend.proyectos.servicio;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -134,6 +137,12 @@ class ModificarProyectoServiceTest {
     @Mock
     private BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
 
+    @Mock
+    private RequerimientoSnapshotService requerimientoSnapshotService;
+
+    @Mock
+    private Clock reloj;
+
     @InjectMocks
     private ModificarProyectoService modificarProyectoService;
 
@@ -144,6 +153,9 @@ class ModificarProyectoServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(reloj.instant()).thenReturn(Instant.parse("2026-11-01T00:00:00Z"));
+        when(reloj.getZone()).thenReturn(ZoneOffset.UTC);
+
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
         perfil = Perfil.builder()
                 .idPerfil(10L)
@@ -206,9 +218,9 @@ class ModificarProyectoServiceTest {
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of());
         when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(List.of());
-        when(requerimientoGralProteccionService.calcularProtegidos(any(), any()))
+        when(requerimientoGralProteccionService.calcularProtegidos(any()))
                 .thenReturn(Map.of());
-        when(requerimientoGralProteccionService.estaProtegido(any(), any()))
+        when(requerimientoGralProteccionService.estaProtegido(any()))
                 .thenReturn(false);
         when(requerimientoActividadRepository.existsByProyectoExcluyendoEstado(
                 100L, EstadoActividad.CANCELADA)).thenReturn(true);
@@ -355,7 +367,7 @@ class ModificarProyectoServiceTest {
                 .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(List.of(protegido));
-        when(requerimientoGralProteccionService.estaProtegido(protegido, EstadoProyecto.BORRADOR))
+        when(requerimientoGralProteccionService.estaProtegido(protegido))
                 .thenReturn(true);
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
@@ -434,9 +446,9 @@ class ModificarProyectoServiceTest {
                 .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(List.of(noProtegido, protegido));
-        when(requerimientoGralProteccionService.estaProtegido(noProtegido, EstadoProyecto.BORRADOR))
+        when(requerimientoGralProteccionService.estaProtegido(noProtegido))
                 .thenReturn(false);
-        when(requerimientoGralProteccionService.estaProtegido(protegido, EstadoProyecto.BORRADOR))
+        when(requerimientoGralProteccionService.estaProtegido(protegido))
                 .thenReturn(true);
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
@@ -456,12 +468,12 @@ class ModificarProyectoServiceTest {
     }
 
     @Test
-    void modificar_requerimientoNoProtegidoOmitido_seEliminaYLimpiaVinculos() {
+    void modificar_requerimientoNoProtegidoOmitido_seElimina() {
         RequerimientoGralProyecto noProtegido = RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(10L).proyecto(proyecto).cantidad(1).build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(List.of(noProtegido));
-        when(requerimientoGralProteccionService.estaProtegido(noProtegido, EstadoProyecto.BORRADOR))
+        when(requerimientoGralProteccionService.estaProtegido(noProtegido))
                 .thenReturn(false);
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
@@ -469,10 +481,8 @@ class ModificarProyectoServiceTest {
 
         modificarProyectoService.modificar(1L, 10L, 100L, request);
 
-        verify(postulacionGralRepository)
-                .deleteByRequerimientoGral_IdRequerimientoGral(10L);
-        verify(invitacionGralRepository)
-                .deleteByRequerimientoGral_IdRequerimientoGral(10L);
+        verify(requerimientoSnapshotService)
+                .asegurarHistorialGeneral(eq(noProtegido), any());
         verify(requerimientoGralService).eliminar(noProtegido);
     }
 
@@ -482,7 +492,7 @@ class ModificarProyectoServiceTest {
                 .idRequerimientoGral(20L).proyecto(proyecto).cantidad(1).build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(List.of(protegido));
-        when(requerimientoGralProteccionService.estaProtegido(protegido, EstadoProyecto.BORRADOR))
+        when(requerimientoGralProteccionService.estaProtegido(protegido))
                 .thenReturn(true);
 
         ModificarProyectoRequest request = new ModificarProyectoRequest(
@@ -529,7 +539,7 @@ class ModificarProyectoServiceTest {
 
         modificarProyectoService.modificar(1L, 10L, 100L, request);
 
-        verify(requerimientoGralProteccionService, never()).estaProtegido(any(), any());
+        verify(requerimientoGralProteccionService, never()).estaProtegido(any());
         verify(requerimientoGralService, never())
                 .actualizar(any(), anyLong(), any(), any(), any(), any());
         verify(requerimientoGralService, never()).eliminar(any());

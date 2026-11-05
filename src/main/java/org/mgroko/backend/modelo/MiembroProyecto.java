@@ -55,6 +55,10 @@ public class MiembroProyecto {
     @JoinColumn(name = "id_requerimiento_gral")
     private RequerimientoGralProyecto requerimientoGral;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_perfil_autor_baja")
+    private Perfil perfilAutorBaja;
+
     @PrePersist
     private void prepararFechaAlta() {
         if (fechaAlta == null) {

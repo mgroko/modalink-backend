@@ -21,6 +21,41 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
     """)
     List<InvitacionGral> findPendientesDeProyectoConDestinatario(@Param("idProyecto") Long idProyecto);
 
+    @Query("""
+        SELECT i FROM InvitacionGral i
+        JOIN FETCH i.perfilDestinatario perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH i.requerimientoGral r
+        JOIN FETCH r.proyecto proy
+        WHERE proy.idProyecto = :idProyecto
+          AND perfil.idPerfil = :idPerfil
+          AND i.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<InvitacionGral> findPendientesDeProyectoYDestinatario(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT i FROM InvitacionGral i
+        JOIN FETCH i.perfilDestinatario perfil
+        JOIN FETCH i.requerimientoGral r
+        WHERE perfil.idPerfil = :idPerfil
+          AND r.idRequerimientoGral IN :idsRequerimiento
+          AND i.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<InvitacionGral> findHistoricasPorDestinatarioYRequerimientos(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idsRequerimiento") Collection<Long> idsRequerimiento);
+
+    @Query("""
+        SELECT i FROM InvitacionGral i
+        JOIN FETCH i.perfilDestinatario perfil
+        WHERE i.requerimientoGral.idRequerimientoGral = :idRequerimientoGral
+          AND i.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<InvitacionGral> findHistoricasPorRequerimientoGral(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
+
     /**
      * Resuelve el proyecto de cada invitación general indicada. Se usa para
      * enriquecer las notificaciones sin persistir un dato derivable.
@@ -35,6 +70,8 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
 
     boolean existsByRequerimientoGral_IdRequerimientoGralAndEstado(
             Long idRequerimientoGral, EstadoSolicitud estado);
+
+    boolean existsByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
 
     void deleteByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
 

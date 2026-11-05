@@ -9,8 +9,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +51,7 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoSnapshotService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
@@ -121,6 +125,12 @@ class ModificarActividadServiceTest {
     @Mock
     private ActividadOrigenService actividadOrigenService;
 
+    @Mock
+    private RequerimientoSnapshotService requerimientoSnapshotService;
+
+    @Mock
+    private Clock reloj;
+
     @InjectMocks
     private ModificarActividadService modificarActividadService;
 
@@ -130,6 +140,9 @@ class ModificarActividadServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(reloj.instant()).thenReturn(Instant.parse("2026-11-01T00:00:00Z"));
+        when(reloj.getZone()).thenReturn(ZoneOffset.UTC);
+
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
         perfil = Perfil.builder()
                 .idPerfil(10L)
@@ -545,7 +558,7 @@ class ModificarActividadServiceTest {
         RequerimientoActividad requerimiento = crearRequerimiento();
         when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
-        when(requerimientoProteccionService.estaProtegido(7L, true))
+        when(requerimientoProteccionService.estaProtegido(7L))
                 .thenReturn(true);
 
         ModificarRequerimientoActividadRequest requerimientoRequest =

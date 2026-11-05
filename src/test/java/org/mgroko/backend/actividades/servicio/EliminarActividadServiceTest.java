@@ -166,7 +166,7 @@ class EliminarActividadServiceTest {
                 .thenReturn(List.of());
         when(invitacionActividadRepository.findByActividadIdConDestinatario(55L))
                 .thenReturn(List.of());
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividad_IdActividadIncludingArchived(55L))
                 .thenReturn(List.of());
         when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
                 .thenReturn(List.of());
@@ -254,13 +254,14 @@ class EliminarActividadServiceTest {
     }
 
     @Test
-    void eliminar_proyectoConfirmadoConActividadEnCurso_lanzaExcepcion() {
+    void eliminar_actividadEnCurso_lanzaExcepcion() {
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
         actividad.setEstado(EstadoActividad.EN_CURSO);
 
         assertThatThrownBy(() -> service.eliminar(
                 1L, 10L, 100L, 55L, request("Motivo")))
-                .isInstanceOf(ActividadEnCursoConfirmadaNoEliminableException.class);
+                .isInstanceOf(org.mgroko.backend.actividades.exception
+                        .ActividadNoEliminableException.class);
 
         verify(actividadRepository, never()).delete(any(Actividad.class));
         verifyNoInteractions(eventPublisher);
@@ -456,7 +457,7 @@ class EliminarActividadServiceTest {
                 .thenReturn(List.of(postulacion));
         when(invitacionActividadRepository.findByActividadIdConDestinatario(55L))
                 .thenReturn(List.of(invitacion));
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividad_IdActividadIncludingArchived(55L))
                 .thenReturn(List.of(requerimiento));
 
         EliminarActividadRequest request = new EliminarActividadRequest(
@@ -486,7 +487,7 @@ class EliminarActividadServiceTest {
         verify(actividadRepository).deleteHitoActividadByActividadId(55L);
         verify(postulacionActividadRepository).delete(postulacion);
         verify(invitacionActividadRepository).delete(invitacion);
-        verify(requerimientoActividadService).eliminar(requerimiento);
+        verify(requerimientoActividadService).eliminarFisico(requerimiento);
         verify(asignacionActividadRepository).delete(asignacionGuardada);
         verify(asignacionActividadRepository).delete(asignacionEliminada);
         verify(actividadRepository).delete(actividad);
@@ -501,7 +502,7 @@ class EliminarActividadServiceTest {
         ordenBorrado.verify(invitacionActividadRepository).delete(invitacion);
         ordenBorrado.verify(asignacionActividadRepository).delete(asignacionGuardada);
         ordenBorrado.verify(asignacionActividadRepository).flush();
-        ordenBorrado.verify(requerimientoActividadService).eliminar(requerimiento);
+        ordenBorrado.verify(requerimientoActividadService).eliminarFisico(requerimiento);
         ordenBorrado.verify(actividadRepository).delete(actividad);
 
         ArgumentCaptor<ActividadEliminadaEvent> evento =

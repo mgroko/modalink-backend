@@ -53,6 +53,7 @@ public class EliminarIntegranteService {
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
+    private final RequerimientoSnapshotService requerimientoSnapshotService;
     private final Clock reloj;
 
     public EliminarIntegranteService(
@@ -61,12 +62,14 @@ public class EliminarIntegranteService {
             MiembroProyectoRepository miembroProyectoRepository,
             ProyectoSecurityService proyectoSecurityService,
             NotificacionService notificacionService,
+            RequerimientoSnapshotService requerimientoSnapshotService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.planificacionRepository = planificacionRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
+        this.requerimientoSnapshotService = requerimientoSnapshotService;
         this.reloj = reloj;
     }
 
@@ -137,9 +140,17 @@ public class EliminarIntegranteService {
             throw new UltimoDirectorActivoException();
         }
 
+        LocalDateTime fechaBaja = LocalDateTime.now(reloj);
         miembro.setEstadoParticipacion(EstadoParticipacion.ELIMINADO);
         miembro.setMotivoBaja(motivo);
-        miembro.setFechaBaja(LocalDateTime.now(reloj));
+        miembro.setFechaBaja(fechaBaja);
+        miembro.setPerfilAutorBaja(perfilActor);
+
+        // El miembro ya no está activo: el snapshot puede repuntar su
+        // historial sin afectar asignaciones de miembros activos.
+        requerimientoSnapshotService.prepararHistorialBaja(
+                miembro, idProyecto, fechaBaja);
+
         miembroProyectoRepository.saveAndFlush(miembro);
 
         notificarIntegranteEliminado(proyecto, miembro.getPerfil(), motivo);

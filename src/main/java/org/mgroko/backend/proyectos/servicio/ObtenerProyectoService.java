@@ -168,7 +168,7 @@ public class ObtenerProyectoService {
                 cupoRequerimientoService.calcularGenerales(requerimientosEntidad);
         Map<Long, Boolean> protegidosPorRequerimiento =
                 requerimientoGralProteccionService.calcularProtegidos(
-                        requerimientosEntidad, proyecto.getEstado());
+                        requerimientosEntidad);
 
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
         for (RequerimientoGralProyecto rg : requerimientosEntidad) {
