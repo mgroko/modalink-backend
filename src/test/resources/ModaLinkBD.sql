@@ -2768,6 +2768,27 @@ CREATE INDEX "IDX_invitacion_actividad_requerimiento"
     ON invitacion_actividad(id_requerimiento_act);
 
 --
+-- INDEX: "IDX_invitacion_gral_remitente"
+--
+
+CREATE INDEX "IDX_invitacion_gral_remitente"
+    ON invitacion_gral(id_perfil_remitente);
+
+--
+-- INDEX: "IDX_invitacion_gral_destinatario"
+--
+
+CREATE INDEX "IDX_invitacion_gral_destinatario"
+    ON invitacion_gral(id_perfil_destinatario);
+
+--
+-- INDEX: "IDX_invitacion_actividad_remitente"
+--
+
+CREATE INDEX "IDX_invitacion_actividad_remitente"
+    ON invitacion_actividad(id_perfil_remitente);
+
+--
 -- INDEX: "UQ_miembro_proyecto_activo"
 --
 

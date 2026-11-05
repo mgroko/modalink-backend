@@ -370,6 +370,44 @@ sequenceDiagram
   pueda auditarse y generar la notificación correspondiente; el contrato de
   `rechazarPostulacion` no indica eliminarla.
 
+## UC-30 — Buscar invitaciones
+
+La búsqueda se limita a las invitaciones recibidas o enviadas por el perfil
+activo. Las invitaciones generales y de actividad se consultan por separado y
+se unifican, filtran, ordenan y paginan en el servicio.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Usuario as Usuario / Director
+    participant API as InvitacionController
+    participant Servicio as BuscarInvitacionService
+    participant InvGralRepo as InvitacionGralRepository
+    participant InvActRepo as InvitacionActividadRepository
+
+    Usuario->>API: GET /invitaciones/buscar?filtros
+    API->>Servicio: buscar(idPerfilActivo, filtros, page, size, todos)
+    Servicio->>InvGralRepo: buscarPorPerfil(idPerfilActivo)
+    InvGralRepo-->>Servicio: invitaciones generales
+    Servicio->>InvActRepo: buscarPorPerfil(idPerfilActivo)
+    InvActRepo-->>Servicio: invitaciones de actividad
+
+    alt Sin coincidencias
+        Servicio-->>API: página vacía
+    else Con coincidencias
+        Servicio->>Servicio: unificar, filtrar, ordenar y paginar
+        Servicio-->>API: invitaciones[]
+    end
+
+    API-->>Usuario: 200 OK
+```
+
+La respuesta incluye `tipo` para distinguir invitaciones generales de las de
+actividad y `direccion` para indicar si el perfil activo es remitente o
+destinatario. El filtro `nombrePerfil` se aplica al remitente en las recibidas,
+al destinatario en las enviadas y a la contraparte cuando no se informa
+dirección.
+
 ## UC-31 — Invitar a proyecto
 
 El caso de uso contempla una invitación general al proyecto y una invitación

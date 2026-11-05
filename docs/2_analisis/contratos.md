@@ -209,6 +209,17 @@
 | **Precondición** | Todos los requerimientos están completos. El proyecto está en estado “Publicado”. |
 | **Postcondición** | Se actualizó unProyecto.estado a “Confirmado” Cada instancia de unRequerimientoGeneral asociado a unProyecto deja de recibir postulaciones Cada instancia de unRequerimientoActividad asociado a unProyecto deja de recibir postulaciones |
 
+| Nombre | buscarInvitaciones(idProyecto, nombreProyecto, fechaDesde, fechaHasta, perfil, direccion, estado, tipo) |
+| :---- | :---- |
+| **Responsabilidades** | Buscar las invitaciones recibidas o enviadas por el perfil activo, unificando invitaciones generales y de actividad. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-30 |
+| **Notas** | Todos los filtros son opcionales. `direccion` puede ser `RECIBIDA` o `ENVIADA`; si se omite, se incluyen ambas. El filtro `perfil` se aplica a la contraparte; sin dirección, excluye el propio perfil activo. El alcance está limitado al perfil activo. |
+| **Excepciones** | Perfil activo no seleccionado o rango de fechas inválido. |
+| **Salida** | invitaciones[] paginadas |
+| **Precondición** | El usuario inició sesión y tiene un perfil activo. |
+| **Postcondición** | No se modifican datos. |
+
 | Nombre | invitarAProyecto(unProyecto, unPerfil, mensaje) |
 | :---- | :---- |
 | **Responsabilidades** | Se encarga de emitir una invitación de incorporación a un proyecto dirigida a un perfil registrado en el sistema.  |

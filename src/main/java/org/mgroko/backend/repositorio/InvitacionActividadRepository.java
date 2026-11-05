@@ -43,6 +43,28 @@ public interface InvitacionActividadRepository extends JpaRepository<InvitacionA
     """)
     List<InvitacionActividad> findPendientesDeProyectoConDestinatario(@Param("idProyecto") Long idProyecto);
 
+    /**
+     * Invitaciones de actividad en las que el perfil participa como remitente
+     * o destinatario, con los datos necesarios para UC-30.
+     */
+    @Query("""
+        SELECT i FROM InvitacionActividad i
+        JOIN FETCH i.perfilRemitente r
+        JOIN FETCH r.usuario ru
+        JOIN FETCH r.profesion rp
+        JOIN FETCH i.perfilDestinatario d
+        JOIN FETCH d.usuario du
+        JOIN FETCH d.profesion dp
+        JOIN FETCH i.requerimiento req
+        JOIN FETCH req.profesion
+        JOIN FETCH req.actividad a
+        JOIN FETCH a.planificacion pl
+        JOIN FETCH pl.proyecto p
+        WHERE r.idPerfil = :idPerfil OR d.idPerfil = :idPerfil
+        ORDER BY i.fechaEnvio DESC, i.idInvitacion DESC
+    """)
+    List<InvitacionActividad> buscarPorPerfil(@Param("idPerfil") Long idPerfil);
+
     @Query("""
         SELECT i FROM InvitacionActividad i
         JOIN FETCH i.perfilDestinatario perfil

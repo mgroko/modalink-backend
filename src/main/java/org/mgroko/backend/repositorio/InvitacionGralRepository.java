@@ -21,6 +21,25 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
     """)
     List<InvitacionGral> findPendientesDeProyectoConDestinatario(@Param("idProyecto") Long idProyecto);
 
+    /**
+     * Invitaciones generales en las que el perfil participa como remitente o
+     * destinatario, con los datos necesarios para UC-30.
+     */
+    @Query("""
+        SELECT i FROM InvitacionGral i
+        JOIN FETCH i.perfilRemitente r
+        JOIN FETCH r.usuario ru
+        JOIN FETCH r.profesion rp
+        JOIN FETCH i.perfilDestinatario d
+        JOIN FETCH d.usuario du
+        JOIN FETCH d.profesion dp
+        JOIN FETCH i.proyecto p
+        LEFT JOIN FETCH i.requerimientoGral rg
+        WHERE r.idPerfil = :idPerfil OR d.idPerfil = :idPerfil
+        ORDER BY i.fechaEnvio DESC, i.idInvitacionGral DESC
+    """)
+    List<InvitacionGral> buscarPorPerfil(@Param("idPerfil") Long idPerfil);
+
     @Query("""
         SELECT i FROM InvitacionGral i
         JOIN FETCH i.perfilDestinatario perfil

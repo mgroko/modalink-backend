@@ -906,6 +906,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasInvitacionInvalido(
+            org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException.class)
     public ResponseEntity<Map<String, Object>> handleInvitacionNoPermitida(
             org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException ex) {

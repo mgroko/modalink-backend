@@ -288,7 +288,7 @@
 - **Actor:** Usuario / Director de proyecto
 - **Sistema:** `:ModaLink`
 - **Flujo de interacción:**
-  1. El actor envía el mensaje `buscarInvitaciones(nombreProyecto, fechaEnvio, perfil)`.
+  1. El actor envía el mensaje `buscarInvitaciones(idProyecto, nombreProyecto, fechaDesde, fechaHasta, perfil, direccion, estado, tipo)`.
   2. **Bloque Alternativo (`alt`)**:
      - `[no existen coincidencias]`: El sistema retorna `sinResultados()`.
      - `[existen invitaciones]`: El sistema retorna `invitaciones[]`.

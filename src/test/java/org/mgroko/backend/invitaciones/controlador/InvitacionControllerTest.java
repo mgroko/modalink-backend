@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,9 +13,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.invitaciones.dto.BuscarInvitacionesFiltro;
+import org.mgroko.backend.invitaciones.dto.DireccionInvitacion;
+import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
+import org.mgroko.backend.invitaciones.dto.PerfilInvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.TipoInvitacion;
 import org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException;
+import org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException;
+import org.mgroko.backend.invitaciones.servicio.BuscarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -36,6 +44,54 @@ class InvitacionControllerTest {
 
     @MockitoBean
     private CrearInvitacionService crearInvitacionService;
+
+    @MockitoBean
+    private BuscarInvitacionService buscarInvitacionService;
+
+    @Test
+    void buscar_conPerfilActivo_devuelvePagina() throws Exception {
+        when(buscarInvitacionService.buscar(
+                any(), any(BuscarInvitacionesFiltro.class), any(Integer.class),
+                any(Integer.class), any(Boolean.class)))
+                .thenReturn(new PaginaResponse<>(
+                        List.of(respuestaBusqueda()), 0, 20, 1L, 1, true, true));
+
+        mockMvc.perform(get("/invitaciones/buscar")
+                        .principal(autenticacion(1L, 10L))
+                        .param("direccion", "RECIBIDA")
+                        .param("estado", "PENDIENTE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].idInvitacion").value(77))
+                .andExpect(jsonPath("$.contenido[0].tipo").value("GENERAL"))
+                .andExpect(jsonPath("$.contenido[0].direccion").value("RECIBIDA"))
+                .andExpect(jsonPath("$.contenido[0].nombreProyecto").value("Proyecto UC30"))
+                .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void buscar_sinPerfilActivo_noInvocaAlServicio() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+        mockMvc.perform(get("/invitaciones/buscar").principal(auth))
+                .andExpect(status().isNotFound());
+
+        verify(buscarInvitacionService, never())
+                .buscar(any(), any(), any(Integer.class), any(Integer.class), any(Boolean.class));
+    }
+
+    @Test
+    void buscar_rangoDeFechasInvalido_devuelve400() throws Exception {
+        when(buscarInvitacionService.buscar(
+                any(), any(BuscarInvitacionesFiltro.class), any(Integer.class),
+                any(Integer.class), any(Boolean.class)))
+                .thenThrow(new RangoFechasInvitacionInvalidoException());
+
+        mockMvc.perform(get("/invitaciones/buscar")
+                        .principal(autenticacion(1L, 10L))
+                        .param("fechaDesde", "2026-11-30")
+                        .param("fechaHasta", "2026-11-01"))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void invitarGeneral_conPerfilActivo_devuelve201() throws Exception {
@@ -141,6 +197,25 @@ class InvitacionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"idPerfilDestinatario\":20}"))
                 .andExpect(status().isNotFound());
+    }
+
+    private InvitacionBusquedaResponse respuestaBusqueda() {
+        return new InvitacionBusquedaResponse(
+                77L,
+                TipoInvitacion.GENERAL,
+                DireccionInvitacion.RECIBIDA,
+                EstadoSolicitud.PENDIENTE,
+                LocalDateTime.of(2026, 11, 4, 12, 0),
+                5L,
+                "Proyecto UC30",
+                null,
+                null,
+                null,
+                null,
+                new PerfilInvitacionResponse(10L, "Remitente", "Ana", "Pérez", 1L, "Fotógrafo"),
+                new PerfilInvitacionResponse(20L, "Destinatario", "Sol", "Gómez", 2L, "Modelo"),
+                "Hola",
+                false);
     }
 
     private InvitacionResponse respuesta(TipoInvitacion tipo, Long idRequerimientoActividad) {
