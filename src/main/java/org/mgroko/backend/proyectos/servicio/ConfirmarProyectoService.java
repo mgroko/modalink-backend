@@ -1,6 +1,7 @@
 package org.mgroko.backend.proyectos.servicio;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.mgroko.backend.actividades.dto.CronogramaResponse;
@@ -25,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>La operación es atómica: valida requerimientos y asignaciones, fija la
  * fecha de inicio con el reloj del backend, calcula el CPM, coloca
- * todas las actividades y persiste sus horarios. Cualquier fallo revierte el
+ * todas las actividades y persiste los horarios de las planificables. Las
+ * actividades {@code EN_CURSO} y {@code FINALIZADA} son anclas: se usan para
+ * el cálculo, pero conservan su inicio real. Cualquier fallo revierte el
  * estado y los horarios.</p>
  */
 @Service
@@ -94,8 +97,18 @@ public class ConfirmarProyectoService {
         PlanificadorRecursosService.Resultado plan = planificadorRecursosService
                 .planificar(planificacion, actividades, ahora);
 
+        List<Actividad> planificables = new ArrayList<>();
         for (Actividad actividad : actividades) {
             if (actividad.getEstado() == EstadoActividad.CANCELADA) {
+                continue;
+            }
+
+            // Las actividades ancladas se usan para calcular el plan, pero no
+            // deben persistirse: el planner las reconstruye en minutos enteros
+            // y perdería los segundos, rompiendo márgenes exactos. Mismo
+            // criterio que ReprogramarProyectoService.
+            if (actividad.getEstado() == EstadoActividad.EN_CURSO
+                    || actividad.getEstado() == EstadoActividad.FINALIZADA) {
                 continue;
             }
 
@@ -113,8 +126,9 @@ public class ConfirmarProyectoService {
             }
 
             actividad.setFechaHoraInicio(inicio);
+            planificables.add(actividad);
         }
-        actividadRepository.saveAll(actividades);
+        actividadRepository.saveAll(planificables);
         actividadRepository.flush();
 
         eventPublisher.publishEvent(new ProyectoConfirmadoEvent(

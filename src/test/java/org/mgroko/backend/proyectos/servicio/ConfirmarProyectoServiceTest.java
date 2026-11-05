@@ -28,6 +28,7 @@ import org.mgroko.backend.proyectos.evento.ProyectoConfirmadoEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -97,6 +98,73 @@ class ConfirmarProyectoServiceTest {
         assertThat(actividad.getFechaHoraInicio()).isEqualTo(AHORA.plusHours(1));
         verify(eventPublisher).publishEvent(any(ProyectoConfirmadoEvent.class));
         verify(actividadRepository).flush();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void confirmar_conActividadesAncladas_conservaSusIniciosYNoLasPersiste() {
+        LocalDateTime inicioEnCurso =
+                LocalDateTime.of(2026, 11, 1, 11, 0, 42);
+        LocalDateTime inicioFinalizada =
+                LocalDateTime.of(2026, 11, 1, 8, 30, 15);
+
+        Actividad pendiente = Actividad.builder()
+                .idActividad(1L)
+                .nombre("Montaje")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.PENDIENTE)
+                .build();
+        Actividad enCurso = Actividad.builder()
+                .idActividad(2L)
+                .nombre("En curso")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.EN_CURSO)
+                .fechaHoraInicio(inicioEnCurso)
+                .build();
+        Actividad finalizada = Actividad.builder()
+                .idActividad(3L)
+                .nombre("Finalizada")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.FINALIZADA)
+                .fechaHoraInicio(inicioFinalizada)
+                .build();
+
+        Proyecto proyecto = proyecto();
+        Planificacion planificacion = planificacion(proyecto);
+        ContextoConfirmacionProyectoService.Contexto contexto = contexto(
+                proyecto,
+                planificacion,
+                List.of(pendiente, enCurso, finalizada));
+
+        when(contextoService.cargar(1L, 10L, 100L, true))
+                .thenReturn(contexto);
+        when(proyectoRepository.saveAndFlush(any(Proyecto.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(planificador.planificar(
+                eq(planificacion), anyList(), eq(AHORA)))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(
+                                1L, AHORA.plusHours(2),
+                                2L, LocalDateTime.of(2026, 11, 1, 11, 0),
+                                3L, LocalDateTime.of(2026, 11, 1, 8, 30)),
+                        Map.of(),
+                        new CalculoCpm(Map.of(), 60, 1440L, true, List.of())));
+        when(actividadRepository.saveAll(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.confirmar(1L, 10L, 100L);
+
+        assertThat(pendiente.getFechaHoraInicio())
+                .isEqualTo(AHORA.plusHours(2));
+        assertThat(enCurso.getFechaHoraInicio()).isEqualTo(inicioEnCurso);
+        assertThat(finalizada.getFechaHoraInicio()).isEqualTo(inicioFinalizada);
+
+        ArgumentCaptor<List<Actividad>> captor =
+                ArgumentCaptor.forClass(List.class);
+        verify(actividadRepository).saveAll(captor.capture());
+        assertThat(captor.getValue())
+                .extracting(Actividad::getIdActividad)
+                .containsExactly(1L);
     }
 
     @Test
