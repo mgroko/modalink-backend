@@ -53,10 +53,24 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
         SELECT i FROM InvitacionGral i
         JOIN FETCH i.proyecto p
         JOIN FETCH i.perfilRemitente r
+        LEFT JOIN FETCH i.requerimientoGral rg
         WHERE i.idInvitacionGral = :idInvitacion
     """)
     Optional<InvitacionGral> findByIdForUpdate(
             @Param("idInvitacion") Long idInvitacion);
+
+    /**
+     * Invitaciones generales pendientes de un requerimiento, bloqueadas para
+     * la limpieza posterior a cubrir el cupo (UC-28).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT i FROM InvitacionGral i
+        WHERE i.requerimientoGral.idRequerimientoGral = :idRequerimientoGral
+          AND i.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<InvitacionGral> findPendientesPorRequerimientoGralParaActualizar(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
 
     @Query("""
         SELECT i FROM InvitacionGral i

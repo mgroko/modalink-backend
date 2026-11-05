@@ -279,9 +279,35 @@ sequenceDiagram
 ```
 
 La rama de actividad agrega la validación de disponibilidad y la asignación de
-la actividad al miembro. La rama general no consulta disponibilidad porque no
-asigna una actividad concreta. En ambas ramas se debe rechazar la operación si
-el usuario ya es participante del proyecto.
+la actividad al miembro. Si el perfil ya es miembro activo, se reutiliza la
+membresía; si es Director, se rechaza. La rama general no consulta
+disponibilidad porque no asigna una actividad concreta y rechaza la operación
+si el perfil ya es miembro activo.
+
+La invitación general puede estar asociada opcionalmente a un requerimiento
+general. En ese caso se valida profesión y cupo, y la membresía se crea vinculada
+al requerimiento. Si no tiene requerimiento, la membresía queda sin vínculo y no
+consume cupo.
+
+Cuando una aceptación cubre el cupo del requerimiento, se eliminan físicamente
+todas las invitaciones pendientes de ese mismo requerimiento, de cualquier
+director, sin notificar a los afectados. La operación notifica a los directores
+con `INVITACION_ACEPTADA`.
+
+El rechazo de una invitación se expone con los endpoints:
+
+```http
+POST /invitaciones/general/{idInvitacion}/rechazar
+POST /invitaciones/actividad/{idInvitacion}/rechazar
+```
+
+Actualiza la invitación a `RECHAZADA`, no crea membresía ni asignación y notifica
+a los directores con `INVITACION_RECHAZADA`. Los endpoints de aceptación son:
+
+```http
+POST /invitaciones/general/{idInvitacion}/aceptar
+POST /invitaciones/actividad/{idInvitacion}/aceptar
+```
 
 ## UC-34 — Gestionar postulaciones
 

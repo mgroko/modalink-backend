@@ -13,6 +13,7 @@ import org.mgroko.backend.modelo.InvitacionGral;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -25,6 +26,7 @@ import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
@@ -32,6 +34,7 @@ import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
+import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,8 +56,10 @@ public class CrearInvitacionService {
     private final ProyectoRepository proyectoRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
+    private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final InvitacionGralRepository invitacionGralRepository;
     private final InvitacionActividadRepository invitacionActividadRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
     private final Clock reloj;
@@ -64,8 +69,10 @@ public class CrearInvitacionService {
             ProyectoRepository proyectoRepository,
             MiembroProyectoRepository miembroProyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
+            RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             InvitacionGralRepository invitacionGralRepository,
             InvitacionActividadRepository invitacionActividadRepository,
+            CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
             NotificacionService notificacionService,
             Clock reloj) {
@@ -73,8 +80,10 @@ public class CrearInvitacionService {
         this.proyectoRepository = proyectoRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
+        this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.invitacionGralRepository = invitacionGralRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
         this.reloj = reloj;
@@ -91,6 +100,17 @@ public class CrearInvitacionService {
         Proyecto proyecto = proyectoParaInvitar(idProyecto, idPerfilActivo);
         Perfil destinatario = perfilDestinatario(request.idPerfilDestinatario());
 
+        RequerimientoGralProyecto requerimientoGral = null;
+        if (request.idRequerimientoGral() != null) {
+            requerimientoGral = requerimientoGralProyectoRepository
+                    .findByIdParaGestion(request.idRequerimientoGral())
+                    .orElseThrow(() -> new RequerimientoNoEncontradoException(
+                            "El requerimiento general "
+                                    + request.idRequerimientoGral()
+                                    + " no existe."));
+            validarRequerimientoGral(requerimientoGral, proyecto, destinatario);
+        }
+
         validarPuedeRecibirInvitacion(idProyecto, remitente, destinatario);
         validarSinInvitacionPendiente(idProyecto, destinatario);
 
@@ -98,6 +118,7 @@ public class CrearInvitacionService {
                 .perfilRemitente(remitente)
                 .perfilDestinatario(destinatario)
                 .proyecto(proyecto)
+                .requerimientoGral(requerimientoGral)
                 .mensaje(normalizarMensaje(request.mensaje()))
                 .estado(EstadoSolicitud.PENDIENTE)
                 .fechaEnvio(LocalDateTime.now(reloj))
@@ -131,7 +152,7 @@ public class CrearInvitacionService {
         Perfil destinatario = perfilDestinatario(request.idPerfilDestinatario());
 
         RequerimientoActividad requerimiento = requerimientoActividadRepository
-                .findByIdConActividadYProyecto(request.idRequerimientoActividad())
+                .findByIdParaGestion(request.idRequerimientoActividad())
                 .orElseThrow(() -> new RequerimientoNoEncontradoException(
                         "El requerimiento de actividad "
                                 + request.idRequerimientoActividad()
@@ -264,6 +285,35 @@ public class CrearInvitacionService {
                         .equals(requerimiento.getProfesion().getIdProfesion())) {
             throw new InvitacionNoPermitidaException(
                     "El perfil destinatario no tiene la profesión requerida por la actividad.");
+        }
+
+        if (cupoRequerimientoService.calcularActividad(requerimiento).satisfecho()) {
+            throw new InvitacionNoPermitidaException(
+                    "El requerimiento de actividad ya está satisfecho.");
+        }
+    }
+
+    private void validarRequerimientoGral(
+            RequerimientoGralProyecto requerimiento,
+            Proyecto proyecto,
+            Perfil destinatario) {
+
+        if (!requerimiento.getProyecto().getIdProyecto().equals(proyecto.getIdProyecto())) {
+            throw new RequerimientoNoEncontradoException(
+                    "El requerimiento no pertenece al proyecto indicado.");
+        }
+
+        if (destinatario.getProfesion() == null
+                || requerimiento.getProfesion() == null
+                || !destinatario.getProfesion().getIdProfesion()
+                        .equals(requerimiento.getProfesion().getIdProfesion())) {
+            throw new InvitacionNoPermitidaException(
+                    "El perfil destinatario no tiene la profesión requerida por el requerimiento general.");
+        }
+
+        if (cupoRequerimientoService.calcularGeneral(requerimiento).satisfecho()) {
+            throw new InvitacionNoPermitidaException(
+                    "El requerimiento general ya está satisfecho.");
         }
     }
 

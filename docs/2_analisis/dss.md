@@ -269,6 +269,16 @@
          - El sistema retorna `actualizarRequerimientosPersonal(unProyecto)`.
          - El sistema retorna `notificarDirector(unProyecto)`.
 
+> **Extensión de implementación:** se agrega el rechazo de invitaciones
+> `rechazarInvitacion(unaInvitacion)`, que actualiza la invitación a
+> `RECHAZADA` y notifica a los directores. Los endpoints son:
+> `POST /invitaciones/general/{id}/aceptar`,
+> `POST /invitaciones/actividad/{id}/aceptar`,
+> `POST /invitaciones/general/{id}/rechazar` y
+> `POST /invitaciones/actividad/{id}/rechazar`.
+> Si la aceptación cubre el cupo, se eliminan las invitaciones pendientes del
+> mismo requerimiento.
+
 ---
 
 ### **UC-29: Buscar proyecto**

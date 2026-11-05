@@ -21,16 +21,19 @@ import org.mgroko.backend.invitaciones.dto.DireccionInvitacion;
 import org.mgroko.backend.invitaciones.dto.InvitacionBatchError;
 import org.mgroko.backend.invitaciones.dto.InvitacionBatchResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
+import org.mgroko.backend.invitaciones.dto.InvitacionGestionadaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.PerfilInvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.TipoInvitacion;
 import org.mgroko.backend.invitaciones.exception.InvitacionNoEncontradaException;
 import org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException;
 import org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException;
+import org.mgroko.backend.invitaciones.servicio.AceptarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.BuscarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionBatchService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.EliminarInvitacionService;
+import org.mgroko.backend.invitaciones.servicio.RechazarInvitacionService;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
@@ -61,6 +64,71 @@ class InvitacionControllerTest {
 
     @MockitoBean
     private EliminarInvitacionService eliminarInvitacionService;
+
+    @MockitoBean
+    private AceptarInvitacionService aceptarInvitacionService;
+
+    @MockitoBean
+    private RechazarInvitacionService rechazarInvitacionService;
+
+    @Test
+    void aceptarGeneral_conPerfilActivo_devuelve200() throws Exception {
+        when(aceptarInvitacionService.aceptarGeneral(1L, 10L, 77L))
+                .thenReturn(respuestaGestionada(EstadoSolicitud.ACEPTADA));
+
+        mockMvc.perform(post("/invitaciones/general/77/aceptar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("GENERAL"))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"))
+                .andExpect(jsonPath("$.idMiembro").value(88));
+    }
+
+    @Test
+    void aceptarActividad_conPerfilActivo_devuelve200() throws Exception {
+        when(aceptarInvitacionService.aceptarActividad(1L, 10L, 88L))
+                .thenReturn(respuestaGestionada(TipoInvitacion.ACTIVIDAD,
+                        EstadoSolicitud.ACEPTADA));
+
+        mockMvc.perform(post("/invitaciones/actividad/88/aceptar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("ACTIVIDAD"))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"));
+    }
+
+    @Test
+    void rechazarGeneral_conPerfilActivo_devuelve200() throws Exception {
+        when(rechazarInvitacionService.rechazarGeneral(1L, 10L, 77L))
+                .thenReturn(respuestaGestionada(EstadoSolicitud.RECHAZADA));
+
+        mockMvc.perform(post("/invitaciones/general/77/rechazar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"));
+    }
+
+    @Test
+    void rechazarActividad_conPerfilActivo_devuelve200() throws Exception {
+        when(rechazarInvitacionService.rechazarActividad(1L, 10L, 88L))
+                .thenReturn(respuestaGestionada(EstadoSolicitud.RECHAZADA));
+
+        mockMvc.perform(post("/invitaciones/actividad/88/rechazar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"));
+    }
+
+    @Test
+    void aceptarGeneral_sinPerfilActivo_noInvocaAlServicio() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+        mockMvc.perform(post("/invitaciones/general/77/aceptar").principal(auth))
+                .andExpect(status().isNotFound());
+
+        verify(aceptarInvitacionService, never())
+                .aceptarGeneral(any(), any(), any());
+    }
 
     @Test
     void eliminarGeneral_conPerfilActivo_devuelve204() throws Exception {
@@ -328,6 +396,26 @@ class InvitacionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"idPerfilDestinatario\":20}"))
                 .andExpect(status().isNotFound());
+    }
+
+    private InvitacionGestionadaResponse respuestaGestionada(EstadoSolicitud estado) {
+        return respuestaGestionada(TipoInvitacion.GENERAL, estado);
+    }
+
+    private InvitacionGestionadaResponse respuestaGestionada(
+            TipoInvitacion tipo,
+            EstadoSolicitud estado) {
+
+        return new InvitacionGestionadaResponse(
+                77L,
+                tipo,
+                estado,
+                5L,
+                10L,
+                88L,
+                null,
+                null,
+                List.of());
     }
 
     private InvitacionBusquedaResponse respuestaBusqueda() {

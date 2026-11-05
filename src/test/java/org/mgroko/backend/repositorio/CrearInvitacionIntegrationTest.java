@@ -21,11 +21,14 @@ import org.mgroko.backend.invitaciones.dto.CrearInvitacionActividadRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralRequest;
 import org.mgroko.backend.invitaciones.dto.InvitacionBatchResponse;
+import org.mgroko.backend.invitaciones.dto.InvitacionGestionadaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.TipoInvitacion;
 import org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException;
+import org.mgroko.backend.invitaciones.servicio.AceptarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionBatchService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
+import org.mgroko.backend.invitaciones.servicio.RechazarInvitacionService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.RolGlobal;
@@ -75,6 +78,10 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
     private CrearInvitacionService crearInvitacionService;
     @Autowired
     private CrearInvitacionBatchService crearInvitacionBatchService;
+    @Autowired
+    private AceptarInvitacionService aceptarInvitacionService;
+    @Autowired
+    private RechazarInvitacionService rechazarInvitacionService;
     @Autowired
     private BuscarRequerimientoActividadService buscarRequerimientoActividadService;
     @Autowired
@@ -218,6 +225,161 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 WHERE id_requerimiento_act = ?
                 """, Long.class, idRequerimiento);
         assertThat(invitaciones).isEqualTo(2L);
+    }
+
+    @Test
+    void aceptarGeneralConRequerimiento_creaMiembroConsumeCupoYNotifica() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir1@example.com", "88828001", "Directora UC28", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest1@example.com", "88828002", "Destinataria UC28", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC28 General");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(
+                        destinatario.idPerfil(), idRequerimiento, null));
+
+        InvitacionGestionadaResponse respuesta = aceptarInvitacionService.aceptarGeneral(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        assertThat(respuesta.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idMiembro()).isNotNull();
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil(), idRequerimiento);
+        assertThat(miembros).isEqualTo(1L);
+
+        Long notificaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'INVITACION_ACEPTADA'
+                  AND entidad_tipo = 'INVITACION_GRAL' AND entidad_id = ?
+                """, Long.class, director.idUsuario(), invitacion.idInvitacion());
+        assertThat(notificaciones).isEqualTo(1L);
+
+        Long pendientes = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM invitacion_gral
+                WHERE id_requerimiento_gral = ? AND estado = 'PENDIENTE'
+                """, Long.class, idRequerimiento);
+        assertThat(pendientes).isZero();
+    }
+
+    @Test
+    void aceptarGeneralSinRequerimiento_creaMiembroSinConsumirCupo() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2@example.com", "88828003", "Directora UC28 Libre", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest2@example.com", "88828004", "Destinataria UC28 Libre", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC28 Libre");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatario.idPerfil(), null));
+
+        aceptarInvitacionService.aceptarGeneral(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+
+        Long cubiertos = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, idRequerimiento);
+        assertThat(cubiertos).isZero();
+    }
+
+    @Test
+    void aceptarActividad_creaAsignacionYRechazaPendientesDelRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir3@example.com", "88828005", "Directora UC28 Act", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest3@example.com", "88828006", "Destinataria UC28 Act", "modelo");
+        PerfilCreado otroDestinatario = crearPerfil(
+                "uc28.dest4@example.com", "88828007", "Otra UC28 Act", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC28 Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyectoActividad(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionActividadRequest(
+                        idRequerimiento, destinatario.idPerfil(), null));
+
+        crearInvitacionService.invitarAProyectoActividad(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionActividadRequest(
+                        idRequerimiento, otroDestinatario.idPerfil(), null));
+
+        InvitacionGestionadaResponse respuesta = aceptarInvitacionService.aceptarActividad(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        assertThat(respuesta.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idAsignacionActividad()).isNotNull();
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad
+                WHERE id_requerimiento_act = ?
+                """, Long.class, idRequerimiento);
+        assertThat(asignaciones).isEqualTo(1L);
+
+        Long pendientes = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM invitacion_actividad
+                WHERE id_requerimiento_act = ? AND estado = 'PENDIENTE'
+                """, Long.class, idRequerimiento);
+        assertThat(pendientes).isZero();
+    }
+
+    @Test
+    void rechazarGeneral_marcaRechazadaYNotificaAlDirector() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir4@example.com", "88828008", "Directora UC28 Rechazo", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest5@example.com", "88828009", "Destinataria UC28 Rechazo", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC28 Rechazo");
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatario.idPerfil(), null));
+
+        InvitacionGestionadaResponse respuesta = rechazarInvitacionService.rechazarGeneral(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        assertThat(respuesta.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.RECHAZADA);
+        assertThat(respuesta.idMiembro()).isNull();
+
+        Long notificaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'INVITACION_RECHAZADA'
+                  AND entidad_tipo = 'INVITACION_GRAL' AND entidad_id = ?
+                """, Long.class, director.idUsuario(), invitacion.idInvitacion());
+        assertThat(notificaciones).isEqualTo(1L);
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil());
+        assertThat(miembros).isZero();
     }
 
     @Test

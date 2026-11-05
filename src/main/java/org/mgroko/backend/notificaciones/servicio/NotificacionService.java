@@ -39,6 +39,7 @@ public class NotificacionService {
     public static final String TIPO_PROYECTO_FECHA_ENTREGA_MODIFICADA =
             "PROYECTO_FECHA_ENTREGA_MODIFICADA";
     public static final String TIPO_INVITACION_RECIBIDA = "INVITACION_RECIBIDA";
+    public static final String TIPO_INVITACION_ACEPTADA = "INVITACION_ACEPTADA";
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
     public static final String TIPO_HITO_CUMPLIDO = "HITO_CUMPLIDO";
     public static final String TIPO_PERFIL_REPORTADO = "PERFIL_REPORTADO";

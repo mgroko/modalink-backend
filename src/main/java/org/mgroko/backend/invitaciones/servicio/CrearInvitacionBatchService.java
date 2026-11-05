@@ -16,6 +16,7 @@ import org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -25,10 +26,12 @@ import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
+import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.stereotype.Service;
 
 /**
@@ -45,6 +48,8 @@ public class CrearInvitacionBatchService {
     private final PerfilRepository perfilRepository;
     private final ProyectoRepository proyectoRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
+    private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
 
     public CrearInvitacionBatchService(
@@ -52,11 +57,15 @@ public class CrearInvitacionBatchService {
             PerfilRepository perfilRepository,
             ProyectoRepository proyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
+            RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
+            CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService) {
         this.crearInvitacionService = crearInvitacionService;
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
+        this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
     }
 
@@ -66,7 +75,8 @@ public class CrearInvitacionBatchService {
             Long idProyecto,
             CrearInvitacionGralBatchRequest request) {
 
-        validarContextoGeneral(idUsuario, idPerfilActivo, idProyecto);
+        validarContextoGeneral(
+                idUsuario, idPerfilActivo, idProyecto, request.idRequerimientoGral());
 
         List<InvitacionResponse> creadas = new ArrayList<>();
         List<InvitacionBatchError> errores = new ArrayList<>();
@@ -78,7 +88,9 @@ public class CrearInvitacionBatchService {
                         idPerfilActivo,
                         idProyecto,
                         new CrearInvitacionGralRequest(
-                                idPerfilDestinatario, request.mensaje())));
+                                idPerfilDestinatario,
+                                request.idRequerimientoGral(),
+                                request.mensaje())));
             } catch (InvitacionNoPermitidaException ex) {
                 errores.add(new InvitacionBatchError(
                         idPerfilDestinatario, ex.getMessage(), ex.getCodigo()));
@@ -131,7 +143,8 @@ public class CrearInvitacionBatchService {
     private void validarContextoGeneral(
             Long idUsuario,
             Long idPerfilActivo,
-            Long idProyecto) {
+            Long idProyecto,
+            Long idRequerimientoGral) {
 
         validarPerfilActivo(idUsuario, idPerfilActivo);
 
@@ -147,6 +160,25 @@ public class CrearInvitacionBatchService {
             throw new InvitacionNoPermitidaException(
                     "Sólo se puede invitar en proyectos Publicados o Confirmados.");
         }
+
+        if (idRequerimientoGral != null) {
+            RequerimientoGralProyecto requerimiento = requerimientoGralProyectoRepository
+                    .findByIdConProyecto(idRequerimientoGral)
+                    .orElseThrow(() -> new RequerimientoNoEncontradoException(
+                            "El requerimiento general "
+                                    + idRequerimientoGral
+                                    + " no existe."));
+
+            if (!requerimiento.getProyecto().getIdProyecto().equals(idProyecto)) {
+                throw new RequerimientoNoEncontradoException(
+                        "El requerimiento no pertenece al proyecto indicado.");
+            }
+
+            if (cupoRequerimientoService.calcularGeneral(requerimiento).satisfecho()) {
+                throw new InvitacionNoPermitidaException(
+                        "El requerimiento general ya está satisfecho.");
+            }
+        }
     }
 
     private RequerimientoActividad validarContextoActividad(
@@ -155,7 +187,7 @@ public class CrearInvitacionBatchService {
             Long idProyecto,
             Long idRequerimientoActividad) {
 
-        validarContextoGeneral(idUsuario, idPerfilActivo, idProyecto);
+        validarContextoGeneral(idUsuario, idPerfilActivo, idProyecto, null);
 
         RequerimientoActividad requerimiento = requerimientoActividadRepository
                 .findByIdConActividadYProyecto(idRequerimientoActividad)
@@ -174,6 +206,11 @@ public class CrearInvitacionBatchService {
         if (estado != EstadoActividad.PENDIENTE && estado != EstadoActividad.EN_CURSO) {
             throw new InvitacionNoPermitidaException(
                     "Sólo se puede invitar a actividades Pendientes o En curso.");
+        }
+
+        if (cupoRequerimientoService.calcularActividad(requerimiento).satisfecho()) {
+            throw new InvitacionNoPermitidaException(
+                    "El requerimiento de actividad ya está satisfecho.");
         }
 
         return requerimiento;

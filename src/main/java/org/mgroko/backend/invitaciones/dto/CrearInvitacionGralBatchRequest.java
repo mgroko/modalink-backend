@@ -14,7 +14,13 @@ public record CrearInvitacionGralBatchRequest(
         List<@NotNull(message = "El perfil destinatario no puede ser nulo.")
                 Long> idsPerfilDestinatario,
 
+        Long idRequerimientoGral,
+
         @Size(max = 200, message = "El mensaje no puede superar los 200 caracteres.")
         String mensaje
 ) {
+    public CrearInvitacionGralBatchRequest(
+            List<Long> idsPerfilDestinatario, String mensaje) {
+        this(idsPerfilDestinatario, null, mensaje);
+    }
 }

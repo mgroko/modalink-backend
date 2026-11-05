@@ -44,6 +44,8 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
@@ -51,6 +53,7 @@ import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
+import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -82,9 +85,13 @@ class CrearInvitacionServiceTest {
     @Mock
     private RequerimientoActividadRepository requerimientoActividadRepository;
     @Mock
+    private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+    @Mock
     private InvitacionGralRepository invitacionGralRepository;
     @Mock
     private InvitacionActividadRepository invitacionActividadRepository;
+    @Mock
+    private CupoRequerimientoService cupoRequerimientoService;
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
     @Mock
@@ -99,8 +106,10 @@ class CrearInvitacionServiceTest {
                 proyectoRepository,
                 miembroProyectoRepository,
                 requerimientoActividadRepository,
+                requerimientoGralProyectoRepository,
                 invitacionGralRepository,
                 invitacionActividadRepository,
+                cupoRequerimientoService,
                 proyectoSecurityService,
                 notificacionService,
                 RELOJ);
@@ -331,9 +340,11 @@ class CrearInvitacionServiceTest {
             Long idProyectoRequerimiento) {
 
         prepararGeneral();
-        when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO))
+        when(requerimientoActividadRepository.findByIdParaGestion(ID_REQUERIMIENTO))
                 .thenReturn(Optional.of(requerimiento(
                         estadoActividad, idProfesionRequerimiento, idProyectoRequerimiento)));
+        when(cupoRequerimientoService.calcularActividad(any()))
+                .thenReturn(new CupoRequerimiento(2, 0, 2, false));
     }
 
     private void prepararNotificacion() {

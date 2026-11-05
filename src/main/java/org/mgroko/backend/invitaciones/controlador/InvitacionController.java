@@ -8,11 +8,14 @@ import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralRequest;
 import org.mgroko.backend.invitaciones.dto.InvitacionBatchResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
+import org.mgroko.backend.invitaciones.dto.InvitacionGestionadaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
+import org.mgroko.backend.invitaciones.servicio.AceptarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.BuscarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionBatchService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.EliminarInvitacionService;
+import org.mgroko.backend.invitaciones.servicio.RechazarInvitacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -41,16 +44,22 @@ public class InvitacionController {
     private final CrearInvitacionBatchService crearInvitacionBatchService;
     private final BuscarInvitacionService buscarInvitacionService;
     private final EliminarInvitacionService eliminarInvitacionService;
+    private final AceptarInvitacionService aceptarInvitacionService;
+    private final RechazarInvitacionService rechazarInvitacionService;
 
     public InvitacionController(
             CrearInvitacionService crearInvitacionService,
             CrearInvitacionBatchService crearInvitacionBatchService,
             BuscarInvitacionService buscarInvitacionService,
-            EliminarInvitacionService eliminarInvitacionService) {
+            EliminarInvitacionService eliminarInvitacionService,
+            AceptarInvitacionService aceptarInvitacionService,
+            RechazarInvitacionService rechazarInvitacionService) {
         this.crearInvitacionService = crearInvitacionService;
         this.crearInvitacionBatchService = crearInvitacionBatchService;
         this.buscarInvitacionService = buscarInvitacionService;
         this.eliminarInvitacionService = eliminarInvitacionService;
+        this.aceptarInvitacionService = aceptarInvitacionService;
+        this.rechazarInvitacionService = rechazarInvitacionService;
     }
 
     // UC-30: invitaciones recibidas o enviadas por el perfil activo.
@@ -64,6 +73,54 @@ public class InvitacionController {
 
         return ResponseEntity.ok(buscarInvitacionService.buscar(
                 idPerfilActivo(authentication), filtro, page, size, todos));
+    }
+
+    // UC-28: aceptar una invitación general.
+    @PostMapping("/invitaciones/general/{idInvitacion}/aceptar")
+    public ResponseEntity<InvitacionGestionadaResponse> aceptarGeneral(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(aceptarInvitacionService.aceptarGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
+    }
+
+    // UC-28: aceptar una invitación por actividad.
+    @PostMapping("/invitaciones/actividad/{idInvitacion}/aceptar")
+    public ResponseEntity<InvitacionGestionadaResponse> aceptarActividad(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(aceptarInvitacionService.aceptarActividad(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
+    }
+
+    // UC-28: rechazar una invitación general.
+    @PostMapping("/invitaciones/general/{idInvitacion}/rechazar")
+    public ResponseEntity<InvitacionGestionadaResponse> rechazarGeneral(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(rechazarInvitacionService.rechazarGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
+    }
+
+    // UC-28: rechazar una invitación por actividad.
+    @PostMapping("/invitaciones/actividad/{idInvitacion}/rechazar")
+    public ResponseEntity<InvitacionGestionadaResponse> rechazarActividad(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(rechazarInvitacionService.rechazarActividad(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
     }
 
     // UC-32: baja de una invitación general pendiente.

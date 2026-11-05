@@ -32,11 +32,14 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
+import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -60,6 +63,10 @@ class CrearInvitacionBatchServiceTest {
     @Mock
     private RequerimientoActividadRepository requerimientoActividadRepository;
     @Mock
+    private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+    @Mock
+    private CupoRequerimientoService cupoRequerimientoService;
+    @Mock
     private ProyectoSecurityService proyectoSecurityService;
 
     private CrearInvitacionBatchService servicio;
@@ -71,6 +78,8 @@ class CrearInvitacionBatchServiceTest {
                 perfilRepository,
                 proyectoRepository,
                 requerimientoActividadRepository,
+                requerimientoGralProyectoRepository,
+                cupoRequerimientoService,
                 proyectoSecurityService);
 
         prepararContextoGeneral();
@@ -180,6 +189,8 @@ class CrearInvitacionBatchServiceTest {
         when(requerimientoActividadRepository
                 .findByIdConActividadYProyecto(ID_REQUERIMIENTO))
                 .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularActividad(any()))
+                .thenReturn(new CupoRequerimiento(2, 0, 2, false));
     }
 
     private Perfil perfilActivo() {

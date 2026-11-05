@@ -231,16 +231,16 @@
 | **Precondición** | La invitación está en estado `PENDIENTE`, pertenece al proyecto indicado y el perfil activo es su remitente. |
 | **Postcondición** | Se eliminó la instancia de Invitacion. No se crea una notificación. |
 
-| Nombre | invitarAProyecto(unProyecto, unPerfil, mensaje) |
+| Nombre | invitarAProyecto(unProyecto, unPerfil, unRequerimientoGralOpcional, mensaje) |
 | :---- | :---- |
-| **Responsabilidades** | Se encarga de emitir una invitación de incorporación a un proyecto dirigida a un perfil registrado en el sistema.  |
+| **Responsabilidades** | Se encarga de emitir una invitación de incorporación a un proyecto dirigida a un perfil registrado en el sistema. Puede asociarse opcionalmente a un requerimiento general. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-31 |
-| **Notas** | \- |
-| **Excepciones** | El perfil ya tiene una invitación al mismo proyecto |
+| **Notas** | Si se informa un requerimiento general, se valida pertenencia al proyecto, cupo y profesión del perfil. Si no se informa, la invitación es general al proyecto. |
+| **Excepciones** | El perfil ya tiene una invitación al mismo proyecto; requerimiento satisfecho o profesión incompatible si se asocia un requerimiento general. |
 | **Salida** | unaInvitacion |
 | **Precondición** | El sistema conoce unPerfil y unProyecto |
-| **Postcondición** | Se creó una instancia unaInvitacion de Invitacion  Se asignó a unaInvitacion.mensaje el valor mensaje Se asignó a unaInvitacion.estado el valor “Pendiente” Se asoció unaInvitacion a unPerfil Se asoció unProyecto a unaInvitacion |
+| **Postcondición** | Se creó una instancia unaInvitacion de Invitacion  Se asignó a unaInvitacion.mensaje el valor mensaje Se asignó a unaInvitacion.estado el valor “Pendiente” Se asoció unaInvitacion a unPerfil Se asoció unProyecto a unaInvitacion Si corresponde, se asoció unRequerimientoGral a unaInvitacion |
 
 | Nombre | buscarRequerimientosActividad(idProyecto, profesion, caracteristicas[], unaActividad) |
 | :---- | :---- |
@@ -264,9 +264,9 @@
 | **Precondición** | El sistema conoce unPerfil y unProyecto. El perfil tiene la profesión requerida en el requerimiento de actividad. La actividad existe en el sistema y tiene un estado válido. |
 | **Postcondición** | Se creó una instancia unaInvitacion de Invitacion  Se asignó a unaInvitacion.mensaje el valor mensaje Se asignó a unaInvitacion.estado el valor “Pendiente” Se asoció unPerfil a unaInvitacion  Se asoció unProyecto a unaInvitacion Se asoció unRequerimientoAct a unaInvitacion |
 
-| Nombre | invitarAProyectoMultiple(unProyecto, perfiles[], mensaje) |
+| Nombre | invitarAProyectoMultiple(unProyecto, unRequerimientoGralOpcional, perfiles[], mensaje) |
 | :---- | :---- |
-| **Responsabilidades** | Emitir una invitación general por cada perfil seleccionado, permitiendo éxito parcial. |
+| **Responsabilidades** | Emitir una invitación general por cada perfil seleccionado, permitiendo éxito parcial. Puede asociarse opcionalmente a un requerimiento general. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-31 |
 | **Notas** | Los IDs repetidos se deduplican. Cada perfil se procesa en una transacción independiente. |
@@ -299,22 +299,33 @@
 | **Responsabilidades** | Se encarga de aceptar la invitación general de incorporación a un proyecto. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-28 |
-| **Notas** | Estados válidos de unProyecto: ‘borrador’, ‘publicado’, ‘confirmado’ |
-| **Excepciones** | El usuario ya es participante de ese proyecto |
+| **Notas** | Estados válidos de unProyecto: `PUBLICADO` o `CONFIRMADO`. Si la invitación tiene requerimiento general, se valida cupo y profesión. Si no, la membresía queda sin requerimiento. |
+| **Excepciones** | El usuario ya es participante de ese proyecto; invitación no pendiente; proyecto cancelado/finalizado; requerimiento satisfecho; profesión incompatible. |
 | **Salida** | \- |
-| **Precondición** | unaInvitación está vigente y unProyecto en un estado válido.  |
-| **Postcondición** | Se creó una instancia unMiembroDeProyecto de MiembroDeProyecto Se asignó a unMiembroDeProyecto.estadoParticipacion el valor “Activo” Se asoció unPerfil a unMiembroDeProyecto  Se asoció unMiembroDeProyecto a unProyecto Se actualizó unaInvitacion.estado a “Aceptada” |
+| **Precondición** | unaInvitación está vigente, dirigida al perfil activo, y unProyecto en un estado válido.  |
+| **Postcondición** | Se creó una instancia unMiembroDeProyecto de MiembroDeProyecto Se asignó a unMiembroDeProyecto.estadoParticipacion el valor “Activo” Se asoció unPerfil a unMiembroDeProyecto  Se asoció unMiembroDeProyecto a unProyecto Se actualizó unaInvitacion.estado a “Aceptada” Si la invitación tenía requerimiento general, se asoció el requerimiento a la membresía y, si el cupo quedó cubierto, se eliminaron las invitaciones pendientes del mismo requerimiento. |
 
 | Nombre | aceptarIncorporacionAct(unaInvitacion, unProyecto, unRequerimientoAct) |
 | :---- | :---- |
 | **Responsabilidades** | Se encarga de aceptar la invitación por actividad de incorporación a un proyecto. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-28 |
-| **Notas** | Estados válidos de unProyecto: ‘borrador’, ‘publicado’, ‘confirmado’. Estados válidos de unaActividad: ‘pendiente’, ‘en curso’. |
-| **Excepciones** | El usuario ya es participante de ese proyecto. El usuario  no tiene disponibilidad suficiente frente al rango factible de la actividad |
+| **Notas** | Estados válidos de unProyecto: `PUBLICADO` o `CONFIRMADO`. Estados válidos de unaActividad: `PENDIENTE` o `EN_CURSO`. Si el perfil ya es miembro activo, se reutiliza la membresía. |
+| **Excepciones** | El usuario es Director del proyecto; el usuario no tiene disponibilidad suficiente frente al rango factible de la actividad; requerimiento satisfecho; actividad inválida; invitación no pendiente. |
 | **Salida** | \- |
-| **Precondición** | unaInvitación está vigente y unProyecto en un estado válido. La actividad asociada está en un estado válido.  |
-| **Postcondición** | Se creó una instancia unMiembroDeProyecto de MiembroDeProyecto Se asignó a unMiembroDeProyecto.estadoParticipacion el valor “Activo” Se asoció unPerfil a unMiembroDeProyecto  Se asoció unMiembroDeProyecto a unProyecto Se actualizó unaInvitacion.estado a “Aceptada” Se asignó unaActividad a unMiembroDeProyecto |
+| **Precondición** | unaInvitación está vigente y dirigida al perfil activo; unProyecto en un estado válido; la actividad asociada está en un estado válido.  |
+| **Postcondición** | Se creó o reutilizó unMiembroDeProyecto con estado “Activo” Se asoció unPerfil a unMiembroDeProyecto Se asoció unMiembroDeProyecto a unProyecto Se actualizó unaInvitacion.estado a “Aceptada” Se asignó unaActividad a unMiembroDeProyecto Si el cupo quedó cubierto, se eliminaron las invitaciones pendientes del mismo requerimiento. |
+
+| Nombre | rechazarInvitacion(unaInvitacion) |
+| :---- | :---- |
+| **Responsabilidades** | Rechazar una invitación general o por actividad dirigida al perfil activo. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-28 |
+| **Notas** | No crea membresía ni asignación. |
+| **Excepciones** | La invitación no existe, no pertenece al perfil activo, no está pendiente o el proyecto no está Publicado/Confirmado. |
+| **Salida** | \- |
+| **Precondición** | La invitación está vigente y dirigida al perfil activo. |
+| **Postcondición** | Se actualizó unaInvitacion.estado a “Rechazada”. Se notificó a los directores del proyecto. No se creó membresía ni asignación. |
 
 | Nombre | aceptarPostulacion(unaPostulacion) |
 | :---- | :---- |
