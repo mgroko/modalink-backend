@@ -264,6 +264,28 @@
 | **Precondición** | El sistema conoce unPerfil y unProyecto. El perfil tiene la profesión requerida en el requerimiento de actividad. La actividad existe en el sistema y tiene un estado válido. |
 | **Postcondición** | Se creó una instancia unaInvitacion de Invitacion  Se asignó a unaInvitacion.mensaje el valor mensaje Se asignó a unaInvitacion.estado el valor “Pendiente” Se asoció unPerfil a unaInvitacion  Se asoció unProyecto a unaInvitacion Se asoció unRequerimientoAct a unaInvitacion |
 
+| Nombre | invitarAProyectoMultiple(unProyecto, perfiles[], mensaje) |
+| :---- | :---- |
+| **Responsabilidades** | Emitir una invitación general por cada perfil seleccionado, permitiendo éxito parcial. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-31 |
+| **Notas** | Los IDs repetidos se deduplican. Cada perfil se procesa en una transacción independiente. |
+| **Excepciones** | Errores por perfil: invitación duplicada, perfil inactivo, miembro activo, autoinvitación o perfil inexistente. Los errores comunes de proyecto o permisos se propagan. |
+| **Salida** | creadas[] y errores[] |
+| **Precondición** | El Director activo administra el proyecto y el proyecto está Publicado o Confirmado. |
+| **Postcondición** | Se creó una instancia de Invitacion por cada perfil válido. Se notificó a cada destinatario. Los perfiles con error no generaron invitación. |
+
+| Nombre | invitarAProyectoActividadMultiple(unProyecto, unRequerimientoAct, perfiles[], mensaje) |
+| :---- | :---- |
+| **Responsabilidades** | Emitir una invitación por actividad por cada perfil seleccionado, permitiendo éxito parcial. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-31 |
+| **Notas** | Los IDs repetidos se deduplican. Cada perfil se procesa en una transacción independiente. |
+| **Excepciones** | Errores por perfil: invitación duplicada, perfil inactivo, profesión incompatible, miembro activo, autoinvitación o perfil inexistente. |
+| **Salida** | creadas[] y errores[] |
+| **Precondición** | El Director activo administra el proyecto, el requerimiento pertenece al proyecto y la actividad está Pendiente o En curso. |
+| **Postcondición** | Se creó una instancia de Invitacion por cada perfil válido. Se notificó a cada destinatario. Los perfiles con error no generaron invitación. |
+
 > **Nota de implementación (UC-31):** la invitación general se asocia
 > directamente al proyecto mediante `invitacion_gral.id_proyecto`, sin exigir
 > un requerimiento general. `id_requerimiento_gral` queda opcional para

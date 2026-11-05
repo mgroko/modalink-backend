@@ -16,11 +16,15 @@ import org.mgroko.backend.actividades.enums.UnidadDuracion;
 import org.mgroko.backend.actividades.servicio.BuscarRequerimientoActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.invitaciones.dto.CrearInvitacionActividadBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionActividadRequest;
+import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralRequest;
+import org.mgroko.backend.invitaciones.dto.InvitacionBatchResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.TipoInvitacion;
 import org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException;
+import org.mgroko.backend.invitaciones.servicio.CrearInvitacionBatchService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Profesion;
@@ -70,6 +74,8 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private CrearInvitacionService crearInvitacionService;
     @Autowired
+    private CrearInvitacionBatchService crearInvitacionBatchService;
+    @Autowired
     private BuscarRequerimientoActividadService buscarRequerimientoActividadService;
     @Autowired
     private CancelarProyectoService cancelarProyectoService;
@@ -115,6 +121,103 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                   AND entidad_tipo = 'INVITACION_GRAL' AND entidad_id = ?
                 """, Long.class, destinatario.idUsuario(), respuesta.idInvitacion());
         assertThat(notificaciones).isEqualTo(1L);
+    }
+
+    @Test
+    void batchGeneral_dosPerfiles_creaDosInvitacionesYNotificaciones() {
+        PerfilCreado director = crearPerfil(
+                "uc31.batch.dir1@example.com", "88831020", "Directora Batch UC31", "modelo");
+        PerfilCreado destinatarioA = crearPerfil(
+                "uc31.batch.dest1@example.com", "88831021", "Destinataria A Batch", "modelo");
+        PerfilCreado destinatarioB = crearPerfil(
+                "uc31.batch.dest2@example.com", "88831022", "Destinataria B Batch", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC31 Batch");
+
+        InvitacionBatchResponse respuesta = crearInvitacionBatchService.invitarGeneral(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralBatchRequest(
+                        List.of(destinatarioA.idPerfil(), destinatarioB.idPerfil()),
+                        "Invitación multiple"));
+
+        assertThat(respuesta.creadas()).hasSize(2);
+        assertThat(respuesta.errores()).isEmpty();
+
+        Long invitaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM invitacion_gral WHERE id_proyecto = ?
+                """, Long.class, publicado.idProyecto());
+        assertThat(invitaciones).isEqualTo(2L);
+
+        Long notificaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE tipo = 'INVITACION_RECIBIDA' AND id_proyecto = ?
+                """, Long.class, publicado.idProyecto());
+        assertThat(notificaciones).isEqualTo(2L);
+    }
+
+    @Test
+    void batchGeneral_unPerfilDuplicado_creaElRestoYReportaError() {
+        PerfilCreado director = crearPerfil(
+                "uc31.batch.dir2@example.com", "88831023", "Directora Batch Dup", "modelo");
+        PerfilCreado destinatarioA = crearPerfil(
+                "uc31.batch.dest3@example.com", "88831024", "Destinataria A Dup", "modelo");
+        PerfilCreado destinatarioB = crearPerfil(
+                "uc31.batch.dest4@example.com", "88831025", "Destinataria B Dup", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC31 Batch Dup");
+
+        crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatarioA.idPerfil(), null));
+
+        InvitacionBatchResponse respuesta = crearInvitacionBatchService.invitarGeneral(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralBatchRequest(
+                        List.of(destinatarioA.idPerfil(), destinatarioB.idPerfil()), null));
+
+        assertThat(respuesta.creadas()).hasSize(1);
+        assertThat(respuesta.errores()).hasSize(1);
+        assertThat(respuesta.errores().getFirst().idPerfilDestinatario())
+                .isEqualTo(destinatarioA.idPerfil());
+        assertThat(respuesta.errores().getFirst().codigo())
+                .isEqualTo(CrearInvitacionService.CODIGO_INVITACION_DUPLICADA);
+
+        Long invitaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM invitacion_gral WHERE id_proyecto = ?
+                """, Long.class, publicado.idProyecto());
+        assertThat(invitaciones).isEqualTo(2L);
+    }
+
+    @Test
+    void batchActividad_dosPerfiles_creaDosInvitaciones() {
+        PerfilCreado director = crearPerfil(
+                "uc31.batch.dir3@example.com", "88831026", "Directora Batch Act", "modelo");
+        PerfilCreado destinatarioA = crearPerfil(
+                "uc31.batch.dest5@example.com", "88831027", "Destinataria A Act", "modelo");
+        PerfilCreado destinatarioB = crearPerfil(
+                "uc31.batch.dest6@example.com", "88831028", "Destinataria B Act", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC31 Batch Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        InvitacionBatchResponse respuesta = crearInvitacionBatchService.invitarActividad(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionActividadBatchRequest(
+                        idRequerimiento,
+                        List.of(destinatarioA.idPerfil(), destinatarioB.idPerfil()),
+                        null));
+
+        assertThat(respuesta.creadas()).hasSize(2);
+        assertThat(respuesta.errores()).isEmpty();
+
+        Long invitaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM invitacion_actividad
+                WHERE id_requerimiento_act = ?
+                """, Long.class, idRequerimiento);
+        assertThat(invitaciones).isEqualTo(2L);
     }
 
     @Test

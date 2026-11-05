@@ -2,11 +2,15 @@ package org.mgroko.backend.invitaciones.controlador;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.invitaciones.dto.BuscarInvitacionesFiltro;
+import org.mgroko.backend.invitaciones.dto.CrearInvitacionActividadBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionActividadRequest;
+import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralRequest;
+import org.mgroko.backend.invitaciones.dto.InvitacionBatchResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
 import org.mgroko.backend.invitaciones.servicio.BuscarInvitacionService;
+import org.mgroko.backend.invitaciones.servicio.CrearInvitacionBatchService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.EliminarInvitacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -34,14 +38,17 @@ import jakarta.validation.Valid;
 public class InvitacionController {
 
     private final CrearInvitacionService crearInvitacionService;
+    private final CrearInvitacionBatchService crearInvitacionBatchService;
     private final BuscarInvitacionService buscarInvitacionService;
     private final EliminarInvitacionService eliminarInvitacionService;
 
     public InvitacionController(
             CrearInvitacionService crearInvitacionService,
+            CrearInvitacionBatchService crearInvitacionBatchService,
             BuscarInvitacionService buscarInvitacionService,
             EliminarInvitacionService eliminarInvitacionService) {
         this.crearInvitacionService = crearInvitacionService;
+        this.crearInvitacionBatchService = crearInvitacionBatchService;
         this.buscarInvitacionService = buscarInvitacionService;
         this.eliminarInvitacionService = eliminarInvitacionService;
     }
@@ -89,6 +96,32 @@ public class InvitacionController {
                 idInvitacion);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/invitaciones/general/batch")
+    public ResponseEntity<InvitacionBatchResponse> invitarGeneralBatch(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CrearInvitacionGralBatchRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(crearInvitacionBatchService.invitarGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                request));
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/invitaciones/actividad/batch")
+    public ResponseEntity<InvitacionBatchResponse> invitarActividadBatch(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CrearInvitacionActividadBatchRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(crearInvitacionBatchService.invitarActividad(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                request));
     }
 
     @PostMapping("/proyectos/{idProyecto}/invitaciones/general")

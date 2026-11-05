@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.invitaciones.dto.BuscarInvitacionesFiltro;
 import org.mgroko.backend.invitaciones.dto.DireccionInvitacion;
+import org.mgroko.backend.invitaciones.dto.InvitacionBatchError;
+import org.mgroko.backend.invitaciones.dto.InvitacionBatchResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.PerfilInvitacionResponse;
@@ -26,6 +28,7 @@ import org.mgroko.backend.invitaciones.exception.InvitacionNoEncontradaException
 import org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException;
 import org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException;
 import org.mgroko.backend.invitaciones.servicio.BuscarInvitacionService;
+import org.mgroko.backend.invitaciones.servicio.CrearInvitacionBatchService;
 import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.EliminarInvitacionService;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
@@ -49,6 +52,9 @@ class InvitacionControllerTest {
 
     @MockitoBean
     private CrearInvitacionService crearInvitacionService;
+
+    @MockitoBean
+    private CrearInvitacionBatchService crearInvitacionBatchService;
 
     @MockitoBean
     private BuscarInvitacionService buscarInvitacionService;
@@ -166,6 +172,56 @@ class InvitacionControllerTest {
                         .param("fechaDesde", "2026-11-30")
                         .param("fechaHasta", "2026-11-01"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void invitarGeneralBatch_conPerfiles_devuelveResultadoParcial() throws Exception {
+        when(crearInvitacionBatchService.invitarGeneral(any(), any(), any(), any()))
+                .thenReturn(new InvitacionBatchResponse(
+                        List.of(respuesta(TipoInvitacion.GENERAL, null)),
+                        List.of(new InvitacionBatchError(
+                                21L, "El perfil ya tiene una invitación activa.",
+                                CrearInvitacionService.CODIGO_INVITACION_DUPLICADA))));
+
+        mockMvc.perform(post("/proyectos/5/invitaciones/general/batch")
+                        .principal(autenticacion(1L, 10L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idsPerfilDestinatario\":[20,21],"
+                                + "\"mensaje\":\"Hola\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.creadas[0].idInvitacion").value(77))
+                .andExpect(jsonPath("$.errores[0].idPerfilDestinatario").value(21))
+                .andExpect(jsonPath("$.errores[0].codigo").value("INVITACION_DUPLICADA"));
+    }
+
+    @Test
+    void invitarActividadBatch_conPerfiles_devuelve200() throws Exception {
+        when(crearInvitacionBatchService.invitarActividad(any(), any(), any(), any()))
+                .thenReturn(new InvitacionBatchResponse(
+                        List.of(respuesta(TipoInvitacion.ACTIVIDAD, 30L)),
+                        List.of()));
+
+        mockMvc.perform(post("/proyectos/5/invitaciones/actividad/batch")
+                        .principal(autenticacion(1L, 10L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idRequerimientoActividad\":30,"
+                                + "\"idsPerfilDestinatario\":[20]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.creadas[0].tipo").value("ACTIVIDAD"))
+                .andExpect(jsonPath("$.creadas[0].idRequerimientoActividad").value(30))
+                .andExpect(jsonPath("$.errores").isEmpty());
+    }
+
+    @Test
+    void invitarGeneralBatch_sinPerfiles_devuelve400() throws Exception {
+        mockMvc.perform(post("/proyectos/5/invitaciones/general/batch")
+                        .principal(autenticacion(1L, 10L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idsPerfilDestinatario\":[]}"))
+                .andExpect(status().isBadRequest());
+
+        verify(crearInvitacionBatchService, never())
+                .invitarGeneral(any(), any(), any(), any());
     }
 
     @Test

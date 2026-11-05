@@ -497,6 +497,18 @@ La búsqueda previa de requerimientos de actividad corresponde a UC-73 y se
 expone mediante `GET /proyectos/{idProyecto}/requerimientos-actividad/buscar`,
 con filtros opcionales por actividad, profesión, características y habilidades.
 
+Para seleccionar varios perfiles en una sola acción se agregan:
+
+```http
+POST /proyectos/{idProyecto}/invitaciones/general/batch
+POST /proyectos/{idProyecto}/invitaciones/actividad/batch
+```
+
+El servicio valida una vez el contexto común (perfil activo, proyecto,
+permisos y, en actividad, requerimiento y estado) y luego procesa cada perfil
+en una transacción independiente. La respuesta contiene `creadas[]` y
+`errores[]`, permitiendo éxito parcial. Los IDs repetidos se deduplican.
+
 ## UC-70 — Asignar actividad a miembro
 
 La asignación relaciona un `MiembroProyecto` activo con una `Actividad`.

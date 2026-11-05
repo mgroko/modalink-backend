@@ -311,6 +311,12 @@
        - El sistema retorna `invitacionRegistrada(unaInvitacion)`.
        - El sistema retorna `notificarPerfil(unPerfil, unaInvitacion)`.
 
+> **Extensión de implementación:** además del alta individual, se exponen
+> `invitarAProyectoMultiple(unProyecto, perfiles[], mensaje)` e
+> `invitarAProyectoActividadMultiple(unProyecto, unRequerimientoAct, perfiles[], mensaje)`.
+> Cada perfil se procesa en una transacción independiente y la respuesta
+> informa `creadas[]` y `errores[]`.
+
 ---
 
 ### **UC-32: Eliminar invitación a proyecto**
