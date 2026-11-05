@@ -145,7 +145,8 @@ public final class ProyectoMapper {
                 contexto.elegibleParaPostularse(),
                 proyecto.getMotivoCancelacion(),
                 postulacionesPendientes,
-                contexto.puedeDarseDeBaja()
+                contexto.puedeDarseDeBaja(),
+                proyecto.getFechaFinalizacion()
         );
     }
 }

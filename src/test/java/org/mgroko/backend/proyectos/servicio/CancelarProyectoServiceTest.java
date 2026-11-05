@@ -116,7 +116,7 @@ class CancelarProyectoServiceTest {
                 "Cancelado", "PUBLICO", true, null, 10L, "Luna Diseños",
                 List.of(), List.of(), null,
                 org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
-                true, List.of(), false, "Falta de presupuesto", null, false);
+                true, List.of(), false, "Falta de presupuesto", null, false, null);
     }
 
     private void prepararCaminoFeliz() {

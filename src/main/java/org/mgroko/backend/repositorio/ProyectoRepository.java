@@ -68,6 +68,14 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSp
     Optional<Proyecto> findByIdParaGestion(@Param("idProyecto") Long idProyecto);
 
     /**
+     * Bloqueo pesimista del proyecto para la transición a FINALIZADO (UC-37).
+     * Evita que dos solicitudes concurrentes finalicen el mismo proyecto.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Proyecto p WHERE p.idProyecto = :idProyecto")
+    Optional<Proyecto> findByIdParaFinalizar(@Param("idProyecto") Long idProyecto);
+
+    /**
      * Detalle de proyecto con toda la cadena de ubicación inicializada.
      * Evita las consultas perezosas de ubicación/ciudad/provincia/país al
      * armar el {@code ProyectoResponse}.

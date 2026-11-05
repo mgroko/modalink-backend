@@ -377,6 +377,52 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoFinalizable(
+            org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", ex.getCodigo());
+        response.put("bloqueos", ex.getBloqueos());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.CalificacionIncompletaException.class)
+    public ResponseEntity<Map<String, Object>> handleCalificacionIncompleta(
+            org.mgroko.backend.proyectos.exception.CalificacionIncompletaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CALIFICACIONES_INCOMPLETAS");
+        response.put("faltantes", ex.getIdsPerfilFaltantes());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.CalificacionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleCalificacionInvalida(
+            org.mgroko.backend.proyectos.exception.CalificacionInvalidaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CALIFICACION_INVALIDA");
+        response.put("httpStatus", HttpStatus.BAD_REQUEST.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ProyectoNoCalificableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoCalificable(
+            org.mgroko.backend.proyectos.exception.ProyectoNoCalificableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "PROYECTO_NO_CALIFICABLE");
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoModificable(
             org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException ex) {

@@ -15,6 +15,15 @@ public enum EstadoActividad {
     public static final EstadoActividad Finalizada = FINALIZADA;
     public static final EstadoActividad Cancelada = CANCELADA;
 
+    public String getNombre() {
+        return switch (this) {
+            case PENDIENTE -> "Pendiente";
+            case EN_CURSO -> "En curso";
+            case FINALIZADA -> "Finalizada";
+            case CANCELADA -> "Cancelada";
+        };
+    }
+
     public boolean permiteTransicionA(EstadoActividad destino) {
         if (destino == null) {
             return false;

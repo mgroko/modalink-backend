@@ -17,6 +17,7 @@ public final class NotificacionTitulos {
             Map.entry("PROYECTO_CONFIRMADO", "Proyecto confirmado"),
             Map.entry("PROYECTO_PUBLICADO", "Proyecto publicado"),
             Map.entry("PROYECTO_FINALIZADO", "Proyecto finalizado"),
+            Map.entry("CALIFICACION_SOLICITADA", "Calificación solicitada"),
             Map.entry("PROYECTO_FECHA_ENTREGA_MODIFICADA", "Fecha de entrega modificada"),
             Map.entry("ACTIVIDAD_MODIFICADA", "Actividad modificada"),
             Map.entry("ACTIVIDAD_ELIMINADA", "Actividad eliminada"),

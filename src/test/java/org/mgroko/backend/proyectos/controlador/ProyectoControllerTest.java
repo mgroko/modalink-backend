@@ -5,7 +5,12 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.proyectos.dto.CalificacionRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
+import org.mgroko.backend.proyectos.dto.FinalizarProyectoRequest;
+import org.mgroko.backend.proyectos.dto.FinalizarProyectoResponse;
+import org.mgroko.backend.proyectos.dto.MiembroCalificableResponse;
+import org.mgroko.backend.proyectos.dto.PrevisualizacionFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.ReprogramacionProyectoResponse;
 import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
@@ -69,6 +74,12 @@ class ProyectoControllerTest {
     private org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService previsualizarConfirmacionService;
 
     @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.FinalizarProyectoService finalizarProyectoService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.PrevisualizarFinalizacionService previsualizarFinalizacionService;
+
+    @MockitoBean
     private org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService jornadaReprogramacionService;
 
     @Test
@@ -109,7 +120,8 @@ class ProyectoControllerTest {
                 false,
                 null,
                 null,
-                false
+                false,
+                null
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -278,7 +290,8 @@ class ProyectoControllerTest {
                 false,
                 null,
                 null,
-                false
+                false,
+                null
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -358,7 +371,8 @@ class ProyectoControllerTest {
                 false,
                 null,
                 3L,
-                false
+                false,
+                null
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
@@ -407,7 +421,8 @@ class ProyectoControllerTest {
                 true,
                 null,
                 null,
-                false
+                false,
+                null
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(200L))).thenReturn(response);
@@ -705,7 +720,8 @@ class ProyectoControllerTest {
                 false,
                 null,
                 null,
-                false
+                false,
+                null
         );
     }
 
@@ -828,7 +844,8 @@ class ProyectoControllerTest {
                 false,
                 "Falta de presupuesto",
                 null,
-                false
+                false,
+                null
         );
     }
 
@@ -977,5 +994,124 @@ class ProyectoControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idProyecto").value(100))
                 .andExpect(jsonPath("$.motivo").value("REINTENTO"));
+    }
+
+    @Test
+    void previsualizarFinalizacion_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        when(previsualizarFinalizacionService.previsualizar(1L, 10L, 100L))
+                .thenReturn(new PrevisualizacionFinalizacionResponse(
+                        true,
+                        "Confirmado",
+                        LocalDate.now().plusDays(1),
+                        LocalDate.now(),
+                        List.of(),
+                        List.of(new MiembroCalificableResponse(
+                                20L, "Miembro", "Nombre", "Apellido", "MIEMBRO", false)),
+                        1,
+                        0,
+                        1));
+
+        mockMvc.perform(get("/proyectos/100/finalizacion").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.puedeFinalizar").value(true))
+                .andExpect(jsonPath("$.miembrosACalificar[0].idPerfil").value(20L))
+                .andExpect(jsonPath("$.calificacionesPendientes").value(1));
+    }
+
+    @Test
+    void finalizar_conPerfilActivoYCalificaciones_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenReturn(new FinalizarProyectoResponse(
+                        null, LocalDate.now().atTime(12, 0), 1));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fechaFinalizacion").exists())
+                .andExpect(jsonPath("$.calificacionesRegistradas").value(1));
+    }
+
+    @Test
+    void finalizar_conCalificacionesIncompletas_devuelve409ConFaltantes() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.CalificacionIncompletaException(
+                        List.of(30L),
+                        "Es obligatorio calificar a todos los miembros activos del proyecto."));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CALIFICACIONES_INCOMPLETAS"))
+                .andExpect(jsonPath("$.faltantes[0]").value(30L));
+    }
+
+    @Test
+    void finalizar_conCalificacionInvalida_devuelve400() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.CalificacionInvalidaException(
+                        "La valoración debe estar entre 1 y 5."));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("CALIFICACION_INVALIDA"));
+    }
+
+    @Test
+    void finalizar_conBloqueos_devuelve409ConCodigo() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException(
+                        "ACTIVIDAD_NO_FINALIZADA",
+                        "Hay una actividad pendiente.",
+                        List.of(new org.mgroko.backend.proyectos.dto.BloqueoFinalizacionResponse(
+                                "ACTIVIDAD_NO_FINALIZADA",
+                                "Hay una actividad pendiente.",
+                                "ACTIVIDAD",
+                                55L))));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("ACTIVIDAD_NO_FINALIZADA"))
+                .andExpect(jsonPath("$.bloqueos[0].entidadTipo").value("ACTIVIDAD"));
     }
 }

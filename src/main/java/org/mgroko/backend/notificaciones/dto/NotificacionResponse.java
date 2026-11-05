@@ -14,6 +14,12 @@ import java.time.LocalDateTime;
  * <p>Los campos {@code idActividad}, {@code idHito} e {@code idInvitacion} se
  * derivan de la referencia polimórfica y son {@code null} cuando no
  * corresponden al tipo de entidad.</p>
+ *
+ * <p>{@code link} es una ruta relativa del frontend para abrir la acción
+ * asociada a la notificación. Para {@code CALIFICACION_SOLICITADA} apunta a
+ * {@code /proyectos/{idProyecto}/calificaciones}; en el resto de los tipos es
+ * {@code null} y el frontend puede seguir usando los identificadores
+ * derivados.</p>
  */
 public record NotificacionResponse(
         Long idNotificacion,
@@ -30,6 +36,7 @@ public record NotificacionResponse(
         Long idProyecto,
         Long idActividad,
         Long idHito,
-        Long idInvitacion
+        Long idInvitacion,
+        String link
 ) {
 }

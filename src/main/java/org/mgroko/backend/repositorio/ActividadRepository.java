@@ -126,6 +126,12 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
             @Param("idActividad") Long idActividad,
             @Param("idPlanificacion") Long idPlanificacion);
 
+    /**
+     * Actividades de la planificación de un proyecto, sin cargar dependencias.
+     * Se usa para validar el estado requerido por UC-37.
+     */
+    List<Actividad> findByPlanificacionProyectoIdProyecto(Long idProyecto);
+
     @Query("""
         SELECT DISTINCT a FROM Actividad a
         LEFT JOIN FETCH a.predecesoras

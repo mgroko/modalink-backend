@@ -106,6 +106,33 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void calificacionSolicitada_incluyeLinkACalificaciones() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("CALIFICACION_SOLICITADA", "PROYECTO", 105L, 105L),
+                105L);
+
+        assertThat(response.link()).isEqualTo("/proyectos/105/calificaciones");
+    }
+
+    @Test
+    void otrosTipos_noTienenLink() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("PROYECTO_FINALIZADO", "PROYECTO", 105L, 105L),
+                105L);
+
+        assertThat(response.link()).isNull();
+    }
+
+    @Test
+    void calificacionSolicitadaSinProyecto_noTieneLink() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("CALIFICACION_SOLICITADA", "PROYECTO", 105L, null),
+                null);
+
+        assertThat(response.link()).isNull();
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");
@@ -113,6 +140,8 @@ class NotificacionMapperTest {
                 .isEqualTo("Posible sobrecompromiso");
         assertThat(NotificacionTitulos.tituloDe("HITO_CUMPLIDO"))
                 .isEqualTo("Hito cumplido");
+        assertThat(NotificacionTitulos.tituloDe("CALIFICACION_SOLICITADA"))
+                .isEqualTo("Calificación solicitada");
         assertThat(NotificacionTitulos.tituloDe("DESCONOCIDO")).isNull();
         assertThat(NotificacionTitulos.tituloDe(null)).isNull();
     }

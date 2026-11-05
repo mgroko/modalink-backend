@@ -7,8 +7,11 @@ import org.mgroko.backend.proyectos.dto.BuscarProyectosPropiosFiltro;
 import org.mgroko.backend.proyectos.dto.CancelarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ConfirmarProyectoResponse;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
+import org.mgroko.backend.proyectos.dto.FinalizarProyectoRequest;
+import org.mgroko.backend.proyectos.dto.FinalizarProyectoResponse;
 import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.PrevisualizacionConfirmacionResponse;
+import org.mgroko.backend.proyectos.dto.PrevisualizacionFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoPropioResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
@@ -18,10 +21,12 @@ import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
 import org.mgroko.backend.proyectos.servicio.CancelarProyectoService;
 import org.mgroko.backend.proyectos.servicio.ConfirmarProyectoService;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
+import org.mgroko.backend.proyectos.servicio.FinalizarProyectoService;
 import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
 import org.mgroko.backend.proyectos.servicio.ModificarProyectoService;
 import org.mgroko.backend.proyectos.servicio.ObtenerProyectoService;
 import org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService;
+import org.mgroko.backend.proyectos.servicio.PrevisualizarFinalizacionService;
 import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -52,6 +57,8 @@ public class ProyectoController {
     private final CancelarProyectoService cancelarProyectoService;
     private final ConfirmarProyectoService confirmarProyectoService;
     private final PrevisualizarConfirmacionService previsualizarConfirmacionService;
+    private final FinalizarProyectoService finalizarProyectoService;
+    private final PrevisualizarFinalizacionService previsualizarFinalizacionService;
     private final JornadaReprogramacionService jornadaReprogramacionService;
 
     public ProyectoController(CrearProyectoService crearProyectoService,
@@ -63,6 +70,8 @@ public class ProyectoController {
             CancelarProyectoService cancelarProyectoService,
             ConfirmarProyectoService confirmarProyectoService,
             PrevisualizarConfirmacionService previsualizarConfirmacionService,
+            FinalizarProyectoService finalizarProyectoService,
+            PrevisualizarFinalizacionService previsualizarFinalizacionService,
             JornadaReprogramacionService jornadaReprogramacionService) {
         this.crearProyectoService = crearProyectoService;
         this.obtenerProyectoService = obtenerProyectoService;
@@ -73,6 +82,8 @@ public class ProyectoController {
         this.cancelarProyectoService = cancelarProyectoService;
         this.confirmarProyectoService = confirmarProyectoService;
         this.previsualizarConfirmacionService = previsualizarConfirmacionService;
+        this.finalizarProyectoService = finalizarProyectoService;
+        this.previsualizarFinalizacionService = previsualizarFinalizacionService;
         this.jornadaReprogramacionService = jornadaReprogramacionService;
     }
 
@@ -226,6 +237,52 @@ public class ProyectoController {
 
         ConfirmarProyectoResponse response = confirmarProyectoService.confirmar(
                 idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // UC-37: Previsualizar finalización de proyecto
+    @GetMapping("/proyectos/{idProyecto}/finalizacion")
+    public ResponseEntity<PrevisualizacionFinalizacionResponse> previsualizarFinalizacion(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        PrevisualizacionFinalizacionResponse response =
+                previsualizarFinalizacionService.previsualizar(
+                        idUsuario, idPerfilActivo, idProyecto);
+        return ResponseEntity.ok(response);
+    }
+
+    // UC-37: Finalizar proyecto (Confirmado -> Finalizado)
+    @PostMapping("/proyectos/{idProyecto}/finalizar")
+    public ResponseEntity<FinalizarProyectoResponse> finalizar(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody FinalizarProyectoRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        FinalizarProyectoResponse response = finalizarProyectoService.finalizar(
+                idUsuario, idPerfilActivo, idProyecto, request);
         return ResponseEntity.ok(response);
     }
 

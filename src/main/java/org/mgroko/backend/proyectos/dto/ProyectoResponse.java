@@ -1,6 +1,7 @@
 package org.mgroko.backend.proyectos.dto;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
@@ -27,5 +28,6 @@ public record ProyectoResponse(
         Boolean elegibleParaPostularse,
         String motivoCancelacion,
         Long postulacionesPendientes,
-        Boolean puedeDarseDeBaja
+        Boolean puedeDarseDeBaja,
+        LocalDateTime fechaFinalizacion
 ) {}

@@ -38,7 +38,7 @@ class NotificacionControllerTest {
         return new NotificacionResponse(
                 30L, "HITO_CUMPLIDO", "Hito cumplido", "Hito completado", "HITO", 40L,
                 false, null, "SERVICIO", LocalDateTime.of(2026, 10, 21, 12, 0),
-                20L, 105L, null, 40L, null);
+                20L, 105L, null, 40L, null, null);
     }
 
     @Test
@@ -92,7 +92,7 @@ class NotificacionControllerTest {
         NotificacionResponse leida = new NotificacionResponse(
                 30L, "HITO_CUMPLIDO", "Hito cumplido", "Hito completado", "HITO", 40L,
                 true, LocalDateTime.of(2026, 10, 21, 13, 0), "SERVICIO",
-                LocalDateTime.of(2026, 10, 21, 12, 0), 20L, null, null, 40L, null);
+                LocalDateTime.of(2026, 10, 21, 12, 0), 20L, null, null, 40L, null, null);
         when(notificacionService.marcarLeida(10L, 30L)).thenReturn(leida);
 
         mockMvc.perform(patch("/notificaciones/30/leida").principal(auth()))
