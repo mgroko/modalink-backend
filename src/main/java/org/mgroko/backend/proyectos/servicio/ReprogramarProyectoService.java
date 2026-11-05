@@ -153,6 +153,13 @@ public class ReprogramarProyectoService {
                     conflictosFijos(actividades));
         }
 
+        // Solo las PENDIENTE se replanifican. Las EN_CURSO y FINALIZADA son
+        // anclas: se usan para el cálculo, pero no se reescriben.
+        Set<Long> movibles = new HashSet<>();
+        for (Actividad pendiente : pendientes) {
+            movibles.add(pendiente.getIdActividad());
+        }
+
         // Las fechas viejas de las PENDIENTE no deben bloquear el recálculo como
         // si fueran reservas. La transacción las restaura si algo falla.
         for (Actividad actividad : pendientes) {
@@ -201,6 +208,13 @@ public class ReprogramarProyectoService {
                                 "Actividad sin horario luego de la reprogramación.",
                                 "ACTIVIDAD",
                                 actividad.getIdActividad())));
+            }
+
+            // Las actividades ancladas se usaron para calcular el plan, pero
+            // no deben persistirse: pueden tener segundos que el planner
+            // redondea a minutos y eso rompería márgenes exactos.
+            if (!movibles.contains(actividad.getIdActividad())) {
+                continue;
             }
 
             LocalDateTime anterior = iniciosAnteriores.get(actividad.getIdActividad());
@@ -305,6 +319,13 @@ public class ReprogramarProyectoService {
                                 "Actividad sin horario luego de la reprogramación.",
                                 "ACTIVIDAD",
                                 actividad.getIdActividad())));
+            }
+
+            // Las actividades ancladas se usaron para calcular el plan, pero
+            // no deben persistirse: pueden tener segundos que el planner
+            // redondea a minutos y eso rompería márgenes exactos.
+            if (!movibles.contains(actividad.getIdActividad())) {
+                continue;
             }
 
             LocalDateTime anterior = iniciosAnteriores.get(actividad.getIdActividad());

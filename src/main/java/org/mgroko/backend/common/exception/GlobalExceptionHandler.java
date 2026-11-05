@@ -423,6 +423,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {
+        if (esViolacionPorSolapeHorario(ex)) {
+            return buildSolapeHorarioResponse(ex);
+        }
         if (esViolacionPorCiclo(ex)) {
             return buildErrorResponse(
                     "La modificacion genera un ciclo entre actividades.",
@@ -441,6 +444,74 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(
                 "Los datos enviados violan una restriccion de integridad de la base de datos.",
                 HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Maneja errores de persistencia no categorizados por Spring. En
+     * PostgreSQL, un RAISE EXCEPTION de PL/pgSQL llega como JpaSystemException
+     * (SQLState P0001), no como DataIntegrityViolationException.
+     */
+    @ExceptionHandler(org.springframework.orm.jpa.JpaSystemException.class)
+    public ResponseEntity<Map<String, Object>> handleJpaSystemException(
+            org.springframework.orm.jpa.JpaSystemException ex) {
+        if (esViolacionPorSolapeHorario(ex)) {
+            return buildSolapeHorarioResponse(ex);
+        }
+        return buildErrorResponse(
+                "No se pudo completar la operación por un error de persistencia.",
+                HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Detecta el conflicto de horario lanzado por los triggers de agenda.
+     * Acepta tanto el mensaje histórico como el mensaje ampliado con IDs.
+     */
+    private boolean esViolacionPorSolapeHorario(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null) {
+                String normalizado = mensaje.toLowerCase(java.util.Locale.ROOT);
+                if (normalizado.contains("el horario se superpone con otra actividad")
+                        || normalizado.contains("el horario se superpone con un bloqueo manual")) {
+                    return true;
+                }
+            }
+            actual = actual.getCause();
+        }
+        return false;
+    }
+
+    private ResponseEntity<Map<String, Object>> buildSolapeHorarioResponse(Throwable ex) {
+        String detalle = mensajeMasProfundo(ex);
+        if (detalle != null) {
+            detalle = detalle.replaceFirst("(?i)^\\s*ERROR:\\s*", "");
+            int salto = detalle.indexOf('\n');
+            if (salto >= 0) {
+                detalle = detalle.substring(0, salto);
+            }
+            detalle = detalle.trim();
+        }
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", detalle != null && !detalle.isBlank()
+                ? detalle
+                : "El horario se superpone con otra actividad del mismo profesional.");
+        response.put("codigo", "SOLAPE_HORARIO");
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    private String mensajeMasProfundo(Throwable ex) {
+        String mensaje = null;
+        Throwable actual = ex;
+        while (actual != null) {
+            if (actual.getMessage() != null && !actual.getMessage().isBlank()) {
+                mensaje = actual.getMessage();
+            }
+            actual = actual.getCause();
+        }
+        return mensaje;
     }
 
     private boolean esViolacionPorCiclo(Throwable ex) {

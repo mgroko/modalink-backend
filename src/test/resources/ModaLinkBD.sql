@@ -303,6 +303,13 @@ CREATE OR REPLACE FUNCTION fn_validar_solape_horario_usuario(
 DECLARE
     v_margen_izquierdo INT;
     v_margen_derecho INT;
+    v_conflicto_id BIGINT;
+    v_conflicto_nombre VARCHAR;
+    v_conflicto_inicio TIMESTAMP;
+    v_conflicto_fin TIMESTAMP;
+    v_bloqueo_id BIGINT;
+    v_bloqueo_inicio TIMESTAMP;
+    v_bloqueo_fin TIMESTAMP;
 BEGIN
     IF p_inicio IS NULL OR p_duracion IS NULL THEN
         RETURN;
@@ -317,37 +324,64 @@ BEGIN
     v_margen_izquierdo := p_margen / 2;
     v_margen_derecho := p_margen - v_margen_izquierdo;
 
-    IF EXISTS (
-        SELECT 1
-        FROM asignacion_actividad aa
-        JOIN actividad act ON act.id_actividad = aa.id_actividad
-        JOIN planificacion pl ON pl.id_planificacion = act.id_planificacion
-        JOIN proyecto p ON p.id_proyecto = pl.id_proyecto
-        JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
-        JOIN perfil pf ON pf.id_perfil = mp.id_perfil
-        WHERE p.estado IN ('PUBLICADO', 'CONFIRMADO')
-          AND mp.estado_participacion = 'ACTIVO'
-          AND pf.id_usuario = p_id_usuario
-          AND act.id_actividad <> p_id_actividad
-          AND act.fecha_hora_inicio IS NOT NULL
-          AND act.estado IN ('PENDIENTE', 'EN_CURSO')
-          AND (p_inicio - (v_margen_izquierdo * INTERVAL '1 minute'))
-              < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute'))
-          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute'))
-              > (act.fecha_hora_inicio - (v_margen_izquierdo * INTERVAL '1 minute'))
-    ) THEN
-        RAISE EXCEPTION 'El horario se superpone con otra actividad del mismo profesional.';
+    SELECT act.id_actividad,
+           act.nombre,
+           act.fecha_hora_inicio,
+           act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute')
+      INTO v_conflicto_id,
+           v_conflicto_nombre,
+           v_conflicto_inicio,
+           v_conflicto_fin
+      FROM asignacion_actividad aa
+      JOIN actividad act ON act.id_actividad = aa.id_actividad
+      JOIN planificacion pl ON pl.id_planificacion = act.id_planificacion
+      JOIN proyecto p ON p.id_proyecto = pl.id_proyecto
+      JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
+      JOIN perfil pf ON pf.id_perfil = mp.id_perfil
+     WHERE p.estado IN ('PUBLICADO', 'CONFIRMADO')
+       AND mp.estado_participacion = 'ACTIVO'
+       AND pf.id_usuario = p_id_usuario
+       AND act.id_actividad <> p_id_actividad
+       AND act.fecha_hora_inicio IS NOT NULL
+       AND act.estado IN ('PENDIENTE', 'EN_CURSO')
+       AND (p_inicio - (v_margen_izquierdo * INTERVAL '1 minute'))
+           < (act.fecha_hora_inicio + (act.duracion_minutos * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute'))
+       AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute'))
+           > (act.fecha_hora_inicio - (v_margen_izquierdo * INTERVAL '1 minute'))
+     ORDER BY act.fecha_hora_inicio
+     LIMIT 1;
+
+    IF v_conflicto_id IS NOT NULL THEN
+        RAISE EXCEPTION 'El horario se superpone con otra actividad del mismo profesional (actividad %, usuario %, solicitado % a %, conflicto con actividad % "%" de % a %).',
+            p_id_actividad,
+            p_id_usuario,
+            p_inicio,
+            p_inicio + (p_duracion * INTERVAL '1 minute'),
+            v_conflicto_id,
+            v_conflicto_nombre,
+            v_conflicto_inicio,
+            v_conflicto_fin;
     END IF;
 
-    IF EXISTS (
-        SELECT 1
-        FROM bloqueo_agenda b
-        JOIN agenda ag ON ag.id_agenda = b.id_agenda
-        WHERE ag.id_usuario = p_id_usuario
-          AND (p_inicio - (v_margen_izquierdo * INTERVAL '1 minute')) < b.fecha_hora_fin
-          AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute')) > b.fecha_hora_inicio
-    ) THEN
-        RAISE EXCEPTION 'El horario se superpone con un bloqueo manual del profesional.';
+    SELECT b.id_bloqueo, b.fecha_hora_inicio, b.fecha_hora_fin
+      INTO v_bloqueo_id, v_bloqueo_inicio, v_bloqueo_fin
+      FROM bloqueo_agenda b
+      JOIN agenda ag ON ag.id_agenda = b.id_agenda
+     WHERE ag.id_usuario = p_id_usuario
+       AND (p_inicio - (v_margen_izquierdo * INTERVAL '1 minute')) < b.fecha_hora_fin
+       AND (p_inicio + (p_duracion * INTERVAL '1 minute') + (v_margen_derecho * INTERVAL '1 minute')) > b.fecha_hora_inicio
+     ORDER BY b.fecha_hora_inicio
+     LIMIT 1;
+
+    IF v_bloqueo_id IS NOT NULL THEN
+        RAISE EXCEPTION 'El horario se superpone con un bloqueo manual del profesional (actividad %, usuario %, solicitado % a %, bloqueo % de % a %).',
+            p_id_actividad,
+            p_id_usuario,
+            p_inicio,
+            p_inicio + (p_duracion * INTERVAL '1 minute'),
+            v_bloqueo_id,
+            v_bloqueo_inicio,
+            v_bloqueo_fin;
     END IF;
 END $$ LANGUAGE plpgsql;
 
