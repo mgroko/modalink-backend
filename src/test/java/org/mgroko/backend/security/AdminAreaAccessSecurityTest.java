@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.controlador.AdminUsuarioController;
 import org.mgroko.backend.admin.servicio.AdminUsuarioService;
 import org.mgroko.backend.home.controlador.HomeController;
+import org.mgroko.backend.home.servicio.HomeOportunidadesService;
 import org.mgroko.backend.perfiles.controlador.CaracteristicaTecnicaController;
 import org.mgroko.backend.perfiles.controlador.ProfesionController;
 import org.mgroko.backend.perfiles.servicio.CaracteristicaTecnicaService;
@@ -42,6 +43,9 @@ class AdminAreaAccessSecurityTest {
 
     @MockitoBean
     private UsuarioPerfilService usuarioPerfilService;
+
+    @MockitoBean
+    private HomeOportunidadesService homeOportunidadesService;
 
     @MockitoBean
     private AdminUsuarioService adminUsuarioService;

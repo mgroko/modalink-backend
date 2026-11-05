@@ -147,6 +147,7 @@ public interface RequerimientoActividadRepository
         LEFT JOIN FETCH c.caracteristica
         LEFT JOIN FETCH r.habilidades
         WHERE r.idRequerimiento IN :ids
+          AND r.fechaArchivado IS NULL
         ORDER BY r.idRequerimiento ASC
     """)
     List<RequerimientoActividad> findConDetalleByIds(

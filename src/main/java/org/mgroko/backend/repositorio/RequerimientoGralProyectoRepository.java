@@ -1,18 +1,22 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
-public interface RequerimientoGralProyectoRepository extends JpaRepository<RequerimientoGralProyecto, Long> {
+public interface RequerimientoGralProyectoRepository
+        extends JpaRepository<RequerimientoGralProyecto, Long>,
+                JpaSpecificationExecutor<RequerimientoGralProyecto> {
 
     boolean existsByHabilidades_IdHabilidad(Long idHabilidad);
 
@@ -58,6 +62,25 @@ public interface RequerimientoGralProyectoRepository extends JpaRepository<Reque
     """)
     Optional<RequerimientoGralProyecto> findByIdParaGestion(
             @Param("idRequerimientoGral") Long idRequerimientoGral);
+
+    /**
+     * Recupera requerimientos generales con proyecto, profesión,
+     * características y habilidades inicializadas en lote. Se usa en el
+     * buscador de oportunidades (UC-72).
+     */
+    @Query("""
+        SELECT DISTINCT r FROM RequerimientoGralProyecto r
+        JOIN FETCH r.profesion
+        JOIN FETCH r.proyecto
+        LEFT JOIN FETCH r.caracteristicas c
+        LEFT JOIN FETCH c.caracteristica
+        LEFT JOIN FETCH r.habilidades
+        WHERE r.idRequerimientoGral IN :ids
+          AND r.fechaArchivado IS NULL
+        ORDER BY r.idRequerimientoGral ASC
+    """)
+    List<RequerimientoGralProyecto> findConDetalleByIds(
+            @Param("ids") Collection<Long> ids);
 
     /**
      * Carga y bloquea los requerimientos generales de un proyecto antes de

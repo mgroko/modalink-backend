@@ -11,6 +11,8 @@ integración para la vista de detalle del proyecto (`/proyectos/:id`).
 > listado del proyecto en UC-74:
 > [`ficha-tecnica-gestionar-postulaciones.md`](./ficha-tecnica-gestionar-postulaciones.md)
 > y [`ficha-tecnica-buscar-postulaciones.md`](./ficha-tecnica-buscar-postulaciones.md).
+> Para descubrir requerimientos abiertos de todos los proyectos, ver
+> [`ficha-tecnica-buscar-requerimientos-abiertos.md`](./ficha-tecnica-buscar-requerimientos-abiertos.md).
 > Sigue sin existir un endpoint para que el **postulante** consulte el estado de
 > sus propias postulaciones.
 

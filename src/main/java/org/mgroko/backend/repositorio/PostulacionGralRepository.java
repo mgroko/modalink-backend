@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.PostulacionGral;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.repositorio.proyeccion.EstadoPostulacionProyeccion;
 import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -106,6 +107,22 @@ public interface PostulacionGralRepository
      */
     boolean existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGral(
             Long idPerfil, Long idRequerimientoGral);
+
+    /**
+     * Estados de las postulaciones del perfil para los requerimientos
+     * indicados, en una sola consulta. Se usa para marcar {@code yaPostulado}
+     * en el buscador de oportunidades.
+     */
+    @Query("""
+        SELECT p.requerimientoGral.idRequerimientoGral AS entidadId,
+               p.estado AS estado
+        FROM PostulacionGral p
+        WHERE p.perfil.idPerfil = :idPerfil
+          AND p.requerimientoGral.idRequerimientoGral IN :ids
+    """)
+    List<EstadoPostulacionProyeccion> findEstadosPorPerfilYRequerimientos(
+            @Param("idPerfil") Long idPerfil,
+            @Param("ids") Collection<Long> ids);
 
     /**
      * Cuenta las postulaciones del requerimiento general en el estado

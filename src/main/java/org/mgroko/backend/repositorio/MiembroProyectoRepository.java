@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
+import org.mgroko.backend.repositorio.proyeccion.MiembroProyectoRolProyeccion;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -172,6 +173,24 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     Optional<MiembroProyecto> findMiembroActivoConRol(
             @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    /**
+     * Rol activo del perfil en cada uno de los proyectos indicados, sin cargar
+     * la entidad completa. Se usa para resolver en lote la elegibilidad del
+     * buscador de oportunidades.
+     */
+    @Query("""
+        SELECT mp.proyecto.idProyecto AS idProyecto,
+               mp.rolProyecto.codigo AS codigo,
+               mp.rolProyecto.nombre AS nombre
+        FROM MiembroProyecto mp
+        WHERE mp.proyecto.idProyecto IN :idsProyectos
+          AND mp.perfil.idPerfil = :idPerfil
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<MiembroProyectoRolProyeccion> findRolesActivosPorPerfilYProyectos(
+            @Param("idsProyectos") Collection<Long> idsProyectos,
             @Param("idPerfil") Long idPerfil);
 
     @Query("""

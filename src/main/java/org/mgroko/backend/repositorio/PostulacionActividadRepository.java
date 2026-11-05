@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.repositorio.proyeccion.EstadoPostulacionProyeccion;
 import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -100,6 +101,21 @@ public interface PostulacionActividadRepository
      */
     boolean existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
             Long idPerfil, Long idRequerimiento);
+
+    /**
+     * Estados de las postulaciones del perfil para los requerimientos de
+     * actividad indicados, en una sola consulta.
+     */
+    @Query("""
+        SELECT p.requerimiento.idRequerimiento AS entidadId,
+               p.estado AS estado
+        FROM PostulacionActividad p
+        WHERE p.perfil.idPerfil = :idPerfil
+          AND p.requerimiento.idRequerimiento IN :ids
+    """)
+    List<EstadoPostulacionProyeccion> findEstadosPorPerfilYRequerimientos(
+            @Param("idPerfil") Long idPerfil,
+            @Param("ids") Collection<Long> ids);
 
     /**
      * Cuenta las postulaciones del requerimiento en el estado indicado. Se usa

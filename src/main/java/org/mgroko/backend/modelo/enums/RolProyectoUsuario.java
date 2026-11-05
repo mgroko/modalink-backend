@@ -25,17 +25,28 @@ public enum RolProyectoUsuario {
         if (rol == null) {
             return null;
         }
+        return desde(rol.getCodigo(), rol.getNombre());
+    }
 
-        String codigo = rol.getCodigo() != null ? rol.getCodigo().trim().toUpperCase(Locale.ROOT) : "";
-        if (DIRECTOR.name().equals(codigo)) {
+    /**
+     * Normaliza un rol a partir de su código y nombre, sin exigir la entidad.
+     * Se usa cuando el rol se obtiene como proyección en una consulta batch.
+     *
+     * @param codigo código del rol; puede ser null
+     * @param nombre nombre del rol; puede ser null
+     * @return DIRECTOR o MIEMBRO
+     */
+    public static RolProyectoUsuario desde(String codigo, String nombre) {
+        String codigoNormalizado = codigo != null ? codigo.trim().toUpperCase(Locale.ROOT) : "";
+        if (DIRECTOR.name().equals(codigoNormalizado)) {
             return DIRECTOR;
         }
-        if (MIEMBRO.name().equals(codigo)) {
+        if (MIEMBRO.name().equals(codigoNormalizado)) {
             return MIEMBRO;
         }
 
         // Fallback ante roles sin codigo (ej. datos de prueba)
-        String nombre = rol.getNombre() != null ? rol.getNombre().trim().toLowerCase(Locale.ROOT) : "";
-        return nombre.startsWith("director") ? DIRECTOR : MIEMBRO;
+        String nombreNormalizado = nombre != null ? nombre.trim().toLowerCase(Locale.ROOT) : "";
+        return nombreNormalizado.startsWith("director") ? DIRECTOR : MIEMBRO;
     }
 }

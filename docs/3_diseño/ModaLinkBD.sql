@@ -4150,3 +4150,22 @@ CREATE INDEX "IDX_req_act_activo"
 CREATE INDEX "IDX_req_gral_activo"
     ON requerimiento_gral_proyecto(id_proyecto)
     WHERE fecha_archivado IS NULL;
+
+-- ============================================================================
+-- UC-72/UC-73: BUSCADOR GLOBAL DE REQUERIMIENTOS ABIERTOS
+-- ============================================================================
+CREATE INDEX "IDX_req_gral_profesion_activo"
+    ON requerimiento_gral_proyecto(id_profesion)
+    WHERE fecha_archivado IS NULL;
+
+CREATE INDEX "IDX_req_act_profesion_activo"
+    ON requerimiento_actividad(id_profesion)
+    WHERE fecha_archivado IS NULL;
+
+CREATE INDEX "IDX_actividad_pendiente_inicio"
+    ON actividad(estado, fecha_hora_inicio)
+    WHERE estado = 'PENDIENTE';
+
+CREATE INDEX "IDX_proyecto_abierto_privacidad"
+    ON proyecto(estado, privacidad)
+    WHERE estado IN ('PUBLICADO', 'CONFIRMADO');
