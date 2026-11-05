@@ -449,9 +449,15 @@ sequenceDiagram
     end
 ```
 
-La invitación por actividad debe asociar el perfil destinatario, el perfil
-remitente, el requerimiento de actividad, el mensaje y el estado `PENDIENTE`.
-La notificación se dirige al perfil destinatario.
+La invitación general se asocia directamente al proyecto: `InvitacionGral`
+conserva `proyecto` y deja `requerimientoGral` opcional. La invitación por
+actividad debe asociar el perfil destinatario, el perfil remitente, el
+requerimiento de actividad, el mensaje y el estado `PENDIENTE`. La notificación
+se dirige al perfil destinatario.
+
+La búsqueda previa de requerimientos de actividad corresponde a UC-73 y se
+expone mediante `GET /proyectos/{idProyecto}/requerimientos-actividad/buscar`,
+con filtros opcionales por actividad, profesión, características y habilidades.
 
 ## UC-70 — Asignar actividad a miembro
 

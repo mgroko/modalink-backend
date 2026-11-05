@@ -8,13 +8,16 @@ import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
-public interface RequerimientoActividadRepository extends JpaRepository<RequerimientoActividad, Long> {
+public interface RequerimientoActividadRepository
+        extends JpaRepository<RequerimientoActividad, Long>,
+                JpaSpecificationExecutor<RequerimientoActividad> {
 
     boolean existsByHabilidades_IdHabilidad(Long idHabilidad);
 
@@ -129,6 +132,25 @@ public interface RequerimientoActividadRepository extends JpaRepository<Requerim
     """)
     Optional<RequerimientoActividad> findByIdConActividadYProyecto(
             @Param("idRequerimiento") Long idRequerimiento);
+
+    /**
+     * Recupera requerimientos con actividad, proyecto, profesión,
+     * características y habilidades inicializadas en lote. Se usa en UC-73.
+     */
+    @Query("""
+        SELECT DISTINCT r FROM RequerimientoActividad r
+        JOIN FETCH r.profesion
+        JOIN FETCH r.actividad a
+        JOIN FETCH a.planificacion p
+        JOIN FETCH p.proyecto
+        LEFT JOIN FETCH r.caracteristicas c
+        LEFT JOIN FETCH c.caracteristica
+        LEFT JOIN FETCH r.habilidades
+        WHERE r.idRequerimiento IN :ids
+        ORDER BY r.idRequerimiento ASC
+    """)
+    List<RequerimientoActividad> findConDetalleByIds(
+            @Param("ids") Collection<Long> ids);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

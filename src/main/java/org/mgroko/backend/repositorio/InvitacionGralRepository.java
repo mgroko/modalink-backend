@@ -16,7 +16,7 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
         SELECT i FROM InvitacionGral i
         JOIN FETCH i.perfilDestinatario perfil
         JOIN FETCH perfil.usuario
-        WHERE i.requerimientoGral.proyecto.idProyecto = :idProyecto
+        WHERE i.proyecto.idProyecto = :idProyecto
           AND i.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
     """)
     List<InvitacionGral> findPendientesDeProyectoConDestinatario(@Param("idProyecto") Long idProyecto);
@@ -25,8 +25,7 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
         SELECT i FROM InvitacionGral i
         JOIN FETCH i.perfilDestinatario perfil
         JOIN FETCH perfil.usuario
-        JOIN FETCH i.requerimientoGral r
-        JOIN FETCH r.proyecto proy
+        JOIN FETCH i.proyecto proy
         WHERE proy.idProyecto = :idProyecto
           AND perfil.idPerfil = :idPerfil
           AND i.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
@@ -62,7 +61,7 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
      */
     @Query("""
         SELECT i.idInvitacionGral AS entidadId,
-               i.requerimientoGral.proyecto.idProyecto AS idProyecto
+               i.proyecto.idProyecto AS idProyecto
         FROM InvitacionGral i
         WHERE i.idInvitacionGral IN :ids
     """)
@@ -72,6 +71,9 @@ public interface InvitacionGralRepository extends JpaRepository<InvitacionGral, 
             Long idRequerimientoGral, EstadoSolicitud estado);
 
     boolean existsByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
+
+    boolean existsByProyecto_IdProyectoAndPerfilDestinatario_IdPerfilAndEstado(
+            Long idProyecto, Long idPerfil, EstadoSolicitud estado);
 
     void deleteByRequerimientoGral_IdRequerimientoGral(Long idRequerimientoGral);
 

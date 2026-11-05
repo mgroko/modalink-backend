@@ -27,6 +27,7 @@ public final class NotificacionTitulos {
             Map.entry("POSTULACION_RECHAZADA", "Postulación rechazada"),
             Map.entry("AJUSTE_HORARIO", "Ajuste horario"),
             Map.entry("SOBRECOMPROMISO", "Posible sobrecompromiso"),
+            Map.entry("INVITACION_RECIBIDA", "Invitación recibida"),
             Map.entry("INVITACION_ACEPTADA", "Invitación aceptada"),
             Map.entry("INVITACION_RECHAZADA", "Invitación rechazada"),
             Map.entry("HITO_CUMPLIDO", "Hito cumplido"),

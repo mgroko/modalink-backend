@@ -17,6 +17,21 @@ public interface InvitacionActividadRepository extends JpaRepository<InvitacionA
     boolean existsByRequerimiento_IdRequerimientoAndEstado(
             Long idRequerimiento, EstadoSolicitud estado);
 
+    /**
+     * Indica si el perfil ya tiene una invitación de actividad en el estado
+     * indicado para cualquier requerimiento del proyecto.
+     */
+    @Query("""
+        SELECT COUNT(i) > 0 FROM InvitacionActividad i
+        WHERE i.requerimiento.actividad.planificacion.proyecto.idProyecto = :idProyecto
+          AND i.perfilDestinatario.idPerfil = :idPerfil
+          AND i.estado = :estado
+    """)
+    boolean existsDeProyectoYDestinatarioEnEstado(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil,
+            @Param("estado") EstadoSolicitud estado);
+
     void deleteByRequerimiento_IdRequerimiento(Long idRequerimiento);
 
     @Query("""

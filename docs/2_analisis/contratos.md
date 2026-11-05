@@ -220,6 +220,17 @@
 | **Precondición** | El sistema conoce unPerfil y unProyecto |
 | **Postcondición** | Se creó una instancia unaInvitacion de Invitacion  Se asignó a unaInvitacion.mensaje el valor mensaje Se asignó a unaInvitacion.estado el valor “Pendiente” Se asoció unaInvitacion a unPerfil Se asoció unProyecto a unaInvitacion |
 
+| Nombre | buscarRequerimientosActividad(idProyecto, profesion, caracteristicas[], unaActividad) |
+| :---- | :---- |
+| **Responsabilidades** | Buscar los requerimientos de actividad de un proyecto que coincidan con los filtros indicados. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-73 |
+| **Notas** | El proyecto es el criterio mínimo obligatorio. Los demás filtros son opcionales. |
+| **Excepciones** | Perfil activo inexistente, proyecto inexistente o sin visibilidad. |
+| **Salida** | requerimientosActividad[] |
+| **Precondición** | El sistema conoce el proyecto y el actor tiene un perfil activo. |
+| **Postcondición** | No se modifican datos. |
+
 | Nombre | invitarAProyectoActividad(unProyecto, unRequerimientoAct, unPerfil, mensaje) |
 | :---- | :---- |
 | **Responsabilidades** | Se encarga de emitir una invitación de incorporación a un proyecto asociada a una actividad del mismo. La invitación está dirigida a un perfil registrado en el sistema.  |
@@ -230,6 +241,14 @@
 | **Salida** | unaInvitacion |
 | **Precondición** | El sistema conoce unPerfil y unProyecto. El perfil tiene la profesión requerida en el requerimiento de actividad. La actividad existe en el sistema y tiene un estado válido. |
 | **Postcondición** | Se creó una instancia unaInvitacion de Invitacion  Se asignó a unaInvitacion.mensaje el valor mensaje Se asignó a unaInvitacion.estado el valor “Pendiente” Se asoció unPerfil a unaInvitacion  Se asoció unProyecto a unaInvitacion Se asoció unRequerimientoAct a unaInvitacion |
+
+> **Nota de implementación (UC-31):** la invitación general se asocia
+> directamente al proyecto mediante `invitacion_gral.id_proyecto`, sin exigir
+> un requerimiento general. `id_requerimiento_gral` queda opcional para
+> registros históricos o invitaciones asociadas a un requerimiento. La
+> invitación por actividad conserva la asociación al requerimiento y deriva el
+> proyecto desde la actividad. Ambas nacen en estado `PENDIENTE` y generan una
+> notificación `INVITACION_RECIBIDA` para el perfil destinatario.
 
 | Nombre | aceptarIncorporacion(unaInvitacion, unProyecto) |
 | :---- | :---- |

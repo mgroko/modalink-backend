@@ -160,6 +160,7 @@ class CancelarProyectoServiceTest {
 
         InvitacionGral invitacionGral = InvitacionGral.builder()
                 .idInvitacionGral(400L)
+                .proyecto(proyecto)
                 .perfilDestinatario(perfilEquipo)
                 .estado(EstadoSolicitud.PENDIENTE)
                 .build();

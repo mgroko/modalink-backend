@@ -36,6 +36,15 @@ public class InvitacionGral {
     private Perfil perfilDestinatario;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_requerimiento_gral", nullable = false)
+    @JoinColumn(name = "id_proyecto", nullable = false)
+    private Proyecto proyecto;
+
+    /**
+     * Queda opcional: una invitación general al proyecto no selecciona un
+     * requerimiento específico. Se conserva para invitaciones asociadas a un
+     * requerimiento general o para registros históricos.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "id_requerimiento_gral")
     private RequerimientoGralProyecto requerimientoGral;
 }

@@ -906,6 +906,17 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleInvitacionNoPermitida(
+            org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException ex) {
+        Map<String, Object> response = buildErrorResponse(
+                ex.getMessage(), HttpStatus.CONFLICT).getBody();
+        if (response != null && ex.getCodigo() != null) {
+            response.put("codigo", ex.getCodigo());
+        }
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(PostulacionNoPermitidaException.class)
     public ResponseEntity<Map<String, Object>> handlePostulacionNoPermitida(
             PostulacionNoPermitidaException ex) {
