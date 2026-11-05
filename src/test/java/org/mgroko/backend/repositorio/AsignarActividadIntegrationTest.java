@@ -43,6 +43,7 @@ import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.ubicacion.dto.UbicacionRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -210,6 +211,145 @@ class AsignarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 new AsignarActividadRequest(miembro.idPerfil())))
                 .isInstanceOf(AsignacionActividadNoPermitidaException.class)
                 .hasMessageContaining("ya está asignado");
+    }
+
+    @Test
+    void asignar_mismoUsuarioConOtroPerfil_lanzaConflicto() {
+        PerfilCreado director = crearPerfil(
+                "uc70.dir5@example.com", "88870019", "Directora UC70 Perfiles", "modelo");
+        PerfilCreado primerPerfil = crearPerfil(
+                "uc70.mie5@example.com", "88870020", "Miembro UC70 Perfil Uno", "modelo");
+        PerfilCreado segundoPerfil = crearPerfilParaUsuario(
+                primerPerfil.idUsuario(), "Miembro UC70 Perfil Dos", "fotografo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC70 Perfiles");
+        Long idActividad = idActividadDe(publicado.idProyecto());
+        agregarMiembro(publicado, primerPerfil);
+        agregarMiembro(publicado, segundoPerfil);
+
+        asignarActividadService.asignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                new AsignarActividadRequest(primerPerfil.idPerfil()));
+
+        assertThatThrownBy(() -> asignarActividadService.asignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                new AsignarActividadRequest(segundoPerfil.idPerfil())))
+                .isInstanceOf(AsignacionActividadNoPermitidaException.class)
+                .hasMessageContaining("otro perfil");
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad WHERE id_actividad = ?
+                """, Long.class, idActividad);
+        assertThat(asignaciones).isEqualTo(1);
+    }
+
+    @Test
+    void triggerRechazaMismoUsuarioConOtroPerfilEnMismaActividad() {
+        PerfilCreado director = crearPerfil(
+                "uc70.dir6@example.com", "88870021", "Directora UC70 Trigger", "modelo");
+        PerfilCreado primerPerfil = crearPerfil(
+                "uc70.mie6@example.com", "88870022", "Miembro UC70 Trigger Uno", "modelo");
+        PerfilCreado segundoPerfil = crearPerfilParaUsuario(
+                primerPerfil.idUsuario(), "Miembro UC70 Trigger Dos", "fotografo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC70 Trigger");
+        Long idActividad = idActividadDe(publicado.idProyecto());
+        MiembroProyecto primerMiembro = agregarMiembro(publicado, primerPerfil);
+        MiembroProyecto segundoMiembro = agregarMiembro(publicado, segundoPerfil);
+
+        jdbcTemplate.update("""
+                INSERT INTO asignacion_actividad
+                    (id_miembro, id_actividad, id_requerimiento_act)
+                VALUES (?, ?, NULL)
+                """, primerMiembro.getIdMiembro(), idActividad);
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad WHERE id_actividad = ?
+                """, Long.class, idActividad);
+        assertThat(asignaciones).isEqualTo(1);
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO asignacion_actividad
+                    (id_miembro, id_actividad, id_requerimiento_act)
+                VALUES (?, ?, NULL)
+                """, segundoMiembro.getIdMiembro(), idActividad))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void triggerPermiteDosUsuariosDistintosEnMismaActividad() {
+        PerfilCreado director = crearPerfil(
+                "uc70.dir7@example.com", "88870023", "Directora UC70 Dos Usuarios", "modelo");
+        PerfilCreado primerPerfil = crearPerfil(
+                "uc70.mie7@example.com", "88870024", "Miembro UC70 Dos A", "modelo");
+        PerfilCreado segundoPerfil = crearPerfil(
+                "uc70.mie8@example.com", "88870025", "Miembro UC70 Dos B", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC70 Dos Usuarios");
+        Long idActividad = idActividadDe(publicado.idProyecto());
+        MiembroProyecto primerMiembro = agregarMiembro(publicado, primerPerfil);
+        MiembroProyecto segundoMiembro = agregarMiembro(publicado, segundoPerfil);
+
+        jdbcTemplate.update("""
+                INSERT INTO asignacion_actividad
+                    (id_miembro, id_actividad, id_requerimiento_act)
+                VALUES (?, ?, NULL)
+                """, primerMiembro.getIdMiembro(), idActividad);
+        jdbcTemplate.update("""
+                INSERT INTO asignacion_actividad
+                    (id_miembro, id_actividad, id_requerimiento_act)
+                VALUES (?, ?, NULL)
+                """, segundoMiembro.getIdMiembro(), idActividad);
+
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad WHERE id_actividad = ?
+                """, Long.class, idActividad);
+        assertThat(asignaciones).isEqualTo(2);
+    }
+
+    @Test
+    void asignar_mismoUsuarioConPerfilAnteriorInactivo_permiteReincorporacion() {
+        PerfilCreado director = crearPerfil(
+                "uc70.dir8@example.com", "88870026", "Directora UC70 Reincorporacion", "modelo");
+        PerfilCreado primerPerfil = crearPerfil(
+                "uc70.mie9@example.com", "88870027", "Miembro UC70 Reincorporacion Uno", "modelo");
+        PerfilCreado segundoPerfil = crearPerfilParaUsuario(
+                primerPerfil.idUsuario(), "Miembro UC70 Reincorporacion Dos", "fotografo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC70 Reincorporacion");
+        Long idActividad = idActividadDe(publicado.idProyecto());
+        MiembroProyecto primerMiembro = agregarMiembro(publicado, primerPerfil);
+        agregarMiembro(publicado, segundoPerfil);
+
+        asignarActividadService.asignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                new AsignarActividadRequest(primerPerfil.idPerfil()));
+
+        primerMiembro.setEstadoParticipacion(EstadoParticipacion.BAJA_VOLUNTARIA);
+        miembroProyectoRepository.saveAndFlush(primerMiembro);
+
+        AsignacionActividadResponse segunda = asignarActividadService.asignar(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), idActividad,
+                new AsignarActividadRequest(segundoPerfil.idPerfil()));
+
+        assertThat(segunda.idAsignacionActividad()).isNotNull();
+
+        Long asignacionesActivas = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM asignacion_actividad aa
+                JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
+                WHERE aa.id_actividad = ?
+                  AND mp.estado_participacion = 'ACTIVO'
+                """, Long.class, idActividad);
+        assertThat(asignacionesActivas).isEqualTo(1);
     }
 
     @Test
@@ -399,13 +539,22 @@ class AsignarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 .estado(org.mgroko.backend.modelo.enums.EstadoUsuario.Activo)
                 .rolGlobal(rol).genero(genero).build());
 
+        return crearPerfilParaUsuario(
+                usuario.getIdUsuario(), nombreArtistico, codigoProfesion);
+    }
+
+    private PerfilCreado crearPerfilParaUsuario(
+            Long idUsuario,
+            String nombreArtistico,
+            String codigoProfesion) {
+
         Long idProfesion = profesionRepository.findByCodigoIgnoreCase(codigoProfesion)
                 .map(Profesion::getIdProfesion)
                 .orElseGet(() -> profesionRepository
                         .buscar("%" + codigoProfesion + "%", codigoProfesion)
                         .get(0).getIdProfesion());
 
-        PerfilResponse perfil = crearPerfilService.crear(usuario.getIdUsuario(),
+        PerfilResponse perfil = crearPerfilService.crear(idUsuario,
                 new CrearPerfilRequest(nombreArtistico, idProfesion,
                         "Perfil de prueba UC-70.", List.of()));
 
@@ -414,7 +563,7 @@ class AsignarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                         + "VALUES (?, 1, 'TyC UC-70', NOW())",
                 perfil.idPerfil());
 
-        return new PerfilCreado(usuario.getIdUsuario(), perfil.idPerfil());
+        return new PerfilCreado(idUsuario, perfil.idPerfil());
     }
 
     private ProyectoResponse publicarProyectoConActividad(

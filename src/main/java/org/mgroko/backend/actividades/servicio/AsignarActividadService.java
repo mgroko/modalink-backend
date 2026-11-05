@@ -163,6 +163,14 @@ public class AsignarActividadService {
                     "El miembro ya está asignado a esta actividad.");
         }
 
+        if (asignacionActividadRepository
+                .existsAsignacionActivaDeUsuarioEnActividad(
+                        actividad.getIdActividad(),
+                        perfilDestino.getUsuario().getIdUsuario())) {
+            throw new AsignacionActividadNoPermitidaException(
+                    "El usuario ya está asignado a esta actividad con otro perfil.");
+        }
+
         boolean reprogramar = proyecto.getEstado() != null
                 && proyecto.getEstado().permiteReprogramacion()
                 && actividad.getEstado() == EstadoActividad.PENDIENTE;

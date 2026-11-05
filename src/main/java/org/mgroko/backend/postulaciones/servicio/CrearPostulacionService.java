@@ -31,6 +31,7 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
@@ -61,6 +62,7 @@ public class CrearPostulacionService {
     private final PostulacionActividadRepository postulacionActividadRepository;
     private final PostulacionGralRepository postulacionGralRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
+    private final AsignacionActividadRepository asignacionActividadRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final NotificacionService notificacionService;
     private final EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
@@ -73,6 +75,7 @@ public class CrearPostulacionService {
             PostulacionActividadRepository postulacionActividadRepository,
             PostulacionGralRepository postulacionGralRepository,
             MiembroProyectoRepository miembroProyectoRepository,
+            AsignacionActividadRepository asignacionActividadRepository,
             CupoRequerimientoService cupoRequerimientoService,
             NotificacionService notificacionService,
             EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService,
@@ -83,6 +86,7 @@ public class CrearPostulacionService {
         this.postulacionActividadRepository = postulacionActividadRepository;
         this.postulacionGralRepository = postulacionGralRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
+        this.asignacionActividadRepository = asignacionActividadRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.notificacionService = notificacionService;
         this.evaluarDisponibilidadActividadService = evaluarDisponibilidadActividadService;
@@ -190,6 +194,7 @@ public class CrearPostulacionService {
                 TipoPostulacion.ACTIVIDAD);
         validarCupoActividad(requerimiento);
         validarNoDuplicadoActividad(perfil, requerimiento);
+        validarUsuarioNoAsignado(perfil, actividad);
 
         ResultadoDisponibilidad disponibilidad =
                 evaluarDisponibilidadActividadService.evaluar(
@@ -318,6 +323,16 @@ public class CrearPostulacionService {
                         perfil.getIdPerfil(), requerimiento.getIdRequerimiento())) {
             throw new PostulacionNoPermitidaException(
                     "Ya existe una postulación de este perfil a este requerimiento.");
+        }
+    }
+
+    private void validarUsuarioNoAsignado(Perfil perfil, Actividad actividad) {
+        if (asignacionActividadRepository
+                .existsAsignacionActivaDeUsuarioEnActividad(
+                        actividad.getIdActividad(),
+                        perfil.getUsuario().getIdUsuario())) {
+            throw new PostulacionNoPermitidaException(
+                    "Ya estás asignado a esta actividad con otro perfil.");
         }
     }
 

@@ -74,6 +74,22 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void asignacionDuplicadaUsuarioDetectadaPorTrigger_responde409() {
+        DataIntegrityViolationException ex = new DataIntegrityViolationException(
+                "Error de integridad",
+                new RuntimeException(
+                        "ASIGNACION_DUPLICADA_USUARIO: el usuario 2 ya está asignado a la actividad 18."));
+
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleDataIntegrityViolation(ex);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("otro perfil"));
+    }
+
+    @Test
     void requerimientoConVinculos_responde409() {
         ResponseEntity<Map<String, Object>> respuesta =
                 manejador.handleRequerimientoConVinculos(

@@ -149,6 +149,27 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
             Long idMiembro, Long idActividad);
 
     /**
+     * Indica si el usuario tiene alguna asignación activa a la actividad,
+     * independientemente del perfil o membresía con la que se haya asignado.
+     *
+     * <p>Se usa para impedir que un mismo usuario participe dos veces en la
+     * misma actividad con perfiles distintos. Las membresías históricas no
+     * cuentan, de modo que un usuario pueda reincorporarse con otro perfil.</p>
+     */
+    @Query("""
+        SELECT CASE WHEN COUNT(aa) > 0 THEN TRUE ELSE FALSE END
+        FROM AsignacionActividad aa
+        JOIN aa.miembro m
+        JOIN m.perfil p
+        WHERE aa.actividad.idActividad = :idActividad
+          AND p.usuario.idUsuario = :idUsuario
+          AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    boolean existsAsignacionActivaDeUsuarioEnActividad(
+            @Param("idActividad") Long idActividad,
+            @Param("idUsuario") Long idUsuario);
+
+    /**
      * Recupera una asignación bloqueada para desasignarla. Incluye miembro,
      * perfil, usuario, actividad, planificación, proyecto y requerimiento para
      * validar pertenencia y notificar sin consultas perezosas adicionales.

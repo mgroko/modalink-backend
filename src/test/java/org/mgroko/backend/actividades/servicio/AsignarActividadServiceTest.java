@@ -289,6 +289,26 @@ class AsignarActividadServiceTest {
     }
 
     @Test
+    void rechazaMismoUsuarioConOtroPerfil() {
+        prepararEscenarioBase();
+        when(asignacionActividadRepository
+                .existsAsignacionActivaDeUsuarioEnActividad(
+                        ID_ACTIVIDAD, ID_USUARIO_DESTINO))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.asignar(
+                ID_USUARIO, ID_PERFIL_ACTOR, ID_PROYECTO, ID_ACTIVIDAD,
+                new AsignarActividadRequest(ID_PERFIL_DESTINO)))
+                .isInstanceOf(AsignacionActividadNoPermitidaException.class)
+                .hasMessageContaining("otro perfil");
+
+        verify(asignacionActividadRepository, never())
+                .saveAndFlush(any(AsignacionActividad.class));
+        verify(reprogramarProyectoService, never())
+                .reprogramarActividad(any(), any(), any(), any());
+    }
+
+    @Test
     void rechazaPerfilQueNoEsMiembroActivo() {
         prepararEscenarioBase();
         when(miembroProyectoRepository.findMiembroActivoConRol(ID_PROYECTO, ID_PERFIL_DESTINO))

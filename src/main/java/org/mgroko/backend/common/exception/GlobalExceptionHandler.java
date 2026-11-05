@@ -427,6 +427,11 @@ public class GlobalExceptionHandler {
                     "El proyecto debe conservar al menos un director activo.",
                     HttpStatus.CONFLICT);
         }
+        if (esViolacionPorAsignacionDuplicadaUsuario(ex)) {
+            return buildErrorResponse(
+                    "El usuario ya está asignado a esta actividad con otro perfil.",
+                    HttpStatus.CONFLICT);
+        }
         return buildErrorResponse(
                 "Los datos enviados violan una restriccion de integridad de la base de datos.",
                 HttpStatus.BAD_REQUEST);
@@ -455,6 +460,19 @@ public class GlobalExceptionHandler {
                         || normalizado.contains("unico director")) {
                     return true;
                 }
+            }
+            actual = actual.getCause();
+        }
+        return false;
+    }
+
+    private boolean esViolacionPorAsignacionDuplicadaUsuario(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null
+                    && mensaje.contains("ASIGNACION_DUPLICADA_USUARIO")) {
+                return true;
             }
             actual = actual.getCause();
         }

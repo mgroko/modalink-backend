@@ -439,6 +439,41 @@ BEGIN
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
 
+-- Un usuario puede tener varios perfiles activos en el mismo proyecto, pero
+-- no puede participar dos veces en la misma actividad con perfiles distintos.
+CREATE OR REPLACE FUNCTION fn_validar_asignacion_unica_usuario() RETURNS trigger AS $$
+DECLARE
+    v_id_usuario BIGINT;
+BEGIN
+    SELECT pf.id_usuario
+      INTO v_id_usuario
+      FROM miembros_proyecto mp
+      JOIN perfil pf ON pf.id_perfil = mp.id_perfil
+     WHERE mp.id_miembro = NEW.id_miembro;
+
+    IF v_id_usuario IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+          FROM asignacion_actividad aa
+          JOIN miembros_proyecto mp2 ON mp2.id_miembro = aa.id_miembro
+          JOIN perfil pf2 ON pf2.id_perfil = mp2.id_perfil
+         WHERE aa.id_actividad = NEW.id_actividad
+           AND aa.id_asignacion_act IS DISTINCT FROM NEW.id_asignacion_act
+           AND pf2.id_usuario = v_id_usuario
+           AND mp2.estado_participacion = 'ACTIVO'
+    ) THEN
+        RAISE EXCEPTION
+            'ASIGNACION_DUPLICADA_USUARIO: el usuario % ya está asignado a la actividad %.',
+            v_id_usuario, NEW.id_actividad
+            USING ERRCODE = '23505';
+    END IF;
+
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
 -- Bloqueo manual: no puede insertarse, modificarse ni eliminarse si deja un
 -- bloqueo cubriendo una actividad agendada.
 CREATE OR REPLACE FUNCTION fn_validar_bloqueo_no_actividad() RETURNS trigger AS $$
@@ -2539,6 +2574,14 @@ DROP TRIGGER IF EXISTS trg_asignacion_sin_solape ON asignacion_actividad;
 CREATE TRIGGER trg_asignacion_sin_solape
     BEFORE INSERT ON asignacion_actividad
     FOR EACH ROW EXECUTE FUNCTION fn_validar_solape_asignacion();
+
+-- Valida que el mismo usuario no participe dos veces en la misma actividad
+-- aunque use perfiles distintos.
+DROP TRIGGER IF EXISTS trg_asignacion_unica_usuario ON asignacion_actividad;
+CREATE TRIGGER trg_asignacion_unica_usuario
+    BEFORE INSERT OR UPDATE OF id_miembro, id_actividad
+    ON asignacion_actividad
+    FOR EACH ROW EXECUTE FUNCTION fn_validar_asignacion_unica_usuario();
 -- 
 -- INDEX: "UQ_perfil_caracteristica" 
 --
@@ -2723,6 +2766,13 @@ CREATE INDEX "IDX_miembro_req_gral_activo"
 
 CREATE INDEX "IDX_asignacion_req_act"
     ON asignacion_actividad(id_requerimiento_act);
+
+--
+-- INDEX: "IDX_asignacion_actividad"
+--
+
+CREATE INDEX "IDX_asignacion_actividad"
+    ON asignacion_actividad(id_actividad);
 
 
 -- 

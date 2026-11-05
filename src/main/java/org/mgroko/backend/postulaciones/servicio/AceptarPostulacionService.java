@@ -274,6 +274,14 @@ public class AceptarPostulacionService {
                     "El postulante ya está asignado a esta actividad.");
         }
 
+        if (asignacionActividadRepository
+                .existsAsignacionActivaDeUsuarioEnActividad(
+                        requerimiento.getActividad().getIdActividad(),
+                        postulante.getUsuario().getIdUsuario())) {
+            throw new PostulacionNoPermitidaException(
+                    "El usuario ya está asignado a esta actividad con otro perfil.");
+        }
+
         Set<Long> idsUsuarios = new LinkedHashSet<>();
         idsUsuarios.add(postulante.getUsuario().getIdUsuario());
         asignacionActividadRepository

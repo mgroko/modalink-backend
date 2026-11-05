@@ -51,6 +51,7 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
@@ -89,6 +90,8 @@ class CrearPostulacionServiceTest {
     @Mock
     private MiembroProyectoRepository miembroProyectoRepository;
     @Mock
+    private AsignacionActividadRepository asignacionActividadRepository;
+    @Mock
     private CupoRequerimientoService cupoRequerimientoService;
     @Mock
     private NotificacionService notificacionService;
@@ -106,6 +109,7 @@ class CrearPostulacionServiceTest {
                 postulacionActividadRepository,
                 postulacionGralRepository,
                 miembroProyectoRepository,
+                asignacionActividadRepository,
                 cupoRequerimientoService,
                 notificacionService,
                 evaluarDisponibilidadActividadService,
@@ -478,6 +482,29 @@ class CrearPostulacionServiceTest {
                 .hasMessageContaining("Ya existe una postulación");
 
         verify(evaluarDisponibilidadActividadService, never()).evaluar(any(), any(), anyList());
+    }
+
+    @Test
+    void actividad_usuarioYaAsignadoConOtroPerfil_lanzaExcepcion() {
+        RequerimientoActividad requerimiento = requerimientoActividad(EstadoActividad.PENDIENTE);
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
+                .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        when(asignacionActividadRepository.existsAsignacionActivaDeUsuarioEnActividad(
+                requerimiento.getActividad().getIdActividad(), ID_USUARIO))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> servicio.darDeAltaPostulacionActividad(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_ACT))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("otro perfil");
+
+        verify(evaluarDisponibilidadActividadService, never()).evaluar(any(), any(), anyList());
+        verify(postulacionActividadRepository, never()).saveAndFlush(any());
     }
 
     @Test

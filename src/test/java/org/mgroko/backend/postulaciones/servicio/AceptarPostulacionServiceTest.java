@@ -446,6 +446,60 @@ class AceptarPostulacionServiceTest {
         verify(eventPublisher).publishEvent(any(DisponibilidadModificadaEvent.class));
     }
 
+    @Test
+    void aceptarActividad_usuarioYaAsignadoConOtroPerfil_lanzaExcepcion() {
+        Planificacion planificacion = Planificacion.builder()
+                .idPlanificacion(50L)
+                .proyecto(proyecto)
+                .fechaEntrega(LocalDate.of(2026, 11, 30))
+                .build();
+        Actividad actividad = Actividad.builder()
+                .idActividad(55L)
+                .nombre("J")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.PENDIENTE)
+                .planificacion(planificacion)
+                .build();
+        RequerimientoActividad requerimientoActividad = RequerimientoActividad.builder()
+                .idRequerimiento(20L)
+                .cantidad(1)
+                .profesion(postulante.getProfesion())
+                .actividad(actividad)
+                .build();
+        PostulacionActividad postulacionActividad = PostulacionActividad.builder()
+                .idPostulacion(77L)
+                .perfil(postulante)
+                .requerimiento(requerimientoActividad)
+                .estado(EstadoSolicitud.PENDIENTE)
+                .build();
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
+                .thenReturn(Optional.of(director));
+        when(proyectoRepository.findByIdParaGestion(5L))
+                .thenReturn(Optional.of(proyecto));
+        when(postulacionActividadRepository.findByIdParaGestion(77L))
+                .thenReturn(Optional.of(postulacionActividad));
+        when(requerimientoActividadRepository.findByIdParaGestion(20L))
+                .thenReturn(Optional.of(requerimientoActividad));
+        when(cupoRequerimientoService.calcularActividad(requerimientoActividad))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        when(miembroProyectoRepository.findMiembroActivoConRol(5L, 12L))
+                .thenReturn(Optional.empty());
+        when(asignacionActividadRepository.existsAsignacionActivaDeUsuarioEnActividad(
+                55L, 2L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.aceptarActividad(1L, 10L, 5L, 77L))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("otro perfil");
+
+        verify(evaluarDisponibilidadActividadService, never())
+                .evaluar(any(), any(), anyList());
+        verify(reprogramarProyectoService, never())
+                .reprogramarActividad(any(), any(), any(), any());
+        verify(asignacionActividadRepository, never())
+                .saveAndFlush(any(AsignacionActividad.class));
+    }
+
     private void prepararCaminoFeliz() {
         lenient().when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
                 .thenReturn(Optional.of(director));
