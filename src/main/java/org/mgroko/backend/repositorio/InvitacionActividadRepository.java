@@ -32,6 +32,43 @@ public interface InvitacionActividadRepository extends JpaRepository<InvitacionA
         SELECT i FROM InvitacionActividad i
         JOIN FETCH i.perfilDestinatario perfil
         JOIN FETCH perfil.usuario
+        JOIN FETCH i.requerimiento r
+        JOIN FETCH r.actividad a
+        JOIN FETCH a.planificacion pl
+        JOIN FETCH pl.proyecto proy
+        WHERE proy.idProyecto = :idProyecto
+          AND perfil.idPerfil = :idPerfil
+          AND i.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<InvitacionActividad> findPendientesDeProyectoYDestinatario(
+            @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    @Query("""
+        SELECT i FROM InvitacionActividad i
+        JOIN FETCH i.perfilDestinatario perfil
+        JOIN FETCH i.requerimiento r
+        WHERE perfil.idPerfil = :idPerfil
+          AND r.idRequerimiento IN :idsRequerimiento
+          AND i.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<InvitacionActividad> findHistoricasPorDestinatarioYRequerimientos(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idsRequerimiento") Collection<Long> idsRequerimiento);
+
+    @Query("""
+        SELECT i FROM InvitacionActividad i
+        JOIN FETCH i.perfilDestinatario perfil
+        WHERE i.requerimiento.idRequerimiento = :idRequerimiento
+          AND i.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+    """)
+    List<InvitacionActividad> findHistoricasPorRequerimiento(
+            @Param("idRequerimiento") Long idRequerimiento);
+
+    @Query("""
+        SELECT i FROM InvitacionActividad i
+        JOIN FETCH i.perfilDestinatario perfil
+        JOIN FETCH perfil.usuario
         WHERE i.requerimiento.actividad.idActividad = :idActividad
     """)
     List<InvitacionActividad> findByActividadIdConDestinatario(

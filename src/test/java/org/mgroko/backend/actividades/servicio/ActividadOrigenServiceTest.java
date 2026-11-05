@@ -16,7 +16,6 @@ import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
-import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.OrigenInicio;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -40,9 +39,7 @@ class ActividadOrigenServiceTest {
     void calcular_pendienteConInicioYAsignacionActiva_devuelveConfirmada() {
         Actividad actividad = actividad(55L, EstadoProyecto.CONFIRMADO);
 
-        when(asignacionActividadRepository
-                .existsByActividad_IdActividadAndMiembro_EstadoParticipacion(
-                        55L, EstadoParticipacion.ACTIVO))
+        when(asignacionActividadRepository.existsAsignacionActiva(55L))
                 .thenReturn(true);
 
         assertThat(service.calcular(actividad))
@@ -53,9 +50,7 @@ class ActividadOrigenServiceTest {
     void calcular_pendienteSinAsignacionActiva_devuelveProyectada() {
         Actividad actividad = actividad(55L, EstadoProyecto.CONFIRMADO);
 
-        when(asignacionActividadRepository
-                .existsByActividad_IdActividadAndMiembro_EstadoParticipacion(
-                        55L, EstadoParticipacion.ACTIVO))
+        when(asignacionActividadRepository.existsAsignacionActiva(55L))
                 .thenReturn(false);
 
         assertThat(service.calcular(actividad))
@@ -66,9 +61,7 @@ class ActividadOrigenServiceTest {
     void calcular_proyectoPublicado_devuelveProyectada() {
         Actividad actividad = actividad(55L, EstadoProyecto.PUBLICADO);
 
-        when(asignacionActividadRepository
-                .existsByActividad_IdActividadAndMiembro_EstadoParticipacion(
-                        55L, EstadoParticipacion.ACTIVO))
+        when(asignacionActividadRepository.existsAsignacionActiva(55L))
                 .thenReturn(true);
 
         assertThat(service.calcular(actividad))

@@ -115,6 +115,8 @@ public class RequerimientoActividadService {
             RequerimientoActividad requerimiento,
             CrearRequerimientoActividadRequest request) {
 
+        validarNoEsSnapshot(requerimiento);
+
         Profesion profesion = profesionRepository.findById(request.idProfesion())
                 .orElseThrow(() -> new ProfesionNoEncontradaException(
                         "Profesion no encontrada: " + request.idProfesion()));
@@ -157,11 +159,27 @@ public class RequerimientoActividadService {
     }
 
     public void eliminar(RequerimientoActividad requerimiento) {
+        validarNoEsSnapshot(requerimiento);
+        eliminarFisico(requerimiento);
+    }
+
+    /**
+     * Eliminación física usada por la limpieza de una actividad completa.
+     * También borra snapshots históricos de esa actividad.
+     */
+    public void eliminarFisico(RequerimientoActividad requerimiento) {
         for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
             requerimientoActCaractValorRepository
                     .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
         }
         requerimientoActividadRepository.delete(requerimiento);
+    }
+
+    private void validarNoEsSnapshot(RequerimientoActividad requerimiento) {
+        if (requerimiento != null && requerimiento.getFechaArchivado() != null) {
+            throw new RequerimientoInvalidoException(
+                    "Un requerimiento archivado es inmutable y no puede modificarse ni eliminarse.");
+        }
     }
 
     /**

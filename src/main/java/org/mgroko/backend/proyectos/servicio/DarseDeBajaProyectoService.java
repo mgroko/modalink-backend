@@ -58,6 +58,7 @@ public class DarseDeBajaProyectoService {
     private final PlanificacionRepository planificacionRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final NotificacionService notificacionService;
+    private final RequerimientoSnapshotService requerimientoSnapshotService;
     private final Clock reloj;
 
     public DarseDeBajaProyectoService(
@@ -65,11 +66,13 @@ public class DarseDeBajaProyectoService {
             PlanificacionRepository planificacionRepository,
             MiembroProyectoRepository miembroProyectoRepository,
             NotificacionService notificacionService,
+            RequerimientoSnapshotService requerimientoSnapshotService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.planificacionRepository = planificacionRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.notificacionService = notificacionService;
+        this.requerimientoSnapshotService = requerimientoSnapshotService;
         this.reloj = reloj;
     }
 
@@ -107,9 +110,17 @@ public class DarseDeBajaProyectoService {
         String motivo = normalizarMotivo(request);
         validarUltimoDirector(proyecto, miembro);
 
+        LocalDateTime fechaBaja = LocalDateTime.now(reloj);
         miembro.setEstadoParticipacion(EstadoParticipacion.BAJA_VOLUNTARIA);
         miembro.setMotivoBaja(motivo);
-        miembro.setFechaBaja(LocalDateTime.now(reloj));
+        miembro.setFechaBaja(fechaBaja);
+        miembro.setPerfilAutorBaja(perfil);
+
+        // El miembro ya no está activo: el snapshot puede repuntar su
+        // historial sin afectar asignaciones de miembros activos.
+        requerimientoSnapshotService.prepararHistorialBaja(
+                miembro, idProyecto, fechaBaja);
+
         miembroProyectoRepository.saveAndFlush(miembro);
 
         notificarDirectores(proyecto, miembro.getPerfil(), motivo);

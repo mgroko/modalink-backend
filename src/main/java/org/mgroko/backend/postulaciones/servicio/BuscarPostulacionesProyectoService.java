@@ -14,6 +14,8 @@ import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.PostulacionGral;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -36,6 +38,8 @@ import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
+import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -59,6 +63,8 @@ public class BuscarPostulacionesProyectoService {
     private final PostulacionActividadRepository postulacionActividadRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final AsignacionActividadRepository asignacionActividadRepository;
+    private final RequerimientoActividadRepository requerimientoActividadRepository;
+    private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
 
@@ -68,6 +74,8 @@ public class BuscarPostulacionesProyectoService {
             PostulacionActividadRepository postulacionActividadRepository,
             MiembroProyectoRepository miembroProyectoRepository,
             AsignacionActividadRepository asignacionActividadRepository,
+            RequerimientoActividadRepository requerimientoActividadRepository,
+            RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService) {
         this.proyectoRepository = proyectoRepository;
@@ -75,6 +83,8 @@ public class BuscarPostulacionesProyectoService {
         this.postulacionActividadRepository = postulacionActividadRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.asignacionActividadRepository = asignacionActividadRepository;
+        this.requerimientoActividadRepository = requerimientoActividadRepository;
+        this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
     }
@@ -152,10 +162,11 @@ public class BuscarPostulacionesProyectoService {
             boolean esMiembro = miembrosActivos.containsKey(idPerfil);
             boolean perfilActivo = postulacion.getPerfil().getEstado() == EstadoPerfil.ACTIVO;
 
+            RequerimientoGralProyecto requerimientoCupo =
+                    resolverGeneralActivo(postulacion.getRequerimientoGral());
             CupoRequerimiento cupo = cupos.computeIfAbsent(
-                    postulacion.getRequerimientoGral().getIdRequerimientoGral(),
-                    id -> cupoRequerimientoService.calcularGeneral(
-                            postulacion.getRequerimientoGral()));
+                    requerimientoCupo.getIdRequerimientoGral(),
+                    id -> cupoRequerimientoService.calcularGeneral(requerimientoCupo));
 
             boolean pendiente = postulacion.getEstado() == EstadoSolicitud.PENDIENTE;
             boolean puedeAceptar = pendiente
@@ -194,10 +205,11 @@ public class BuscarPostulacionesProyectoService {
             boolean actividadPendiente = postulacion.getRequerimiento()
                     .getActividad().getEstado() == EstadoActividad.PENDIENTE;
 
+            RequerimientoActividad requerimientoCupo =
+                    resolverActividadActiva(postulacion.getRequerimiento());
             CupoRequerimiento cupo = cupos.computeIfAbsent(
-                    postulacion.getRequerimiento().getIdRequerimiento(),
-                    id -> cupoRequerimientoService.calcularActividad(
-                            postulacion.getRequerimiento()));
+                    requerimientoCupo.getIdRequerimiento(),
+                    id -> cupoRequerimientoService.calcularActividad(requerimientoCupo));
 
             String claveAsignacion = postulacion.getRequerimiento().getIdRequerimiento()
                     + ":" + (miembro != null ? miembro.getIdMiembro() : null);
@@ -220,6 +232,34 @@ public class BuscarPostulacionesProyectoService {
             resultados.add(PostulacionMapper.toBusquedaActividad(
                     postulacion, cupo, aportaCupo, puedeAceptar, puedeRechazar));
         }
+    }
+
+    private RequerimientoGralProyecto resolverGeneralActivo(
+            RequerimientoGralProyecto requerimiento) {
+
+        if (requerimiento == null
+                || requerimiento.getIdRequerimientoOrigen() == null) {
+            return requerimiento;
+        }
+
+        return requerimientoGralProyectoRepository
+                .findById(requerimiento.getIdRequerimientoOrigen())
+                .filter(activo -> activo.getFechaArchivado() == null)
+                .orElse(requerimiento);
+    }
+
+    private RequerimientoActividad resolverActividadActiva(
+            RequerimientoActividad requerimiento) {
+
+        if (requerimiento == null
+                || requerimiento.getIdRequerimientoOrigen() == null) {
+            return requerimiento;
+        }
+
+        return requerimientoActividadRepository
+                .findById(requerimiento.getIdRequerimientoOrigen())
+                .filter(activo -> activo.getFechaArchivado() == null)
+                .orElse(requerimiento);
     }
 
     private boolean incluyeTipo(BuscarPostulacionesFiltro filtro, TipoPostulacion tipo) {

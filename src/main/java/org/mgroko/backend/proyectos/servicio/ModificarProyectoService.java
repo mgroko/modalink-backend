@@ -1,6 +1,7 @@
 package org.mgroko.backend.proyectos.servicio;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -104,6 +105,8 @@ public class ModificarProyectoService {
     private final ReprogramarProyectoService reprogramarProyectoService;
     private final NotificacionService notificacionService;
     private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
+    private final RequerimientoSnapshotService requerimientoSnapshotService;
+    private final Clock reloj;
 
     public ModificarProyectoService(
             PerfilRepository perfilRepository,
@@ -124,7 +127,9 @@ public class ModificarProyectoService {
             ProyectoSecurityService proyectoSecurityService,
             ReprogramarProyectoService reprogramarProyectoService,
             NotificacionService notificacionService,
-            BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy) {
+            BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy,
+            RequerimientoSnapshotService requerimientoSnapshotService,
+            Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -144,6 +149,8 @@ public class ModificarProyectoService {
         this.reprogramarProyectoService = reprogramarProyectoService;
         this.notificacionService = notificacionService;
         this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
+        this.requerimientoSnapshotService = requerimientoSnapshotService;
+        this.reloj = reloj;
     }
 
     @Transactional
@@ -415,22 +422,22 @@ public class ModificarProyectoService {
                 continue;
             }
 
-            if (requerimientoGralProteccionService.estaProtegido(
-                    existente, proyecto.getEstado())) {
+            if (requerimientoGralProteccionService.estaProtegido(existente)) {
                 throw new RequerimientoGralProtegidoException(idRequerimiento);
             }
         }
 
+        LocalDateTime fechaHistorial = LocalDateTime.now(reloj);
         for (RequerimientoGralProyecto existente : existentes) {
             if (idsSolicitados.contains(existente.getIdRequerimientoGral())) {
                 continue;
             }
-            if (requerimientoGralProteccionService.estaProtegido(
-                    existente, proyecto.getEstado())) {
+            if (requerimientoGralProteccionService.estaProtegido(existente)) {
                 // Política acordada: el requerimiento protegido omitido se conserva.
                 continue;
             }
-            limpiarVinculosNoAceptados(existente.getIdRequerimientoGral());
+            requerimientoSnapshotService.asegurarHistorialGeneral(
+                    existente, fechaHistorial);
             requerimientoGralService.eliminar(existente);
         }
 
@@ -450,21 +457,18 @@ public class ModificarProyectoService {
                 continue;
             }
 
+            RequerimientoGralProyecto existente =
+                    porId.get(requerimientoRequest.idRequerimientoGral());
+            requerimientoSnapshotService.asegurarHistorialGeneral(
+                    existente, fechaHistorial);
             requerimientoGralService.actualizar(
-                    porId.get(requerimientoRequest.idRequerimientoGral()),
+                    existente,
                     requerimientoRequest.idProfesion(),
                     requerimientoRequest.cantidad(),
                     requerimientoRequest.descripcion(),
                     requerimientoRequest.caracteristicas(),
                     requerimientoRequest.habilidades());
         }
-    }
-
-    private void limpiarVinculosNoAceptados(Long idRequerimiento) {
-        postulacionGralRepository.deleteByRequerimientoGral_IdRequerimientoGral(idRequerimiento);
-        invitacionGralRepository.deleteByRequerimientoGral_IdRequerimientoGral(idRequerimiento);
-        postulacionGralRepository.flush();
-        invitacionGralRepository.flush();
     }
 
     private Map<Long, RequerimientoSnapshot> snapshotsExistentes(
@@ -646,7 +650,7 @@ public class ModificarProyectoService {
         List<RequerimientoGralProyecto> requerimientosEntidad =
                 requerimientoGralProyectoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto());
         Map<Long, Boolean> protegidos = requerimientoGralProteccionService
-                .calcularProtegidos(requerimientosEntidad, proyecto.getEstado());
+                .calcularProtegidos(requerimientosEntidad);
 
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
         for (RequerimientoGralProyecto rg : requerimientosEntidad) {

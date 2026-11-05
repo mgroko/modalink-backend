@@ -70,6 +70,9 @@ class EliminarIntegranteServiceTest {
     @Mock
     private NotificacionService notificacionService;
 
+    @Mock
+    private RequerimientoSnapshotService requerimientoSnapshotService;
+
     private final Clock reloj = Clock.fixed(
             Instant.parse("2026-10-31T12:00:00Z"),
             ZoneOffset.UTC);
@@ -91,6 +94,7 @@ class EliminarIntegranteServiceTest {
                 miembroProyectoRepository,
                 proyectoSecurityService,
                 notificacionService,
+                requerimientoSnapshotService,
                 reloj);
 
         Usuario usuarioActor = Usuario.builder().idUsuario(1L).build();

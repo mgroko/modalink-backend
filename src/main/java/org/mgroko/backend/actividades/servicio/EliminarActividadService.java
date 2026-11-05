@@ -309,14 +309,8 @@ public class EliminarActividadService {
 
     private void validarEstadoActividad(Proyecto proyecto, Actividad actividad) {
         EstadoActividad estado = actividad.getEstado();
-        if (estado == EstadoActividad.FINALIZADA
-                || estado == EstadoActividad.CANCELADA) {
+        if (estado != EstadoActividad.PENDIENTE) {
             throw new ActividadNoEliminableException(estado.name());
-        }
-
-        if (proyecto.getEstado() == EstadoProyecto.CONFIRMADO
-                && estado == EstadoActividad.EN_CURSO) {
-            throw new ActividadEnCursoConfirmadaNoEliminableException();
         }
     }
 
@@ -403,10 +397,10 @@ public class EliminarActividadService {
 
     private void eliminarRequerimientos(Long idActividad) {
         List<RequerimientoActividad> requerimientos = requerimientoActividadRepository
-                .findByActividad_IdActividad(idActividad);
+                .findByActividad_IdActividadIncludingArchived(idActividad);
 
         for (RequerimientoActividad requerimiento : requerimientos) {
-            requerimientoActividadService.eliminar(requerimiento);
+            requerimientoActividadService.eliminarFisico(requerimiento);
         }
 
         if (!requerimientos.isEmpty()) {

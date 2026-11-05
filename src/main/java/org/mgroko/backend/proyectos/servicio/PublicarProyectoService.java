@@ -165,7 +165,7 @@ public class PublicarProyectoService {
         List<RequerimientoGralProyecto> requerimientosEntidad =
                 requerimientoGralProyectoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto());
         Map<Long, Boolean> protegidos = requerimientoGralProteccionService
-                .calcularProtegidos(requerimientosEntidad, proyecto.getEstado());
+                .calcularProtegidos(requerimientosEntidad);
 
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
         for (RequerimientoGralProyecto rg : requerimientosEntidad) {

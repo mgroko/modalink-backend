@@ -9,10 +9,10 @@ import org.springframework.stereotype.Service;
 /**
  * Regla única de protección de un requerimiento de actividad.
  *
- * <p>Bloquea si tiene una postulación o invitación {@code ACEPTADA}, o si tiene
- * alguna asignación asociada. Las asignaciones se incluyen porque la FK de
- * {@code asignacion_actividad} impide borrar el requerimiento; además, una
- * asignación directa puede existir sin postulación.</p>
+ * <p>Un requerimiento se protege únicamente cuando tiene una asignación de un
+ * miembro {@code ACTIVO} o una postulación/invitación {@code PENDIENTE}. El
+ * historial de miembros dados de baja o eliminados no bloquea la edición ni la
+ * eliminación del requerimiento activo.</p>
  */
 @Service
 public class RequerimientoProteccionService {
@@ -31,38 +31,17 @@ public class RequerimientoProteccionService {
     }
 
     public boolean estaProtegido(Long idRequerimiento) {
-        return estaProtegido(idRequerimiento, false);
-    }
-
-    /**
-     * Variante para proyectos confirmados.
-     *
-     * @param incluirPendientes si {@code true}, también bloquea cuando hay
-     *                          postulaciones o invitaciones {@code PENDIENTE}.
-     *                          Las {@code RECHAZADA} nunca bloquean.
-     */
-    public boolean estaProtegido(
-            Long idRequerimiento,
-            boolean incluirPendientes) {
         if (idRequerimiento == null) {
             return false;
         }
 
-        return postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimientoAndEstado(
-                        idRequerimiento, EstadoSolicitud.ACEPTADA)
+        return asignacionActividadRepository
+                .countActivasPorRequerimientoActividad(idRequerimiento) > 0
+                || postulacionActividadRepository
+                        .existsByRequerimiento_IdRequerimientoAndEstado(
+                                idRequerimiento, EstadoSolicitud.PENDIENTE)
                 || invitacionActividadRepository
                         .existsByRequerimiento_IdRequerimientoAndEstado(
-                                idRequerimiento, EstadoSolicitud.ACEPTADA)
-                || asignacionActividadRepository
-                        .countTodasPorRequerimientoActividad(idRequerimiento) > 0
-                || (incluirPendientes
-                        && (postulacionActividadRepository
-                                .existsByRequerimiento_IdRequerimientoAndEstado(
-                                        idRequerimiento, EstadoSolicitud.PENDIENTE)
-                                || invitacionActividadRepository
-                                        .existsByRequerimiento_IdRequerimientoAndEstado(
-                                                idRequerimiento,
-                                                EstadoSolicitud.PENDIENTE)));
+                                idRequerimiento, EstadoSolicitud.PENDIENTE);
     }
 }

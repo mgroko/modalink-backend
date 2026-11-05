@@ -358,7 +358,7 @@ class ObtenerProyectoServiceTest {
                 .build();
         when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(100L)).thenReturn(List.of(rg));
         when(requerimientoGralProteccionService.calcularProtegidos(
-                List.of(rg), EstadoProyecto.BORRADOR))
+                List.of(rg)))
                 .thenReturn(Map.of(10L, true));
 
         ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 100L);

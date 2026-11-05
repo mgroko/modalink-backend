@@ -303,7 +303,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
     }
 
     @Test
-    void modificar_requerimientoConPostulacionAceptadaOmitido_seConserva() {
+    void modificar_requerimientoConPostulacionAceptadaDeInactivoOmitido_seArchiva() {
         Escenario escenario = crearEscenario();
         Perfil perfil = em.find(Perfil.class, escenario.idPerfil());
         RequerimientoActividad requerimiento = em.find(
@@ -335,11 +335,25 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
 
         em.clear();
         assertThat(em.find(RequerimientoActividad.class, escenario.idRequerimiento()))
-                .isNotNull();
+                .isNull();
+        RequerimientoActividad snapshot = em.createQuery("""
+                        SELECT r FROM RequerimientoActividad r
+                        WHERE r.idRequerimientoOrigen = :id
+                        """, RequerimientoActividad.class)
+                .setParameter("id", escenario.idRequerimiento())
+                .getSingleResult();
+        assertThat(snapshot.getFechaArchivado()).isNotNull();
+        PostulacionActividad postulacion = em.createQuery("""
+                        SELECT p FROM PostulacionActividad p
+                        WHERE p.requerimiento.idRequerimiento = :id
+                        """, PostulacionActividad.class)
+                .setParameter("id", snapshot.getIdRequerimiento())
+                .getSingleResult();
+        assertThat(postulacion.getEstado()).isEqualTo(EstadoSolicitud.ACEPTADA);
     }
 
     @Test
-    void modificar_requerimientoConInvitacionAceptadaOmitido_seConserva() {
+    void modificar_requerimientoConInvitacionAceptadaDeInactivoOmitido_seArchiva() {
         Escenario escenario = crearEscenario();
         Perfil remitente = em.find(Perfil.class, escenario.idPerfil());
         RequerimientoActividad requerimiento = em.find(
@@ -387,7 +401,20 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
 
         em.clear();
         assertThat(em.find(RequerimientoActividad.class, escenario.idRequerimiento()))
-                .isNotNull();
+                .isNull();
+        RequerimientoActividad snapshot = em.createQuery("""
+                        SELECT r FROM RequerimientoActividad r
+                        WHERE r.idRequerimientoOrigen = :id
+                        """, RequerimientoActividad.class)
+                .setParameter("id", escenario.idRequerimiento())
+                .getSingleResult();
+        InvitacionActividad invitacion = em.createQuery("""
+                        SELECT i FROM InvitacionActividad i
+                        WHERE i.requerimiento.idRequerimiento = :id
+                        """, InvitacionActividad.class)
+                .setParameter("id", snapshot.getIdRequerimiento())
+                .getSingleResult();
+        assertThat(invitacion.getEstado()).isEqualTo(EstadoSolicitud.ACEPTADA);
     }
 
     @Test

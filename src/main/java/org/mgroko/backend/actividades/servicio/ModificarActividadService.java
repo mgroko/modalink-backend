@@ -1,6 +1,8 @@
 package org.mgroko.backend.actividades.servicio;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -45,6 +47,7 @@ import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoSnapshotService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -81,8 +84,10 @@ public class ModificarActividadService {
     private final CronogramaService cronogramaService;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final ReprogramarProyectoService reprogramarProyectoService;
+    private final RequerimientoSnapshotService requerimientoSnapshotService;
     private final ApplicationEventPublisher eventPublisher;
     private final ActividadOrigenService actividadOrigenService;
+    private final Clock reloj;
 
     public ModificarActividadService(
             ActividadRepository actividadRepository,
@@ -100,8 +105,10 @@ public class ModificarActividadService {
             CronogramaService cronogramaService,
             AsignacionActividadRepository asignacionActividadRepository,
             ReprogramarProyectoService reprogramarProyectoService,
+            RequerimientoSnapshotService requerimientoSnapshotService,
             ApplicationEventPublisher eventPublisher,
-            ActividadOrigenService actividadOrigenService) {
+            ActividadOrigenService actividadOrigenService,
+            Clock reloj) {
         this.actividadRepository = actividadRepository;
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
@@ -117,8 +124,10 @@ public class ModificarActividadService {
         this.cronogramaService = cronogramaService;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.reprogramarProyectoService = reprogramarProyectoService;
+        this.requerimientoSnapshotService = requerimientoSnapshotService;
         this.eventPublisher = eventPublisher;
         this.actividadOrigenService = actividadOrigenService;
+        this.reloj = reloj;
     }
 
     @Transactional
@@ -176,10 +185,7 @@ public class ModificarActividadService {
         ActividadEstadoValidator.validarPredecesorasFinalizadas(
                 actividad, request.estado());
         validarSinCiclos(actividad, actividades);
-        actualizarRequerimientos(
-                actividad,
-                request.requerimientos(),
-                proyecto.getEstado() == EstadoProyecto.CONFIRMADO);
+        actualizarRequerimientos(actividad, request.requerimientos());
 
         Actividad guardada = guardarActividad(actividad);
 
@@ -214,9 +220,8 @@ public class ModificarActividadService {
         List<RequerimientoActividadResponse> requerimientos =
                 requerimientoActividadService.listarPorActividad(idActividad).stream()
                         .map(requerimiento -> requerimiento.conProtegido(
-                                estaProtegido(
-                                        requerimiento.idRequerimiento(),
-                                        proyecto.getEstado() == EstadoProyecto.CONFIRMADO)))
+                                requerimientoProteccionService.estaProtegido(
+                                        requerimiento.idRequerimiento())))
                         .toList();
 
         List<AsignacionActividad> asignaciones = asignacionActividadRepository
@@ -447,8 +452,7 @@ public class ModificarActividadService {
 
     private void actualizarRequerimientos(
             Actividad actividad,
-            List<ModificarRequerimientoActividadRequest> requerimientos,
-            boolean incluirPendientes) {
+            List<ModificarRequerimientoActividadRequest> requerimientos) {
 
         if (requerimientos == null) {
             throw new RequerimientoInvalidoException(
@@ -493,20 +497,23 @@ public class ModificarActividadService {
                 idsSinCambios.add(idRequerimiento);
                 continue;
             }
-            if (estaProtegido(idRequerimiento, incluirPendientes)) {
+            if (requerimientoProteccionService.estaProtegido(idRequerimiento)) {
                 throw new RequerimientoConVinculosException(idRequerimiento);
             }
         }
 
+        LocalDateTime fechaHistorial = LocalDateTime.now(reloj);
         for (RequerimientoActividad existente : existentes) {
             if (idsSolicitados.contains(existente.getIdRequerimiento())) {
                 continue;
             }
-            if (estaProtegido(existente.getIdRequerimiento(), incluirPendientes)) {
+            if (requerimientoProteccionService.estaProtegido(
+                    existente.getIdRequerimiento())) {
                 // Política acordada: el requerimiento protegido omitido se conserva.
                 continue;
             }
-            limpiarVinculosNoAceptados(existente.getIdRequerimiento());
+            requerimientoSnapshotService.asegurarHistorialActividad(
+                    existente, fechaHistorial);
             requerimientoActividadService.eliminar(existente);
         }
 
@@ -521,23 +528,13 @@ public class ModificarActividadService {
             if (requerimiento.idRequerimiento() == null) {
                 requerimientoActividadService.persistir(actividad, datos);
             } else if (!idsSinCambios.contains(requerimiento.idRequerimiento())) {
-                requerimientoActividadService.actualizar(
-                        porId.get(requerimiento.idRequerimiento()), datos);
+                RequerimientoActividad existente =
+                        porId.get(requerimiento.idRequerimiento());
+                requerimientoSnapshotService.asegurarHistorialActividad(
+                        existente, fechaHistorial);
+                requerimientoActividadService.actualizar(existente, datos);
             }
         }
-    }
-
-    private boolean estaProtegido(Long idRequerimiento, boolean incluirPendientes) {
-        return incluirPendientes
-                ? requerimientoProteccionService.estaProtegido(idRequerimiento, true)
-                : requerimientoProteccionService.estaProtegido(idRequerimiento);
-    }
-
-    private void limpiarVinculosNoAceptados(Long idRequerimiento) {
-        postulacionActividadRepository.deleteByRequerimiento_IdRequerimiento(idRequerimiento);
-        invitacionActividadRepository.deleteByRequerimiento_IdRequerimiento(idRequerimiento);
-        postulacionActividadRepository.flush();
-        invitacionActividadRepository.flush();
     }
 
     private void validarRequerimientoObligatorio(
