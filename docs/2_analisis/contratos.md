@@ -1,4 +1,22 @@
 
+## Contrato de acceso por rol global
+
+| Rol | Área permitida |
+|---|---|
+| `Administrador` | `/admin/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
+| `Usuario` | `/home/**`, `/perfiles/**`, `/proyectos/**`, `/postulaciones/**`, `/invitaciones/**`, `/calendario/**`, `/usuario/**`, `/habilidades/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
+
+Errores:
+
+| HTTP | Código | Situación |
+|---|---|---|
+| `401` | `NO_AUTENTICADO` | Sin sesión o token inválido |
+| `403` | `ROL_NO_PERMITIDO` | El rol no corresponde al área solicitada |
+| `403` | `CSRF_INVALIDO` | Token CSRF ausente o inválido |
+| `409` | `SESION_ACTIVA` | Registro con una sesión ya autenticada |
+
+El administrador no posee perfil creativo ni proyectos propios. El login de un
+administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 
 | Nombre | crearActividad(unProyecto, nombre, descripción, duracion) |
 | :---- | :---- |

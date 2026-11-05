@@ -99,6 +99,17 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void findByIdConRolYPermisos_cargaRolYPermisosDelAdministrador() {
+        Usuario admin = usuarioRepository.findByCorreo("admin@modalink.com").orElseThrow();
+
+        Usuario cargado = usuarioRepository.findByIdConRolYPermisos(admin.getIdUsuario()).orElseThrow();
+
+        assertNotNull(cargado.getRolGlobal());
+        assertEquals("Administrador", cargado.getRolGlobal().getNombre());
+        assertFalse(cargado.getRolGlobal().getPermisos().isEmpty());
+    }
+
+    @Test
     void findByCorreo_correoInexistente_devuelveVacio() {
         Optional<Usuario> resultado = usuarioRepository.findByCorreo("nadie@example.com");
 

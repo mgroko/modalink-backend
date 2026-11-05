@@ -20,6 +20,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +39,7 @@ import jakarta.validation.Valid;
  * UC-32: eliminar una invitación pendiente enviada por el Director.
  */
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class InvitacionController {
 
     private final CrearInvitacionService crearInvitacionService;

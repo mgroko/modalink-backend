@@ -8,11 +8,13 @@ import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.servicio.UsuarioPerfilService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class HomeController {
 
     private final UsuarioPerfilService usuarioPerfilService;
@@ -22,6 +24,7 @@ public class HomeController {
     }
 
     @GetMapping("/health")
+    @PreAuthorize("permitAll()")
     public Map<String, String> health() {
         return Map.of("status", "ok");
     }

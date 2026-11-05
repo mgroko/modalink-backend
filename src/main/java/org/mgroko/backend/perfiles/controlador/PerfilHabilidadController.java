@@ -7,6 +7,7 @@ import org.mgroko.backend.perfiles.dto.HabilidadResponse;
 import org.mgroko.backend.perfiles.servicio.GestionHabilidadPerfilService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,7 @@ import jakarta.validation.Valid;
  * UC-47 — Gestionar habilidades desde el perfil.
  */
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 @RequestMapping("/perfiles/{idPerfil}/habilidades")
 public class PerfilHabilidadController {
 

@@ -11,6 +11,7 @@ import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.JwtService;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +46,7 @@ public class ActivarPerfilService {
         }
 
         Usuario usuario = usuarioRepository.findById(idUsuario).orElseThrow();
+        PerfilAccessPolicy.validarNoAdministrador(usuario);
 
         String token = jwtService.generarToken(
                 idUsuario.toString(),

@@ -5,6 +5,7 @@ import org.mgroko.backend.reportes.dto.CrearReportePerfilRequest;
 import org.mgroko.backend.reportes.servicio.ReportarPerfilService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,7 @@ import jakarta.validation.Valid;
  * UC-15: alta de un reporte de perfil.
  */
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class ReportePerfilController {
 
     private final ReportarPerfilService reportarPerfilService;

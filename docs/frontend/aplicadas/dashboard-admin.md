@@ -2,7 +2,44 @@
 
 **Estado:** implementado y validado con la suite completa `mvn test`.
 
-Los endpoints requieren la autoridad `VER_USUARIOS`.
+Los endpoints requieren la autoridad `VER_USUARIOS` y, a nivel de URL, el rol
+`ROLE_ADMINISTRADOR`. Un usuario con rol `Usuario` recibe `403` al intentar
+entrar a `/admin/**`.
+
+## Separación de áreas
+
+| Área | Rutas | Rol permitido |
+|---|---|---|
+| Solo administrador | `/admin/**` | `ROLE_ADMINISTRADOR` |
+| Solo usuario | `/home/**`, `/perfiles/**`, `/proyectos/**`, `/postulaciones/**`, `/invitaciones/**`, `/calendario/**`, `/usuario/**`, `/habilidades/**` | `ROLE_USUARIO` |
+| Compartido | `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` | Ambos |
+
+El administrador no posee perfil creativo ni proyectos propios. Su login nunca
+devuelve `idPerfilActivo` ni `nombreArtisticoActivo`, y no puede crear perfiles
+aunque llame directamente a la API.
+
+### Contrato de errores de autorización
+
+```json
+{
+  "codigo": "NO_AUTENTICADO",
+  "message": "Necesitás iniciar sesión para acceder a este recurso.",
+  "httpStatus": 401,
+  "timestamp": 1762345678901
+}
+```
+
+```json
+{
+  "codigo": "ROL_NO_PERMITIDO",
+  "message": "Esta acción no está disponible para tu rol.",
+  "httpStatus": 403,
+  "timestamp": 1762345678901
+}
+```
+
+El frontend debe redirigir al administrador a `/admin` y al usuario a `/home`
+según `rolGlobal`. Ante un `403 ROL_NO_PERMITIDO`, debe volver al home de su rol.
 
 ## Endpoints
 

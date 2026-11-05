@@ -11,6 +11,7 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +58,7 @@ public class ReactivarPerfilService {
         if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
+        PerfilAccessPolicy.validarNoAdministrador(usuario);
         return usuario;
     }
 }

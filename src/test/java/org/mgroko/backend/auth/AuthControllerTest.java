@@ -103,6 +103,24 @@ class AuthControllerTest {
         }
 
         @Test
+        void registro_conSesionActiva_devuelve409SinLlamarAlServicio() throws Exception {
+                RegistroRequest request = new RegistroRequest(
+                                "Juan", "Perez", "12345678",
+                                LocalDate.of(1995, Month.MAY, 20), "juan@test.com", "hombre", "password123");
+
+                var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+                mockMvc.perform(post("/auth/registro")
+                                .principal(authentication)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isConflict())
+                                .andExpect(jsonPath("$.codigo").value("SESION_ACTIVA"));
+
+                verify(authService, never()).registrar(any());
+        }
+
+        @Test
         void registro_correoInvalido_devuelve400() throws Exception {
 
                 RegistroRequest request = new RegistroRequest(

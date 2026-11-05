@@ -11,6 +11,7 @@ import org.mgroko.backend.perfiles.dto.PerfilDetalleResponse;
 import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,8 @@ public class VerPerfilService {
         if (!usuarioAutenticado.getEstado().permiteAcceso()) {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
+
+        PerfilAccessPolicy.validarNoAdministrador(usuarioAutenticado);
 
         Perfil perfil = perfilRepository.findById(idPerfil)
                 .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));

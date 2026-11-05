@@ -324,6 +324,33 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_administrador_noResuelvePerfilActivo() {
+        LoginRequest request = new LoginRequest("admin@test.com", "password123");
+        RolGlobal rolAdministrador = RolGlobal.builder()
+                .codigo("ADMINISTRADOR")
+                .nombre("Administrador")
+                .build();
+        Usuario administrador = Usuario.builder()
+                .idUsuario(2L)
+                .nombre("Admin")
+                .correo("admin@test.com")
+                .passwordHash("hash-guardado")
+                .rolGlobal(rolAdministrador)
+                .build();
+
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(administrador));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+        when(rolGlobalRepository.findByNombre("Administrador")).thenReturn(Optional.of(rolAdministrador));
+        when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
+
+        AuthService.LoginResultado resultado = authService.login(request);
+
+        assertNull(resultado.response().usuario().idPerfilActivo());
+        assertNull(resultado.response().usuario().nombreArtisticoActivo());
+        verify(perfilRepository, never()).findByUsuario_IdUsuarioAndEstado(anyLong(), any());
+    }
+
+    @Test
     void login_usuarioDeshabilitado_lanzaExcepcion() {
         LoginRequest request = new LoginRequest("maria.flores@test.com", "password123");
         Usuario usuarioDeshabilitado = Usuario.builder()

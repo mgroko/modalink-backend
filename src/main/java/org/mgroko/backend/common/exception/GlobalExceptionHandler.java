@@ -26,6 +26,7 @@ import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
+import org.mgroko.backend.auth.exception.RegistroConSesionActivaException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
@@ -65,9 +66,11 @@ import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
 import org.mgroko.backend.ubicacion.exception.PaisNoConfiguradoException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
+import org.mgroko.backend.security.exception.AccesoDenegadoPorRolException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -82,6 +85,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CorreoDuplicadoException.class)
     public ResponseEntity<Map<String, Object>> handleCorreoDuplicado(CorreoDuplicadoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Maneja el intento de registro con una sesión ya autenticada.
+     */
+    @ExceptionHandler(RegistroConSesionActivaException.class)
+    public ResponseEntity<Map<String, Object>> handleRegistroConSesionActiva(
+            RegistroConSesionActivaException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "SESION_ACTIVA", HttpStatus.CONFLICT);
     }
 
     /**
@@ -160,6 +172,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Helper para respuestas de error con un código estable para el frontend.
+     */
+    private ResponseEntity<Map<String, Object>> buildErrorResponseConCodigo(
+            String message, String codigo, HttpStatus status) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("codigo", codigo);
+        response.put("message", message);
+        response.put("httpStatus", status.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, status);
+    }
+
+    /**
      * Excepción de edad inválida.
      */
     @ExceptionHandler(EdadInvalidaException.class)
@@ -202,6 +227,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UsuarioDeshabilitadoException.class)
     public ResponseEntity<Map<String, Object>> handleUsuarioDeshabilitado(UsuarioDeshabilitadoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Excepción de acceso denegado por rol global (por ejemplo, un
+     * administrador intentando operar el área de usuario).
+     */
+    @ExceptionHandler(AccesoDenegadoPorRolException.class)
+    public ResponseEntity<Map<String, Object>> handleAccesoDenegadoPorRol(
+            AccesoDenegadoPorRolException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "ROL_NO_PERMITIDO", HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Excepción de autorización lanzada por @PreAuthorize. Se traduce al
+     * mismo contrato que usa el resto de la API.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return buildErrorResponseConCodigo(
+                "No tenés permiso para acceder a este recurso.",
+                "ROL_NO_PERMITIDO",
+                HttpStatus.FORBIDDEN);
     }
 
     /**

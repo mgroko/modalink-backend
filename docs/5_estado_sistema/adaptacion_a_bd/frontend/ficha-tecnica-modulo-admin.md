@@ -3,6 +3,21 @@
 ## 1. Visión General
 Módulo de backend para gestión administrativa del sistema. El frontend necesitará consumir los endpoints REST expuestos por este módulo para proporcionar funcionalidades de administración de usuarios, perfiles, configuraciones y características técnicas.
 
+### 1.1 Regla de acceso
+Todos los endpoints bajo `/admin/**` requieren `ROLE_ADMINISTRADOR`. El rol
+`Administrador` tiene prohibido ingresar al área de usuario (`/home/**`,
+`/perfiles/**`, `/proyectos/**`, `/postulaciones/**`, `/invitaciones/**`,
+`/calendario/**`, `/usuario/**`, `/habilidades/**`): la API responde `403` con
+`codigo: "ROL_NO_PERMITIDO"`.
+
+El administrador sí puede usar `/auth/me`, `/auth/logout`, todo
+`/notificaciones/**`, `GET /profesiones` y `GET /ubicaciones/**`.
+
+El login del administrador no devuelve `idPerfilActivo` ni
+`nombreArtisticoActivo`, y no puede crear perfiles. El registro público
+(`POST /auth/registro`) se rechaza con `409 SESION_ACTIVA` si ya existe una
+sesión autenticada.
+
 ## 2. Endpoints de API REST
 
 ### 2.1 Gestión de Usuarios (`/admin/usuarios`)

@@ -5,12 +5,14 @@ import org.mgroko.backend.actividades.servicio.ObtenerCronogramaService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class CronogramaController {
 
     private final ObtenerCronogramaService obtenerCronogramaService;

@@ -4,6 +4,7 @@ import org.mgroko.backend.usuario.dto.DatosPersonalesRequest;
 import org.mgroko.backend.usuario.dto.DatosPersonalesResponse;
 import org.mgroko.backend.usuario.servicio.DatosPersonalesService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 @RequestMapping("/usuario")
 public class DatosPersonalesController {
 

@@ -26,6 +26,7 @@ import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class ProyectoController {
 
     private final CrearProyectoService crearProyectoService;

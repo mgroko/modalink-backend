@@ -36,6 +36,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.JwtService;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.servicio.ReactivarCuentaService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -187,7 +188,7 @@ public class AuthService {
     }
 
     private LoginResultado construirLoginResultado(Usuario usuario) {
-        Perfil perfilActivoInicial = resolverPerfilActivoPorDefecto(usuario.getIdUsuario());
+        Perfil perfilActivoInicial = resolverPerfilActivoPorDefecto(usuario);
 
         String token = jwtService.generarToken(
                 usuario.getIdUsuario().toString(),
@@ -227,16 +228,22 @@ public class AuthService {
         claims.put("rolGlobal", usuario.getRolGlobal().getNombre());
         claims.put("permisosGlobales", obtenerNombresPermisosGlobales(usuario.getRolGlobal().getNombre()));
 
-        if (perfilActivo != null) {
+        if (perfilActivo != null && !PerfilAccessPolicy.esAdministrador(usuario)) {
             claims.put("idPerfilActivo", perfilActivo.getIdPerfil());
             claims.put("nombreArtisticoActivo", perfilActivo.getNombreArtistico());
         }
         return claims;
     }
 
-    public Perfil resolverPerfilActivoPorDefecto(Long idUsuario) {
+    public Perfil resolverPerfilActivoPorDefecto(Usuario usuario) {
+        // El administrador no posee perfil creativo: nunca se resuelve uno
+        // por defecto, ni siquiera si existiera un dato inconsistente.
+        if (PerfilAccessPolicy.esAdministrador(usuario)) {
+            return null;
+        }
+
         List<Perfil> perfilesActivos = perfilRepository
-                .findByUsuario_IdUsuarioAndEstado(idUsuario, EstadoPerfil.Activo);
+                .findByUsuario_IdUsuarioAndEstado(usuario.getIdUsuario(), EstadoPerfil.Activo);
         return perfilesActivos.size() == 1 ? perfilesActivos.get(0) : null;
     }
 

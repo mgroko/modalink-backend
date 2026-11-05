@@ -13,6 +13,7 @@ import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.mgroko.backend.storage.servicio.StorageService;
@@ -108,6 +109,8 @@ public class FotoPerfilService {
         if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
+
+        PerfilAccessPolicy.validarNoAdministrador(usuario);
 
         Perfil perfil = perfilRepository.findByIdPerfilAndUsuarioIdUsuario(idPerfil, idUsuario)
                 .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));

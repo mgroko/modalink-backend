@@ -3,12 +3,14 @@ package org.mgroko.backend.usuario.controlador;
 import org.mgroko.backend.usuario.dto.ReactivarCuentaResponse;
 import org.mgroko.backend.usuario.servicio.ReactivarCuentaService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 @RequestMapping("/usuario")
 public class ReactivarCuentaController {
 

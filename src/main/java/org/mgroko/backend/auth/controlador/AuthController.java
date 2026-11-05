@@ -4,6 +4,7 @@ import org.mgroko.backend.auth.dto.AuthResponse;
 import org.mgroko.backend.auth.dto.LoginRequest;
 import org.mgroko.backend.auth.dto.RegistroRequest;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
+import org.mgroko.backend.auth.exception.RegistroConSesionActivaException;
 import org.mgroko.backend.auth.servicio.AuthService;
 import org.mgroko.backend.auth.servicio.AuthService.LoginResultado;
 import org.mgroko.backend.auth.servicio.AuthService.RegistroResultado;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,7 +38,13 @@ public class AuthController {
     }
 
     @PostMapping("/registro")
-    public ResponseEntity<AuthResponse> registro(@Valid @RequestBody RegistroRequest request) {
+    public ResponseEntity<AuthResponse> registro(
+            @Valid @RequestBody RegistroRequest request,
+            Authentication authentication) {
+        if (haySesionAutenticada(authentication)) {
+            throw new RegistroConSesionActivaException();
+        }
+
         AuthService.RegistroResultado resultado = authService.registrar(request);
         AuthResponse authResponseSinToken = new AuthResponse(resultado.response());
 
@@ -106,5 +114,11 @@ public class AuthController {
                 nombreArtisticoActivo);
 
         return ResponseEntity.ok(usuarioActual);
+    }
+
+    private boolean haySesionAutenticada(Authentication authentication) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
     }
 }

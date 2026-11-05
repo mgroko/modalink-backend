@@ -10,6 +10,7 @@ import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ListarMiembrosProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,7 @@ import jakarta.validation.Valid;
  * UC-40: un integrante se da de baja voluntariamente del proyecto.
  */
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class MiembroProyectoController {
 
     private final ListarMiembrosProyectoService listarMiembrosProyectoService;

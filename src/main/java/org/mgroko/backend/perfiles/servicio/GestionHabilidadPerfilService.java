@@ -18,6 +18,7 @@ import org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException;
 import org.mgroko.backend.repositorio.HabilidadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,6 +103,7 @@ public class GestionHabilidadPerfilService {
         if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
+        PerfilAccessPolicy.validarNoAdministrador(usuario);
         return usuario;
     }
 
