@@ -55,7 +55,8 @@ public final class ProyectoMapper {
                 proyecto.getEstado() != null ? proyecto.getEstado().getNombre() : null,
                 proyecto.getPrivacidad() != null ? proyecto.getPrivacidad().name() : null,
                 rolUsuario,
-                proximaActividad
+                proximaActividad,
+                Boolean.TRUE.equals(proyecto.getFinalizacionPrematura())
         );
     }
 
@@ -146,7 +147,8 @@ public final class ProyectoMapper {
                 proyecto.getMotivoCancelacion(),
                 postulacionesPendientes,
                 contexto.puedeDarseDeBaja(),
-                proyecto.getFechaFinalizacion()
+                proyecto.getFechaFinalizacion(),
+                Boolean.TRUE.equals(proyecto.getFinalizacionPrematura())
         );
     }
 }

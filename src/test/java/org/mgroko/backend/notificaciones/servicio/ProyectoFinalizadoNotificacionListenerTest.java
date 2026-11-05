@@ -60,7 +60,7 @@ class ProyectoFinalizadoNotificacionListenerTest {
                 any(), any(), anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(Notificacion.builder().build());
 
-        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR));
+        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR, false));
 
         ArgumentCaptor<List<Notificacion>> captor =
                 ArgumentCaptor.forClass(List.class);
@@ -88,6 +88,26 @@ class ProyectoFinalizadoNotificacionListenerTest {
     }
 
     @Test
+    void alFinalizarProyecto_prematura_mencionaFinalizacionAnticipada() {
+        when(miembroProyectoRepository.buscarMiembrosActivosDeProyecto(ID_PROYECTO))
+                .thenReturn(List.of(miembro(perfil(20L, 2L))));
+        when(notificacionService.crear(
+                any(), any(), anyString(), anyString(), anyString(), any(), any()))
+                .thenReturn(Notificacion.builder().build());
+
+        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR, true));
+
+        verify(notificacionService).crear(
+                any(),
+                any(),
+                eq(NotificacionService.TIPO_CALIFICACION_SOLICITADA),
+                argThat(mensaje -> mensaje.contains("forma anticipada")),
+                eq("PROYECTO"),
+                eq(ID_PROYECTO),
+                eq(ID_PROYECTO));
+    }
+
+    @Test
     void alFinalizarProyecto_dedupeMismoPerfil() {
         Perfil perfil = perfil(20L, 2L);
         MiembroProyecto primero = miembro(perfil);
@@ -99,7 +119,7 @@ class ProyectoFinalizadoNotificacionListenerTest {
                 any(), any(), anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(Notificacion.builder().build());
 
-        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR));
+        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR, false));
 
         verify(notificacionService, times(1)).crear(
                 any(),
@@ -116,7 +136,7 @@ class ProyectoFinalizadoNotificacionListenerTest {
         when(miembroProyectoRepository.buscarMiembrosActivosDeProyecto(ID_PROYECTO))
                 .thenReturn(List.of());
 
-        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR));
+        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR, false));
 
         verify(notificacionService).registrarTodas(argThat(lista -> lista.isEmpty()));
         verify(notificacionService, never()).crear(
@@ -132,7 +152,7 @@ class ProyectoFinalizadoNotificacionListenerTest {
         when(miembroProyectoRepository.buscarMiembrosActivosDeProyecto(ID_PROYECTO))
                 .thenReturn(List.of(sinUsuario));
 
-        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR));
+        listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR, false));
 
         verify(notificacionService, never()).crear(
                 any(), any(), anyString(), anyString(), anyString(), any(), any());
@@ -143,7 +163,7 @@ class ProyectoFinalizadoNotificacionListenerTest {
         when(miembroProyectoRepository.buscarMiembrosActivosDeProyecto(ID_PROYECTO))
                 .thenThrow(new RuntimeException("fallo de notificacion"));
 
-        assertThatCode(() -> listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR)))
+        assertThatCode(() -> listener.alFinalizarProyecto(evento(ID_PERFIL_ACTOR, false)))
                 .doesNotThrowAnyException();
     }
 
@@ -164,12 +184,15 @@ class ProyectoFinalizadoNotificacionListenerTest {
         assertThat(transaccion.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
     }
 
-    private ProyectoFinalizadoEvent evento(Long idPerfilActor) {
+    private ProyectoFinalizadoEvent evento(
+            Long idPerfilActor,
+            boolean finalizacionPrematura) {
         return new ProyectoFinalizadoEvent(
                 ID_PROYECTO,
                 "Desfile",
                 LocalDateTime.of(2026, 11, 5, 15, 0),
-                idPerfilActor);
+                idPerfilActor,
+                finalizacionPrematura);
     }
 
     private MiembroProyecto miembro(Perfil perfil) {

@@ -146,6 +146,9 @@ class ContextoFinalizacionProyectoServiceTest {
         ContextoFinalizacionProyectoService.Contexto contexto = cargarSinLock();
 
         assertThat(contexto.bloqueos()).isEmpty();
+        assertThat(contexto.advertencias()).isEmpty();
+        assertThat(contexto.requiereConfirmacionPrematura()).isFalse();
+        assertThat(contexto.diasAnticipacion()).isZero();
         assertThat(contexto.proyecto()).isSameAs(proyecto);
         assertThat(contexto.planificacion()).isSameAs(planificacion);
         assertThat(contexto.ahora())
@@ -175,14 +178,17 @@ class ContextoFinalizacionProyectoServiceTest {
     }
 
     @Test
-    void cargar_fechaEntregaFutura_agregaBloqueo() {
+    void cargar_fechaEntregaFutura_agregaAdvertenciaYRequiereConfirmacion() {
         planificacion.setFechaEntrega(LocalDate.of(2026, 11, 2));
 
         ContextoFinalizacionProyectoService.Contexto contexto = cargarSinLock();
 
-        assertThat(contexto.bloqueos())
-                .extracting(bloqueo -> bloqueo.codigo())
+        assertThat(contexto.bloqueos()).isEmpty();
+        assertThat(contexto.advertencias())
+                .extracting(advertencia -> advertencia.codigo())
                 .contains("FECHA_ENTREGA_FUTURA");
+        assertThat(contexto.requiereConfirmacionPrematura()).isTrue();
+        assertThat(contexto.diasAnticipacion()).isEqualTo(1);
     }
 
     @Test

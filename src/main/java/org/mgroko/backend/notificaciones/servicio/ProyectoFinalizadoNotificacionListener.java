@@ -63,8 +63,11 @@ public class ProyectoFinalizadoNotificacionListener {
 
         Set<Long> perfilesNotificados = new HashSet<>();
         List<Notificacion> notificaciones = new ArrayList<>();
+        String cierre = evento.finalizacionPrematura()
+                ? "finalizó de forma anticipada"
+                : "finalizó";
         String mensaje = "El proyecto '" + evento.nombreProyecto()
-                + "' finalizó. Calificá a los integrantes del equipo.";
+                + "' " + cierre + ". Calificá a los integrantes del equipo.";
 
         for (MiembroProyecto miembro : miembros) {
             Perfil perfil = miembro.getPerfil();

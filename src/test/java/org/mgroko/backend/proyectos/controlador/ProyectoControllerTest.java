@@ -121,7 +121,8 @@ class ProyectoControllerTest {
                 null,
                 null,
                 false,
-                null
+                null,
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -291,7 +292,8 @@ class ProyectoControllerTest {
                 null,
                 null,
                 false,
-                null
+                null,
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -372,7 +374,8 @@ class ProyectoControllerTest {
                 null,
                 3L,
                 false,
-                null
+                null,
+                false
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
@@ -422,7 +425,8 @@ class ProyectoControllerTest {
                 null,
                 null,
                 false,
-                null
+                null,
+                false
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(200L))).thenReturn(response);
@@ -618,7 +622,8 @@ class ProyectoControllerTest {
                         org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
                         new org.mgroko.backend.proyectos.dto.ActividadResumenResponse(
                                 500L, "Sesion",
-                                java.time.LocalDateTime.of(2026, 6, 1, 15, 0), 180)));
+                                java.time.LocalDateTime.of(2026, 6, 1, 15, 0), 180),
+                        false));
         var pagina = new org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.proyectos.dto.ProyectoPropioResponse>(
                 contenido, 0, 20, 1, 1, true, true);
 
@@ -721,7 +726,8 @@ class ProyectoControllerTest {
                 null,
                 null,
                 false,
-                null
+                null,
+                false
         );
     }
 
@@ -845,7 +851,8 @@ class ProyectoControllerTest {
                 "Falta de presupuesto",
                 null,
                 false,
-                null
+                null,
+                false
         );
     }
 
@@ -1007,6 +1014,9 @@ class ProyectoControllerTest {
                         "Confirmado",
                         LocalDate.now().plusDays(1),
                         LocalDate.now(),
+                        false,
+                        0L,
+                        List.of(),
                         List.of(),
                         List.of(new MiembroCalificableResponse(
                                 20L, "Miembro", "Nombre", "Apellido", "MIEMBRO", false)),
@@ -1113,5 +1123,29 @@ class ProyectoControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("ACTIVIDAD_NO_FINALIZADA"))
                 .andExpect(jsonPath("$.bloqueos[0].entidadTipo").value("ACTIVIDAD"));
+    }
+
+    @Test
+    void finalizar_sinConfirmacionPrematura_devuelve409ConFechasYDias() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException(
+                        LocalDate.now().plusDays(10),
+                        LocalDate.now(),
+                        10));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CONFIRMACION_PREMATURA_REQUERIDA"))
+                .andExpect(jsonPath("$.diasAnticipacion").value(10));
     }
 }

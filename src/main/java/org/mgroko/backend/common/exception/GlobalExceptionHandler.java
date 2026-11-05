@@ -423,6 +423,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException.class)
+    public ResponseEntity<Map<String, Object>> handleConfirmacionPrematuraRequerida(
+            org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CONFIRMACION_PREMATURA_REQUERIDA");
+        response.put("fechaEntrega", ex.getFechaEntrega());
+        response.put("fechaActual", ex.getFechaActual());
+        response.put("diasAnticipacion", ex.getDiasAnticipacion());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoModificable(
             org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException ex) {

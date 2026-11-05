@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,6 +22,7 @@ import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.proyectos.dto.AdvertenciaFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.BloqueoFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.MiembroCalificableResponse;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
@@ -104,6 +106,8 @@ public class ContextoFinalizacionProyectoService {
         LocalDateTime ahora = LocalDateTime.now(reloj).withNano(0);
         LocalDate hoy = ahora.toLocalDate();
         List<BloqueoFinalizacionResponse> bloqueos = new ArrayList<>();
+        List<AdvertenciaFinalizacionResponse> advertencias = new ArrayList<>();
+        long diasAnticipacion = 0;
 
         if (proyecto.getEstado() == EstadoProyecto.FINALIZADO) {
             bloqueos.add(new BloqueoFinalizacionResponse(
@@ -138,11 +142,15 @@ public class ContextoFinalizacionProyectoService {
                     "PLANIFICACION",
                     planificacion.getIdPlanificacion()));
         } else if (planificacion.getFechaEntrega().isAfter(hoy)) {
-            bloqueos.add(new BloqueoFinalizacionResponse(
+            diasAnticipacion = ChronoUnit.DAYS.between(
+                    hoy, planificacion.getFechaEntrega());
+            advertencias.add(new AdvertenciaFinalizacionResponse(
                     "FECHA_ENTREGA_FUTURA",
-                    "La fecha de finalización estipulada en el cronograma ("
+                    "La fecha de entrega estipulada es "
                             + planificacion.getFechaEntrega()
-                            + ") todavía no se alcanzó.",
+                            + ". Hoy es " + hoy
+                            + "; se finalizaría " + diasAnticipacion
+                            + (diasAnticipacion == 1 ? " día antes." : " días antes."),
                     "PLANIFICACION",
                     planificacion.getIdPlanificacion()));
         }
@@ -204,6 +212,9 @@ public class ContextoFinalizacionProyectoService {
                 perfil,
                 planificacion,
                 ahora,
+                List.copyOf(advertencias),
+                diasAnticipacion > 0,
+                diasAnticipacion,
                 actividades,
                 miembrosActivos,
                 calificacionesExistentes,
@@ -232,6 +243,9 @@ public class ContextoFinalizacionProyectoService {
             Perfil perfilActor,
             Planificacion planificacion,
             LocalDateTime ahora,
+            List<AdvertenciaFinalizacionResponse> advertencias,
+            boolean requiereConfirmacionPrematura,
+            long diasAnticipacion,
             List<Actividad> actividades,
             List<MiembroProyecto> miembrosActivos,
             List<CalificacionPerfil> calificacionesExistentes,

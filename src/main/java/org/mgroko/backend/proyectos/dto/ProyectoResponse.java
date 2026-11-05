@@ -29,5 +29,6 @@ public record ProyectoResponse(
         String motivoCancelacion,
         Long postulacionesPendientes,
         Boolean puedeDarseDeBaja,
-        LocalDateTime fechaFinalizacion
+        LocalDateTime fechaFinalizacion,
+        Boolean finalizacionPrematura
 ) {}

@@ -29,6 +29,10 @@ public class Proyecto {
     @Column(name = "fecha_finalizacion")
     private LocalDateTime fechaFinalizacion;
 
+    @Column(name = "finalizacion_prematura", nullable = false)
+    @Builder.Default
+    private Boolean finalizacionPrematura = false;
+
     public void setFechaInicio(LocalDate fecha) {
         this.fechaInicio = fecha != null ? fecha.atStartOfDay() : null;
     }

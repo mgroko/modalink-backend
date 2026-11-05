@@ -41,7 +41,10 @@ public class PrevisualizarFinalizacionService {
                         ? contexto.planificacion().getFechaEntrega()
                         : null,
                 contexto.ahora().toLocalDate(),
+                contexto.requiereConfirmacionPrematura(),
+                contexto.diasAnticipacion(),
                 contexto.bloqueos(),
+                contexto.advertencias(),
                 contexto.miembrosACalificar(),
                 requeridas,
                 realizadas,

@@ -21,6 +21,7 @@ import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.evento.ProyectoFinalizadoEvent;
 import org.mgroko.backend.proyectos.exception.CalificacionIncompletaException;
 import org.mgroko.backend.proyectos.exception.CalificacionInvalidaException;
+import org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException;
 import org.mgroko.backend.repositorio.CalificacionPerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
@@ -74,6 +75,16 @@ public class FinalizarProyectoService {
                     primero.codigo(),
                     primero.mensaje(),
                     contexto.bloqueos());
+        }
+
+        boolean confirmarPrematura = request != null
+                && request.confirmarFinalizacionPrematura();
+
+        if (contexto.requiereConfirmacionPrematura() && !confirmarPrematura) {
+            throw new ConfirmacionPrematuraRequeridaException(
+                    contexto.planificacion().getFechaEntrega(),
+                    contexto.ahora().toLocalDate(),
+                    contexto.diasAnticipacion());
         }
 
         Map<Long, MiembroProyecto> miembrosPorPerfil = indexarMiembros(
@@ -130,15 +141,19 @@ public class FinalizarProyectoService {
         calificacionPerfilRepository.saveAll(calificaciones);
 
         Proyecto proyecto = contexto.proyecto();
+        boolean finalizacionPrematura = contexto.requiereConfirmacionPrematura()
+                && confirmarPrematura;
         proyecto.setEstado(EstadoProyecto.FINALIZADO);
         proyecto.setFechaFinalizacion(fechaFinalizacion);
+        proyecto.setFinalizacionPrematura(finalizacionPrematura);
         proyectoRepository.saveAndFlush(proyecto);
 
         eventPublisher.publishEvent(new ProyectoFinalizadoEvent(
                 proyecto.getIdProyecto(),
                 proyecto.getNombre(),
                 fechaFinalizacion,
-                idPerfilActivo));
+                idPerfilActivo,
+                finalizacionPrematura));
 
         ProyectoResponse proyectoResponse = obtenerProyectoService.obtener(
                 idUsuario, idPerfilActivo, idProyecto);

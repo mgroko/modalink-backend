@@ -36,6 +36,7 @@ import org.mgroko.backend.proyectos.dto.ProyectoPropioResponse;
 import org.mgroko.backend.proyectos.evento.ProyectoFinalizadoEvent;
 import org.mgroko.backend.proyectos.exception.CalificacionIncompletaException;
 import org.mgroko.backend.proyectos.exception.CalificacionInvalidaException;
+import org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException;
 import org.mgroko.backend.proyectos.servicio.BuscarProyectosPropiosService;
 import org.mgroko.backend.proyectos.servicio.CalificarEquipoService;
@@ -154,6 +155,62 @@ class FinalizarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(propios.contenido())
                 .extracting(ProyectoPropioResponse::nombre)
                 .contains(datos.proyecto().getNombre());
+    }
+
+    @Test
+    void finalizar_fechaFuturaSinConfirmacion_lanzaExcepcionYNoCambiaEstado() {
+        Datos datos = crearProyectoConfirmado();
+        datos.planificacion().setFechaEntrega(LocalDate.now().plusDays(10));
+        em.flush();
+
+        PrevisualizacionFinalizacionResponse preview =
+                previsualizarFinalizacionService.previsualizar(
+                        datos.director().getIdUsuario(),
+                        datos.perfilDirector().getIdPerfil(),
+                        datos.proyecto().getIdProyecto());
+
+        assertThat(preview.puedeFinalizar()).isTrue();
+        assertThat(preview.requiereConfirmacionPrematura()).isTrue();
+        assertThat(preview.diasAnticipacion()).isEqualTo(10);
+
+        assertThatThrownBy(() -> finalizar(datos, false))
+                .isInstanceOf(ConfirmacionPrematuraRequeridaException.class);
+
+        em.flush();
+        em.clear();
+
+        Proyecto proyecto = em.find(
+                Proyecto.class, datos.proyecto().getIdProyecto());
+
+        assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.CONFIRMADO);
+        assertThat(proyecto.getFinalizacionPrematura()).isFalse();
+        assertThat(proyecto.getFechaFinalizacion()).isNull();
+        assertThat(calificacionPerfilRepository.findByProyectoIdProyecto(
+                datos.proyecto().getIdProyecto())).isEmpty();
+    }
+
+    @Test
+    void finalizar_fechaFuturaConConfirmacion_marcaFinalizacionPrematura() {
+        Datos datos = crearProyectoConfirmado();
+        datos.planificacion().setFechaEntrega(LocalDate.now().plusDays(10));
+        em.flush();
+
+        FinalizarProyectoResponse response = finalizar(datos, true);
+
+        em.flush();
+        em.clear();
+
+        Proyecto proyecto = em.find(
+                Proyecto.class, datos.proyecto().getIdProyecto());
+
+        assertThat(response.proyecto().estado()).isEqualTo("Finalizado");
+        assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.FINALIZADO);
+        assertThat(proyecto.getFinalizacionPrematura()).isTrue();
+
+        assertThat(events.stream(ProyectoFinalizadoEvent.class).toList())
+                .singleElement()
+                .satisfies(evento -> assertThat(
+                        evento.finalizacionPrematura()).isTrue());
     }
 
     @Test
@@ -348,19 +405,27 @@ class FinalizarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private FinalizarProyectoResponse finalizar(Datos datos) {
+        return finalizar(datos, false);
+    }
+
+    private FinalizarProyectoResponse finalizar(
+            Datos datos,
+            boolean confirmarFinalizacionPrematura) {
         return finalizarProyectoService.finalizar(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                new FinalizarProyectoRequest(List.of(
-                        new CalificacionRequest(
-                                datos.perfilMiembro1().getIdPerfil(),
-                                5,
-                                "Excelente desempeño"),
-                        new CalificacionRequest(
-                                datos.perfilMiembro2().getIdPerfil(),
-                                4,
-                                "Muy bien"))));
+                new FinalizarProyectoRequest(
+                        List.of(
+                                new CalificacionRequest(
+                                        datos.perfilMiembro1().getIdPerfil(),
+                                        5,
+                                        "Excelente desempeño"),
+                                new CalificacionRequest(
+                                        datos.perfilMiembro2().getIdPerfil(),
+                                        4,
+                                        "Muy bien")),
+                        confirmarFinalizacionPrematura));
     }
 
     private Datos crearProyectoConfirmado() {

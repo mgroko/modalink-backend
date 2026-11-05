@@ -31,6 +31,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -134,22 +136,29 @@ class FotoPerfilSubidaIntegrationTest extends AbstractPostgresIntegrationTest {
         MockMultipartFile archivo = new MockMultipartFile(
                 "archivo", "foto.jpg", MediaType.IMAGE_JPEG_VALUE, jpeg);
 
-        String cuerpo = mockMvc.perform(multipart("/perfiles/{idPerfil}/foto", idPerfil)
-                        .file(archivo)
-                        .principal(principal(usuario)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.idPerfil").value(idPerfil))
-                .andExpect(jsonPath("$.idImagen").isNumber())
-                .andReturn().getResponse().getContentAsString();
+        SecurityContextHolder.getContext().setAuthentication(principal(usuario));
+        try {
+            String cuerpo = mockMvc.perform(multipart("/perfiles/{idPerfil}/foto", idPerfil)
+                            .file(archivo)
+                            .principal(principal(usuario)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.idPerfil").value(idPerfil))
+                    .andExpect(jsonPath("$.idImagen").isNumber())
+                    .andReturn().getResponse().getContentAsString();
 
-        JsonNode respuesta = objectMapper.readTree(cuerpo);
-        archivosCreados.add(DIRECTORIO_SUBIDAS.resolve(nombreDe(respuesta.get("fotoUrl").asText())));
-        return respuesta;
+            JsonNode respuesta = objectMapper.readTree(cuerpo);
+            archivosCreados.add(DIRECTORIO_SUBIDAS.resolve(nombreDe(respuesta.get("fotoUrl").asText())));
+            return respuesta;
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private static UsernamePasswordAuthenticationToken principal(Usuario usuario) {
         return new UsernamePasswordAuthenticationToken(
-                String.valueOf(usuario.getIdUsuario()), null, List.of());
+                String.valueOf(usuario.getIdUsuario()),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USUARIO")));
     }
 
     private static String nombreDe(String fotoUrl) {

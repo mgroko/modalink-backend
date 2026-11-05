@@ -138,6 +138,9 @@ public class PlanificadorRecursosService {
         Map<Long, List<Long>> extras = usuariosExtraPorActividad == null
                 ? Map.of()
                 : usuariosExtraPorActividad;
+        Map<Long, LocalDateTime> fijosAdicionales = iniciosFijosAdicionales == null
+                ? Map.of()
+                : iniciosFijosAdicionales;
         LocalDate fechaEntrega = planificacion.getFechaEntrega();
         if (fechaEntrega == null) {
             throw new ProyectoNoConfirmableException(
@@ -165,9 +168,7 @@ public class PlanificadorRecursosService {
         Map<Long, Long> iniciosFijos = construirIniciosFijos(
                 actividades,
                 fechaInicio,
-                iniciosFijosAdicionales == null
-                        ? Map.of()
-                        : iniciosFijosAdicionales);
+                fijosAdicionales);
 
         long minutosHastaEntrega = Duration.between(fechaInicio, finEntrega).toMinutes();
         LocalDateTime ahora = cronogramaService.ahora();
@@ -214,7 +215,8 @@ public class PlanificadorRecursosService {
                     .getOrDefault(idActividad, List.of());
             List<Long> usuarios = usuariosDe(
                     asignaciones, extras.getOrDefault(idActividad, List.of()));
-            LocalDateTime inicio = fechaInicio.plusMinutes(nodo.inicioFijo());
+            LocalDateTime inicio = inicioExacto(
+                    actividad, idActividad, nodo, fechaInicio, fijosAdicionales);
             if (usuarios.isEmpty()) {
                 if (!permitirSinAsignaciones) {
                     throw new ProyectoNoConfirmableException(
@@ -259,10 +261,10 @@ public class PlanificadorRecursosService {
                         || predecesora.getEstado() == EstadoActividad.CANCELADA) {
                     continue;
                 }
-                LocalDateTime finPredecesora = inicios.get(predecesora.getIdActividad());
-                if (finPredecesora == null && predecesora.getFechaHoraInicio() != null) {
-                    finPredecesora = predecesora.getFechaHoraFin();
-                }
+                LocalDateTime inicioPredecesora = inicios.get(predecesora.getIdActividad());
+                LocalDateTime finPredecesora = inicioPredecesora != null
+                        ? inicioPredecesora.plusMinutes(predecesora.getDuracionMinutos())
+                        : predecesora.getFechaHoraFin();
                 if (finPredecesora == null) {
                     throw new ProyectoNoConfirmableException(
                             "DATOS_INCONSISTENTES",
@@ -442,6 +444,28 @@ public class PlanificadorRecursosService {
         return nodo.holguraEntrega() != null
                 ? nodo.holguraEntrega()
                 : Long.MAX_VALUE;
+    }
+
+    /**
+     * Inicio exacto de una actividad anclada. El CPM trabaja en minutos
+     * enteros, pero persistir o comparar una ancla con esa precisión perdería
+     * los segundos y podría adelantar una actividad respecto de su predecesora.
+     */
+    private LocalDateTime inicioExacto(
+            Actividad actividad,
+            Long idActividad,
+            NodoCpm nodo,
+            LocalDateTime fechaInicio,
+            Map<Long, LocalDateTime> fijosAdicionales) {
+
+        if (actividad.getEstado() == EstadoActividad.EN_CURSO
+                || actividad.getEstado() == EstadoActividad.FINALIZADA) {
+            return actividad.getFechaHoraInicio();
+        }
+        LocalDateTime inicioAdicional = fijosAdicionales.get(idActividad);
+        return inicioAdicional != null
+                ? inicioAdicional
+                : fechaInicio.plusMinutes(nodo.inicioFijo());
     }
 
     private Map<Long, Long> construirIniciosFijos(

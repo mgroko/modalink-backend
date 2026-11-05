@@ -11,7 +11,10 @@ public record PrevisualizacionFinalizacionResponse(
         String estado,
         LocalDate fechaEntrega,
         LocalDate fechaActual,
+        boolean requiereConfirmacionPrematura,
+        long diasAnticipacion,
         List<BloqueoFinalizacionResponse> bloqueos,
+        List<AdvertenciaFinalizacionResponse> advertencias,
         List<MiembroCalificableResponse> miembrosACalificar,
         int calificacionesRequeridas,
         int calificacionesRealizadas,
@@ -19,6 +22,9 @@ public record PrevisualizacionFinalizacionResponse(
 
     public PrevisualizacionFinalizacionResponse {
         bloqueos = bloqueos == null ? List.of() : List.copyOf(bloqueos);
+        advertencias = advertencias == null
+                ? List.of()
+                : List.copyOf(advertencias);
         miembrosACalificar = miembrosACalificar == null
                 ? List.of()
                 : List.copyOf(miembrosACalificar);

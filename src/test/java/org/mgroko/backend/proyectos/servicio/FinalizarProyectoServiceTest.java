@@ -18,12 +18,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.CalificacionPerfil;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.proyectos.dto.AdvertenciaFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.BloqueoFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.CalificacionRequest;
 import org.mgroko.backend.proyectos.dto.FinalizarProyectoRequest;
@@ -32,6 +34,7 @@ import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.evento.ProyectoFinalizadoEvent;
 import org.mgroko.backend.proyectos.exception.CalificacionIncompletaException;
 import org.mgroko.backend.proyectos.exception.CalificacionInvalidaException;
+import org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException;
 import org.mgroko.backend.repositorio.CalificacionPerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
@@ -117,7 +120,8 @@ class FinalizarProyectoServiceTest {
                 null,
                 null,
                 true,
-                AHORA);
+                AHORA,
+                false);
 
         when(obtenerProyectoService.obtener(
                 ID_USUARIO, ID_PERFIL_ACTOR, ID_PROYECTO))
@@ -142,6 +146,7 @@ class FinalizarProyectoServiceTest {
 
         assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.FINALIZADO);
         assertThat(proyecto.getFechaFinalizacion()).isEqualTo(AHORA);
+        assertThat(proyecto.getFinalizacionPrematura()).isFalse();
 
         ArgumentCaptor<List<CalificacionPerfil>> captor =
                 ArgumentCaptor.forClass(List.class);
@@ -165,7 +170,57 @@ class FinalizarProyectoServiceTest {
                 });
 
         verify(proyectoRepository).saveAndFlush(proyecto);
-        verify(eventPublisher).publishEvent(any(ProyectoFinalizadoEvent.class));
+        ArgumentCaptor<ProyectoFinalizadoEvent> eventoCaptor =
+                ArgumentCaptor.forClass(ProyectoFinalizadoEvent.class);
+        verify(eventPublisher).publishEvent(eventoCaptor.capture());
+        assertThat(eventoCaptor.getValue().finalizacionPrematura()).isFalse();
+    }
+
+    @Test
+    void finalizar_fechaFuturaSinConfirmacion_lanzaConfirmacionPrematuraYNoPersiste() {
+        contextoPrematuro(List.of(miembroActor, miembroMiembro, miembroOtroDirector));
+
+        assertThatThrownBy(() -> service.finalizar(
+                ID_USUARIO,
+                ID_PERFIL_ACTOR,
+                ID_PROYECTO,
+                request(
+                        calificacion(ID_PERFIL_MIEMBRO, 5, "Excelente"),
+                        calificacion(ID_PERFIL_OTRO_DIRECTOR, 4, "Muy bien"))))
+                .isInstanceOfSatisfying(
+                        ConfirmacionPrematuraRequeridaException.class,
+                        ex -> {
+                            assertThat(ex.getDiasAnticipacion()).isEqualTo(12);
+                            assertThat(ex.getFechaEntrega())
+                                    .isEqualTo(LocalDate.of(2026, 11, 13));
+                        });
+
+        verify(calificacionPerfilRepository, never()).saveAll(anyList());
+        verify(proyectoRepository, never()).saveAndFlush(any(Proyecto.class));
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void finalizar_fechaFuturaConConfirmacion_persisteFinalizacionPrematuraYEvento() {
+        contextoPrematuro(List.of(miembroActor, miembroMiembro, miembroOtroDirector));
+
+        FinalizarProyectoResponse response = service.finalizar(
+                ID_USUARIO,
+                ID_PERFIL_ACTOR,
+                ID_PROYECTO,
+                requestPrematuro(
+                        true,
+                        calificacion(ID_PERFIL_MIEMBRO, 5, "Excelente"),
+                        calificacion(ID_PERFIL_OTRO_DIRECTOR, 4, "Muy bien")));
+
+        assertThat(response.calificacionesRegistradas()).isEqualTo(2);
+        assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.FINALIZADO);
+        assertThat(proyecto.getFinalizacionPrematura()).isTrue();
+
+        ArgumentCaptor<ProyectoFinalizadoEvent> eventoCaptor =
+                ArgumentCaptor.forClass(ProyectoFinalizadoEvent.class);
+        verify(eventPublisher).publishEvent(eventoCaptor.capture());
+        assertThat(eventoCaptor.getValue().finalizacionPrematura()).isTrue();
     }
 
     @Test
@@ -387,14 +442,51 @@ class FinalizarProyectoServiceTest {
                         null,
                         AHORA,
                         List.of(),
+                        false,
+                        0L,
+                        List.of(),
                         miembros,
                         calificacionesExistentes,
                         List.of(),
                         bloqueos));
     }
 
+    private void contextoPrematuro(List<MiembroProyecto> miembros) {
+        Planificacion planificacion = Planificacion.builder()
+                .idPlanificacion(200L)
+                .proyecto(proyecto)
+                .fechaEntrega(LocalDate.of(2026, 11, 13))
+                .build();
+
+        when(contextoService.cargar(
+                ID_USUARIO, ID_PERFIL_ACTOR, ID_PROYECTO, true))
+                .thenReturn(new ContextoFinalizacionProyectoService.Contexto(
+                        proyecto,
+                        perfilActor,
+                        planificacion,
+                        AHORA,
+                        List.of(new AdvertenciaFinalizacionResponse(
+                                "FECHA_ENTREGA_FUTURA",
+                                "La fecha de entrega todavía no se alcanzó.",
+                                "PLANIFICACION",
+                                200L)),
+                        true,
+                        12L,
+                        List.of(),
+                        miembros,
+                        List.of(),
+                        List.of(),
+                        List.of()));
+    }
+
     private FinalizarProyectoRequest request(CalificacionRequest... calificaciones) {
         return new FinalizarProyectoRequest(List.of(calificaciones));
+    }
+
+    private FinalizarProyectoRequest requestPrematuro(
+            boolean confirmar,
+            CalificacionRequest... calificaciones) {
+        return new FinalizarProyectoRequest(List.of(calificaciones), confirmar);
     }
 
     private CalificacionRequest calificacion(

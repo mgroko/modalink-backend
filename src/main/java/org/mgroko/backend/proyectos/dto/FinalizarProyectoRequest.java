@@ -11,5 +11,11 @@ import jakarta.validation.constraints.NotNull;
  */
 public record FinalizarProyectoRequest(
         @NotNull(message = "La lista de calificaciones es obligatoria.")
-        List<@Valid CalificacionRequest> calificaciones) {
+        List<@Valid CalificacionRequest> calificaciones,
+
+        boolean confirmarFinalizacionPrematura) {
+
+    public FinalizarProyectoRequest(List<CalificacionRequest> calificaciones) {
+        this(calificaciones, false);
+    }
 }
