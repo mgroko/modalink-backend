@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.proyectos.dto.ActividadHistorialResponse;
 import org.mgroko.backend.proyectos.dto.HistorialProyectoEventoResponse;
 import org.mgroko.backend.proyectos.servicio.ListarHistorialProyectoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -58,7 +59,10 @@ class HistorialProyectoControllerTest {
                                 "Falta de compromiso",
                                 "ELIMINADO",
                                 20L,
-                                "Montaje")),
+                                "Montaje",
+                                List.of(new ActividadHistorialResponse(
+                                        20L, "Montaje", "PENDIENTE",
+                                        30L, "Modelo")))),
                         0, 20, 1, 1, true, true);
 
         when(listarHistorialProyectoService.listar(
@@ -78,6 +82,10 @@ class HistorialProyectoControllerTest {
                         .value("Luna"))
                 .andExpect(jsonPath("$.contenido[0].idPerfilActor").value(456L))
                 .andExpect(jsonPath("$.contenido[0].nombreActividad")
+                        .value("Montaje"))
+                .andExpect(jsonPath("$.contenido[0].actividades[0].idActividad")
+                        .value(20L))
+                .andExpect(jsonPath("$.contenido[0].actividades[0].nombreActividad")
                         .value("Montaje"))
                 .andExpect(jsonPath("$.totalElementos").value(1));
 

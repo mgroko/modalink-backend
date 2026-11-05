@@ -175,7 +175,10 @@ public class ListarHistorialProyectoService {
                 evento.motivoBaja(),
                 evento.estadoParticipacion(),
                 actividad != null ? actividad.idActividad() : null,
-                actividad != null ? actividad.nombreActividad() : null);
+                actividad != null ? actividad.nombreActividad() : null,
+                evento.actividades() != null
+                        ? evento.actividades()
+                        : List.of());
     }
 
     private ActividadHistorialResponse primeraActividad(

@@ -241,6 +241,9 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
 
     /**
      * Asignaciones de miembros históricos para la auditoría de bajas.
+     * Ordenadas por orden de asignación: la primera de cada miembro es la
+     * primera actividad a la que fue asignado (la columna "Actividad
+     * registrada" del historial depende de este orden).
      */
     @Query("""
         SELECT a FROM AsignacionActividad a
@@ -249,7 +252,7 @@ public interface AsignacionActividadRepository extends JpaRepository<AsignacionA
         LEFT JOIN FETCH a.requerimientoActividad r
         LEFT JOIN FETCH r.profesion
         WHERE m.idMiembro IN :idsMiembros
-        ORDER BY act.nombre ASC, a.idAsignacionAct ASC
+        ORDER BY a.idAsignacionAct ASC
     """)
     List<AsignacionActividad> findHistoricasPorMiembrosConActividadYRequerimiento(
             @Param("idsMiembros") Collection<Long> idsMiembros);

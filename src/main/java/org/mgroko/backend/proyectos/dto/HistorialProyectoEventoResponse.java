@@ -1,6 +1,7 @@
 package org.mgroko.backend.proyectos.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -8,8 +9,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
  * Evento del historial de membresías de un proyecto.
  *
  * <p>El contrato es plano: cada fila representa un movimiento de una
- * membresía. La actividad se informa de forma singular según la decisión de
- * producto de mostrar una sola actividad por evento.</p>
+ * membresía. Los campos singulares {@code idActividad}/{@code nombreActividad}
+ * se mantienen por compatibilidad y reflejan la primera actividad asignada;
+ * {@code actividades} expone la lista completa.</p>
  */
 public record HistorialProyectoEventoResponse(
         Long idEvento,
@@ -31,6 +33,7 @@ public record HistorialProyectoEventoResponse(
         String motivo,
         String estadoParticipacion,
         Long idActividad,
-        String nombreActividad
+        String nombreActividad,
+        List<ActividadHistorialResponse> actividades
 ) {
 }

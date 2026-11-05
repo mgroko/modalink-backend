@@ -26,6 +26,7 @@ import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.proyectos.dto.ActividadHistorialResponse;
 import org.mgroko.backend.proyectos.dto.AuditoriaBajaResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -119,6 +120,27 @@ class ListarAuditoriaBajasProyectoServiceTest {
     }
 
     @Test
+    void listar_ordenaActividadesPorAsignacionYExponeLaPrimera() {
+        when(miembroProyectoRepository.findHistoricosDeProyectoParaAuditoria(100L))
+                .thenReturn(List.of(miembro()));
+
+        AsignacionActividad tardia = asignacion(80L, 21L, "Puesta en escena");
+        AsignacionActividad temprana = asignacion(40L, 20L, "Montaje");
+        when(asignacionActividadRepository
+                .findHistoricasPorMiembrosConActividadYRequerimiento(List.of(55L)))
+                .thenReturn(List.of(tardia, temprana));
+
+        PaginaResponse<AuditoriaBajaResponse> pagina = service.listar(
+                1L, 10L, 100L, null, null, null, null, 0, 20, false);
+
+        assertThat(pagina.contenido())
+                .singleElement()
+                .satisfies(baja -> assertThat(baja.actividades())
+                        .extracting(ActividadHistorialResponse::nombreActividad)
+                        .containsExactly("Montaje", "Puesta en escena"));
+    }
+
+    @Test
     void listar_sinDirector_lanzaAccesoDenegado() {
         doThrow(new AccesoDenegadoProyectoException("No es director."))
                 .when(proyectoSecurityService).validarDirector(100L, 10L);
@@ -126,6 +148,19 @@ class ListarAuditoriaBajasProyectoServiceTest {
         assertThatThrownBy(() -> service.listar(
                 1L, 10L, 100L, null, null, null, null, 0, 20, false))
                 .isInstanceOf(AccesoDenegadoProyectoException.class);
+    }
+
+    private AsignacionActividad asignacion(
+            Long idAsignacion, Long idActividad, String nombreActividad) {
+        return AsignacionActividad.builder()
+                .idAsignacionAct(idAsignacion)
+                .miembro(miembro())
+                .actividad(Actividad.builder()
+                        .idActividad(idActividad)
+                        .nombre(nombreActividad)
+                        .estado(EstadoActividad.EnCurso)
+                        .build())
+                .build();
     }
 
     private MiembroProyecto miembro() {

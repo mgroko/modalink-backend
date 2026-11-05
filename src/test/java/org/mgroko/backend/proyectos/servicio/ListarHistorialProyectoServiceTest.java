@@ -86,6 +86,15 @@ class ListarHistorialProyectoServiceTest {
             assertThat(evento.estadoParticipacion()).isEqualTo("ELIMINADO");
             assertThat(evento.idActividad()).isEqualTo(20L);
             assertThat(evento.nombreActividad()).isEqualTo("Montaje");
+            assertThat(evento.actividades())
+                    .singleElement()
+                    .satisfies(actividad -> {
+                        assertThat(actividad.idActividad()).isEqualTo(20L);
+                        assertThat(actividad.nombreActividad()).isEqualTo("Montaje");
+                        assertThat(actividad.estadoActividad()).isEqualTo("PENDIENTE");
+                        assertThat(actividad.idRequerimiento()).isEqualTo(30L);
+                        assertThat(actividad.nombreProfesion()).isEqualTo("Modelo");
+                    });
         });
     }
 

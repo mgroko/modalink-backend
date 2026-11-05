@@ -2,6 +2,7 @@ package org.mgroko.backend.proyectos.servicio;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -119,7 +120,11 @@ public class ListarAuditoriaBajasProyectoService {
             }
 
             List<AsignacionActividad> asignaciones = asignacionesPorMiembro
-                    .getOrDefault(miembro.getIdMiembro(), List.of());
+                    .getOrDefault(miembro.getIdMiembro(), List.of())
+                    .stream()
+                    .sorted(Comparator.comparing(
+                            AsignacionActividad::getIdAsignacionAct))
+                    .toList();
             List<ActividadHistorialResponse> actividades = asignaciones.stream()
                     .filter(asignacion -> idActividad == null
                             || (asignacion.getActividad() != null
