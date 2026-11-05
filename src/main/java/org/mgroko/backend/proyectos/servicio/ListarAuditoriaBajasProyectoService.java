@@ -204,6 +204,9 @@ public class ListarAuditoriaBajasProyectoService {
                 perfil != null && perfil.getUsuario() != null
                         ? perfil.getUsuario().getApellido()
                         : null,
+                perfil != null && perfil.getProfesion() != null
+                        ? perfil.getProfesion().getNombre()
+                        : null,
                 miembro.getRolProyecto() != null
                         ? RolProyectoUsuario.desde(miembro.getRolProyecto()).name()
                         : null,

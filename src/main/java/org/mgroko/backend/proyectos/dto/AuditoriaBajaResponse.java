@@ -10,6 +10,7 @@ public record AuditoriaBajaResponse(
         String nombreArtistico,
         String nombreUsuario,
         String apellidoUsuario,
+        String nombreProfesion,
         String rol,
         String estadoParticipacion,
         String motivoBaja,

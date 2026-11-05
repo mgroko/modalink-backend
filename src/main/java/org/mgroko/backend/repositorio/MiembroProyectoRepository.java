@@ -236,12 +236,13 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
         SELECT mp FROM MiembroProyecto mp
         JOIN FETCH mp.perfil p
         JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion
         JOIN FETCH mp.rolProyecto r
         LEFT JOIN FETCH mp.perfilAutorBaja autor
         LEFT JOIN FETCH autor.usuario
         WHERE mp.proyecto.idProyecto = :idProyecto
           AND mp.estadoParticipacion <> org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
-        ORDER BY mp.fechaBaja DESC, mp.idMiembro DESC
+        ORDER BY COALESCE(mp.fechaBaja, mp.fechaAlta) DESC, mp.idMiembro DESC
     """)
     List<MiembroProyecto> findHistoricosDeProyectoParaAuditoria(
             @Param("idProyecto") Long idProyecto);

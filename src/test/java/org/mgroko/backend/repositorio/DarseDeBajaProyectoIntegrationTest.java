@@ -27,11 +27,17 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
+import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.DarseDeBajaProyectoRequest;
+import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
+import org.mgroko.backend.proyectos.dto.HistorialProyectoEventoResponse;
+import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.DarseDeBajaProyectoService;
+import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
+import org.mgroko.backend.proyectos.servicio.ListarHistorialProyectoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,6 +57,12 @@ class DarseDeBajaProyectoIntegrationTest extends AbstractPostgresIntegrationTest
 
     @Autowired
     private CupoRequerimientoService cupoRequerimientoService;
+
+    @Autowired
+    private ListarHistorialProyectoService listarHistorialProyectoService;
+
+    @Autowired
+    private EliminarIntegranteService eliminarIntegranteService;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -119,6 +131,85 @@ class DarseDeBajaProyectoIntegrationTest extends AbstractPostgresIntegrationTest
                 "SELECT COUNT(*) FROM notificacion WHERE id_usuario_destino = ? AND tipo = ?",
                 escenario.idUsuarioMiembro(),
                 NotificacionService.TIPO_INTEGRANTE_BAJA_VOLUNTARIA)).isZero();
+    }
+
+    @Test
+    @Transactional
+    void historial_bajaVoluntariaDevuelveEventoConActividadYAutor() {
+        Escenario escenario = crearEscenario(false);
+
+        darseDeBajaProyectoService.darseDeBaja(
+                escenario.idUsuarioMiembro(),
+                escenario.idPerfilMiembro(),
+                escenario.idProyecto(),
+                new DarseDeBajaProyectoRequest("  Nuevo proyecto  "));
+
+        PaginaResponse<HistorialProyectoEventoResponse> pagina =
+                listarHistorialProyectoService.listar(
+                        escenario.idUsuarioDirector(),
+                        escenario.idPerfilDirector(),
+                        escenario.idProyecto(),
+                        null,
+                        null,
+                        0,
+                        20);
+
+        assertThat(pagina.contenido()).singleElement().satisfies(evento -> {
+            assertThat(evento.tipo()).isEqualTo("MIEMBRO_BAJA_VOLUNTARIA");
+            assertThat(evento.estadoParticipacion()).isEqualTo("BAJA_VOLUNTARIA");
+            assertThat(evento.fecha()).isNotNull();
+            assertThat(evento.idPerfilAfectado())
+                    .isEqualTo(escenario.idPerfilMiembro());
+            assertThat(evento.idPerfilActor())
+                    .isEqualTo(escenario.idPerfilMiembro());
+            assertThat(evento.motivo()).isEqualTo("Nuevo proyecto");
+            assertThat(evento.nombreProfesionAfectado()).isNotNull();
+            assertThat(evento.idActividad()).isNotNull();
+            assertThat(evento.nombreActividad()).isEqualTo("Actividad UC40");
+        });
+    }
+
+    @Test
+    @Transactional
+    void historial_eliminadoRegistraActorYNoDirectorRecibe403() {
+        Escenario escenario = crearEscenario(false);
+
+        eliminarIntegranteService.eliminar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                escenario.idMiembro(),
+                new EliminarIntegranteRequest("Falta de compromiso"));
+
+        PaginaResponse<HistorialProyectoEventoResponse> pagina =
+                listarHistorialProyectoService.listar(
+                        escenario.idUsuarioDirector(),
+                        escenario.idPerfilDirector(),
+                        escenario.idProyecto(),
+                        "MIEMBRO_ELIMINADO",
+                        null,
+                        0,
+                        20);
+
+        assertThat(pagina.contenido()).singleElement().satisfies(evento -> {
+            assertThat(evento.tipo()).isEqualTo("MIEMBRO_ELIMINADO");
+            assertThat(evento.estadoParticipacion()).isEqualTo("ELIMINADO");
+            assertThat(evento.idPerfilAfectado())
+                    .isEqualTo(escenario.idPerfilMiembro());
+            assertThat(evento.idPerfilActor())
+                    .isEqualTo(escenario.idPerfilDirector());
+            assertThat(evento.motivo()).isEqualTo("Falta de compromiso");
+        });
+
+        assertThatThrownBy(() -> listarHistorialProyectoService.listar(
+                escenario.idUsuarioMiembro(),
+                escenario.idPerfilMiembro(),
+                escenario.idProyecto(),
+                null,
+                null,
+                0,
+                20))
+                .isInstanceOf(AccesoDenegadoProyectoException.class);
     }
 
     @Test
