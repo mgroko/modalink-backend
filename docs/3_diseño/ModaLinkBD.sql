@@ -4196,6 +4196,7 @@ CREATE TABLE reemplazo(
     estado                    varchar(40)  NOT NULL,
     fecha_creacion            timestamp    DEFAULT CURRENT_TIMESTAMP NOT NULL,
     fecha_cierre              timestamp,
+    motivo_cierre             varchar(200),
     id_miembro_resultante     int8,
     id_asignacion_resultante  int8,
     CONSTRAINT pk_reemplazo PRIMARY KEY (id_reemplazo),

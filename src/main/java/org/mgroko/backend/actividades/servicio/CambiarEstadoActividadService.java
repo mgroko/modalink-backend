@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.mgroko.backend.actividades.dto.ActividadResponse;
+import org.mgroko.backend.actividades.evento.ActividadCanceladaEvent;
 import org.mgroko.backend.actividades.evento.ActividadModificadaEvent;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
 import org.mgroko.backend.actividades.exception.ActividadSinFechaInicioException;
@@ -156,6 +157,14 @@ public class CambiarEstadoActividadService {
                         MotivoReprogramacion.CANCELACION_ACTIVIDAD,
                         null);
             }
+        }
+
+        if (estadoNuevo == EstadoActividad.CANCELADA) {
+            eventPublisher.publishEvent(new ActividadCanceladaEvent(
+                    actividad.getIdActividad(),
+                    proyecto.getIdProyecto(),
+                    actividad.getNombre(),
+                    proyecto.getNombre()));
         }
 
         publicarActividadModificada(actividad, proyecto);

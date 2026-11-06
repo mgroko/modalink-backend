@@ -239,12 +239,22 @@ public class ConfirmarReemplazoService {
                     "CANDIDATO_YA_ES_MIEMBRO");
         }
 
-        if (candidatoRepository.existsByPerfilIdPerfilAndIdProyectoAndEstadoIn(
-                perfil.getIdPerfil(),
-                reemplazo.getProyecto().getIdProyecto(),
-                ESTADOS_INVITACION_ACTIVA)) {
+        boolean invitacionActiva = reemplazo.getTipo() == TipoReemplazo.ACTIVIDAD
+                ? candidatoRepository.existsInvitacionActivaParaActividad(
+                        perfil.getIdPerfil(),
+                        reemplazo.getActividad().getIdActividad(),
+                        ESTADOS_INVITACION_ACTIVA)
+                : candidatoRepository.existsInvitacionActivaParaGeneral(
+                        perfil.getIdPerfil(),
+                        reemplazo.getRequerimientoGral().getIdRequerimientoGral(),
+                        ESTADOS_INVITACION_ACTIVA);
+
+        if (invitacionActiva) {
+            String destino = reemplazo.getTipo() == TipoReemplazo.ACTIVIDAD
+                    ? "esta actividad"
+                    : "este requerimiento general";
             throw new ReemplazoNoGestionableException(
-                    "El candidato ya tiene otra invitación activa para este proyecto.",
+                    "El candidato ya tiene otra invitación activa para " + destino + ".",
                     "CANDIDATO_CON_INVITACION_ACTIVA");
         }
 

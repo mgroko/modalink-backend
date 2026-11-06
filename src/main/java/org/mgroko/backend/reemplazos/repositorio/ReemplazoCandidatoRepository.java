@@ -118,9 +118,44 @@ public interface ReemplazoCandidatoRepository extends JpaRepository<ReemplazoCan
             @Param("idPerfil") Long idPerfil,
             @Param("estados") Collection<EstadoCandidatoReemplazo> estados);
 
-    boolean existsByPerfilIdPerfilAndIdProyectoAndEstadoIn(
-            Long idPerfil,
-            Long idProyecto,
+    /**
+     * Indica si el perfil ya tiene una invitación activa para la misma
+     * actividad. Se permite que tenga invitaciones para otras actividades del
+     * mismo proyecto.
+     */
+    @Query("""
+            SELECT CASE WHEN COUNT(c) > 0 THEN TRUE ELSE FALSE END
+            FROM ReemplazoCandidato c
+            WHERE c.perfil.idPerfil = :idPerfil
+              AND c.estado IN :estados
+              AND c.reemplazo.tipo = org.mgroko.backend.reemplazos.enums.TipoReemplazo.ACTIVIDAD
+              AND c.reemplazo.actividad.idActividad = :idActividad
+            """)
+    boolean existsInvitacionActivaParaActividad(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idActividad") Long idActividad,
+            @Param("estados") Collection<EstadoCandidatoReemplazo> estados);
+
+    /**
+     * Indica si el perfil ya tiene una invitación activa para el mismo
+     * requerimiento general. Se permite que tenga invitaciones para
+     * actividades u otros requerimientos generales del mismo proyecto.
+     */
+    @Query("""
+            SELECT CASE WHEN COUNT(c) > 0 THEN TRUE ELSE FALSE END
+            FROM ReemplazoCandidato c
+            WHERE c.perfil.idPerfil = :idPerfil
+              AND c.estado IN :estados
+              AND c.reemplazo.tipo = org.mgroko.backend.reemplazos.enums.TipoReemplazo.GENERAL
+              AND c.reemplazo.requerimientoGral.idRequerimientoGral = :idRequerimientoGral
+            """)
+    boolean existsInvitacionActivaParaGeneral(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idRequerimientoGral") Long idRequerimientoGral,
+            @Param("estados") Collection<EstadoCandidatoReemplazo> estados);
+
+    List<ReemplazoCandidato> findByReemplazoIdReemplazoAndEstadoIn(
+            Long idReemplazo,
             Collection<EstadoCandidatoReemplazo> estados);
 
     long countByReemplazoIdReemplazoAndEstadoIn(

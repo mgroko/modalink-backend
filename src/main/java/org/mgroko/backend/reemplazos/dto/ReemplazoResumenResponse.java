@@ -21,6 +21,7 @@ public record ReemplazoResumenResponse(
         EstadoReemplazo estado,
         LocalDateTime fechaCreacion,
         LocalDateTime fechaCierre,
+        String motivoCierre,
         int totalCandidatos,
         int totalInvitados) {
 }

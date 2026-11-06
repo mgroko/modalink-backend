@@ -1,8 +1,10 @@
 package org.mgroko.backend.reemplazos.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import org.mgroko.backend.reemplazos.enums.EstadoReemplazo;
 import org.mgroko.backend.reemplazos.modelo.Reemplazo;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,4 +43,14 @@ public interface ReemplazoRepository extends JpaRepository<Reemplazo, Long> {
     boolean existsByMiembroBaja_IdMiembroAndRequerimientoGral_IdRequerimientoGral(
             Long idMiembro,
             Long idRequerimientoGral);
+
+    @Query("""
+            SELECT r FROM Reemplazo r
+            WHERE r.actividad.idActividad = :idActividad
+              AND r.estado NOT IN :estadosFinales
+            ORDER BY r.idReemplazo ASC
+            """)
+    List<Reemplazo> findActivosPorActividad(
+            @Param("idActividad") Long idActividad,
+            @Param("estadosFinales") Collection<EstadoReemplazo> estadosFinales);
 }

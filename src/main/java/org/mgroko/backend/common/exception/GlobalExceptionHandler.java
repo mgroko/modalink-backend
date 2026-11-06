@@ -161,6 +161,20 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * El cliente envió un Content-Type que ningún converter del endpoint
+     * soporta. Se devuelve un código estable para que el frontend pueda
+     * distinguirlo de un error de validación común.
+     */
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMediaTypeNotSupported(
+            org.springframework.web.HttpMediaTypeNotSupportedException ex) {
+        return buildErrorResponseConCodigo(
+                "El contenido enviado no es compatible con esta operación.",
+                "CONTENT_TYPE_NO_SOPORTADO",
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    /**
      * Helper para construir una respuesta de error estándar.
      */
     private ResponseEntity<Map<String, Object>> buildErrorResponse(String message, HttpStatus status) {

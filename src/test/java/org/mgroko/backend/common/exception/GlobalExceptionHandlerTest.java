@@ -33,6 +33,20 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void mediaTypeNoSoportado_responde415ConCodigoEstable() {
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleHttpMediaTypeNotSupported(
+                        new org.springframework.web.HttpMediaTypeNotSupportedException(
+                                "Content-Type no soportado"));
+
+        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, respuesta.getStatusCode());
+        assertEquals(415, respuesta.getBody().get("httpStatus"));
+        assertEquals("CONTENT_TYPE_NO_SOPORTADO", respuesta.getBody().get("codigo"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("no es compatible"));
+    }
+
+    @Test
     void formatoInvalido_responde400ConElMensaje() {
         ResponseEntity<Map<String, Object>> respuesta = manejador.handleFormatoImagenInvalido(
                 new FormatoImagenInvalidoException("El archivo no corresponde a una imagen JPEG, PNG o WEBP válida."));

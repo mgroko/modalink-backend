@@ -97,6 +97,9 @@ public class Reemplazo {
     @Column(name = "fecha_cierre")
     private LocalDateTime fechaCierre;
 
+    @Column(name = "motivo_cierre", length = 200)
+    private String motivoCierre;
+
     @Column(name = "id_miembro_resultante")
     private Long idMiembroResultante;
 

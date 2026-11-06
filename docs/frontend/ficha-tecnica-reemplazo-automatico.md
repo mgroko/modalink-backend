@@ -44,6 +44,15 @@ POST /reemplazos/invitaciones/{idCandidato}/aceptar
 POST /reemplazos/invitaciones/{idCandidato}/rechazar
 ```
 
+`GET /reemplazos/invitaciones` puede devolver varias invitaciones del mismo
+`idProyecto` cuando corresponden a actividades o requerimientos distintos.
+La clave de cada ítem es `idCandidato`, no `idProyecto`.
+
+La restricción de duplicados es por actividad o requerimiento, no por
+proyecto: un perfil no puede tener dos invitaciones activas para la misma
+actividad ni para el mismo requerimiento general, pero sí para actividades
+distintas del mismo proyecto.
+
 ## Estados
 
 Proceso: `PENDIENTE_CONFIRMACION_DIRECTOR`, `INVITACIONES_ENVIADAS`,
@@ -51,6 +60,14 @@ Proceso: `PENDIENTE_CONFIRMACION_DIRECTOR`, `INVITACIONES_ENVIADAS`,
 
 Candidato: `PROPUESTO`, `INVITADO`, `ACEPTADO_PENDIENTE_APROBACION`,
 `APROBADO`, `RECHAZADO`, `RECHAZADO_ADMIN`, `EXPIRADO`, `CANCELADO`.
+
+## Cancelación automática por actividad cancelada
+
+Cuando una actividad pasa a `CANCELADA`, los procesos de reemplazo asociados
+que sigan activos pasan a `CANCELADO` y sus candidatos activos también pasan a
+`CANCELADO`. Las invitaciones dejan de aparecer en la bandeja activa del
+profesional, pero se conservan para trazabilidad. El proceso muestra
+`motivoCierre = "Actividad cancelada"` en el panel del director.
 
 ## Reglas de orden
 

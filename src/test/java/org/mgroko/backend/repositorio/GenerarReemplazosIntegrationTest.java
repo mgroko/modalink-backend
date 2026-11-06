@@ -23,6 +23,7 @@ import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.actividades.servicio.CambiarEstadoActividadService;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -37,6 +38,7 @@ import org.mgroko.backend.reemplazos.servicio.AprobacionIncorporacionService;
 import org.mgroko.backend.reemplazos.servicio.ConfirmarReemplazoService;
 import org.mgroko.backend.reemplazos.servicio.GenerarReemplazosService;
 import org.mgroko.backend.reemplazos.servicio.InvitacionReemplazoService;
+import org.mgroko.backend.reemplazos.servicio.ReemplazoQueryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,6 +86,12 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
     private AprobacionIncorporacionService aprobacionIncorporacionService;
 
     @Autowired
+    private CambiarEstadoActividadService cambiarEstadoActividadService;
+
+    @Autowired
+    private ReemplazoQueryService reemplazoQueryService;
+
+    @Autowired
     private AsignacionActividadRepository asignacionActividadRepository;
 
     @Autowired
@@ -117,6 +125,132 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
             assertThat(candidatos).allMatch(c -> c.getPerfil().getIdPerfil()
                     .equals(escenario.idPerfilCandidato()));
         }
+    }
+
+    @Test
+    @Transactional
+    void permiteInvitacionesDelMismoProyectoParaRequerimientosDistintos() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        var reemplazos = reemplazoRepository
+                .findByProyectoIdProyectoOrderByFechaCreacionDesc(escenario.idProyecto());
+        var reemplazoActividad = reemplazos.stream()
+                .filter(r -> r.getTipo().name().equals("ACTIVIDAD"))
+                .findFirst()
+                .orElseThrow();
+        var reemplazoGeneral = reemplazos.stream()
+                .filter(r -> r.getTipo().name().equals("GENERAL"))
+                .findFirst()
+                .orElseThrow();
+
+        var candidatoActividad = reemplazoCandidatoRepository
+                .findConDetalleByReemplazo(reemplazoActividad.getIdReemplazo())
+                .getFirst();
+        var candidatoGeneral = reemplazoCandidatoRepository
+                .findConDetalleByReemplazo(reemplazoGeneral.getIdReemplazo())
+                .getFirst();
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazoActividad.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(
+                        List.of(candidatoActividad.getIdCandidato()),
+                        "Invitación a actividad"));
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazoGeneral.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(
+                        List.of(candidatoGeneral.getIdCandidato()),
+                        "Invitación general"));
+
+        assertThat(reemplazoRepository.findById(reemplazoActividad.getIdReemplazo())
+                .orElseThrow()
+                .getEstado().name())
+                .isEqualTo("INVITACIONES_ENVIADAS");
+        assertThat(reemplazoRepository.findById(reemplazoGeneral.getIdReemplazo())
+                .orElseThrow()
+                .getEstado().name())
+                .isEqualTo("INVITACIONES_ENVIADAS");
+        assertThat(reemplazoCandidatoRepository.findById(candidatoActividad.getIdCandidato())
+                .orElseThrow()
+                .getEstado().name())
+                .isEqualTo("INVITADO");
+        assertThat(reemplazoCandidatoRepository.findById(candidatoGeneral.getIdCandidato())
+                .orElseThrow()
+                .getEstado().name())
+                .isEqualTo("INVITADO");
+    }
+
+    @Test
+    @Transactional
+    void alCancelarActividadCancelaLogicamenteElReemplazoYLaInvitacion() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        var reemplazoActividad = reemplazoRepository
+                .findByProyectoIdProyectoOrderByFechaCreacionDesc(escenario.idProyecto())
+                .stream()
+                .filter(r -> r.getTipo().name().equals("ACTIVIDAD"))
+                .findFirst()
+                .orElseThrow();
+
+        var candidato = reemplazoCandidatoRepository
+                .findConDetalleByReemplazo(reemplazoActividad.getIdReemplazo())
+                .getFirst();
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazoActividad.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(
+                        List.of(candidato.getIdCandidato()),
+                        "Invitación a actividad"));
+
+        assertThat(reemplazoCandidatoRepository.findById(candidato.getIdCandidato())
+                .orElseThrow()
+                .getEstado().name())
+                .isEqualTo("INVITADO");
+
+        cambiarEstadoActividadService.cambiar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                escenario.idActividad(),
+                EstadoActividad.CANCELADA);
+
+        var reemplazoCancelado = reemplazoRepository
+                .findById(reemplazoActividad.getIdReemplazo())
+                .orElseThrow();
+        assertThat(reemplazoCancelado.getEstado().name()).isEqualTo("CANCELADO");
+        assertThat(reemplazoCancelado.getMotivoCierre()).isEqualTo("Actividad cancelada");
+        assertThat(reemplazoCancelado.getFechaCierre()).isNotNull();
+
+        var candidatoCancelado = reemplazoCandidatoRepository
+                .findById(candidato.getIdCandidato())
+                .orElseThrow();
+        assertThat(candidatoCancelado.getEstado().name()).isEqualTo("CANCELADO");
+        assertThat(candidatoCancelado.getMotivoDecision()).isEqualTo("Actividad cancelada");
+
+        assertThat(reemplazoQueryService.listarInvitaciones(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato())).isEmpty();
     }
 
     @Test

@@ -17,6 +17,7 @@ import org.mgroko.backend.actividades.dto.CrearRequerimientoActividadRequest;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.dto.ModificarRequerimientoActividadRequest;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
+import org.mgroko.backend.actividades.evento.ActividadCanceladaEvent;
 import org.mgroko.backend.actividades.evento.ActividadModificadaEvent;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
 import org.mgroko.backend.actividades.exception.CicloActividadException;
@@ -204,6 +205,12 @@ public class ModificarActividadService {
                         MotivoReprogramacion.CANCELACION_ACTIVIDAD,
                         null);
             }
+
+            eventPublisher.publishEvent(new ActividadCanceladaEvent(
+                    guardada.getIdActividad(),
+                    proyecto.getIdProyecto(),
+                    guardada.getNombre(),
+                    proyecto.getNombre()));
         }
 
         // Sin fecha de entrega no se calcula CPM: la actividad queda flotante.

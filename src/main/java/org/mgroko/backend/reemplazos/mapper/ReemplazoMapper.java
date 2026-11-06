@@ -58,6 +58,7 @@ public final class ReemplazoMapper {
                 reemplazo.getEstado(),
                 reemplazo.getFechaCreacion(),
                 reemplazo.getFechaCierre(),
+                reemplazo.getMotivoCierre(),
                 totalCandidatos,
                 totalInvitados);
     }
