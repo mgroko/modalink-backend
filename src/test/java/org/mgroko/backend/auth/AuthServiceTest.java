@@ -38,6 +38,7 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
+import org.mgroko.backend.repositorio.UsuarioIdentidadRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.JwtService;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
@@ -70,6 +71,9 @@ class AuthServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private UsuarioIdentidadRepository usuarioIdentidadRepository;
 
     @Mock
     private RolGlobalRepository rolGlobalRepository;
@@ -321,6 +325,33 @@ class AuthServiceTest {
         assertEquals("maria.flores@test.com", resultado.response().usuario().correo());
         assertEquals("Usuario", resultado.response().usuario().rolGlobal());
         assertNull(resultado.response().usuario().idPerfilActivo());
+    }
+
+    @Test
+    void login_administrador_noResuelvePerfilActivo() {
+        LoginRequest request = new LoginRequest("admin@test.com", "password123");
+        RolGlobal rolAdministrador = RolGlobal.builder()
+                .codigo("ADMINISTRADOR")
+                .nombre("Administrador")
+                .build();
+        Usuario administrador = Usuario.builder()
+                .idUsuario(2L)
+                .nombre("Admin")
+                .correo("admin@test.com")
+                .passwordHash("hash-guardado")
+                .rolGlobal(rolAdministrador)
+                .build();
+
+        when(usuarioRepository.findByCorreo(request.correo())).thenReturn(Optional.of(administrador));
+        when(passwordEncoder.matches("password123", "hash-guardado")).thenReturn(true);
+        when(rolGlobalRepository.findByNombre("Administrador")).thenReturn(Optional.of(rolAdministrador));
+        when(jwtService.generarToken(anyString(), anyMap())).thenReturn("token-simulado");
+
+        AuthService.LoginResultado resultado = authService.login(request);
+
+        assertNull(resultado.response().usuario().idPerfilActivo());
+        assertNull(resultado.response().usuario().nombreArtisticoActivo());
+        verify(perfilRepository, never()).findByUsuario_IdUsuarioAndEstado(anyLong(), any());
     }
 
     @Test

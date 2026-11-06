@@ -13,10 +13,13 @@ import org.mgroko.backend.calendario.dto.BloqueoActividadResponse;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.JornadaDiaResponse;
+import org.mgroko.backend.calendario.dto.PerfilCalendarioResponse;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.mgroko.backend.modelo.JornadaAgenda;
+import org.mgroko.backend.modelo.Planificacion;
+import org.mgroko.backend.modelo.Proyecto;
 
 class CalendarioMapperTest {
 
@@ -97,7 +100,7 @@ class CalendarioMapperTest {
     }
 
     @Test
-    void toBloqueoActividadResponse_aplicaMargenALosDosExtremos() {
+    void toBloqueoActividadResponse_aplicaMitadDelMargenALosDosExtremos() {
         Actividad actividad = Actividad.builder()
                 .idActividad(11L)
                 .nombre("Sesión de fotos")
@@ -109,8 +112,37 @@ class CalendarioMapperTest {
 
         assertEquals(11L, response.idActividad());
         assertEquals("Sesión de fotos", response.nombre());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 0), response.fechaHoraInicio());
-        assertEquals(LocalDateTime.of(2026, 9, 10, 13, 0), response.fechaHoraFin());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 9, 30), response.fechaHoraInicio());
+        assertEquals(LocalDateTime.of(2026, 9, 10, 12, 30), response.fechaHoraFin());
+    }
+
+    @Test
+    void toBloqueoActividadResponse_incluyeProyectoYPerfiles() {
+        Proyecto proyecto = Proyecto.builder()
+                .idProyecto(105L)
+                .nombre("hola")
+                .build();
+        Planificacion planificacion = Planificacion.builder()
+                .idPlanificacion(1L)
+                .proyecto(proyecto)
+                .build();
+        Actividad actividad = Actividad.builder()
+                .idActividad(11L)
+                .nombre("Sesión de fotos")
+                .fechaHoraInicio(LocalDateTime.of(2026, 9, 10, 10, 0))
+                .fechaHoraFin(LocalDateTime.of(2026, 9, 10, 12, 0))
+                .planificacion(planificacion)
+                .build();
+        List<PerfilCalendarioResponse> perfiles = List.of(
+                new PerfilCalendarioResponse(12L, "fulano1"),
+                new PerfilCalendarioResponse(13L, "fulano2"));
+
+        BloqueoActividadResponse response =
+                CalendarioMapper.toBloqueoActividadResponse(actividad, 60, perfiles);
+
+        assertEquals(105L, response.idProyecto());
+        assertEquals("hola", response.nombreProyecto());
+        assertEquals(perfiles, response.perfiles());
     }
 
     @Test

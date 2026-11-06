@@ -30,8 +30,17 @@ public class JwtService {
      * @param claimsExtra claims adicionales (ej. "rol" -> "Usuario")
      */
     public String generarToken(String subject, Map<String, Object> claimsExtra) {
+        return generarTokenConExpiracion(subject, claimsExtra, expirationMs);
+    }
+
+    /**
+     * Genera un JWT con una expiración explícita. Se usa para tickets de vida
+     * corta (por ejemplo, el registro pendiente de Google) y para la cookie
+     * que transporta la solicitud de autorización OAuth2.
+     */
+    public String generarTokenConExpiracion(String subject, Map<String, Object> claimsExtra, long expiracionMs) {
         Date ahora = new Date();
-        Date expiracion = new Date(ahora.getTime() + expirationMs);
+        Date expiracion = new Date(ahora.getTime() + expiracionMs);
 
         return Jwts.builder()
                 .subject(subject)

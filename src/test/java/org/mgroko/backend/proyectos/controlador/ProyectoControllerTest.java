@@ -1,12 +1,20 @@
 package org.mgroko.backend.proyectos.controlador;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
 import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.proyectos.dto.CalificacionRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
+import org.mgroko.backend.proyectos.dto.FinalizarProyectoRequest;
+import org.mgroko.backend.proyectos.dto.FinalizarProyectoResponse;
+import org.mgroko.backend.proyectos.dto.MiembroCalificableResponse;
+import org.mgroko.backend.proyectos.dto.PrevisualizacionFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
+import org.mgroko.backend.proyectos.dto.ReprogramacionProyectoResponse;
 import org.mgroko.backend.proyectos.exception.NombreProyectoDuplicadoException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
@@ -23,13 +31,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@WebMvcTest(controllers = ProyectoController.class)
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = ProyectoController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class ProyectoControllerTest {
 
@@ -59,6 +68,21 @@ class ProyectoControllerTest {
 
     @MockitoBean
     private org.mgroko.backend.proyectos.servicio.CancelarProyectoService cancelarProyectoService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.ConfirmarProyectoService confirmarProyectoService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.PrevisualizarConfirmacionService previsualizarConfirmacionService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.FinalizarProyectoService finalizarProyectoService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.PrevisualizarFinalizacionService previsualizarFinalizacionService;
+
+    @MockitoBean
+    private org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService jornadaReprogramacionService;
 
     @Test
     void crear_conPerfilActivo_devuelve201() throws Exception {
@@ -96,7 +120,11 @@ class ProyectoControllerTest {
                 true,
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
                 false,
-                null
+                null,
+                null,
+                false,
+                null,
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -236,6 +264,10 @@ class ProyectoControllerTest {
                 List.of(new org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse(
                         5L, "COLOR_OJOS", "ENUMERADO", null, null, List.of(1L))),
                 List.of(1L, 4L),
+                false,
+                0L,
+                2,
+                false,
                 false);
         var moodboardResp = new org.mgroko.backend.proyectos.dto.MoodboardResponse(
                 77L, "Paleta fría", java.time.LocalDateTime.of(2026, 6, 1, 10, 0), List.of());
@@ -259,7 +291,11 @@ class ProyectoControllerTest {
                 true,
                 List.of("VER_PROYECTO"),
                 false,
-                null
+                null,
+                null,
+                false,
+                null,
+                false
         );
 
         when(crearProyectoService.crear(eq(1L), eq(10L), any(CrearProyectoRequest.class)))
@@ -277,6 +313,7 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.requerimientosGral[0].caracteristicas[0].idCaracteristica").value(5))
                 .andExpect(jsonPath("$.requerimientosGral[0].caracteristicas[0].valores[0]").value(1))
                 .andExpect(jsonPath("$.requerimientosGral[0].habilidades[0]").value(1))
+                .andExpect(jsonPath("$.requerimientosGral[0].puedePostularse").value(false))
                 .andExpect(jsonPath("$.moodboard.idMoodboard").value(77L))
                 .andExpect(jsonPath("$.moodboard.descripcion").value("Paleta fría"));
     }
@@ -336,7 +373,11 @@ class ProyectoControllerTest {
                 true,
                 List.of("MODIFICAR_PROYECTO", "PUBLICAR_PROYECTO", "VER_PROYECTO"),
                 false,
-                null
+                null,
+                3L,
+                false,
+                null,
+                false
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(100L))).thenReturn(response);
@@ -354,7 +395,9 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.permisos[0]").value("MODIFICAR_PROYECTO"))
                 .andExpect(jsonPath("$.permisos[1]").value("PUBLICAR_PROYECTO"))
                 .andExpect(jsonPath("$.permisos[2]").value("VER_PROYECTO"))
-                .andExpect(jsonPath("$.elegibleParaPostularse").value(false));
+                .andExpect(jsonPath("$.elegibleParaPostularse").value(false))
+                .andExpect(jsonPath("$.postulacionesPendientes").value(3))
+                .andExpect(jsonPath("$.puedeDarseDeBaja").value(false));
     }
 
     @Test
@@ -381,7 +424,11 @@ class ProyectoControllerTest {
                 false,
                 List.of(),
                 true,
-                null
+                null,
+                null,
+                false,
+                null,
+                false
         );
 
         when(obtenerProyectoService.obtener(eq(1L), eq(10L), eq(200L))).thenReturn(response);
@@ -577,7 +624,8 @@ class ProyectoControllerTest {
                         org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
                         new org.mgroko.backend.proyectos.dto.ActividadResumenResponse(
                                 500L, "Sesion",
-                                java.time.LocalDateTime.of(2026, 6, 1, 15, 0), 180)));
+                                java.time.LocalDateTime.of(2026, 6, 1, 15, 0), 180),
+                        false));
         var pagina = new org.mgroko.backend.common.dto.PaginaResponse<org.mgroko.backend.proyectos.dto.ProyectoPropioResponse>(
                 contenido, 0, 20, 1, 1, true, true);
 
@@ -677,7 +725,11 @@ class ProyectoControllerTest {
                 true,
                 List.of("MODIFICAR_PROYECTO", "VER_PROYECTO"),
                 false,
-                null
+                null,
+                null,
+                false,
+                null,
+                false
         );
     }
 
@@ -750,6 +802,30 @@ class ProyectoControllerTest {
                 .andExpect(jsonPath("$.message").value("No se puede modificar un proyecto en estado Finalizado."));
     }
 
+    @Test
+    void modificar_requerimientoGeneralProtegido_devuelve409ConCodigo() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.ModificarProyectoRequest(
+                "Nueva descripción", Privacidad.Publico, true, null, null, null, null, null);
+
+        when(modificarProyectoService.modificar(
+                eq(1L), eq(10L), eq(100L),
+                any(org.mgroko.backend.proyectos.dto.ModificarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception
+                        .RequerimientoGralProtegidoException(28L));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/proyectos/100")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("REQUERIMIENTO_CON_VINCULOS"))
+                .andExpect(jsonPath("$.idRequerimientoGral").value(28L));
+    }
+
     // ---------------------------------------------------------------------
     // POST /proyectos/{idProyecto}/cancelar - UC-35
     // ---------------------------------------------------------------------
@@ -774,7 +850,11 @@ class ProyectoControllerTest {
                 true,
                 List.of("CANCELAR_PROYECTO", "VER_PROYECTO"),
                 false,
-                "Falta de presupuesto"
+                "Falta de presupuesto",
+                null,
+                false,
+                null,
+                false
         );
     }
 
@@ -847,5 +927,227 @@ class ProyectoControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value(
                         "Solo se puede cancelar un proyecto en estado Publicado o Confirmado. Estado actual: Borrador."));
+    }
+
+    @Test
+    void confirmar_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna DiseA�os"));
+
+        when(confirmarProyectoService.confirmar(1L, 10L, 100L))
+                .thenReturn(new org.mgroko.backend.proyectos.dto.ConfirmarProyectoResponse(
+                        null, LocalDate.now().atTime(9, 0), null));
+
+        mockMvc.perform(post("/proyectos/100/confirmar").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fechaInicioConfirmada").exists());
+    }
+
+    @Test
+    void confirmar_conBloqueos_devuelve409ConCodigo() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna DiseA�os"));
+
+        when(confirmarProyectoService.confirmar(1L, 10L, 100L))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException(
+                        "REQUERIMIENTOS_INCOMPLETOS",
+                        "Falta personal.",
+                        List.of(new org.mgroko.backend.proyectos.dto.BloqueoConfirmacionResponse(
+                                "REQUERIMIENTOS_INCOMPLETOS",
+                                "Falta personal.",
+                                "PROYECTO",
+                                100L))));
+
+        mockMvc.perform(post("/proyectos/100/confirmar").principal(auth))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("REQUERIMIENTOS_INCOMPLETOS"))
+                .andExpect(jsonPath("$.bloqueos[0].entidadTipo").value("PROYECTO"));
+    }
+
+    @Test
+    void previsualizarConfirmacion_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna DiseA�os"));
+
+        when(previsualizarConfirmacionService.previsualizar(1L, 10L, 100L))
+                .thenReturn(new org.mgroko.backend.proyectos.dto.PrevisualizacionConfirmacionResponse(
+                        true,
+                        "Publicado",
+                        LocalDate.now().atTime(9, 0),
+                        LocalDate.now().plusDays(10),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of()));
+
+        mockMvc.perform(get("/proyectos/100/confirmacion").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.puedeConfirmar").value(true));
+    }
+
+    @Test
+    void reprogramar_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        when(jornadaReprogramacionService.reintentar(1L, 10L, 100L))
+                .thenReturn(new ReprogramacionProyectoResponse(
+                        100L,
+                        "Desfile Primavera",
+                        "REINTENTO",
+                        LocalDate.now().plusDays(10),
+                        List.of(),
+                        List.of()));
+
+        mockMvc.perform(post("/proyectos/100/reprogramar").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idProyecto").value(100))
+                .andExpect(jsonPath("$.motivo").value("REINTENTO"));
+    }
+
+    @Test
+    void previsualizarFinalizacion_conPerfilActivo_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        when(previsualizarFinalizacionService.previsualizar(1L, 10L, 100L))
+                .thenReturn(new PrevisualizacionFinalizacionResponse(
+                        true,
+                        "Confirmado",
+                        LocalDate.now().plusDays(1),
+                        LocalDate.now(),
+                        false,
+                        0L,
+                        List.of(),
+                        List.of(),
+                        List.of(new MiembroCalificableResponse(
+                                20L, "Miembro", "Nombre", "Apellido", "MIEMBRO", false)),
+                        1,
+                        0,
+                        1));
+
+        mockMvc.perform(get("/proyectos/100/finalizacion").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.puedeFinalizar").value(true))
+                .andExpect(jsonPath("$.miembrosACalificar[0].idPerfil").value(20L))
+                .andExpect(jsonPath("$.calificacionesPendientes").value(1));
+    }
+
+    @Test
+    void finalizar_conPerfilActivoYCalificaciones_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenReturn(new FinalizarProyectoResponse(
+                        null, LocalDate.now().atTime(12, 0), 1));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fechaFinalizacion").exists())
+                .andExpect(jsonPath("$.calificacionesRegistradas").value(1));
+    }
+
+    @Test
+    void finalizar_conCalificacionesIncompletas_devuelve409ConFaltantes() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.CalificacionIncompletaException(
+                        List.of(30L),
+                        "Es obligatorio calificar a todos los miembros activos del proyecto."));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CALIFICACIONES_INCOMPLETAS"))
+                .andExpect(jsonPath("$.faltantes[0]").value(30L));
+    }
+
+    @Test
+    void finalizar_conCalificacionInvalida_devuelve400() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.CalificacionInvalidaException(
+                        "La valoración debe estar entre 1 y 5."));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("CALIFICACION_INVALIDA"));
+    }
+
+    @Test
+    void finalizar_conBloqueos_devuelve409ConCodigo() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException(
+                        "ACTIVIDAD_NO_FINALIZADA",
+                        "Hay una actividad pendiente.",
+                        List.of(new org.mgroko.backend.proyectos.dto.BloqueoFinalizacionResponse(
+                                "ACTIVIDAD_NO_FINALIZADA",
+                                "Hay una actividad pendiente.",
+                                "ACTIVIDAD",
+                                55L))));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("ACTIVIDAD_NO_FINALIZADA"))
+                .andExpect(jsonPath("$.bloqueos[0].entidadTipo").value("ACTIVIDAD"));
+    }
+
+    @Test
+    void finalizar_sinConfirmacionPrematura_devuelve409ConFechasYDias() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        FinalizarProyectoRequest request = new FinalizarProyectoRequest(
+                List.of(new CalificacionRequest(20L, 5, "Excelente desempeño")));
+
+        when(finalizarProyectoService.finalizar(
+                eq(1L), eq(10L), eq(100L), any(FinalizarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException(
+                        LocalDate.now().plusDays(10),
+                        LocalDate.now(),
+                        10));
+
+        mockMvc.perform(post("/proyectos/100/finalizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CONFIRMACION_PREMATURA_REQUERIDA"))
+                .andExpect(jsonPath("$.diasAnticipacion").value(10));
     }
 }

@@ -64,6 +64,22 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpec
     Optional<EstadoUsuario> findEstadoByIdUsuario(@Param("idUsuario") Long idUsuario);
 
     /**
+     * Carga el usuario junto con su rol global y permisos para construir las
+     * autoridades en cada request autenticado. Se usa un LEFT JOIN FETCH para
+     * evitar LazyInitializationException fuera de la transacción del filtro.
+     *
+     * @param idUsuario el id del usuario
+     * @return el usuario con rol y permisos inicializados
+     */
+    @Query("""
+        SELECT DISTINCT u FROM Usuario u
+        LEFT JOIN FETCH u.rolGlobal r
+        LEFT JOIN FETCH r.permisos
+        WHERE u.idUsuario = :idUsuario
+    """)
+    Optional<Usuario> findByIdConRolYPermisos(@Param("idUsuario") Long idUsuario);
+
+    /**
      * Busca los usuarios en un estado cuya fecha de solicitud de baja sea
      * anterior a la fecha pasada por parámetro. Se usa para expirar cuentas
      * pendientes de baja pasados los 30 días (UC-07).
@@ -84,5 +100,16 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpec
      * @return lista de usuarios con deshabilitación vencida
      */
     List<Usuario> findByEstadoAndFechaHastaDeshabilitacionBefore(EstadoUsuario estado, LocalDateTime fechaLimite);
+
+    /**
+     * Usuarios con rol global Administrador que pueden recibir alertas. Se
+     * excluyen los que están deshabilitados o dados de baja.
+     */
+    @Query("""
+        SELECT u FROM Usuario u
+        WHERE u.rolGlobal.codigo = 'ADMINISTRADOR'
+          AND u.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+    """)
+    List<Usuario> findAdministradoresActivos();
 
 }

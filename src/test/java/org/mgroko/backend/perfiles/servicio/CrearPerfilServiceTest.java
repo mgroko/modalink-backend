@@ -14,6 +14,7 @@ import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.UnidadMedida;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.ValorCaracteristica;
@@ -37,6 +38,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
+import org.mgroko.backend.security.exception.AccesoDenegadoPorRolException;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -77,6 +79,19 @@ class CrearPerfilServiceTest {
                 .build();
     }
 
+    private Usuario usuarioAdministrador() {
+        return Usuario.builder()
+                .idUsuario(1L)
+                .nombre("Admin")
+                .apellido("ModaLink")
+                .estado(EstadoUsuario.Activo)
+                .rolGlobal(RolGlobal.builder()
+                        .codigo("ADMINISTRADOR")
+                        .nombre("Administrador")
+                        .build())
+                .build();
+    }
+
     private Profesion profesionModelo() {
         return Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build();
     }
@@ -114,6 +129,16 @@ class CrearPerfilServiceTest {
         return new CrearPerfilRequest(
                 "Luna", 2L, "Modelo profesional con 5 años de experiencia.",
                 List.of(new CaracteristicaPerfilRequest(11L, "175", null)));
+    }
+
+    @Test
+    void crear_usuarioAdministrador_lanzaAccesoDenegadoPorRol() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioAdministrador()));
+
+        assertThrows(AccesoDenegadoPorRolException.class,
+                () -> crearPerfilService.crear(1L, requestValido()));
+
+        verify(perfilRepository, never()).save(any());
     }
 
     private void configurarFlujoFeliz() {

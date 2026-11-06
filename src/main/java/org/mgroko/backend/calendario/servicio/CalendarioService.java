@@ -1,14 +1,25 @@
 package org.mgroko.backend.calendario.servicio;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Collection;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.mgroko.backend.actividades.dto.CalculoCpm;
+import org.mgroko.backend.actividades.dto.RangoFactibleAbsoluto;
+import org.mgroko.backend.actividades.servicio.CronogramaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
@@ -17,6 +28,10 @@ import org.mgroko.backend.calendario.dto.ConfigJornadaRequest;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.JornadaDiaRequest;
 import org.mgroko.backend.calendario.dto.MarcarNoDisponibleRequest;
+import org.mgroko.backend.calendario.dto.PerfilCalendarioResponse;
+import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
+import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
+import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
 import org.mgroko.backend.calendario.exception.AgendaNoEncontradaException;
 import org.mgroko.backend.calendario.exception.BloqueoNoEncontradoException;
 import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
@@ -24,15 +39,20 @@ import org.mgroko.backend.calendario.exception.HorarioComprometidoException;
 import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
 import org.mgroko.backend.calendario.exception.RangoInvalidoException;
 import org.mgroko.backend.calendario.mapper.CalendarioMapper;
+import org.mgroko.backend.calendario.servicio.DisponibilidadCalculator.Intervalo;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Agenda;
+import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.mgroko.backend.modelo.JornadaAgenda;
+import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AgendaRepository;
+import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.BloqueoAgendaRepository;
 import org.mgroko.backend.repositorio.JornadaAgendaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
@@ -43,7 +63,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Gestión del calendario del usuario. La disponibilidad se calcula como la
  * unión de los bloqueos manuales (persistidos en bloqueo_agenda) y los
  * bloqueos calculados por actividades de proyectos activos (derivados, no
- * persistidos, extendidos con el margen configurado en la agenda).
+ * persistidos, extendidos con la mitad del margen total a cada lado).
  */
 @Service
 public class CalendarioService {
@@ -56,7 +76,10 @@ public class CalendarioService {
     private final JornadaAgendaRepository jornadaAgendaRepository;
     private final BloqueoAgendaRepository bloqueoAgendaRepository;
     private final ActividadRepository actividadRepository;
+    private final AsignacionActividadRepository asignacionActividadRepository;
     private final ConfiguracionSistemaService configuracionSistemaService;
+    private final CronogramaService cronogramaService;
+    private final DisponibilidadCalculator disponibilidadCalculator = new DisponibilidadCalculator();
 
     public CalendarioService(
             UsuarioRepository usuarioRepository,
@@ -64,13 +87,17 @@ public class CalendarioService {
             JornadaAgendaRepository jornadaAgendaRepository,
             BloqueoAgendaRepository bloqueoAgendaRepository,
             ActividadRepository actividadRepository,
-            ConfiguracionSistemaService configuracionSistemaService) {
+            AsignacionActividadRepository asignacionActividadRepository,
+            ConfiguracionSistemaService configuracionSistemaService,
+            CronogramaService cronogramaService) {
         this.usuarioRepository = usuarioRepository;
         this.agendaRepository = agendaRepository;
         this.jornadaAgendaRepository = jornadaAgendaRepository;
         this.bloqueoAgendaRepository = bloqueoAgendaRepository;
         this.actividadRepository = actividadRepository;
+        this.asignacionActividadRepository = asignacionActividadRepository;
         this.configuracionSistemaService = configuracionSistemaService;
+        this.cronogramaService = cronogramaService;
     }
 
     /**
@@ -87,13 +114,32 @@ public class CalendarioService {
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
         int margen = margenDe(agenda);
+        Map<Long, List<PerfilCalendarioResponse>> perfilesPorActividad =
+                perfilesPorActividad(actividades, idUsuario);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
                 bloqueos.stream().map(CalendarioMapper::toBloqueoResponse).toList(),
                 actividades.stream()
-                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(a, margen))
+                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(
+                                a,
+                                margen,
+                                perfilesPorActividad.getOrDefault(a.getIdActividad(), List.of())))
                         .toList());
+    }
+
+    /**
+     * Devuelve solo la configuración de jornada y margen del usuario. Se usa
+     * para comparar si un {@code PUT /calendario/jornada} cambió realmente la
+     * disponibilidad antes de disparar una reprogramación automática.
+     */
+    @Transactional(readOnly = true)
+    public ConfigJornadaResponse obtenerJornada(Long idUsuario) {
+        usuarioActivo(idUsuario);
+        Agenda agenda = agendaDe(idUsuario);
+        List<JornadaAgenda> dias =
+                jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(agenda.getIdAgenda());
+        return CalendarioMapper.toConfigJornadaResponse(agenda, dias);
     }
 
     /**
@@ -112,13 +158,414 @@ public class CalendarioService {
                 bloqueoAgendaRepository.findByAgenda_IdAgendaOrderByFechaHoraInicio(agenda.getIdAgenda());
         List<Actividad> actividades = actividadesDe(idUsuario);
         int margen = margenDe(agenda);
+        Map<Long, List<PerfilCalendarioResponse>> perfilesPorActividad =
+                perfilesPorActividad(actividades, idUsuario);
 
         return new CalendarioResponse(
                 CalendarioMapper.toConfigJornadaResponse(agenda, dias),
                 bloqueos.stream().map(CalendarioMapper::toBloqueoResponse).toList(),
                 actividades.stream()
-                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(a, margen))
+                        .map(a -> CalendarioMapper.toBloqueoActividadResponse(
+                                a,
+                                margen,
+                                perfilesPorActividad.getOrDefault(a.getIdActividad(), List.of())))
                         .toList());
+    }
+
+    /**
+     * Verifica si el usuario tiene disponibilidad frente al rango factible de
+     * una actividad (UC-26 y UC-70).
+     *
+     * <p>El rango se obtiene del CPM relativo de la planificación, proyectado
+     * con el {@code t0} del proyecto, y puede ser tentativo mientras el
+     * proyecto no tenga fecha de inicio confirmada. Mientras lo sea, el rango
+     * evaluado es {@code [ahora, fecha de entrega]} (la actividad todavía no
+     * está agendada) y la verificación es provisional; al confirmar el
+     * proyecto se usa el rango estricto {@code [ES, LF]}.</p>
+     *
+     * <p>La regla no exige que la ventana completa esté libre: alcanza con que
+     * exista un hueco continuo de al menos la duración de la actividad después
+     * de descontar la jornada, los bloqueos manuales y las actividades ya
+     * asignadas al usuario.</p>
+     *
+     * <p><strong>La verificación es provisional</strong> si
+     * {@link ResultadoDisponibilidad#provisional()} es {@code true}: debe
+     * repetirse al confirmar el proyecto (UC-60) y al asignar la actividad
+     * (UC-70).</p>
+     *
+     * @param idUsuario usuario cuya agenda se evalúa
+     * @param actividad actividad a la que se quiere postular o asignar
+     * @return resultado con la disponibilidad y el rango evaluado
+     */
+    @Transactional(readOnly = true)
+    public ResultadoDisponibilidad verificarDisponibilidad(Long idUsuario, Actividad actividad) {
+        return verificarDisponibilidadMiembros(List.of(idUsuario), actividad);
+    }
+
+    /**
+     * Evalúa una actividad contra el calendario de todos los miembros
+     * indicados. La actividad solo está disponible cuando existe un hueco
+     * común, aplicando el margen configurado a los bloqueos existentes y a la
+     * actividad nueva.
+     */
+    @Transactional(readOnly = true)
+    public ResultadoDisponibilidad verificarDisponibilidadMiembros(
+            Collection<Long> idsUsuarios,
+            Actividad actividad) {
+
+        if (idsUsuarios == null || idsUsuarios.isEmpty()) {
+            return new ResultadoDisponibilidad(
+                    false, false, null, null, null, null, "SIN_MIEMBROS", List.of())
+                    .conCodigoMotivo("SIN_MIEMBROS");
+        }
+        idsUsuarios.forEach(this::usuarioActivo);
+
+        Planificacion planificacion = actividad.getPlanificacion();
+        if (planificacion == null || planificacion.getIdPlanificacion() == null) {
+            throw new IllegalArgumentException(
+                    "La actividad no tiene una planificación asociada.");
+        }
+
+        List<Actividad> actividades = actividadRepository
+                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
+        CalculoCpm calculo = cronogramaService.calcular(planificacion, actividades);
+        RangoFactibleAbsoluto rango = cronogramaService.rangoFactibleAbsoluto(
+                planificacion, calculo, actividad.getIdActividad());
+        if (rango.motivoNoFactible() != null) {
+            LocalTime preferencia = actividad.getHorarioPreferenciaInicio();
+            return new ResultadoDisponibilidad(
+                    false,
+                    rango.tentativa(),
+                    rango.inicio(),
+                    rango.fin(),
+                    null,
+                    null,
+                    rango.motivoNoFactible(),
+                    List.of(),
+                    preferencia == null
+                            ? ResultadoPreferencia.SIN_PREFERENCIA
+                            : ResultadoPreferencia.SIN_LUGAR,
+                    null,
+                    preferencia == null
+                            ? null
+                            : rango.inicio().toLocalDate().atTime(preferencia),
+                    List.of(),
+                    codigoConflicto(calculo, actividad.getIdActividad()),
+                    List.of());
+        }
+        return evaluarDisponibilidadEnRango(
+                idsUsuarios,
+                actividad,
+                rango.inicio(),
+                rango.fin(),
+                rango.tentativa(),
+                Map.of(),
+                Set.of());
+    }
+
+    /**
+     * Variante de {@link #verificarDisponibilidadMiembrosEnRango(Collection,
+     * Actividad, LocalDateTime, LocalDateTime, Map, Set)} sin exclusiones.
+     */
+    @Transactional(readOnly = true)
+    public ResultadoDisponibilidad verificarDisponibilidadMiembrosEnRango(
+            Collection<Long> idsUsuarios,
+            Actividad actividad,
+            LocalDateTime inicio,
+            LocalDateTime fin,
+            Map<Long, List<Intervalo>> bloqueosExtra) {
+
+        return verificarDisponibilidadMiembrosEnRango(
+                idsUsuarios,
+                actividad,
+                inicio,
+                fin,
+                bloqueosExtra,
+                Set.of());
+    }
+
+    /**
+     * Evalúa una actividad contra un rango explícito. Se usa desde el
+     * planificador de confirmación, que conoce el inicio mínimo real (por
+     * ejemplo, el fin de las predecesoras ya colocadas) y mantiene en memoria
+     * los intervalos de las actividades que va programando.
+     *
+     * <p>No recalcula el CPM ni lee la fecha del proyecto: el rango y los
+     * bloqueos extra son responsabilidad del llamador.</p>
+     *
+     * @param idsUsuarios            usuarios que deben compartir el hueco
+     * @param actividad              actividad a colocar
+     * @param inicio                 inicio mínimo absoluto del rango
+     * @param fin                    fin máximo absoluto del rango
+     * @param bloqueosExtra          intervalos ya reservados por la planificación
+     *                               en curso, indexados por usuario
+     * @param idsActividadesExcluidas actividades que no deben contarse como
+     *                               bloqueo. El planificador pasa las de la
+     *                               misma planificación que está recolocando:
+     *                               sus fechas viejas son solo una proyección y
+     *                               ya se modelan en memoria.
+     * @return disponibilidad y hueco seleccionado
+     */
+    @Transactional(readOnly = true)
+    public ResultadoDisponibilidad verificarDisponibilidadMiembrosEnRango(
+            Collection<Long> idsUsuarios,
+            Actividad actividad,
+            LocalDateTime inicio,
+            LocalDateTime fin,
+            Map<Long, List<Intervalo>> bloqueosExtra,
+            Set<Long> idsActividadesExcluidas) {
+
+        if (idsUsuarios == null || idsUsuarios.isEmpty()) {
+            return new ResultadoDisponibilidad(
+                    false, false, inicio, fin, null, null, "SIN_MIEMBROS", List.of())
+                    .conCodigoMotivo("SIN_MIEMBROS");
+        }
+        idsUsuarios.forEach(this::usuarioActivo);
+
+        if (inicio == null || fin == null || !fin.isAfter(inicio)) {
+            return new ResultadoDisponibilidad(
+                    false, false, inicio, fin, null, null, "SIN_HUECO", List.of())
+                    .conCodigoMotivo("SIN_HUECO");
+        }
+
+        return evaluarDisponibilidadEnRango(
+                idsUsuarios,
+                actividad,
+                inicio,
+                fin,
+                false,
+                bloqueosExtra == null ? Map.of() : bloqueosExtra,
+                idsActividadesExcluidas == null ? Set.of() : idsActividadesExcluidas);
+    }
+
+    /**
+     * Indica si una ventana concreta {@code [inicio, fin]} sigue siendo
+     * compatible con la jornada, los bloqueos manuales y las demás actividades
+     * del usuario. Se usa para reportar actividades {@code EN_CURSO} o
+     * {@code FINALIZADA} que quedaron fuera de una nueva disponibilidad sin
+     * moverlas.
+     *
+     * @param idsUsuarios        usuarios que deben poder cubrir la ventana
+     * @param inicio             inicio exacto de la ventana
+     * @param fin                fin exacto de la ventana
+     * @param idActividadExcluida actividad que no debe contarse como bloqueo
+     *                            (normalmente, la propia actividad fija)
+     */
+    @Transactional(readOnly = true)
+    public boolean ventanaDisponiblePara(
+            Collection<Long> idsUsuarios,
+            LocalDateTime inicio,
+            LocalDateTime fin,
+            Long idActividadExcluida) {
+
+        if (idsUsuarios == null || idsUsuarios.isEmpty()
+                || inicio == null || fin == null || !fin.isAfter(inicio)) {
+            return false;
+        }
+
+        Intervalo objetivo = new Intervalo(inicio, fin);
+        Set<Long> excluidas = idActividadExcluida == null
+                ? Set.of()
+                : Set.of(idActividadExcluida);
+
+        for (Long idUsuario : idsUsuarios) {
+            Agenda agenda = agendaDe(idUsuario);
+            List<Intervalo> ventanas = ventanasDe(agenda, inicio, fin);
+            boolean dentroDeJornada = ventanas.stream()
+                    .anyMatch(ventana -> !ventana.inicio().isAfter(inicio)
+                            && !ventana.fin().isBefore(fin));
+            if (!dentroDeJornada) {
+                return false;
+            }
+
+            List<Intervalo> bloqueos = bloqueosDe(
+                    idUsuario, agenda, inicio, fin, excluidas);
+            if (bloqueos.stream().anyMatch(objetivo::solapa)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private ResultadoDisponibilidad evaluarDisponibilidadEnRango(
+            Collection<Long> idsUsuarios,
+            Actividad actividad,
+            LocalDateTime desde,
+            LocalDateTime hasta,
+            boolean provisional,
+            Map<Long, List<Intervalo>> bloqueosExtra,
+            Set<Long> idsActividadesExcluidas) {
+
+        List<DetalleMiembroDisponibilidad> detalles = new ArrayList<>();
+        List<List<Intervalo>> huecosPorMiembro = new ArrayList<>();
+        int margenActividad = 0;
+
+        for (Long idUsuario : idsUsuarios) {
+            Agenda agenda = agendaDe(idUsuario);
+            int margen = margenDe(agenda);
+            margenActividad = Math.max(margenActividad, margen);
+            List<Intervalo> ventanas = ventanasDe(agenda, desde, hasta);
+            List<Intervalo> bloqueos = new ArrayList<>(
+                    bloqueosDe(idUsuario, agenda, desde, hasta, idsActividadesExcluidas));
+            int margenIzquierdo = MargenActividad.izquierdo(margen);
+            int margenDerecho = MargenActividad.derecho(margen);
+            for (Intervalo extra : bloqueosExtra.getOrDefault(idUsuario, List.of())) {
+                bloqueos.add(new Intervalo(
+                        extra.inicio().minusMinutes(margenIzquierdo),
+                        extra.fin().plusMinutes(margenDerecho)));
+            }
+            List<Intervalo> huecos = disponibilidadCalculator.huecosLibres(ventanas, bloqueos);
+            Optional<Intervalo> primerHueco = disponibilidadCalculator.primerHueco(
+                    ventanas, bloqueos, actividad.getDuracionMinutos(), margen);
+            String motivo = motivoIndividual(ventanas, huecos, primerHueco, actividad);
+            detalles.add(new DetalleMiembroDisponibilidad(
+                    idUsuario,
+                    desde,
+                    hasta,
+                    huecos,
+                    primerHueco.isPresent(),
+                    motivo));
+            huecosPorMiembro.add(huecos);
+        }
+
+        List<Intervalo> huecosComunes = disponibilidadCalculator.intersecarHuecos(
+                huecosPorMiembro);
+
+        Optional<Intervalo> primerHuecoComun = disponibilidadCalculator.primerHuecoEnHuecos(
+                huecosComunes,
+                actividad.getDuracionMinutos(),
+                margenActividad);
+
+        LocalTime preferencia = actividad.getHorarioPreferenciaInicio();
+        // Referencia inicial: el calculador aplica la hora preferida a la
+        // fecha de cada hueco, no a la fecha de este primer hueco.
+        LocalDateTime inicioPreferido = preferencia == null
+                ? null
+                : primerHuecoComun
+                        .map(intervalo -> intervalo.inicio().toLocalDate().atTime(preferencia))
+                        .orElseGet(() -> desde.toLocalDate().atTime(preferencia));
+        long tolerancia = preferencia == null
+                ? 0L
+                : configuracionSistemaService.obtenerToleranciaPreferenciaMinutos();
+
+        Optional<DisponibilidadCalculator.SeleccionHueco> seleccionado =
+                disponibilidadCalculator.seleccionarHueco(
+                        huecosComunes,
+                        actividad.getDuracionMinutos(),
+                        margenActividad,
+                        inicioPreferido,
+                        tolerancia);
+
+        if (preferencia != null && seleccionado.isPresent()) {
+            // La respuesta debe referirse al día del hueco elegido, no al
+            // primer hueco común.
+            inicioPreferido = seleccionado.get()
+                    .intervalo().inicio().toLocalDate()
+                    .atTime(preferencia);
+        }
+
+        boolean disponible = seleccionado.isPresent();
+        String motivo;
+        if (disponible) {
+            motivo = null;
+        } else if (idsUsuarios.size() > 1 && huecosComunes.isEmpty()) {
+            motivo = "SIN_HUECO_COMUN";
+        } else if (preferencia != null && !huecosComunes.isEmpty()) {
+            motivo = "FUERA_TOLERANCIA_PREFERENCIA";
+        } else {
+            motivo = detalles.get(0).motivo();
+        }
+
+        ResultadoPreferencia resultadoPreferencia;
+        Long desvioMinutos = null;
+        if (preferencia == null) {
+            resultadoPreferencia = ResultadoPreferencia.SIN_PREFERENCIA;
+        } else if (!disponible) {
+            resultadoPreferencia = ResultadoPreferencia.SIN_LUGAR;
+        } else {
+            desvioMinutos = seleccionado.get().desvioMinutos();
+            resultadoPreferencia = desvioMinutos == 0
+                    ? ResultadoPreferencia.EXACTO
+                    : ResultadoPreferencia.DESVIO;
+        }
+
+        List<Long> miembrosBloqueantes = diagnosticarBloqueantes(
+                idsUsuarios, huecosPorMiembro, huecosComunes);
+
+        return new ResultadoDisponibilidad(
+                disponible,
+                provisional,
+                desde,
+                hasta,
+                disponible ? seleccionado.get().intervalo().inicio() : null,
+                disponible ? seleccionado.get().intervalo().fin() : null,
+                motivo,
+                detalles,
+                resultadoPreferencia,
+                desvioMinutos,
+                inicioPreferido,
+                miembrosBloqueantes,
+                motivo,
+                List.of());
+    }
+
+    private String codigoConflicto(CalculoCpm calculo, Long idActividad) {
+        return calculo.conflictos().stream()
+                .filter(conflicto -> conflicto.idActividad().equals(idActividad))
+                .map(conflicto -> switch (conflicto.tipo()) {
+                    case CONFLICTO_FIJO -> "CONFLICTO_FIJO";
+                    case FUERA_DE_PROYECTO, DATO_INCONSISTENTE -> "DATOS_INCONSISTENTES";
+                })
+                .findFirst()
+                .orElse("CRONOGRAMA_NO_VIABLE");
+    }
+
+    /**
+     * Cuando la intersección de varios miembros es vacía, recalcula sin un
+     * miembro por vez para identificar a los que impiden el hueco común.
+     *
+     * <p>Si ningún miembro individual permite la intersección, no se atribuye
+     * la causa a uno solo: se devuelve una lista vacía y el motivo global sigue
+     * siendo {@code SIN_HUECO_COMUN}.</p>
+     */
+    private List<Long> diagnosticarBloqueantes(
+            Collection<Long> idsUsuarios,
+            List<List<Intervalo>> huecosPorMiembro,
+            List<Intervalo> huecosComunes) {
+
+        List<Long> ids = List.copyOf(idsUsuarios);
+        if (ids.size() <= 1 || !huecosComunes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> bloqueantes = new ArrayList<>();
+        for (int i = 0; i < huecosPorMiembro.size(); i++) {
+            List<List<Intervalo>> sinMiembro = new ArrayList<>(huecosPorMiembro);
+            sinMiembro.remove(i);
+            if (!disponibilidadCalculator.intersecarHuecos(sinMiembro).isEmpty()) {
+                bloqueantes.add(ids.get(i));
+            }
+        }
+        return bloqueantes;
+    }
+
+    private String motivoIndividual(
+            List<Intervalo> ventanas,
+            List<Intervalo> huecos,
+            Optional<Intervalo> primerHueco,
+            Actividad actividad) {
+        if (ventanas.isEmpty()) {
+            return "SIN_JORNADA";
+        }
+        if (primerHueco.isPresent()) {
+            return null;
+        }
+        boolean hayVentanaSuficiente = ventanas.stream()
+                .anyMatch(v -> v.minutos() >= actividad.getDuracionMinutos());
+        return hayVentanaSuficiente && !huecos.isEmpty()
+                ? "SIN_HUECO"
+                : "DURACION_EXCEDE_VENTANA";
     }
 
     /**
@@ -224,19 +671,191 @@ public class CalendarioService {
 
     /**
      * Indica si el rango [inicio, fin] solapa algún bloqueo calculado por
-     * actividad de un proyecto activo (considerando el margen). Las
-     * actividades sin inicio o fin se ignoran (no deberían existir: son
-     * NOT NULL en BD).
+     * actividad de un proyecto activo, considerando la mitad del margen total
+     * a cada lado. Las actividades sin inicio o fin se ignoran (no deberían
+     * existir: son NOT NULL en BD).
      */
     private boolean solapaActividad(Long idUsuario, LocalDateTime inicio, LocalDateTime fin, int margen) {
+        int margenIzquierdo = MargenActividad.izquierdo(margen);
+        int margenDerecho = MargenActividad.derecho(margen);
         return actividadesDe(idUsuario).stream()
                 .filter(a -> a.getFechaHoraInicio() != null && a.getFechaHoraFin() != null)
-                .anyMatch(a -> a.getFechaHoraInicio().minusMinutes(margen).isBefore(fin)
-                        && a.getFechaHoraFin().plusMinutes(margen).isAfter(inicio));
+                .anyMatch(a -> a.getFechaHoraInicio().minusMinutes(margenIzquierdo).isBefore(fin)
+                        && a.getFechaHoraFin().plusMinutes(margenDerecho).isAfter(inicio));
     }
 
     private List<Actividad> actividadesDe(Long idUsuario) {
         return actividadRepository.findActividadesDeUsuario(idUsuario, ESTADOS_ACTIVOS);
+    }
+
+    /**
+     * Agrupa por actividad los perfiles del usuario dueño del calendario que
+     * están asignados a ella. Se consulta en lote para evitar N+1 y se
+     * deduplica por perfil, ordenando por nombre artístico.
+     */
+    private Map<Long, List<PerfilCalendarioResponse>> perfilesPorActividad(
+            List<Actividad> actividades,
+            Long idUsuario) {
+
+        if (actividades.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> ids = actividades.stream()
+                .map(Actividad::getIdActividad)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Map<Long, PerfilCalendarioResponse>> porActividad = new HashMap<>();
+        for (AsignacionActividad asignacion
+                : asignacionActividadRepository.findPerfilesDeUsuarioPorActividades(ids, idUsuario)) {
+
+            Perfil perfil = asignacion.getMiembro() != null
+                    ? asignacion.getMiembro().getPerfil()
+                    : null;
+            if (perfil == null || perfil.getIdPerfil() == null) {
+                continue;
+            }
+
+            porActividad
+                    .computeIfAbsent(
+                            asignacion.getActividad().getIdActividad(),
+                            id -> new LinkedHashMap<>())
+                    .putIfAbsent(
+                            perfil.getIdPerfil(),
+                            new PerfilCalendarioResponse(
+                                    perfil.getIdPerfil(),
+                                    perfil.getNombreArtistico()));
+        }
+
+        Map<Long, List<PerfilCalendarioResponse>> resultado = new HashMap<>();
+        porActividad.forEach((idActividad, perfiles) -> {
+            List<PerfilCalendarioResponse> lista = new ArrayList<>(perfiles.values());
+            lista.sort(Comparator.comparing(
+                    PerfilCalendarioResponse::nombreArtistico,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+            resultado.put(idActividad, List.copyOf(lista));
+        });
+        return resultado;
+    }
+
+    /**
+     * Construye las ventanas de jornada del usuario recortadas al rango
+     * factible. Un día sin fila en {@code jornada_agenda} no es laborable.
+     */
+    private List<Intervalo> ventanasDe(
+            Agenda agenda,
+            LocalDateTime desde,
+            LocalDateTime hasta) {
+
+        List<JornadaAgenda> dias = jornadaAgendaRepository
+                .findByAgenda_IdAgendaOrderByDiaSemana(agenda.getIdAgenda());
+        Map<Integer, JornadaAgenda> porDia = dias.stream()
+                .collect(Collectors.toMap(JornadaAgenda::getDiaSemana, Function.identity()));
+
+        List<Intervalo> ventanas = new ArrayList<>();
+        LocalDate fecha = desde.toLocalDate();
+        LocalDate ultima = hasta.toLocalDate();
+
+        while (!fecha.isAfter(ultima)) {
+            JornadaAgenda dia = porDia.get(fecha.getDayOfWeek().getValue());
+            if (dia != null) {
+                if (dia.esPartida()) {
+                    agregarVentana(ventanas, fecha, dia.getHoraInicioManana(),
+                            dia.getHoraFinManana(), desde, hasta);
+                    agregarVentana(ventanas, fecha, dia.getHoraInicioTarde(),
+                            dia.getHoraFinTarde(), desde, hasta);
+                } else {
+                    agregarVentana(ventanas, fecha, dia.getHoraInicioManana(),
+                            dia.getHoraFinTarde(), desde, hasta);
+                }
+            }
+            fecha = fecha.plusDays(1);
+        }
+
+        return ventanas;
+    }
+
+    private void agregarVentana(
+            List<Intervalo> ventanas,
+            LocalDate fecha,
+            LocalTime inicio,
+            LocalTime fin,
+            LocalDateTime desde,
+            LocalDateTime hasta) {
+
+        if (inicio == null || fin == null) {
+            return;
+        }
+
+        LocalDateTime inicioAbsoluto = fecha.atTime(inicio);
+        LocalDateTime finAbsoluto = fecha.atTime(fin);
+        LocalDateTime inicioRecortado = inicioAbsoluto.isAfter(desde) ? inicioAbsoluto : desde;
+        LocalDateTime finRecortado = finAbsoluto.isBefore(hasta) ? finAbsoluto : hasta;
+
+        if (finRecortado.isAfter(inicioRecortado)) {
+            ventanas.add(new Intervalo(inicioRecortado, finRecortado));
+        }
+    }
+
+    /**
+     * Bloqueos que se descuentan de la jornada: los manuales del usuario y las
+     * actividades ya asignadas, extendidas por la mitad del margen total a cada
+     * lado.
+     */
+    private List<Intervalo> bloqueosDe(
+            Long idUsuario,
+            Agenda agenda,
+            LocalDateTime desde,
+            LocalDateTime hasta) {
+
+        return bloqueosDe(idUsuario, agenda, desde, hasta, Set.of());
+    }
+
+    private List<Intervalo> bloqueosDe(
+            Long idUsuario,
+            Agenda agenda,
+            LocalDateTime desde,
+            LocalDateTime hasta,
+            Set<Long> idsActividadesExcluidas) {
+
+        List<Intervalo> bloqueos = new ArrayList<>();
+
+        for (BloqueoAgenda bloqueo : bloqueoAgendaRepository
+                .findSolapados(agenda.getIdAgenda(), desde, hasta)) {
+            if (bloqueo.getFechaHoraFin().isAfter(bloqueo.getFechaHoraInicio())) {
+                bloqueos.add(new Intervalo(
+                        bloqueo.getFechaHoraInicio(), bloqueo.getFechaHoraFin()));
+            }
+        }
+
+        int margen = margenDe(agenda);
+        int margenIzquierdo = MargenActividad.izquierdo(margen);
+        int margenDerecho = MargenActividad.derecho(margen);
+        for (Actividad actividad : actividadesDe(idUsuario)) {
+            if (actividad.getIdActividad() != null
+                    && idsActividadesExcluidas.contains(actividad.getIdActividad())) {
+                continue;
+            }
+
+            LocalDateTime inicio = actividad.getFechaHoraInicio();
+            LocalDateTime fin = actividad.getFechaHoraFin();
+            if (inicio == null || fin == null || !fin.isAfter(inicio)) {
+                continue;
+            }
+
+            LocalDateTime inicioBloqueo = inicio.minusMinutes(margenIzquierdo);
+            LocalDateTime finBloqueo = fin.plusMinutes(margenDerecho);
+
+            if (inicioBloqueo.isBefore(hasta) && finBloqueo.isAfter(desde)) {
+                bloqueos.add(new Intervalo(inicioBloqueo, finBloqueo));
+            }
+        }
+
+        return bloqueos;
     }
 
     private void validarJornada(ConfigJornadaRequest request) {
@@ -300,6 +919,20 @@ public class CalendarioService {
         return agendaRepository.findByUsuario_IdUsuario(idUsuario)
                 .orElseThrow(() -> new AgendaNoEncontradaException(
                         "No se encontró la agenda del usuario."));
+    }
+
+    /**
+     * Margen efectivo del usuario en minutos. Se usa desde el planificador
+     * para validar actividades fijas con la misma regla que la disponibilidad.
+     *
+     * <p>Si el usuario todavía no tiene agenda se devuelve {@code 0}: la
+     * validación de fijas no debe fallar por un dato que la verificación de
+     * disponibilidad reportará después con su propio diagnóstico.</p>
+     */
+    public int margenEfectivoDe(Long idUsuario) {
+        return agendaRepository.findByUsuario_IdUsuario(idUsuario)
+                .map(this::margenDe)
+                .orElse(0);
     }
 
     /**

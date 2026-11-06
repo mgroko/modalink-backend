@@ -1,5 +1,7 @@
 package org.mgroko.backend.ubicacion.controlador;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -20,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = UbicacionCatalogoController.class)
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = UbicacionCatalogoController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class UbicacionCatalogoControllerTest {
 

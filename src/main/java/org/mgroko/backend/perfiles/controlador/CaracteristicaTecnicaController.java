@@ -5,12 +5,14 @@ import java.util.List;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
 import org.mgroko.backend.perfiles.servicio.CaracteristicaTecnicaService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class CaracteristicaTecnicaController {
 
     private final CaracteristicaTecnicaService caracteristicaTecnicaService;

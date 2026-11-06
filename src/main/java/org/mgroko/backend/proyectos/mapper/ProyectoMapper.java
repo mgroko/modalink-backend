@@ -55,7 +55,8 @@ public final class ProyectoMapper {
                 proyecto.getEstado() != null ? proyecto.getEstado().getNombre() : null,
                 proyecto.getPrivacidad() != null ? proyecto.getPrivacidad().name() : null,
                 rolUsuario,
-                proximaActividad
+                proximaActividad,
+                Boolean.TRUE.equals(proyecto.getFinalizacionPrematura())
         );
     }
 
@@ -93,6 +94,27 @@ public final class ProyectoMapper {
             MoodboardResponse moodboard,
             ContextoConsultaProyecto contexto) {
 
+        return toResponse(
+                proyecto,
+                director,
+                fechaEntregaEstipulada,
+                objetivos,
+                requerimientosGral,
+                moodboard,
+                contexto,
+                null);
+    }
+
+    public static ProyectoResponse toResponse(
+            Proyecto proyecto,
+            Perfil director,
+            LocalDate fechaEntregaEstipulada,
+            List<Objetivo> objetivos,
+            List<RequerimientoGralResponse> requerimientosGral,
+            MoodboardResponse moodboard,
+            ContextoConsultaProyecto contexto,
+            Long postulacionesPendientes) {
+
         UbicacionResponse ubicacionResponse = proyecto.getUbicacion() != null
                 ? UbicacionMapper.toResponse(proyecto.getUbicacion())
                 : null;
@@ -122,7 +144,11 @@ public final class ProyectoMapper {
                 contexto.esMiembro(),
                 contexto.permisos(),
                 contexto.elegibleParaPostularse(),
-                proyecto.getMotivoCancelacion()
+                proyecto.getMotivoCancelacion(),
+                postulacionesPendientes,
+                contexto.puedeDarseDeBaja(),
+                proyecto.getFechaFinalizacion(),
+                Boolean.TRUE.equals(proyecto.getFinalizacionPrematura())
         );
     }
 }

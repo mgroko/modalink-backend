@@ -117,6 +117,7 @@ class ActividadModificadaNotificacionIntegrationTest extends AbstractPostgresInt
                 .satisfies(notificacion -> {
                     assertThat(notificacion.getEntidadTipo()).isEqualTo("ACTIVIDAD");
                     assertThat(notificacion.getEntidadId()).isEqualTo(escenario.idActividad());
+                    assertThat(notificacion.getIdProyecto()).isEqualTo(escenario.idProyecto());
                 });
     }
 

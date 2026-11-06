@@ -12,5 +12,6 @@ public record ProyectoPropioResponse(
         String estado,
         String privacidad,
         RolProyectoUsuario rolUsuario,
-        ActividadResumenResponse proximaActividad
+        ActividadResumenResponse proximaActividad,
+        Boolean finalizacionPrematura
 ) {}

@@ -1,5 +1,7 @@
 package org.mgroko.backend.notificaciones.controlador;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = NotificacionController.class)
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = NotificacionController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class NotificacionControllerTest {
 
@@ -36,8 +38,9 @@ class NotificacionControllerTest {
 
     private NotificacionResponse notificacion() {
         return new NotificacionResponse(
-                30L, "HITO_CUMPLIDO", "Hito completado", "HITO", 40L,
-                false, null, "SERVICIO", LocalDateTime.of(2026, 10, 21, 12, 0), 20L);
+                30L, "HITO_CUMPLIDO", "Hito cumplido", "Hito completado", "HITO", 40L,
+                false, null, "SERVICIO", LocalDateTime.of(2026, 10, 21, 12, 0),
+                20L, 105L, null, 40L, null, null);
     }
 
     @Test
@@ -54,6 +57,11 @@ class NotificacionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido[0].idNotificacion").value(30))
                 .andExpect(jsonPath("$.contenido[0].idPerfilContexto").value(20))
+                .andExpect(jsonPath("$.contenido[0].idProyecto").value(105))
+                .andExpect(jsonPath("$.contenido[0].titulo").value("Hito cumplido"))
+                .andExpect(jsonPath("$.contenido[0].idHito").value(40))
+                .andExpect(jsonPath("$.contenido[0].idActividad").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.contenido[0].idInvitacion").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.totalElementos").value(1));
     }
 
@@ -84,9 +92,9 @@ class NotificacionControllerTest {
     @Test
     void marcarLeida_devuelveNotificacionActualizada() throws Exception {
         NotificacionResponse leida = new NotificacionResponse(
-                30L, "HITO_CUMPLIDO", "Hito completado", "HITO", 40L,
+                30L, "HITO_CUMPLIDO", "Hito cumplido", "Hito completado", "HITO", 40L,
                 true, LocalDateTime.of(2026, 10, 21, 13, 0), "SERVICIO",
-                LocalDateTime.of(2026, 10, 21, 12, 0), 20L);
+                LocalDateTime.of(2026, 10, 21, 12, 0), 20L, null, null, 40L, null, null);
         when(notificacionService.marcarLeida(10L, 30L)).thenReturn(leida);
 
         mockMvc.perform(patch("/notificaciones/30/leida").principal(auth()))

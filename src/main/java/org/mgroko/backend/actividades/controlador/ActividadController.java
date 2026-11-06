@@ -1,24 +1,36 @@
 package org.mgroko.backend.actividades.controlador;
 
+import java.util.List;
+
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
+import org.mgroko.backend.actividades.dto.ActividadPlanificacionResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
+import org.mgroko.backend.actividades.dto.CambiarEstadoActividadRequest;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
+import org.mgroko.backend.actividades.dto.EliminarActividadRequest;
+import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
+import org.mgroko.backend.actividades.servicio.CambiarEstadoActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
+import org.mgroko.backend.actividades.servicio.ListarActividadesPlanificacionService;
+import org.mgroko.backend.actividades.servicio.MiembrosActividadService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
+import org.mgroko.backend.actividades.servicio.ObtenerDisponibilidadActividadService;
+import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -29,25 +41,38 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 public class ActividadController {
 
     private final BuscarActividadService buscarActividadService;
     private final CrearActividadService crearActividadService;
     private final ModificarActividadService modificarActividadService;
     private final ObtenerActividadService obtenerActividadService;
+    private final ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService;
+    private final ListarActividadesPlanificacionService listarActividadesPlanificacionService;
     private final EliminarActividadService eliminarActividadService;
+    private final MiembrosActividadService miembrosActividadService;
+    private final CambiarEstadoActividadService cambiarEstadoActividadService;
 
     public ActividadController(
             BuscarActividadService buscarActividadService,
             CrearActividadService crearActividadService,
             ModificarActividadService modificarActividadService,
             ObtenerActividadService obtenerActividadService,
-            EliminarActividadService eliminarActividadService) {
+            ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService,
+            ListarActividadesPlanificacionService listarActividadesPlanificacionService,
+            EliminarActividadService eliminarActividadService,
+            MiembrosActividadService miembrosActividadService,
+            CambiarEstadoActividadService cambiarEstadoActividadService) {
         this.buscarActividadService = buscarActividadService;
         this.crearActividadService = crearActividadService;
         this.modificarActividadService = modificarActividadService;
         this.obtenerActividadService = obtenerActividadService;
+        this.obtenerDisponibilidadActividadService = obtenerDisponibilidadActividadService;
+        this.listarActividadesPlanificacionService = listarActividadesPlanificacionService;
         this.eliminarActividadService = eliminarActividadService;
+        this.miembrosActividadService = miembrosActividadService;
+        this.cambiarEstadoActividadService = cambiarEstadoActividadService;
     }
 
     @PostMapping("/proyectos/{idProyecto}/actividades")
@@ -95,27 +120,55 @@ public class ActividadController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/proyectos/{idProyecto}/actividades/{idActividad}")
-    public ResponseEntity<Void> eliminar(
+    @PatchMapping("/proyectos/{idProyecto}/actividades/{idActividad}/estado")
+    public ResponseEntity<ActividadResponse> cambiarEstado(
             @PathVariable Long idProyecto,
             @PathVariable Long idActividad,
-            @RequestParam String motivo,
+            @Valid @RequestBody CambiarEstadoActividadRequest request,
             Authentication authentication) {
 
         Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
 
-        Long idPerfilActivo = null;
-        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
-            idPerfilActivo = contexto.idPerfilActivo();
-        }
+        ActividadResponse response = cambiarEstadoActividadService.cambiar(
+                idUsuario, idPerfilActivo, idProyecto, idActividad, request.estado());
+        return ResponseEntity.ok(response);
+    }
 
-        if (idPerfilActivo == null) {
-            throw new PerfilActivoNoSeleccionadoException();
-        }
+    @GetMapping("/proyectos/{idProyecto}/actividades/{idActividad}/miembros-exclusivos")
+    public ResponseEntity<List<MiembroExclusivoResponse>> listarMiembrosExclusivos(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idActividad,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        return ResponseEntity.ok(miembrosActividadService.listarExclusivos(
+                idUsuario, idPerfilActivo, idProyecto, idActividad));
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/actividades/{idActividad}/eliminar")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idActividad,
+            @Valid @RequestBody EliminarActividadRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
 
         eliminarActividadService.eliminar(
-                idUsuario, idPerfilActivo, idProyecto, idActividad, motivo);
+                idUsuario, idPerfilActivo, idProyecto, idActividad, request);
         return ResponseEntity.noContent().build();
+    }
+
+    private Long idPerfilActivo(Authentication authentication) {
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto
+                && contexto.idPerfilActivo() != null) {
+            return contexto.idPerfilActivo();
+        }
+        throw new PerfilActivoNoSeleccionadoException();
     }
 
     @GetMapping("/proyectos/{idProyecto}/actividades/{idActividad}")
@@ -138,6 +191,54 @@ public class ActividadController {
         ActividadResponse response = obtenerActividadService.obtener(
                 idUsuario, idPerfilActivo, idProyecto, idActividad);
         return ResponseEntity.ok(response);
+    }
+
+    // UC-26/UC-70: Consultar la disponibilidad de uno o más perfiles para una actividad.
+    @GetMapping("/proyectos/{idProyecto}/actividades/{idActividad}/disponibilidad")
+    public ResponseEntity<ResultadoDisponibilidad> obtenerDisponibilidad(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idActividad,
+            @RequestParam(required = false) List<Long> idPerfil,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        return ResponseEntity.ok(obtenerDisponibilidadActividadService.obtener(
+                idUsuario, idPerfilActivo, idProyecto, idActividad, idPerfil));
+    }
+
+    // UC-52: Tabla de Planificación (actividades + responsables, sin CPM).
+    @GetMapping("/proyectos/{idProyecto}/actividades")
+    public ResponseEntity<PaginaResponse<ActividadPlanificacionResponse>> listarPlanificacion(
+            @PathVariable Long idProyecto,
+            @ModelAttribute BuscarActividadesFiltro filtro,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean todos,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        return ResponseEntity.ok(listarActividadesPlanificacionService.listar(
+                idUsuario, idPerfilActivo, idProyecto, filtro, page, size, todos));
     }
 
     // UC-52: Buscar actividades dentro de la planificación de un proyecto

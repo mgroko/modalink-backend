@@ -14,6 +14,7 @@ import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,7 @@ public class UsuarioPerfilService {
         if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
+        PerfilAccessPolicy.validarNoAdministrador(usuario);
         int diasBaja = configuracionSistemaService.obtenerDiasBaja();
         return perfilRepository.findByUsuarioIdUsuario(idUsuario).stream()
                 .map(perfil -> PerfilMapper.toResponse(perfil, diasBaja))
@@ -60,6 +62,7 @@ public class UsuarioPerfilService {
         if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioNoEncontradoException("Usuario no encontrado.");
         }
+        PerfilAccessPolicy.validarNoAdministrador(usuario);
         Perfil perfil = perfilRepository.findByIdPerfilAndUsuarioIdUsuario(idPerfil, idUsuario)
                 .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));
         return PerfilMapper.toResponse(perfil, configuracionSistemaService.obtenerDiasBaja());

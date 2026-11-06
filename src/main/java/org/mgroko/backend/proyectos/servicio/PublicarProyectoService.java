@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -22,13 +23,13 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
@@ -40,7 +41,6 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
-import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
@@ -72,8 +72,10 @@ public class PublicarProyectoService {
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
     private final ObjetivoRepository objetivoRepository;
-    private final PostulacionGralRepository postulacionGralRepository;
+    private final RequerimientoGralProteccionService requerimientoGralProteccionService;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
+    private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
 
     public PublicarProyectoService(
             PerfilRepository perfilRepository,
@@ -85,8 +87,10 @@ public class PublicarProyectoService {
             RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
             ObjetivoRepository objetivoRepository,
-            PostulacionGralRepository postulacionGralRepository,
-            ProyectoSecurityService proyectoSecurityService) {
+            RequerimientoGralProteccionService requerimientoGralProteccionService,
+            CupoRequerimientoService cupoRequerimientoService,
+            ProyectoSecurityService proyectoSecurityService,
+            BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -96,8 +100,10 @@ public class PublicarProyectoService {
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
         this.objetivoRepository = objetivoRepository;
-        this.postulacionGralRepository = postulacionGralRepository;
+        this.requerimientoGralProteccionService = requerimientoGralProteccionService;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
+        this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
     }
 
     @Transactional
@@ -156,16 +162,24 @@ public class PublicarProyectoService {
 
         List<Objetivo> objetivos = objetivoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto());
 
+        List<RequerimientoGralProyecto> requerimientosEntidad =
+                requerimientoGralProyectoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto());
+        Map<Long, Boolean> protegidos = requerimientoGralProteccionService
+                .calcularProtegidos(requerimientosEntidad);
+
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
-        for (RequerimientoGralProyecto rg : requerimientoGralProyectoRepository.findByProyectoIdProyecto(proyecto.getIdProyecto())) {
-            requerimientos.add(armarRequerimientoResponse(rg));
+        for (RequerimientoGralProyecto rg : requerimientosEntidad) {
+            requerimientos.add(armarRequerimientoResponse(
+                    rg,
+                    protegidos.getOrDefault(rg.getIdRequerimientoGral(), Boolean.FALSE)));
         }
 
         MoodboardResponse moodboardResponse = moodboardRepository.findByProyectoIdProyecto(proyecto.getIdProyecto())
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        ContextoConsultaProyecto contexto = armarContexto(proyecto.getIdProyecto(), perfilConsultante);
+        ContextoConsultaProyecto contexto = armarContexto(
+                proyecto, perfilConsultante);
 
         return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos,
                 requerimientos, moodboardResponse, contexto);
@@ -176,15 +190,20 @@ public class PublicarProyectoService {
      * el permiso PUBLICAR_PROYECTO (ya validado), por lo que se reutiliza la
      * membresía activa para exponer rol y permisos completos.
      */
-    private ContextoConsultaProyecto armarContexto(Long idProyecto, Perfil perfilConsultante) {
+    private ContextoConsultaProyecto armarContexto(
+            Proyecto proyecto,
+            Perfil perfilConsultante) {
         Optional<MiembroProyecto> miembroActivo = miembroProyectoRepository
-                .findMiembroActivoConPermisos(idProyecto, perfilConsultante.getIdPerfil());
+                .findMiembroActivoConPermisos(
+                        proyecto.getIdProyecto(), perfilConsultante.getIdPerfil());
 
         if (miembroActivo.isEmpty()) {
-            return new ContextoConsultaProyecto(null, Boolean.FALSE, List.of(), Boolean.FALSE);
+            return new ContextoConsultaProyecto(
+                    null, Boolean.FALSE, List.of(), Boolean.FALSE, Boolean.FALSE);
         }
 
-        RolProyecto rol = miembroActivo.get().getRolProyecto();
+        MiembroProyecto miembro = miembroActivo.get();
+        RolProyecto rol = miembro.getRolProyecto();
         List<String> permisos = rol != null && rol.getPermisos() != null
                 ? rol.getPermisos().stream()
                         .map(PermisoProyecto::getNombre)
@@ -197,7 +216,8 @@ public class PublicarProyectoService {
                 RolProyectoUsuario.desde(rol),
                 Boolean.TRUE,
                 permisos,
-                Boolean.FALSE);
+                Boolean.FALSE,
+                bajaVoluntariaProyectoPolicy.puedeDarseDeBaja(proyecto, miembro));
     }
 
     private Perfil buscarDirector(Long idProyecto) {
@@ -210,7 +230,9 @@ public class PublicarProyectoService {
                 .orElse(null);
     }
 
-    private RequerimientoGralResponse armarRequerimientoResponse(RequerimientoGralProyecto rg) {
+    private RequerimientoGralResponse armarRequerimientoResponse(
+            RequerimientoGralProyecto rg,
+            Boolean protegido) {
         List<CaracteristicaRequerimientoResponse> caracts = new ArrayList<>();
         for (RequerimientoGralCaract caract : rg.getCaracteristicas()) {
             CaracteristicaTecnica ct = caract.getCaracteristica();
@@ -233,9 +255,7 @@ public class PublicarProyectoService {
                 .sorted()
                 .toList();
 
-        boolean satisfecho = postulacionGralRepository
-                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
-                        rg.getIdRequerimientoGral(), EstadoSolicitud.ACEPTADA);
+        CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(rg);
 
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
@@ -245,6 +265,10 @@ public class PublicarProyectoService {
                 rg.getProfesion() != null ? rg.getProfesion().getNombre() : null,
                 caracts,
                 habilidades,
-                satisfecho);
+                cupo.satisfecho(),
+                cupo.cubiertos(),
+                cupo.faltantes(),
+                Boolean.FALSE,
+                protegido);
     }
 }

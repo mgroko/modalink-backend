@@ -2,7 +2,10 @@ package org.mgroko.backend.proyectos.servicio;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -29,6 +32,7 @@ import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
@@ -40,6 +44,7 @@ import org.mgroko.backend.repositorio.MoodboardRepository;
 import org.mgroko.backend.repositorio.ObjetivoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.PostulacionActividadRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
@@ -50,6 +55,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ObtenerProyectoService {
 
+    private static final String PERMISO_GESTIONAR_POSTULACIONES = "GESTIONAR_POSTULACIONES";
+
     private final ProyectoRepository proyectoRepository;
     private final PerfilRepository perfilRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
@@ -57,9 +64,13 @@ public class ObtenerProyectoService {
     private final ObjetivoRepository objetivoRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
-    private final PostulacionGralRepository postulacionGralRepository;
+    private final RequerimientoGralProteccionService requerimientoGralProteccionService;
+    private final CupoRequerimientoService cupoRequerimientoService;
     private final MoodboardRepository moodboardRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
+    private final PostulacionGralRepository postulacionGralRepository;
+    private final PostulacionActividadRepository postulacionActividadRepository;
+    private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
 
     public ObtenerProyectoService(
             ProyectoRepository proyectoRepository,
@@ -69,9 +80,13 @@ public class ObtenerProyectoService {
             ObjetivoRepository objetivoRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
-            PostulacionGralRepository postulacionGralRepository,
+            RequerimientoGralProteccionService requerimientoGralProteccionService,
+            CupoRequerimientoService cupoRequerimientoService,
             MoodboardRepository moodboardRepository,
-            ProyectoVisibilidadService proyectoVisibilidadService) {
+            ProyectoVisibilidadService proyectoVisibilidadService,
+            PostulacionGralRepository postulacionGralRepository,
+            PostulacionActividadRepository postulacionActividadRepository,
+            BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy) {
         this.proyectoRepository = proyectoRepository;
         this.perfilRepository = perfilRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -79,9 +94,13 @@ public class ObtenerProyectoService {
         this.objetivoRepository = objetivoRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
-        this.postulacionGralRepository = postulacionGralRepository;
+        this.requerimientoGralProteccionService = requerimientoGralProteccionService;
+        this.cupoRequerimientoService = cupoRequerimientoService;
         this.moodboardRepository = moodboardRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
+        this.postulacionGralRepository = postulacionGralRepository;
+        this.postulacionActividadRepository = postulacionActividadRepository;
+        this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
     }
 
     /**
@@ -105,7 +124,7 @@ public class ObtenerProyectoService {
             throw new PerfilEnBajaException("El perfil no se encuentra activo.");
         }
 
-        Proyecto proyecto = proyectoRepository.findById(idProyecto)
+        Proyecto proyecto = proyectoRepository.findByIdConUbicacion(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
         // Una sola consulta: membresía activa + rol + permisos del consultante
@@ -132,40 +151,113 @@ public class ObtenerProyectoService {
         Long idProfesionPerfil = perfil.getProfesion() != null
                 ? perfil.getProfesion().getIdProfesion()
                 : null;
+        boolean proyectoHabilitado = proyecto.getEstado() == EstadoProyecto.PUBLICADO
+                || proyecto.getEstado() == EstadoProyecto.CONFIRMADO;
+        boolean esMiembroActivo = miembroActivo.isPresent();
+        boolean aceptaPostulacionGral = Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral());
         boolean profesionDelPerfilCoincide = false;
 
+        List<RequerimientoGralProyecto> requerimientosEntidad =
+                requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto);
+
+        // Una sola consulta para los valores de todas las características y otra
+        // para los cupos: evita un SELECT por requerimiento/característica.
+        Map<Long, List<Long>> valoresPorCaracteristica =
+                cargarValoresCaracteristicas(requerimientosEntidad);
+        Map<Long, CupoRequerimiento> cuposPorRequerimiento =
+                cupoRequerimientoService.calcularGenerales(requerimientosEntidad);
+        Map<Long, Boolean> protegidosPorRequerimiento =
+                requerimientoGralProteccionService.calcularProtegidos(
+                        requerimientosEntidad);
+
         List<RequerimientoGralResponse> requerimientos = new ArrayList<>();
-        for (RequerimientoGralProyecto rg : requerimientoGralProyectoRepository.findByProyectoIdProyecto(idProyecto)) {
-            requerimientos.add(armarRequerimientoResponse(rg));
-            if (idProfesionPerfil != null && rg.getProfesion() != null
-                    && idProfesionPerfil.equals(rg.getProfesion().getIdProfesion())) {
-                profesionDelPerfilCoincide = true;
+        for (RequerimientoGralProyecto rg : requerimientosEntidad) {
+            boolean profesionCoincide = idProfesionPerfil != null
+                    && rg.getProfesion() != null
+                    && idProfesionPerfil.equals(rg.getProfesion().getIdProfesion());
+            profesionDelPerfilCoincide = profesionDelPerfilCoincide || profesionCoincide;
+
+            CupoRequerimiento cupo = cuposPorRequerimiento != null
+                    ? cuposPorRequerimiento.get(rg.getIdRequerimientoGral())
+                    : null;
+            if (cupo == null) {
+                cupo = cupoRequerimientoService.calcularGeneral(rg);
             }
+
+            requerimientos.add(armarRequerimientoResponse(
+                    rg,
+                    proyectoHabilitado,
+                    esMiembroActivo,
+                    aceptaPostulacionGral,
+                    profesionCoincide,
+                    valoresPorCaracteristica,
+                    cupo,
+                    protegidosPorRequerimiento.getOrDefault(
+                            rg.getIdRequerimientoGral(), Boolean.FALSE)));
         }
 
         MoodboardResponse moodboardResponse = moodboardRepository.findByProyectoIdProyecto(idProyecto)
                 .map(ProyectoMapper::toMoodboardResponse)
                 .orElse(null);
 
-        boolean elegibleParaPostularse = proyecto.getEstado() != EstadoProyecto.CANCELADO
-                && miembroActivo.isEmpty()
-                && Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral())
+        boolean elegibleParaPostularse = proyectoHabilitado
+                && !esMiembroActivo
+                && aceptaPostulacionGral
                 && profesionDelPerfilCoincide;
 
-        ContextoConsultaProyecto contexto = armarContexto(miembroActivo, elegibleParaPostularse);
+        ContextoConsultaProyecto contexto = armarContexto(
+                proyecto, miembroActivo, elegibleParaPostularse);
+        Long postulacionesPendientes =
+                contarPendientesSiPuedeGestionar(miembroActivo, idProyecto);
 
         return ProyectoMapper.toResponse(proyecto, director, fechaEntrega, objetivos, requerimientos,
-                moodboardResponse, contexto);
+                moodboardResponse, contexto, postulacionesPendientes);
+    }
+
+    /**
+     * Devuelve la cantidad de postulaciones pendientes solo para directores con
+     * {@code GESTIONAR_POSTULACIONES}; para el resto del perfil es {@code null}.
+     */
+    private Long contarPendientesSiPuedeGestionar(
+            Optional<MiembroProyecto> miembroActivo,
+            Long idProyecto) {
+
+        if (miembroActivo.isEmpty()) {
+            return null;
+        }
+
+        RolProyecto rol = miembroActivo.get().getRolProyecto();
+        if (rol == null || rol.getPermisos() == null) {
+            return null;
+        }
+
+        boolean puedeGestionar = rol.getPermisos().stream()
+                .map(PermisoProyecto::getNombre)
+                .anyMatch(nombre -> PERMISO_GESTIONAR_POSTULACIONES.equalsIgnoreCase(nombre));
+
+        if (!puedeGestionar) {
+            return null;
+        }
+
+        return postulacionGralRepository
+                .countByRequerimientoGral_Proyecto_IdProyectoAndEstado(
+                        idProyecto, EstadoSolicitud.PENDIENTE)
+                + postulacionActividadRepository
+                        .countByRequerimiento_Actividad_Planificacion_Proyecto_IdProyectoAndEstado(
+                                idProyecto, EstadoSolicitud.PENDIENTE);
     }
 
     /**
      * Contexto del consultante: rol y permisos si es miembro activo; si no es
      * miembro, indica la elegibilidad para postularse (profesión coincidente).
      */
-    private ContextoConsultaProyecto armarContexto(Optional<MiembroProyecto> miembroActivo,
+    private ContextoConsultaProyecto armarContexto(
+            Proyecto proyecto,
+            Optional<MiembroProyecto> miembroActivo,
             boolean elegibleParaPostularse) {
         if (miembroActivo.isEmpty()) {
-            return new ContextoConsultaProyecto(null, Boolean.FALSE, List.of(), elegibleParaPostularse);
+            return new ContextoConsultaProyecto(
+                    null, Boolean.FALSE, List.of(), elegibleParaPostularse, Boolean.FALSE);
         }
 
         MiembroProyecto miembro = miembroActivo.get();
@@ -182,7 +274,8 @@ public class ObtenerProyectoService {
                 RolProyectoUsuario.desde(rol),
                 Boolean.TRUE,
                 permisos,
-                Boolean.FALSE);
+                Boolean.FALSE,
+                bajaVoluntariaProyectoPolicy.puedeDarseDeBaja(proyecto, miembro));
     }
 
     private Perfil buscarDirector(Long idProyecto) {
@@ -195,15 +288,21 @@ public class ObtenerProyectoService {
                 .orElse(null);
     }
 
-    private RequerimientoGralResponse armarRequerimientoResponse(RequerimientoGralProyecto rg) {
+    private RequerimientoGralResponse armarRequerimientoResponse(
+            RequerimientoGralProyecto rg,
+            boolean proyectoHabilitado,
+            boolean esMiembroActivo,
+            boolean aceptaPostulacionGral,
+            boolean profesionCoincide,
+            Map<Long, List<Long>> valoresPorCaracteristica,
+            CupoRequerimiento cupo,
+            Boolean protegido) {
+
         List<CaracteristicaRequerimientoResponse> caracts = new ArrayList<>();
         for (RequerimientoGralCaract caract : rg.getCaracteristicas()) {
             CaracteristicaTecnica ct = caract.getCaracteristica();
-            List<Long> valores = requerimientoGralCaractValorRepository
-                    .findByIdReqGralCaract(caract.getIdReqGralCaract()).stream()
-                    .map(RequerimientoGralCaractValor::getIdValor)
-                    .sorted()
-                    .toList();
+            List<Long> valores = valoresPorCaracteristica.getOrDefault(
+                    caract.getIdReqGralCaract(), List.of());
             caracts.add(new CaracteristicaRequerimientoResponse(
                     ct.getIdCaracteristica(),
                     ct.getCodigo(),
@@ -218,9 +317,11 @@ public class ObtenerProyectoService {
                 .sorted()
                 .toList();
 
-        boolean satisfecho = postulacionGralRepository
-                .existsByRequerimientoGralIdRequerimientoGralAndEstado(
-                        rg.getIdRequerimientoGral(), EstadoSolicitud.ACEPTADA);
+        boolean puedePostularse = proyectoHabilitado
+                && !esMiembroActivo
+                && aceptaPostulacionGral
+                && profesionCoincide
+                && cupo.faltantes() > 0;
 
         return new RequerimientoGralResponse(
                 rg.getIdRequerimientoGral(),
@@ -230,6 +331,44 @@ public class ObtenerProyectoService {
                 rg.getProfesion() != null ? rg.getProfesion().getNombre() : null,
                 caracts,
                 habilidades,
-                satisfecho);
+                cupo.satisfecho(),
+                cupo.cubiertos(),
+                cupo.faltantes(),
+                puedePostularse,
+                protegido);
+    }
+
+    /**
+     * Agrupa los valores de todas las características de los requerimientos en
+     * una sola consulta. El mapa resultante tiene como clave el id de la fila
+     * {@code requerimiento_gral_caract}.
+     */
+    private Map<Long, List<Long>> cargarValoresCaracteristicas(
+            List<RequerimientoGralProyecto> requerimientos) {
+
+        List<Long> idsReqGralCaract = requerimientos.stream()
+                .flatMap(rg -> rg.getCaracteristicas().stream())
+                .map(RequerimientoGralCaract::getIdReqGralCaract)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (idsReqGralCaract.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<Long>> valoresPorCaracteristica = new HashMap<>();
+        for (RequerimientoGralCaractValor valor
+                : requerimientoGralCaractValorRepository
+                        .findByIdReqGralCaractIn(idsReqGralCaract)) {
+            valoresPorCaracteristica
+                    .computeIfAbsent(valor.getIdReqGralCaract(), id -> new ArrayList<>())
+                    .add(valor.getIdValor());
+        }
+
+        valoresPorCaracteristica.values()
+                .forEach(valores -> valores.sort(Comparator.naturalOrder()));
+
+        return valoresPorCaracteristica;
     }
 }

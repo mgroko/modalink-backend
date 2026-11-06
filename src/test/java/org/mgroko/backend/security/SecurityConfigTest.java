@@ -8,6 +8,9 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.auth.oauth.CookieOAuth2AuthorizationRequestRepository;
+import org.mgroko.backend.auth.oauth.GoogleOAuth2FailureHandler;
+import org.mgroko.backend.auth.oauth.GoogleOAuth2SuccessHandler;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,7 +26,13 @@ class SecurityConfigTest {
 
     @Test
     void corsConfigurationSource_devuelveConfiguracionEsperada() {
-        SecurityConfig config = new SecurityConfig(mock(JwtService.class), mock(UsuarioRepository.class));
+        SecurityConfig config = new SecurityConfig(
+                mock(JwtService.class),
+                mock(UsuarioRepository.class),
+                mock(CookieOAuth2AuthorizationRequestRepository.class),
+                mock(GoogleOAuth2SuccessHandler.class),
+                mock(GoogleOAuth2FailureHandler.class),
+                "http://localhost:5173");
 
         UrlBasedCorsConfigurationSource source =
                 (UrlBasedCorsConfigurationSource) config.corsConfigurationSource();

@@ -59,7 +59,8 @@ class ActividadEliminadaNotificacionListenerTest {
         Perfil invitado = perfil(12L, 3L);
         when(perfilRepository.findAllById(any()))
                 .thenReturn(List.of(asignado, postulante, invitado));
-        when(notificacionService.crear(any(), any(), anyString(), anyString(), anyString(), any()))
+        when(notificacionService.crear(
+                any(), any(), anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(Notificacion.builder().build());
 
         listener.alEliminarActividad(evento(
@@ -75,7 +76,8 @@ class ActividadEliminadaNotificacionListenerTest {
                         && mensaje.contains("Desfile Primavera")
                         && mensaje.contains("Falta de presupuesto")),
                 eq("ACTIVIDAD"),
-                eq(55L));
+                eq(55L),
+                eq(7L));
         verify(notificacionService).crear(
                 any(),
                 any(),
@@ -83,7 +85,8 @@ class ActividadEliminadaNotificacionListenerTest {
                 argThat(mensaje -> mensaje.contains("sin efecto")
                         && mensaje.contains("Falta de presupuesto")),
                 eq("POSTULACION_ACTIVIDAD"),
-                eq(77L));
+                eq(77L),
+                eq(7L));
         verify(notificacionService).crear(
                 any(),
                 any(),
@@ -91,7 +94,8 @@ class ActividadEliminadaNotificacionListenerTest {
                 argThat(mensaje -> mensaje.contains("sin efecto")
                         && mensaje.contains("Falta de presupuesto")),
                 eq("INVITACION_ACTIVIDAD"),
-                eq(88L));
+                eq(88L),
+                eq(7L));
         verify(notificacionService).registrarTodas(argThat(notificaciones ->
                 notificaciones.size() == 3));
     }
@@ -100,7 +104,8 @@ class ActividadEliminadaNotificacionListenerTest {
     void destinatarioYaNotificadoPorAsignacionYPostulacion_recibeAmbasNotificaciones() {
         Perfil perfil = perfil(10L, 1L);
         when(perfilRepository.findAllById(any())).thenReturn(List.of(perfil));
-        when(notificacionService.crear(any(), any(), anyString(), anyString(), anyString(), any()))
+        when(notificacionService.crear(
+                any(), any(), anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(Notificacion.builder().build());
 
         listener.alEliminarActividad(evento(
@@ -109,7 +114,7 @@ class ActividadEliminadaNotificacionListenerTest {
                 List.of()));
 
         verify(notificacionService, times(2)).crear(
-                any(), any(), anyString(), anyString(), anyString(), any());
+                any(), any(), anyString(), anyString(), anyString(), any(), any());
     }
 
     @Test
@@ -122,7 +127,7 @@ class ActividadEliminadaNotificacionListenerTest {
                 List.of(new InvitacionAfectada(88L, 12L))));
 
         verify(notificacionService, never()).crear(
-                any(), any(), anyString(), anyString(), anyString(), any());
+                any(), any(), anyString(), anyString(), anyString(), any(), any());
         verify(notificacionService, never()).registrarTodas(any());
     }
 
@@ -161,6 +166,7 @@ class ActividadEliminadaNotificacionListenerTest {
             List<InvitacionAfectada> invitaciones) {
         return new ActividadEliminadaEvent(
                 55L,
+                7L,
                 "Montaje final",
                 "Desfile Primavera",
                 "Falta de presupuesto",

@@ -10,13 +10,15 @@ import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoCronograma;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
-import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -30,26 +32,32 @@ public class ObtenerActividadService {
     private final ActividadRepository actividadRepository;
     private final PlanificacionRepository planificacionRepository;
     private final PerfilRepository perfilRepository;
-    private final ProyectoSecurityService proyectoSecurityService;
+    private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final RequerimientoActividadService requerimientoActividadService;
+    private final RequerimientoProteccionService requerimientoProteccionService;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final CronogramaService cronogramaService;
+    private final ActividadOrigenService actividadOrigenService;
 
     public ObtenerActividadService(
             ActividadRepository actividadRepository,
             PlanificacionRepository planificacionRepository,
             PerfilRepository perfilRepository,
-            ProyectoSecurityService proyectoSecurityService,
+            ProyectoVisibilidadService proyectoVisibilidadService,
             RequerimientoActividadService requerimientoActividadService,
+            RequerimientoProteccionService requerimientoProteccionService,
             AsignacionActividadRepository asignacionActividadRepository,
-            CronogramaService cronogramaService) {
+            CronogramaService cronogramaService,
+            ActividadOrigenService actividadOrigenService) {
         this.actividadRepository = actividadRepository;
         this.planificacionRepository = planificacionRepository;
         this.perfilRepository = perfilRepository;
-        this.proyectoSecurityService = proyectoSecurityService;
+        this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.requerimientoActividadService = requerimientoActividadService;
+        this.requerimientoProteccionService = requerimientoProteccionService;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.cronogramaService = cronogramaService;
+        this.actividadOrigenService = actividadOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -74,10 +82,7 @@ public class ObtenerActividadService {
                 .findByProyectoIdProyecto(idProyecto)
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
-        proyectoSecurityService.validarPermiso(
-                idProyecto,
-                idPerfilActivo,
-                ModificarActividadService.PERMISO_MODIFICAR_ACTIVIDAD);
+        proyectoVisibilidadService.validarAcceso(planificacion.getProyecto(), idPerfilActivo);
 
         Actividad actividad = actividadRepository
                 .findByIdActividadAndPlanificacionIdPlanificacion(
@@ -85,15 +90,27 @@ public class ObtenerActividadService {
                 .orElseThrow(() -> new ActividadNoEncontradaException(idActividad));
 
         List<RequerimientoActividadResponse> requerimientos =
-                requerimientoActividadService.listarPorActividad(idActividad);
+                requerimientoActividadService.listarPorActividad(
+                                idActividad, idPerfilActivo, planificacion.getProyecto())
+                        .stream()
+                        .map(requerimiento -> requerimiento.conProtegido(
+                                requerimientoProteccionService.estaProtegido(
+                                        requerimiento.idRequerimiento())))
+                        .toList();
 
-        List<AsignacionActividad> asignaciones = asignacionActividadRepository
-                .findActivasByActividadId(idActividad);
+        List<AsignacionActividad> asignaciones = actividad.getEstado() == EstadoActividad.PENDIENTE
+                ? asignacionActividadRepository.findActivasByActividadId(idActividad)
+                : asignacionActividadRepository.findByActividadIdConMiembroPerfil(idActividad);
 
-        List<Actividad> actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
-        EstadoCronograma estadoCronograma = cronogramaService.evaluar(
-                planificacion, actividades);
+        var calculo = planificacion.getFechaEntrega() == null
+                ? null
+                : cronogramaService.calcularProyeccion(
+                        planificacion,
+                        actividadRepository.findConPredecesorasByPlanificacion(
+                                planificacion.getIdPlanificacion()));
+        EstadoCronograma estadoCronograma = calculo == null
+                ? EstadoCronograma.SIN_FECHA_ENTREGA
+                : cronogramaService.estadoDe(calculo);
 
         return ActividadMapper.toResponse(
                 actividad,
@@ -101,6 +118,10 @@ public class ObtenerActividadService {
                 asignaciones.stream()
                         .map(ActividadMapper::toProfesionalAsignado)
                         .toList(),
-                estadoCronograma);
+                estadoCronograma,
+                calculo,
+                calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
+                calculo == null || cronogramaService.esTentativa(planificacion),
+                actividadOrigenService.calcular(actividad));
     }
 }

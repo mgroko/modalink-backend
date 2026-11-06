@@ -143,7 +143,7 @@ class PublicarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         return crearActividadService.crear(
                 director.idUsuario(), director.idPerfil(), idProyecto,
                 new CrearActividadRequest(
-                        nombre, "Actividad de prueba UC-25", 1, UnidadDuracion.DIAS,
+                        nombre, "Actividad de prueba UC-25", 24, UnidadDuracion.HORAS,
                         null, null,
                         List.of(new CrearRequerimientoActividadRequest(
                                 2, idProfesionModelo(), "Dos modelos", null, null))))
@@ -320,6 +320,7 @@ class PublicarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
 
         var proyecto = proyectoRepository.findById(borrador.idProyecto()).orElseThrow();
         proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        proyecto.setFechaInicio(java.time.LocalDate.now());
         proyectoRepository.saveAndFlush(proyecto);
 
         assertThatThrownBy(() -> publicarProyectoService.publicar(

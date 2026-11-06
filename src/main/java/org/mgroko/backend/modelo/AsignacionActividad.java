@@ -20,4 +20,8 @@ public class AsignacionActividad {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_actividad", nullable = false)
     private Actividad actividad;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_requerimiento_act")
+    private RequerimientoActividad requerimientoActividad;
 }

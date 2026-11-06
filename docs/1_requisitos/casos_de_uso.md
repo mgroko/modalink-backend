@@ -175,22 +175,30 @@
 | **Actor** | Usuario, Google OAuth  |  |
 | **Objetivos asociados**  | OBJ-01 |  |
 | **Requisitos asociados**  | IRQ-01  |  |
-| **Descripción**  | El caso de uso comienza cuando el sistema requiere interactuar con el servicio externo de Google OAuth para validar credenciales y permitir el acceso seguro al sistema. |  |
+| **Descripción**  | El caso de uso comienza cuando el usuario decide registrarse o iniciar sesión con su cuenta de Google. El sistema valida la identidad con Google y, si es un usuario nuevo, completa el registro con los datos que Google no provee (DNI, fecha de nacimiento y género). |  |
 | **Precondición**  | \- |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El sistema redirige la petición de autenticación al servidor de Google OAuth. |
 |  | 2 | El sistema externo Google OAuth solicita permisos al usuario. |
 |  | 3 | El usuario autoriza el acceso a sus datos básicos. |
 |  | 4 | Google OAuth valida las credenciales y envía al sistema un token de autorización junto con los datos del usuario. |
-|  | 5 | El sistema recibe el token y los datos del usuario. |
-| **Postcondición** | Se validó la identidad del usuario a través de Google. Se obtuvo el correo electrónico, nombre y apellido del usuario. |  |
+|  | 5 | El sistema valida el token, obtiene el correo verificado y busca una identidad Google existente. |
+|  | 6 | Si la identidad existe, el sistema inicia sesión y emite el JWT. |
+|  | 7 | Si no existe pero hay un usuario local con el mismo correo verificado, el sistema vincula automáticamente la identidad Google e inicia sesión. |
+|  | 8 | Si no existe, el sistema emite un ticket de registro de vida corta y solicita DNI, fecha de nacimiento y género. |
+|  | 9 | El sistema crea la cuenta con `password_hash = NULL`, vincula la identidad Google y emite el JWT. |
+| **Postcondición** | Se validó la identidad del usuario a través de Google y se obtuvo una sesión válida. En usuarios nuevos, la cuenta queda creada con los datos obligatorios del dominio. |  |
+| **Flujo alternativo** | 5.1 | Si la cuenta está `PENDIENTE_BAJA` y el plazo no venció, el sistema la reactiva automáticamente y continúa con el inicio de sesión. |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 4 | Si el servicio de Google no responde o el token es inválido, el sistema informa el fallo técnico y el caso de uso finaliza. |
+|  | 4 | Si el servicio de Google no responde, el token es inválido o el correo no está verificado, el sistema informa el fallo técnico y el caso de uso finaliza. |
+|  | 5 | Si el usuario está deshabilitado o dado de baja, el sistema rechaza el acceso. |
+|  | 8 | Si el ticket de registro expiró, el sistema solicita reiniciar el flujo con Google. |
+|  | 9 | Si el DNI ya existe, el usuario es menor de 18 años o el género no es válido, el sistema informa el error y no crea la cuenta. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
 |  | 4 | 3 segundos |
 | **Frecuencia**  | 70 veces/día |  |
 | **Estabilidad**  | media |  |
-| **Comentarios** | \- |  |
+| **Comentarios** | La tabla `usuario_identidad` permite que un mismo usuario tenga identidad LOCAL y GOOGLE sin duplicar la cuenta. |  |
 
 | UC–10 | Crear perfil |  |
 | ----- | ----- | ----- |
@@ -768,11 +776,12 @@
 | **Precondición**  | El proyecto está en estado “Confirmado”. La fecha de finalización estipulada en el cronograma del proyecto es menor o igual a la fecha actual del sistema. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto que quiere finalizar (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema solicita al director de proyecto que califique al equipo. |
-|  | 3 | El director de proyecto califica el desempeño de cada uno de los participantes. (ver caso de uso UC-16 Buscar perfil) |
-|  | 4 | El sistema ofrece la opción de subir imágenes del resultado del proyecto.   |
-|  | 5 | El director de proyecto confirma la finalización del proyecto. |
-|  | 6 | El sistema actualiza el estado del proyecto a Finalizado. |
+|  | 2 | El sistema verifica que las actividades estén en estado ‘finalizada’. (en caso contrario, ‘Cancelada’) |
+|  | 3 | El sistema solicita al director de proyecto que califique al equipo. |
+|  | 4 | El director de proyecto califica el desempeño de cada uno de los participantes. (ver caso de uso UC-16 Buscar perfil) |
+|  | 5 | El sistema ofrece la opción de subir imágenes del resultado del proyecto. (Ver caso de uso UC-19 Alta publicación)  |
+|  | 6 | El director de proyecto confirma la finalización del proyecto. |
+|  | 7 | El sistema actualiza el estado del proyecto a Finalizado. |
 | **Postcondición** | El sistema, por cada participante crea una solicitud para notificar que califiquen al resto del equipo. El sistema cambia el estado del proyecto de “Confirmado” a “Finalizado” con la fecha actual del sistema. El proyecto finalizado se indexa automáticamente en el historial de proyectos de los perfiles de todos los integrantes. |  |
 | **Flujo alternativo** | 3.1 | Si el director de proyecto decide subir imágenes del resultado del proyecto, véase el caso de uso “Alta publicación”. Luego el caso de uso continúa desde el paso 5\. |
 | **Excepciones** | **Paso** | **Acción** |
@@ -1032,7 +1041,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene un proyecto en estado “Borrador” o “Publicado”. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona el proyecto al cual desea agregar la actividad (ver caso de uso UC-29 Buscar proyecto). |
-|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Duración estimada en días/horas Y de forma opcional: Descripción Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
+|  | 2 | El sistema despliega un formulario de carga solicitando los atributos obligatorios de la actividad: Nombre de la actividad Duración estimada en horas/minutos Y de forma opcional: Descripción Actividades predecesoras asociadas (ver UC-52 Buscar actividades) Ubicación  |
 |  | 3 | El actor completa los campos solicitados y confirma la acción. |
 |  | 4  | Mientras exista requerimiento profesional por cargar, se ejecutan los siguientes pasos: |
 |  | 4.a | El sistema despliega el formulario para la carga de requerimiento profesional: Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Si corresponde, el sistema despliega debajo de este formulario un listado de los miembros del proyecto, permitiendo al actor la asignación directa.  |
@@ -1057,7 +1066,7 @@
 | **Precondición**  | El actor inició sesión en el sistema y tiene un proyecto en estado “Borrador”, “Publicado” o “Confirmado” que cuenta con al menos una actividad en la planificación. |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El actor selecciona la tarea que desea modificar (ver caso de uso UC-52 Buscar actividades). |
-|  | 2 | El sistema despliega un formulario con la información de la actividad: Nombre de la actividad Descripción Duración estimada en días/horas Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Profesionales asignados (si corresponde) Actividades predecesoras asociadas (si corresponde (ver caso de uso UC-52 Buscar actividades)) Ubicación  Estado  |
+|  | 2 | El sistema despliega un formulario con la información de la actividad: Nombre de la actividad Descripción Duración estimada en horas/minutos Requerimiento profesional necesario: Profesión (ver caso de uso UC-59 Buscar profesiones) Habilidades (si corresponde (ver caso de uso UC-48 Buscar habilidades)) Características técnicas específicas (si corresponde (ver caso de uso UC-58 Buscar características técnicas)) Profesionales asignados (si corresponde) Actividades predecesoras asociadas (si corresponde (ver caso de uso UC-52 Buscar actividades)) Ubicación  Estado  |
 |  | 3 | El actor modifica los campos deseados y confirma la acción. |
 |  | 4 | El sistema registra los cambios de la actividad. |
 | **Postcondición** | Se actualizó una actividad. Se actualizó el cronograma del proyecto en base a los cambios de la actividad. El sistema, por cada miembro asignado a la actividad, emite una notificación para informar sobre los cambios. El sistema, por cada miembro designado, asigna en su calendario como no disponible el bloque de tiempo que dura la actividad. |  |
@@ -1596,7 +1605,7 @@
 | **Comentarios** | \- |  |
 
 
-| UC–74 | Gestionar unidades de medida |  |
+| UC–75 | Gestionar unidades de medida |  |
 | ----- | ----- | ----- |
 | **Actor** | Administrador |  |
 | **Objetivos asociados**  | OBJ-01 OBJ-04 |  |

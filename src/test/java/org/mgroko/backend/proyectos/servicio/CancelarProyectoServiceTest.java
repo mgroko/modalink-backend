@@ -116,7 +116,7 @@ class CancelarProyectoServiceTest {
                 "Cancelado", "PUBLICO", true, null, 10L, "Luna Diseños",
                 List.of(), List.of(), null,
                 org.mgroko.backend.modelo.enums.RolProyectoUsuario.DIRECTOR,
-                true, List.of(), false, "Falta de presupuesto");
+                true, List.of(), false, "Falta de presupuesto", null, false, null, false);
     }
 
     private void prepararCaminoFeliz() {
@@ -160,6 +160,7 @@ class CancelarProyectoServiceTest {
 
         InvitacionGral invitacionGral = InvitacionGral.builder()
                 .idInvitacionGral(400L)
+                .proyecto(proyecto)
                 .perfilDestinatario(perfilEquipo)
                 .estado(EstadoSolicitud.PENDIENTE)
                 .build();
@@ -180,7 +181,7 @@ class CancelarProyectoServiceTest {
 
         when(notificacionService.crear(
                 any(Usuario.class), any(Perfil.class), anyString(), anyString(),
-                anyString(), anyLong()))
+                anyString(), anyLong(), anyLong()))
                 .thenAnswer(invocacion -> Notificacion.builder()
                         .usuarioDestino(invocacion.getArgument(0))
                         .perfilContexto(invocacion.getArgument(1))
@@ -188,6 +189,7 @@ class CancelarProyectoServiceTest {
                         .mensaje(invocacion.getArgument(3))
                         .entidadTipo(invocacion.getArgument(4))
                         .entidadId(invocacion.getArgument(5))
+                        .idProyecto(invocacion.getArgument(6))
                         .build());
     }
 
@@ -226,6 +228,9 @@ class CancelarProyectoServiceTest {
         assertThat(captor.getValue())
                 .allSatisfy(notificacion -> assertThat(notificacion.getPerfilContexto())
                         .isNotNull());
+        assertThat(captor.getValue())
+                .allSatisfy(notificacion -> assertThat(notificacion.getIdProyecto())
+                        .isEqualTo(100L));
     }
 
     @Test

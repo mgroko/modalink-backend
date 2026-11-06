@@ -3,6 +3,7 @@ package org.mgroko.backend.notificaciones.servicio;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Notificacion;
@@ -26,10 +27,44 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificacionService {
 
     public static final String TIPO_PROYECTO_CANCELADO = "PROYECTO_CANCELADO";
+    public static final String TIPO_PROYECTO_CONFIRMADO = "PROYECTO_CONFIRMADO";
+    public static final String TIPO_CALIFICACION_SOLICITADA = "CALIFICACION_SOLICITADA";
     public static final String TIPO_ACTIVIDAD_MODIFICADA = "ACTIVIDAD_MODIFICADA";
     public static final String TIPO_ACTIVIDAD_ELIMINADA = "ACTIVIDAD_ELIMINADA";
+    public static final String TIPO_ACTIVIDAD_DESASIGNADA = "ACTIVIDAD_DESASIGNADA";
+    public static final String TIPO_POSTULACION_RECIBIDA = "POSTULACION_RECIBIDA";
+    public static final String TIPO_POSTULACION_ACEPTADA = "POSTULACION_ACEPTADA";
     public static final String TIPO_POSTULACION_RECHAZADA = "POSTULACION_RECHAZADA";
+    public static final String TIPO_AJUSTE_HORARIO = "AJUSTE_HORARIO";
+    public static final String TIPO_SOBRECOMPROMISO = "SOBRECOMPROMISO";
+    public static final String TIPO_PROYECTO_FECHA_ENTREGA_MODIFICADA =
+            "PROYECTO_FECHA_ENTREGA_MODIFICADA";
+    public static final String TIPO_INVITACION_RECIBIDA = "INVITACION_RECIBIDA";
+    public static final String TIPO_INVITACION_ACEPTADA = "INVITACION_ACEPTADA";
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
+    public static final String TIPO_HITO_CUMPLIDO = "HITO_CUMPLIDO";
+    public static final String TIPO_PERFIL_REPORTADO = "PERFIL_REPORTADO";
+    public static final String TIPO_HABILIDAD_MODIFICADA = "HABILIDAD_MODIFICADA";
+    public static final String TIPO_HABILIDAD_ELIMINADA = "HABILIDAD_ELIMINADA";
+    public static final String TIPO_INTEGRANTE_ELIMINADO = "INTEGRANTE_ELIMINADO";
+    public static final String TIPO_INTEGRANTE_BAJA_VOLUNTARIA =
+            "INTEGRANTE_BAJA_VOLUNTARIA";
+    public static final String TIPO_REEMPLAZO_CANDIDATOS_DISPONIBLES =
+            "REEMPLAZO_CANDIDATOS_DISPONIBLES";
+    public static final String TIPO_REEMPLAZO_SIN_CANDIDATOS =
+            "REEMPLAZO_SIN_CANDIDATOS";
+    public static final String TIPO_REEMPLAZO_INVITACION_RECIBIDA =
+            "REEMPLAZO_INVITACION_RECIBIDA";
+    public static final String TIPO_REEMPLAZO_CANDIDATO_RECHAZO =
+            "REEMPLAZO_CANDIDATO_RECHAZO";
+    public static final String TIPO_REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION =
+            "REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION";
+    public static final String TIPO_REEMPLAZO_INCORPORACION_APROBADA =
+            "REEMPLAZO_INCORPORACION_APROBADA";
+    public static final String TIPO_REEMPLAZO_INCORPORACION_RECHAZADA =
+            "REEMPLAZO_INCORPORACION_RECHAZADA";
+    public static final String TIPO_REEMPLAZO_CANCELADO =
+            "REEMPLAZO_CANCELADO";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;
@@ -37,12 +72,15 @@ public class NotificacionService {
 
     private final NotificacionRepository notificacionRepository;
     private final PerfilRepository perfilRepository;
+    private final NotificacionDestinoResolver notificacionDestinoResolver;
 
     public NotificacionService(
             NotificacionRepository notificacionRepository,
-            PerfilRepository perfilRepository) {
+            PerfilRepository perfilRepository,
+            NotificacionDestinoResolver notificacionDestinoResolver) {
         this.notificacionRepository = notificacionRepository;
         this.perfilRepository = perfilRepository;
+        this.notificacionDestinoResolver = notificacionDestinoResolver;
     }
 
     public Notificacion crear(
@@ -62,6 +100,30 @@ public class NotificacionService {
             String entidadTipo,
             Long entidadId) {
 
+        return crear(
+                usuarioDestino,
+                perfilContexto,
+                tipo,
+                mensaje,
+                entidadTipo,
+                entidadId,
+                null);
+    }
+
+    /**
+     * Crea una notificación capturando el proyecto asociado. Para
+     * notificaciones históricas o tipos globales puede ser {@code null}; en ese
+     * caso el proyecto se intenta derivar en lectura.
+     */
+    public Notificacion crear(
+            Usuario usuarioDestino,
+            Perfil perfilContexto,
+            String tipo,
+            String mensaje,
+            String entidadTipo,
+            Long entidadId,
+            Long idProyecto) {
+
         return Notificacion.builder()
                 .usuarioDestino(usuarioDestino)
                 .perfilContexto(perfilContexto)
@@ -69,6 +131,7 @@ public class NotificacionService {
                 .mensaje(mensaje)
                 .entidadTipo(entidadTipo)
                 .entidadId(entidadId)
+                .idProyecto(idProyecto)
                 .leida(false)
                 .fechaLeida(null)
                 .origen(ORIGEN_SERVICIO)
@@ -90,7 +153,13 @@ public class NotificacionService {
                 : notificacionRepository.findByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfil(
                         idUsuario, idPerfilContexto, pageable);
 
-        return PaginaResponse.fromPage(resultado.map(NotificacionMapper::toResponse));
+        Map<Long, Long> proyectoPorNotificacion =
+                notificacionDestinoResolver.resolverProyectos(resultado.getContent());
+
+        return PaginaResponse.fromPage(resultado.map(notificacion ->
+                NotificacionMapper.toResponse(
+                        notificacion,
+                        proyectoPorNotificacion.get(notificacion.getIdNotificacion()))));
     }
 
     @Transactional(readOnly = true)
@@ -126,7 +195,9 @@ public class NotificacionService {
             notificacion = notificacionRepository.save(notificacion);
         }
 
-        return NotificacionMapper.toResponse(notificacion);
+        return NotificacionMapper.toResponse(
+                notificacion,
+                notificacionDestinoResolver.resolverProyecto(notificacion));
     }
 
     @Transactional

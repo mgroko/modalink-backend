@@ -11,5 +11,9 @@ public record RequerimientoGralResponse(
         String nombreProfesion,
         List<CaracteristicaRequerimientoResponse> caracteristicas,
         List<Long> habilidades,
-        Boolean satisfecho
+        Boolean satisfecho,
+        Long cubiertos,
+        Integer faltantes,
+        Boolean puedePostularse,
+        Boolean protegido
 ) {}

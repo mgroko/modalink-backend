@@ -57,10 +57,10 @@ import ch.qos.logback.core.read.ListAppender;
  * No usa {@code @Transactional} a nivel de test: los borrados dependen de commits
  * reales, así que cada test limpia sus propias filas y archivos.
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.storage.upload-dir=target/uploads-foto-atomicidad")
 class FotoPerfilAtomicidadIntegrationTest extends AbstractPostgresIntegrationTest {
 
-    private static final Path DIRECTORIO_SUBIDAS = Path.of("uploads", "perfiles");
+    private static final Path DIRECTORIO_SUBIDAS = Path.of("target", "uploads-foto-atomicidad", "perfiles");
     private static final AtomicInteger SECUENCIA = new AtomicInteger();
 
     @Autowired

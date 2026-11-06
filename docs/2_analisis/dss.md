@@ -111,7 +111,15 @@
        - El actor Google OAuth envía el mensaje `notificarFalloAutenticación()` al sistema.
        - El sistema retorna `mensajeFallo()` al actor Usuario.
      - `[Credenciales válidas]`:
-       - El actor Google OAuth envía el mensaje `datosAutenticación()` al sistema.
+       - El actor Google OAuth envía el mensaje `datosAutenticación(sub, correo, emailVerificado, nombre, apellido)` al sistema.
+  5. El sistema ejecuta `resolverIdentidad(sub, correo)` sobre `usuario_identidad`.
+  6. **Bloque Alternativo (`alt`)**:
+     - `[Identidad Google existente]`: el sistema ejecuta `iniciarSesion(usuario)` y retorna el JWT.
+     - `[Usuario local con el mismo correo verificado]`: el sistema ejecuta `vincularIdentidad(usuario, sub)` y retorna el JWT.
+     - `[Cuenta PENDIENTE_BAJA dentro del plazo]`: el sistema ejecuta `reactivarCuenta(usuario)` y retorna el JWT.
+     - `[Usuario nuevo]`: el sistema ejecuta `crearTicketRegistro(datosGoogle)` y redirige al onboarding.
+  7. El actor Usuario envía `completarRegistro(nombre, apellido, dni, fechaNacimiento, genero)`.
+  8. El sistema valida DNI único, mayoría de edad y género; crea el usuario y la identidad Google; retorna el JWT.
 
 ---
 
@@ -269,6 +277,16 @@
          - El sistema retorna `actualizarRequerimientosPersonal(unProyecto)`.
          - El sistema retorna `notificarDirector(unProyecto)`.
 
+> **Extensión de implementación:** se agrega el rechazo de invitaciones
+> `rechazarInvitacion(unaInvitacion)`, que actualiza la invitación a
+> `RECHAZADA` y notifica a los directores. Los endpoints son:
+> `POST /invitaciones/general/{id}/aceptar`,
+> `POST /invitaciones/actividad/{id}/aceptar`,
+> `POST /invitaciones/general/{id}/rechazar` y
+> `POST /invitaciones/actividad/{id}/rechazar`.
+> Si la aceptación cubre el cupo, se eliminan las invitaciones pendientes del
+> mismo requerimiento.
+
 ---
 
 ### **UC-29: Buscar proyecto**
@@ -288,7 +306,7 @@
 - **Actor:** Usuario / Director de proyecto
 - **Sistema:** `:ModaLink`
 - **Flujo de interacción:**
-  1. El actor envía el mensaje `buscarInvitaciones(nombreProyecto, fechaEnvio, perfil)`.
+  1. El actor envía el mensaje `buscarInvitaciones(idProyecto, nombreProyecto, fechaDesde, fechaHasta, perfil, direccion, estado, tipo)`.
   2. **Bloque Alternativo (`alt`)**:
      - `[no existen coincidencias]`: El sistema retorna `sinResultados()`.
      - `[existen invitaciones]`: El sistema retorna `invitaciones[]`.
@@ -310,6 +328,12 @@
      - `[invitación válida]`:
        - El sistema retorna `invitacionRegistrada(unaInvitacion)`.
        - El sistema retorna `notificarPerfil(unPerfil, unaInvitacion)`.
+
+> **Extensión de implementación:** además del alta individual, se exponen
+> `invitarAProyectoMultiple(unProyecto, perfiles[], mensaje)` e
+> `invitarAProyectoActividadMultiple(unProyecto, unRequerimientoAct, perfiles[], mensaje)`.
+> Cada perfil se procesa en una transacción independiente y la respuesta
+> informa `creadas[]` y `errores[]`.
 
 ---
 
@@ -444,6 +468,22 @@
        - El sistema retorna `notificarIntegranteEliminado(unPerfil, motivo)`.
 
 ---
+
+
+### **UC-40: Darse de baja de proyecto**
+
+- **Actor:** Miembro de proyecto
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-29 Buscar proyecto`.
+  2. El actor envía el mensaje `unProyecto = obtenerProyecto(idProyecto)`.
+  3. El actor solicita la baja enviando `darseDeBaja(unProyecto, motivo)`.
+  4. **Bloque Alternativo (`alt`)**:
+     - `[motivo vacío]`: El sistema retorna `excepcion()`.
+     - `[motivo completado]`:
+       - El sistema retorna `bajaIntegranteRegistrada(unProyecto, unPerfil)`.
+       - El sistema retorna `reabrirVacantesActividades(unProyecto, unPerfil)`.
+       - El sistema retorna `notificarDirectorProyecto(unProyecto, motivo)`.
 
 ### **UC-49: Crear actividad a planificación**
 

@@ -10,8 +10,8 @@ import jakarta.validation.constraints.NotNull;
 /**
  * Configuración completa de la jornada laboral del usuario. Reemplaza de
  * forma total la jornada existente: el conjunto de días presentes define
- * los días laborables (día ausente = no laborable) y el margen por
- * actividad se actualiza junto con ellos.
+ * los días laborables (día ausente = no laborable) y el margen total entre
+ * actividades consecutivas se actualiza junto con ellos.
  */
 public record ConfigJornadaRequest(
         @NotNull(message = "El margen por actividad es obligatorio.")

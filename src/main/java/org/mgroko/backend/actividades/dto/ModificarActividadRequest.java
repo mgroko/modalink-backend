@@ -1,6 +1,7 @@
 package org.mgroko.backend.actividades.dto;
 
 import java.util.List;
+import java.time.LocalTime;
 
 import org.mgroko.backend.actividades.enums.UnidadDuracion;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -11,10 +12,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 public record ModificarActividadRequest(
         @NotBlank(message = "El nombre de la actividad es obligatorio.")
-        @Size(max = 20, message = "El nombre no puede superar los 20 caracteres.")
+        @Size(max = 100, message = "El nombre no puede superar los 100 caracteres.")
         String nombre,
 
         @Size(max = 200, message = "La descripcion no puede superar los 200 caracteres.")
@@ -26,6 +28,9 @@ public record ModificarActividadRequest(
 
         @NotNull(message = "La unidad de duracion es obligatoria.")
         UnidadDuracion unidadDuracion,
+
+        @JsonFormat(pattern = "HH:mm")
+        LocalTime horarioPreferenciaInicio,
 
         @Valid
         UbicacionRequest ubicacion,
@@ -41,4 +46,18 @@ public record ModificarActividadRequest(
         @NotNull(message = "El estado es obligatorio.")
         EstadoActividad estado
 ) {
+
+    public ModificarActividadRequest(
+            String nombre,
+            String descripcion,
+            Integer duracion,
+            UnidadDuracion unidadDuracion,
+            UbicacionRequest ubicacion,
+            List<Long> predecesoras,
+            List<@NotNull(message = "La lista de requerimientos no puede contener valores nulos.")
+                    @Valid ModificarRequerimientoActividadRequest> requerimientos,
+            EstadoActividad estado) {
+        this(nombre, descripcion, duracion, unidadDuracion, null,
+                ubicacion, predecesoras, requerimientos, estado);
+    }
 }

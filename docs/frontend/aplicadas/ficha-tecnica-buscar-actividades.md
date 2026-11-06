@@ -1,11 +1,18 @@
 # Ficha Técnica Frontend: Buscar Actividades (UC-52)
 
+> **Nota (2026-10-27):** este endpoint sigue siendo la búsqueda de actividades
+> para candidatos y otras vistas. La pestaña **Planificación** usa
+> `GET /proyectos/{idProyecto}/actividades` (tabla liviana con responsables) y la
+> pestaña **Cronograma** usa `GET /proyectos/{idProyecto}/cronograma`.
+> Ver `ficha-tecnica-planificacion-actividades.md` y
+> `ficha-tecnica-visualizar-cronograma.md`.
+
 Especificación de la API para buscar actividades dentro de la planificación de un
 proyecto, aplicando filtros opcionales, paginación y la misma regla de visibilidad
 que el detalle del proyecto (UC-25).
 
 **Estado backend:** implementado y testeado.  
-**Última actualización:** 2026-10-21.
+**Última actualización:** 2026-10-27.
 
 ---
 
@@ -120,7 +127,11 @@ Formato `PaginaResponse` estándar:
           "cantidad": 2,
           "descripcion": "Dos modelos",
           "idProfesion": 2,
-          "nombreProfesion": "Modelo"
+          "nombreProfesion": "Modelo",
+          "cubiertos": 1,
+          "faltantes": 1,
+          "satisfecho": false,
+          "puedePostularse": true
         }
       ],
       "predecesoras": [
@@ -165,6 +176,21 @@ Formato `PaginaResponse` estándar:
 | `descripcion` | `string \| null` | Descripción del requerimiento. |
 | `idProfesion` | `number` | Identificador de la profesión requerida. |
 | `nombreProfesion` | `string` | Nombre de la profesión requerida. |
+| `cubiertos` | `number` | Asignaciones activas vinculadas al requerimiento. |
+| `faltantes` | `number` | `max(0, cantidad - cubiertos)`. |
+| `satisfecho` | `boolean` | `true` si el cupo está completo. |
+| `puedePostularse` | `boolean` | **Fuente de verdad por requerimiento.** El backend ya evaluó proyecto `Publicado`/`Confirmado`, actividad `PENDIENTE`, rol (`DIRECTOR` excluido, `MIEMBRO` permitido), profesión y cupo. El front sólo debe hacer `puedePostularse === true`. |
+
+### Elegibilidad y límites de `puedePostularse`
+
+`puedePostularse` es elegibilidad estructural. **No** incluye:
+
+- que el perfil ya se haya postulado a ese requerimiento,
+- la disponibilidad de calendario para el rango factible de la actividad.
+
+Esos casos siguen respondiendo `409` al crear la postulación. La UI debe usar
+`puedePostularse` para mostrar u ocultar la acción y manejar el `409` como red de
+seguridad, sin recalcular profesión, cupo, rol ni estado.
 
 ### Campos de `predecesoras[]`
 
@@ -232,3 +258,7 @@ No es un error: mostrar el estado "sin resultados" conservando los filtros.
 10. **Formato de fechas:** el backend devuelve `LocalDateTime` sin zona horaria
     (`YYYY-MM-DDTHH:mm:ss`). Formatear en el cliente según el locale, sin asumir
     zona horaria ni sufijo `Z`.
+11. **Gating de postulación:** usar `requerimiento.puedePostularse`, no
+    `elegibleParaPostularse`. Si `puedePostularse = false` por profesión y no por
+    cupo, no mostrar “Cupo completo”: usar un mensaje genérico como “No disponible
+    para tu perfil”. El `409` de duplicado o disponibilidad sigue siendo posible.

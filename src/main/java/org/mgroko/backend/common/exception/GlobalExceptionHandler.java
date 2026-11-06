@@ -3,12 +3,15 @@ package org.mgroko.backend.common.exception;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
 import org.mgroko.backend.admin.exception.CaracteristicaCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
+import org.mgroko.backend.admin.exception.HabilidadDuplicadaException;
+import org.mgroko.backend.admin.exception.HabilidadEnUsoException;
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
 import org.mgroko.backend.admin.exception.UnidadMedidaDuplicadaException;
 import org.mgroko.backend.admin.exception.UnidadMedidaEnUsoException;
@@ -20,9 +23,13 @@ import org.mgroko.backend.admin.exception.ValorCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.ValorEnUsoException;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.auth.exception.CuentaGoogleNoVerificadaException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
+import org.mgroko.backend.auth.exception.IdentidadGoogleConflictoException;
+import org.mgroko.backend.auth.exception.RegistroConSesionActivaException;
+import org.mgroko.backend.auth.exception.RegistroPendienteInvalidoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
@@ -36,6 +43,8 @@ import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaValorNoCoincideException;
+import org.mgroko.backend.perfiles.exception.HabilidadNoAsociadaException;
+import org.mgroko.backend.perfiles.exception.HabilidadYaAsociadaException;
 import org.mgroko.backend.perfiles.exception.IdValorObligatorioException;
 import org.mgroko.backend.perfiles.exception.ImagenNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.PerfilDuplicadoException;
@@ -44,6 +53,14 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.actividades.exception.AsignacionActividadNoEncontradaException;
+import org.mgroko.backend.actividades.exception.AsignacionActividadNoPermitidaException;
+import org.mgroko.backend.actividades.exception.AsignacionNoDisponibleException;
+import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaException;
+import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
+import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
+import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
+import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
@@ -52,9 +69,12 @@ import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
 import org.mgroko.backend.ubicacion.exception.PaisNoConfiguradoException;
 import org.mgroko.backend.ubicacion.exception.ProvinciaSinLocalidadException;
+import org.mgroko.backend.security.exception.AccesoDenegadoPorRolException;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -71,6 +91,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Maneja el intento de registro con una sesión ya autenticada.
+     */
+    @ExceptionHandler(RegistroConSesionActivaException.class)
+    public ResponseEntity<Map<String, Object>> handleRegistroConSesionActiva(
+            RegistroConSesionActivaException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "SESION_ACTIVA", HttpStatus.CONFLICT);
+    }
+
+    /**
      * Maneja excepciones de DNI duplicado.
      */
     @ExceptionHandler(DniDuplicadoException.class)
@@ -84,6 +113,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<Map<String, Object>> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(RegistroPendienteInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRegistroPendienteInvalido(
+            RegistroPendienteInvalidoException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "REGISTRO_GOOGLE_INVALIDO", HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(CuentaGoogleNoVerificadaException.class)
+    public ResponseEntity<Map<String, Object>> handleCuentaGoogleNoVerificada(
+            CuentaGoogleNoVerificadaException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "GOOGLE_EMAIL_NO_VERIFICADO", HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(IdentidadGoogleConflictoException.class)
+    public ResponseEntity<Map<String, Object>> handleIdentidadGoogleConflicto(
+            IdentidadGoogleConflictoException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "GOOGLE_IDENTIDAD_CONFLICTO", HttpStatus.CONFLICT);
     }
 
     /**
@@ -121,10 +168,51 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Maneja JSON malformado o valores de enum inválidos. En particular,
+     * devuelve un mensaje claro cuando la unidad de duración ya no es DIAS.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex) {
+        String detalle = ex.getMessage() != null ? ex.getMessage() : "";
+        String mensaje = detalle.contains("UnidadDuracion")
+                ? "Unidad de duración inválida. Usá HORAS o MINUTOS."
+                : "Solicitud inválida: revisá el formato de los datos enviados.";
+        return buildErrorResponse(mensaje, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * El cliente envió un Content-Type que ningún converter del endpoint
+     * soporta. Se devuelve un código estable para que el frontend pueda
+     * distinguirlo de un error de validación común.
+     */
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMediaTypeNotSupported(
+            org.springframework.web.HttpMediaTypeNotSupportedException ex) {
+        return buildErrorResponseConCodigo(
+                "El contenido enviado no es compatible con esta operación.",
+                "CONTENT_TYPE_NO_SOPORTADO",
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    /**
      * Helper para construir una respuesta de error estándar.
      */
     private ResponseEntity<Map<String, Object>> buildErrorResponse(String message, HttpStatus status) {
         Map<String, Object> response = new HashMap<>();
+        response.put("message", message);
+        response.put("httpStatus", status.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, status);
+    }
+
+    /**
+     * Helper para respuestas de error con un código estable para el frontend.
+     */
+    private ResponseEntity<Map<String, Object>> buildErrorResponseConCodigo(
+            String message, String codigo, HttpStatus status) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("codigo", codigo);
         response.put("message", message);
         response.put("httpStatus", status.value());
         response.put("timestamp", System.currentTimeMillis());
@@ -174,6 +262,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UsuarioDeshabilitadoException.class)
     public ResponseEntity<Map<String, Object>> handleUsuarioDeshabilitado(UsuarioDeshabilitadoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Excepción de acceso denegado por rol global (por ejemplo, un
+     * administrador intentando operar el área de usuario).
+     */
+    @ExceptionHandler(AccesoDenegadoPorRolException.class)
+    public ResponseEntity<Map<String, Object>> handleAccesoDenegadoPorRol(
+            AccesoDenegadoPorRolException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "ROL_NO_PERMITIDO", HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Excepción de autorización lanzada por @PreAuthorize. Se traduce al
+     * mismo contrato que usa el resto de la API.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return buildErrorResponseConCodigo(
+                "No tenés permiso para acceder a este recurso.",
+                "ROL_NO_PERMITIDO",
+                HttpStatus.FORBIDDEN);
     }
 
     /**
@@ -266,6 +376,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.HistorialParametroInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleHistorialParametroInvalido(
+            org.mgroko.backend.proyectos.exception.HistorialParametroInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException.class)
     public ResponseEntity<Map<String, Object>> handleRangoDuracionInvalido(
             org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException ex) {
@@ -282,6 +398,78 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoInvalido(
             org.mgroko.backend.proyectos.exception.EstadoProyectoInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoConfirmable(
+            org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", ex.getCodigo());
+        response.put("bloqueos", ex.getBloqueos());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoFinalizable(
+            org.mgroko.backend.proyectos.exception.ProyectoNoFinalizableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", ex.getCodigo());
+        response.put("bloqueos", ex.getBloqueos());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.CalificacionIncompletaException.class)
+    public ResponseEntity<Map<String, Object>> handleCalificacionIncompleta(
+            org.mgroko.backend.proyectos.exception.CalificacionIncompletaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CALIFICACIONES_INCOMPLETAS");
+        response.put("faltantes", ex.getIdsPerfilFaltantes());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.CalificacionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleCalificacionInvalida(
+            org.mgroko.backend.proyectos.exception.CalificacionInvalidaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CALIFICACION_INVALIDA");
+        response.put("httpStatus", HttpStatus.BAD_REQUEST.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ProyectoNoCalificableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoCalificable(
+            org.mgroko.backend.proyectos.exception.ProyectoNoCalificableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "PROYECTO_NO_CALIFICABLE");
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException.class)
+    public ResponseEntity<Map<String, Object>> handleConfirmacionPrematuraRequerida(
+            org.mgroko.backend.proyectos.exception.ConfirmacionPrematuraRequeridaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "CONFIRMACION_PREMATURA_REQUERIDA");
+        response.put("fechaEntrega", ex.getFechaEntrega());
+        response.put("fechaActual", ex.getFechaActual());
+        response.put("diasAnticipacion", ex.getDiasAnticipacion());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException.class)
@@ -302,6 +490,54 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.MotivoEliminacionIntegranteObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleMotivoEliminacionIntegranteObligatorio(
+            org.mgroko.backend.proyectos.exception.MotivoEliminacionIntegranteObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.MiembroProyectoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleMiembroProyectoNoEncontrado(
+            org.mgroko.backend.proyectos.exception.MiembroProyectoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoParticipacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoParticipacionInvalido(
+            org.mgroko.backend.proyectos.exception.EstadoParticipacionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteEliminarIntegrantesException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteEliminarIntegrantes(
+            org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteEliminarIntegrantesException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException.class)
+    public ResponseEntity<Map<String, Object>> handleUltimoDirectorActivo(
+            org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.AutoeliminacionIntegranteException.class)
+    public ResponseEntity<Map<String, Object>> handleAutoeliminacionIntegrante(
+            org.mgroko.backend.proyectos.exception.AutoeliminacionIntegranteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.MotivoBajaVoluntariaObligatorioException.class)
+    public ResponseEntity<Map<String, Object>> handleMotivoBajaVoluntariaObligatorio(
+            org.mgroko.backend.proyectos.exception.MotivoBajaVoluntariaObligatorioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteBajaVoluntariaException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteBajaVoluntaria(
+            org.mgroko.backend.proyectos.exception.EstadoProyectoNoPermiteBajaVoluntariaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException.class)
     public ResponseEntity<Map<String, Object>> handleUbicacionObligatoria(
             org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException ex) {
@@ -314,17 +550,110 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoGralProtegido(
+            org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "REQUERIMIENTO_CON_VINCULOS");
+        response.put("idRequerimientoGral", ex.getIdRequerimientoGral());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {
+        if (esViolacionPorSolapeHorario(ex)) {
+            return buildSolapeHorarioResponse(ex);
+        }
         if (esViolacionPorCiclo(ex)) {
             return buildErrorResponse(
                     "La modificacion genera un ciclo entre actividades.",
                     HttpStatus.CONFLICT);
         }
+        if (esViolacionPorUltimoDirector(ex)) {
+            return buildErrorResponse(
+                    "El proyecto debe conservar al menos un director activo.",
+                    HttpStatus.CONFLICT);
+        }
+        if (esViolacionPorAsignacionDuplicadaUsuario(ex)) {
+            return buildErrorResponse(
+                    "El usuario ya está asignado a esta actividad con otro perfil.",
+                    HttpStatus.CONFLICT);
+        }
         return buildErrorResponse(
                 "Los datos enviados violan una restriccion de integridad de la base de datos.",
                 HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Maneja errores de persistencia no categorizados por Spring. En
+     * PostgreSQL, un RAISE EXCEPTION de PL/pgSQL llega como JpaSystemException
+     * (SQLState P0001), no como DataIntegrityViolationException.
+     */
+    @ExceptionHandler(org.springframework.orm.jpa.JpaSystemException.class)
+    public ResponseEntity<Map<String, Object>> handleJpaSystemException(
+            org.springframework.orm.jpa.JpaSystemException ex) {
+        if (esViolacionPorSolapeHorario(ex)) {
+            return buildSolapeHorarioResponse(ex);
+        }
+        return buildErrorResponse(
+                "No se pudo completar la operación por un error de persistencia.",
+                HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Detecta el conflicto de horario lanzado por los triggers de agenda.
+     * Acepta tanto el mensaje histórico como el mensaje ampliado con IDs.
+     */
+    private boolean esViolacionPorSolapeHorario(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null) {
+                String normalizado = mensaje.toLowerCase(java.util.Locale.ROOT);
+                if (normalizado.contains("el horario se superpone con otra actividad")
+                        || normalizado.contains("el horario se superpone con un bloqueo manual")) {
+                    return true;
+                }
+            }
+            actual = actual.getCause();
+        }
+        return false;
+    }
+
+    private ResponseEntity<Map<String, Object>> buildSolapeHorarioResponse(Throwable ex) {
+        String detalle = mensajeMasProfundo(ex);
+        if (detalle != null) {
+            detalle = detalle.replaceFirst("(?i)^\\s*ERROR:\\s*", "");
+            int salto = detalle.indexOf('\n');
+            if (salto >= 0) {
+                detalle = detalle.substring(0, salto);
+            }
+            detalle = detalle.trim();
+        }
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", detalle != null && !detalle.isBlank()
+                ? detalle
+                : "El horario se superpone con otra actividad del mismo profesional.");
+        response.put("codigo", "SOLAPE_HORARIO");
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    private String mensajeMasProfundo(Throwable ex) {
+        String mensaje = null;
+        Throwable actual = ex;
+        while (actual != null) {
+            if (actual.getMessage() != null && !actual.getMessage().isBlank()) {
+                mensaje = actual.getMessage();
+            }
+            actual = actual.getCause();
+        }
+        return mensaje;
     }
 
     private boolean esViolacionPorCiclo(Throwable ex) {
@@ -333,6 +662,35 @@ public class GlobalExceptionHandler {
             String mensaje = actual.getMessage();
             if (mensaje != null
                     && mensaje.toLowerCase(java.util.Locale.ROOT).contains("genera un ciclo")) {
+                return true;
+            }
+            actual = actual.getCause();
+        }
+        return false;
+    }
+
+    private boolean esViolacionPorUltimoDirector(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null) {
+                String normalizado = mensaje.toLowerCase(java.util.Locale.ROOT);
+                if (normalizado.contains("al menos un director activo")
+                        || normalizado.contains("unico director")) {
+                    return true;
+                }
+            }
+            actual = actual.getCause();
+        }
+        return false;
+    }
+
+    private boolean esViolacionPorAsignacionDuplicadaUsuario(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null
+                    && mensaje.contains("ASIGNACION_DUPLICADA_USUARIO")) {
                 return true;
             }
             actual = actual.getCause();
@@ -523,6 +881,28 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(HabilidadDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadDuplicada(HabilidadDuplicadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(HabilidadEnUsoException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadEnUso(HabilidadEnUsoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(HabilidadYaAsociadaException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadYaAsociada(
+            HabilidadYaAsociadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(HabilidadNoAsociadaException.class)
+    public ResponseEntity<Map<String, Object>> handleHabilidadNoAsociada(
+            HabilidadNoAsociadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(AgendaNoEncontradaException.class)
     public ResponseEntity<Map<String, Object>> handleAgendaNoEncontrada(AgendaNoEncontradaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
@@ -586,6 +966,45 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadCanceladaException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadCancelada(
+            org.mgroko.backend.actividades.exception.ActividadCanceladaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(AsignacionActividadNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleAsignacionActividadNoEncontrada(
+            AsignacionActividadNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(AsignacionActividadNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleAsignacionActividadNoPermitida(
+            AsignacionActividadNoPermitidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(AsignacionNoDisponibleException.class)
+    public ResponseEntity<Map<String, Object>> handleAsignacionNoDisponible(
+            AsignacionNoDisponibleException ex) {
+        var disponibilidad = ex.getDisponibilidad();
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("motivo", disponibilidad != null ? disponibilidad.motivo() : null);
+        response.put("codigoMotivo",
+                disponibilidad != null ? disponibilidad.codigoMotivo() : null);
+        response.put("provisional", disponibilidad != null && disponibilidad.provisional());
+        response.put("inicioEvaluado",
+                disponibilidad != null ? disponibilidad.inicioEvaluado() : null);
+        response.put("finEvaluado",
+                disponibilidad != null ? disponibilidad.finEvaluado() : null);
+        response.put("miembrosBloqueantes",
+                disponibilidad != null ? disponibilidad.miembrosBloqueantes() : List.of());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadNoModificableException.class)
     public ResponseEntity<Map<String, Object>> handleActividadNoModificable(
             org.mgroko.backend.actividades.exception.ActividadNoModificableException ex) {
@@ -601,6 +1020,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteEliminarActividades(
             org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadEnCursoConfirmadaNoEliminable(
+            org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleDecisionIntegranteInvalida(
+            org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.EliminacionIntegranteNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleEliminacionIntegranteNoPermitida(
+            org.mgroko.backend.actividades.exception.EliminacionIntegranteNoPermitidaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
@@ -634,6 +1071,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadSinFechaInicioException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadSinFechaInicio(
+            org.mgroko.backend.actividades.exception.ActividadSinFechaInicioException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteActividadesException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteActividades(
             org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteActividadesException ex) {
@@ -661,12 +1104,124 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.mgroko.backend.actividades.exception.RequerimientoConVinculosException.class)
     public ResponseEntity<Map<String, Object>> handleRequerimientoConVinculos(
             org.mgroko.backend.actividades.exception.RequerimientoConVinculosException ex) {
-        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", "REQUERIMIENTO_CON_VINCULOS");
+        response.put("idRequerimiento", ex.getIdRequerimiento());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.mgroko.backend.actividades.exception.DuracionInvalidaException.class)
     public ResponseEntity<Map<String, Object>> handleDuracionInvalida(
             org.mgroko.backend.actividades.exception.DuracionInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasInvitacionInvalido(
+            org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.invitaciones.exception.InvitacionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleInvitacionNoEncontrada(
+            org.mgroko.backend.invitaciones.exception.InvitacionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleInvitacionNoPermitida(
+            org.mgroko.backend.invitaciones.exception.InvitacionNoPermitidaException ex) {
+        Map<String, Object> response = buildErrorResponse(
+                ex.getMessage(), HttpStatus.CONFLICT).getBody();
+        if (response != null && ex.getCodigo() != null) {
+            response.put("codigo", ex.getCodigo());
+        }
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(PostulacionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePostulacionNoPermitida(
+            PostulacionNoPermitidaException ex) {
+        Map<String, Object> response = buildErrorResponse(
+                ex.getMessage(), HttpStatus.CONFLICT).getBody();
+        if (response != null && ex.getCodigo() != null) {
+            response.put("codigoMotivo", ex.getCodigo());
+        }
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(RequerimientoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoNoEncontrado(
+            RequerimientoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(RangoFechasPostulacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasPostulacionInvalido(
+            RangoFechasPostulacionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(PostulacionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handlePostulacionNoEncontrada(
+            PostulacionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(PostulacionYaGestionadaException.class)
+    public ResponseEntity<Map<String, Object>> handlePostulacionYaGestionada(
+            PostulacionYaGestionadaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.ReporteNoPermitidoException.class)
+    public ResponseEntity<Map<String, Object>> handleReporteNoPermitido(
+            org.mgroko.backend.reportes.exception.ReporteNoPermitidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.AutoreporteException.class)
+    public ResponseEntity<Map<String, Object>> handleAutoreporte(
+            org.mgroko.backend.reportes.exception.AutoreporteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.ReportePendienteExistenteException.class)
+    public ResponseEntity<Map<String, Object>> handleReportePendienteExistente(
+            org.mgroko.backend.reportes.exception.ReportePendienteExistenteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.DescripcionReporteObligatoriaException.class)
+    public ResponseEntity<Map<String, Object>> handleDescripcionReporteObligatoria(
+            org.mgroko.backend.reportes.exception.DescripcionReporteObligatoriaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.DescripcionReporteInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleDescripcionReporteInvalida(
+            org.mgroko.backend.reportes.exception.DescripcionReporteInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.ReporteNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleReporteNoEncontrado(
+            org.mgroko.backend.reportes.exception.ReporteNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.EstadoReporteInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoReporteInvalido(
+            org.mgroko.backend.reportes.exception.EstadoReporteInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.RangoFechasReporteInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasReporteInvalido(
+            org.mgroko.backend.reportes.exception.RangoFechasReporteInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 

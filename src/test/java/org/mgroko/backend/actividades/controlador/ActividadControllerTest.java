@@ -1,5 +1,8 @@
 package org.mgroko.backend.actividades.controlador;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,23 +15,34 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
+import org.mgroko.backend.actividades.dto.ActividadPlanificacionResponse;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
+import org.mgroko.backend.actividades.dto.EliminarActividadRequest;
+import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.dto.ProfesionalAsignadoResponse;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResumenResponse;
+import org.mgroko.backend.actividades.exception.ActividadCanceladaException;
 import org.mgroko.backend.actividades.exception.CicloActividadException;
 import org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException;
 import org.mgroko.backend.actividades.exception.RequerimientoConVinculosException;
 import org.mgroko.backend.actividades.exception.TransicionEstadoActividadInvalidaException;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
+import org.mgroko.backend.actividades.servicio.CambiarEstadoActividadService;
 import org.mgroko.backend.actividades.servicio.CrearActividadService;
 import org.mgroko.backend.actividades.servicio.EliminarActividadService;
+import org.mgroko.backend.actividades.servicio.ListarActividadesPlanificacionService;
+import org.mgroko.backend.actividades.servicio.MiembrosActividadService;
 import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
-import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.actividades.servicio.ObtenerDisponibilidadActividadService;
+import org.mgroko.backend.calendario.dto.DetalleMiembroDisponibilidad;
+import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
+import org.mgroko.backend.calendario.servicio.DisponibilidadCalculator.Intervalo;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
+import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -38,6 +52,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -45,7 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.springframework.http.MediaType;
 
-@WebMvcTest(controllers = ActividadController.class)
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = ActividadController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class ActividadControllerTest {
 
@@ -65,21 +80,19 @@ class ActividadControllerTest {
     private ObtenerActividadService obtenerActividadService;
 
     @MockitoBean
+    private ObtenerDisponibilidadActividadService obtenerDisponibilidadActividadService;
+
+    @MockitoBean
+    private ListarActividadesPlanificacionService listarActividadesPlanificacionService;
+
+    @MockitoBean
     private EliminarActividadService eliminarActividadService;
 
-    @Test
-    void eliminar_conDatosValidos_devuelve204() throws Exception {
-        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
-        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+    @MockitoBean
+    private MiembrosActividadService miembrosActividadService;
 
-        mockMvc.perform(delete("/proyectos/100/actividades/55")
-                        .param("motivo", "Falta de presupuesto")
-                        .principal(auth))
-                .andExpect(status().isNoContent());
-
-        verify(eliminarActividadService)
-                .eliminar(1L, 10L, 100L, 55L, "Falta de presupuesto");
-    }
+    @MockitoBean
+    private CambiarEstadoActividadService cambiarEstadoActividadService;
 
     @Test
     void crear_conDatosValidos_devuelve201() throws Exception {
@@ -95,12 +108,20 @@ class ActividadControllerTest {
                 90,
                 LocalDateTime.of(2026, 11, 1, 22, 29),
                 LocalDateTime.of(2026, 11, 1, 23, 59),
+                null,
                 "PENDIENTE",
                 "NORMAL",
-                null,
-                List.of(),
-                List.of(),
-                List.of());
+                null,          // tentative
+                null,          // critica
+                0L,            // holguraMakespan
+                null,          // holguraEntrega
+                null,          // rangoInicio
+                null,          // rangoEjecucion
+                null,          // ubicacion
+                List.of(),     // predecesoras
+                List.of(),     // requerimientos
+                List.of()      // profesionalesAsignados
+        );
 
         when(crearActividadService.crear(
                 eq(1L), eq(10L), eq(100L), any(CrearActividadRequest.class)))
@@ -123,6 +144,26 @@ class ActividadControllerTest {
     }
 
     @Test
+    void crear_conUnidadDias_devuelve400ConMensajeClaro() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(post("/proyectos/100/actividades")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Montaje",
+                                  "duracion": 1,
+                                  "unidadDuracion": "DIAS"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Unidad de duración inválida. Usá HORAS o MINUTOS."));
+    }
+
+    @Test
     void modificar_conDatosValidos_devuelve200() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
@@ -136,15 +177,22 @@ class ActividadControllerTest {
                 90,
                 LocalDateTime.of(2026, 11, 1, 22, 29),
                 LocalDateTime.of(2026, 11, 1, 23, 59),
+                null,
                 "EN_CURSO",
                 "NORMAL",
-                null,
-                List.of(),
-                List.of(),
-                List.of());
+                null,          // tentative
+                null,          // critica
+                0L,            // holguraMakespan
+                null,          // holguraEntrega
+                null,          // rangoInicio
+                null,          // rangoEjecucion
+                null,          // ubicacion
+                List.of(),     // predecesoras
+                List.of(),     // requerimientos
+                List.of());    // profesionalesAsignados
 
         when(modificarActividadService.modificar(
-                eq(1L), eq(10L), eq(100L), eq(55L), any(ModificarActividadRequest.class)))
+                eq(1L), eq(10L), eq(100L), eq(55L), any(org.mgroko.backend.actividades.dto.ModificarActividadRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/proyectos/100/actividades/55")
@@ -169,100 +217,51 @@ class ActividadControllerTest {
     }
 
     @Test
-    void modificar_conCicloDePredecesoras_devuelve409() throws Exception {
+    void cambiarEstado_conDatosValidos_devuelve200() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
 
-        when(modificarActividadService.modificar(
-                eq(1L), eq(10L), eq(100L), eq(55L), any(ModificarActividadRequest.class)))
-                .thenThrow(new CicloActividadException(
-                        "La actividad 'Montaje final' genera un ciclo de predecesoras."));
+        ActividadResponse response = new ActividadResponse(
+                55L,
+                100L,
+                "Desfile Primavera",
+                "Montaje final",
+                "Montar escenario",
+                90,
+                LocalDateTime.of(2026, 11, 1, 22, 29),
+                LocalDateTime.of(2026, 11, 1, 23, 59),
+                null,
+                "EN_CURSO",
+                "NORMAL",
+                null,
+                null,
+                0L,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of());
 
-        mockMvc.perform(put("/proyectos/100/actividades/55")
+        when(cambiarEstadoActividadService.cambiar(
+                1L, 10L, 100L, 55L, EstadoActividad.EN_CURSO))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/proyectos/100/actividades/55/estado")
                         .principal(auth)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "nombre": "Montaje final",
-                                  "duracion": 2,
-                                  "unidadDuracion": "HORAS",
-                                  "predecesoras": [56],
-                                  "requerimientos": [],
-                                  "estado": "PENDIENTE"
+                                  "estado": "EN_CURSO"
                                 }
                                 """))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.httpStatus").value(409))
-                .andExpect(jsonPath("$.message").value(
-                        "La actividad 'Montaje final' genera un ciclo de predecesoras."));
-    }
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idActividad").value(55L))
+                .andExpect(jsonPath("$.estado").value("EN_CURSO"));
 
-    @Test
-    void modificar_conTransicionDeEstadoInvalida_devuelve409() throws Exception {
-        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
-        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
-
-        when(modificarActividadService.modificar(
-                eq(1L), eq(10L), eq(100L), eq(55L), any(ModificarActividadRequest.class)))
-                .thenThrow(new TransicionEstadoActividadInvalidaException(
-                        EstadoActividad.PENDIENTE,
-                        EstadoActividad.FINALIZADA));
-
-        mockMvc.perform(put("/proyectos/100/actividades/55")
-                        .principal(auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nombre": "Montaje final",
-                                  "duracion": 2,
-                                  "unidadDuracion": "HORAS",
-                                  "predecesoras": [],
-                                  "requerimientos": [],
-                                  "estado": "FINALIZADA"
-                                }
-                                """))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.httpStatus").value(409))
-                .andExpect(jsonPath("$.message").value(
-                        "No se puede cambiar el estado de la actividad de "
-                                + "PENDIENTE a FINALIZADA."));
-    }
-
-    @Test
-    void modificar_conRequerimientoVinculado_devuelve409() throws Exception {
-        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
-        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
-
-        when(modificarActividadService.modificar(
-                eq(1L), eq(10L), eq(100L), eq(55L), any(ModificarActividadRequest.class)))
-                .thenThrow(new RequerimientoConVinculosException(7L));
-
-        mockMvc.perform(put("/proyectos/100/actividades/55")
-                        .principal(auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nombre": "Montaje final",
-                                  "duracion": 2,
-                                  "unidadDuracion": "HORAS",
-                                  "predecesoras": [],
-                                  "requerimientos": [
-                                    {
-                                      "idRequerimiento": 7,
-                                      "cantidad": 1,
-                                      "idProfesion": 2,
-                                      "caracteristicas": [],
-                                      "habilidades": []
-                                    }
-                                  ],
-                                  "estado": "PENDIENTE"
-                                }
-                                """))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.httpStatus").value(409))
-                .andExpect(jsonPath("$.message").value(
-                        "No se puede modificar ni eliminar el requerimiento 7 "
-                                + "porque tiene postulaciones o invitaciones asociadas."));
+        verify(cambiarEstadoActividadService).cambiar(
+                1L, 10L, 100L, 55L, EstadoActividad.EN_CURSO);
     }
 
     @Test
@@ -279,11 +278,18 @@ class ActividadControllerTest {
                 90,
                 LocalDateTime.of(2026, 11, 1, 22, 29),
                 LocalDateTime.of(2026, 11, 1, 23, 59),
+                null,
                 "EN_CURSO",
                 "NORMAL",
-                null,
-                List.of(),
-                List.of(),
+                null,          // tentative
+                null,          // critica
+                0L,            // holguraMakespan
+                null,          // holguraEntrega
+                null,          // rangoInicio
+                null,          // rangoEjecucion
+                null,          // ubicacion
+                List.of(),     // predecesoras
+                List.of(),     // requerimientos
                 List.of(new ProfesionalAsignadoResponse(
                         77L,
                         88L,
@@ -291,7 +297,8 @@ class ActividadControllerTest {
                         1L,
                         "Luna",
                         2L,
-                        "Modelo")));
+                        "Modelo"))  // profesionalesAsignados
+        );
 
         when(obtenerActividadService.obtener(1L, 10L, 100L, 55L))
                 .thenReturn(response);
@@ -305,49 +312,135 @@ class ActividadControllerTest {
     }
 
     @Test
-    void modificar_sinListasObligatorias_devuelve400() throws Exception {
+    void obtenerDisponibilidad_sinIdPerfil_evaluaPerfilActivo() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
 
-        mockMvc.perform(put("/proyectos/100/actividades/55")
-                        .principal(auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nombre": "Montaje final",
-                                  "duracion": 2,
-                                  "unidadDuracion": "HORAS",
-                                  "estado": "EN_CURSO"
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
+        LocalDateTime inicioHueco = LocalDateTime.of(2026, 11, 1, 10, 0);
+        LocalDateTime finHueco = LocalDateTime.of(2026, 11, 1, 11, 0);
+        ResultadoDisponibilidad response = new ResultadoDisponibilidad(
+                true,
+                true,
+                LocalDateTime.of(2026, 11, 1, 9, 0),
+                LocalDateTime.of(2026, 11, 1, 18, 0),
+                inicioHueco,
+                finHueco,
+                null,
+                List.of(new DetalleMiembroDisponibilidad(
+                        1L,
+                        LocalDateTime.of(2026, 11, 1, 9, 0),
+                        LocalDateTime.of(2026, 11, 1, 18, 0),
+                        List.of(new Intervalo(inicioHueco, finHueco)),
+                        true,
+                        null)));
 
-        verify(modificarActividadService, never()).modificar(
+        when(obtenerDisponibilidadActividadService.obtener(1L, 10L, 100L, 55L, null))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/proyectos/100/actividades/55/disponibilidad").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disponible").value(true))
+                .andExpect(jsonPath("$.provisional").value(true))
+                .andExpect(jsonPath("$.inicioSeleccionado").value("2026-11-01T10:00:00"))
+                .andExpect(jsonPath("$.inicio").doesNotExist())
+                .andExpect(jsonPath("$.fin").doesNotExist())
+                .andExpect(jsonPath("$.miembros[0].idUsuario").value(1L))
+                .andExpect(jsonPath("$.miembros[0].huecos[0].inicio").value("2026-11-01T10:00:00"))
+                .andExpect(jsonPath("$.miembros[0].huecos[0].minutos").doesNotExist());
+    }
+
+    @Test
+    void obtenerDisponibilidad_conVariosPerfiles_evaluaHuecoComun() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        ResultadoDisponibilidad response = new ResultadoDisponibilidad(
+                false,
+                false,
+                LocalDateTime.of(2026, 11, 1, 9, 0),
+                LocalDateTime.of(2026, 11, 1, 18, 0),
+                null,
+                null,
+                "SIN_HUECO_COMUN",
+                List.of());
+
+        when(obtenerDisponibilidadActividadService.obtener(
+                eq(1L), eq(10L), eq(100L), eq(55L), eq(List.of(10L, 11L))))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/proyectos/100/actividades/55/disponibilidad")
+                        .principal(auth)
+                        .param("idPerfil", "10")
+                        .param("idPerfil", "11"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disponible").value(false))
+                .andExpect(jsonPath("$.motivo").value("SIN_HUECO_COMUN"));
+
+        verify(obtenerDisponibilidadActividadService).obtener(
+                1L, 10L, 100L, 55L, List.of(10L, 11L));
+    }
+
+    @Test
+    void obtenerDisponibilidad_actividadCancelada_devuelve409() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        when(obtenerDisponibilidadActividadService.obtener(1L, 10L, 100L, 55L, null))
+                .thenThrow(new ActividadCanceladaException(55L));
+
+        mockMvc.perform(get("/proyectos/100/actividades/55/disponibilidad").principal(auth))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "La actividad 55 está cancelada y no admite consultas de disponibilidad."));
+    }
+
+    @Test
+    void obtenerDisponibilidad_sinPerfilActivo_devuelve404() throws Exception {        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, null, null));
+
+        mockMvc.perform(get("/proyectos/100/actividades/55/disponibilidad").principal(auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message")
+                        .value("No hay un perfil activo seleccionado en la sesión."));
+
+        verify(obtenerDisponibilidadActividadService, never()).obtener(
                 any(), any(), any(), any(), any());
     }
 
     @Test
-    void modificar_conElementoNuloEnLista_devuelve400() throws Exception {
+    void listarPlanificacion_conPerfilActivo_devuelveTablaConResponsables() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
 
-        mockMvc.perform(put("/proyectos/100/actividades/55")
-                        .principal(auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nombre": "Montaje final",
-                                  "duracion": 2,
-                                  "unidadDuracion": "HORAS",
-                                  "predecesoras": [null],
-                                  "requerimientos": [],
-                                  "estado": "EN_CURSO"
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
+        ProfesionalAsignadoResponse responsable = new ProfesionalAsignadoResponse(
+                77L, 88L, 10L, 1L, "Luna", 2L, "Modelo");
+        ActividadPlanificacionResponse fila = new ActividadPlanificacionResponse(
+                55L,
+                "Montaje",
+                "Montar escenario",
+                90,
+                "PENDIENTE",
+                LocalDateTime.of(2026, 11, 1, 22, 29),
+                LocalDateTime.of(2026, 11, 1, 23, 59),
+                List.of(),
+                List.of(responsable),
+                null);
 
-        verify(modificarActividadService, never()).modificar(
-                any(), any(), any(), any(), any());
+        org.mgroko.backend.common.dto.PaginaResponse<ActividadPlanificacionResponse> pagina =
+                new org.mgroko.backend.common.dto.PaginaResponse<>(
+                        List.of(fila), 0, 20, 1, 1, true, true);
+
+        when(listarActividadesPlanificacionService.listar(
+                eq(1L), eq(10L), eq(100L), any(BuscarActividadesFiltro.class),
+                eq(0), eq(20), eq(false)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/proyectos/100/actividades").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].idActividad").value(55L))
+                .andExpect(jsonPath("$.contenido[0].responsables[0].nombreArtistico").value("Luna"))
+                .andExpect(jsonPath("$.contenido[0].critica").doesNotExist())
+                .andExpect(jsonPath("$.contenido[0].holguraMakespan").doesNotExist());
     }
 
     @Test
@@ -355,7 +448,25 @@ class ActividadControllerTest {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
         auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
 
-        ActividadBusquedaResponse actividad = new ActividadBusquedaResponse(
+        org.mgroko.backend.modelo.Actividad actividad = org.mgroko.backend.modelo.Actividad.builder()
+                .idActividad(10L)
+                .nombre("Montaje")
+                .descripcion("Montar escenario")
+                .duracionMinutos(90)
+                .build();
+
+        org.mgroko.backend.modelo.Planificacion planificacion = org.mgroko.backend.modelo.Planificacion.builder()
+                .idPlanificacion(50L)
+                .proyecto(org.mgroko.backend.modelo.Proyecto.builder()
+                        .idProyecto(100L)
+                        .nombre("Desfile Primavera")
+                        .build())
+                .fechaEntrega(java.time.LocalDate.of(2026, 11, 10))
+                .build();
+
+        actividad.setPlanificacion(planificacion);
+
+        ActividadBusquedaResponse activBusqueda = new ActividadBusquedaResponse(
                 10L,
                 100L,
                 "Desfile Primavera",
@@ -366,11 +477,16 @@ class ActividadControllerTest {
                 LocalDateTime.of(2026, 11, 1, 10, 30),
                 "PENDIENTE",
                 List.of(new RequerimientoActividadResumenResponse(
-                        7L, 2, "Dos modelos", 2L, "Modelo")),
+                        7L, 2, "Dos modelos", 2L, "Modelo", 1L, 1, false, true,
+                        List.of(new CaracteristicaRequerimientoResponse(
+                                12L, "ALTURA", "NUMERICO",
+                                new BigDecimal("170"), new BigDecimal("180"),
+                                List.of())),
+                        List.of(7L, 9L))),
                 List.of());
 
-        PaginaResponse<ActividadBusquedaResponse> pagina = new PaginaResponse<>(
-                List.of(actividad), 0, 20, 1, 1, true, true);
+        org.mgroko.backend.common.dto.PaginaResponse<ActividadBusquedaResponse> pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
+                List.of(activBusqueda), 0, 20, 1, 1, true, true);
 
         when(buscarActividadService.buscar(
                 eq(10L), eq(100L), any(BuscarActividadesFiltro.class),
@@ -390,17 +506,36 @@ class ActividadControllerTest {
                 .andExpect(jsonPath("$.contenido[0].nombreProyecto").value("Desfile Primavera"))
                 .andExpect(jsonPath("$.contenido[0].estado").value("PENDIENTE"))
                 .andExpect(jsonPath("$.contenido[0].requerimientos[0].nombreProfesion").value("Modelo"))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].cubiertos").value(1))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].faltantes").value(1))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].satisfecho").value(false))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].puedePostularse").value(true))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].caracteristicas[0].codigo").value("ALTURA"))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].caracteristicas[0].valorMin").value(170))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].habilidades[0]").value(7))
+                .andExpect(jsonPath("$.contenido[0].requerimientos[0].habilidades[1]").value(9))
                 .andExpect(jsonPath("$.totalElementos").value(1));
 
         verify(buscarActividadService).buscar(
                 eq(10L), eq(100L),
                 org.mockito.ArgumentMatchers.argThat(filtro ->
-                        filtro instanceof BuscarActividadesFiltro f
-                                && "mont".equals(f.nombre())
-                                && Integer.valueOf(60).equals(f.duracionMin())
-                                && Integer.valueOf(120).equals(f.duracionMax())
-                                && List.of(EstadoActividad.PENDIENTE).equals(f.estado())
-                                && "modelo".equals(f.requerimiento())),
+                        filtro != null
+                                && "mont".equals(filtro.nombre())
+                                && Integer.valueOf(60).equals(filtro.duracionMin())
+                                && Integer.valueOf(120).equals(filtro.duracionMax())
+                                && java.util.List.of(EstadoActividad.PENDIENTE).equals(filtro.estado())
+                                && "modelo".equals(filtro.requerimiento())),
+                eq(0), eq(20), eq(false));
+
+        verify(buscarActividadService).buscar(
+                eq(10L), eq(100L),
+                org.mockito.ArgumentMatchers.argThat(filtro ->
+                        filtro != null
+                                && "mont".equals(filtro.nombre())
+                                && Integer.valueOf(60).equals(filtro.duracionMin())
+                                && Integer.valueOf(120).equals(filtro.duracionMax())
+                                && java.util.List.of(EstadoActividad.PENDIENTE).equals(filtro.estado())
+                                && "modelo".equals(filtro.requerimiento())),
                 eq(0), eq(20), eq(false));
     }
 
@@ -412,7 +547,7 @@ class ActividadControllerTest {
         mockMvc.perform(get("/proyectos/100/actividades/buscar").principal(auth))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message")
-                        .value("No hay un perfil activo seleccionado en la sesi\u00f3n."));
+                        .value("No hay un perfil activo seleccionado en la sesión."));
 
         verify(buscarActividadService, never()).buscar(
                 any(), any(), any(), anyInt(), anyInt(), anyBoolean());
@@ -426,7 +561,7 @@ class ActividadControllerTest {
         when(buscarActividadService.buscar(
                 eq(10L), eq(100L), any(BuscarActividadesFiltro.class),
                 eq(0), eq(20), eq(false)))
-                .thenThrow(new RangoDuracionInvalidoException(
+                .thenThrow(new org.mgroko.backend.actividades.exception.RangoDuracionInvalidoException(
                         "La duración mínima no puede ser mayor que la duración máxima."));
 
         mockMvc.perform(get("/proyectos/100/actividades/buscar")
@@ -436,5 +571,65 @@ class ActividadControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("La duración mínima no puede ser mayor que la duración máxima."));
+    }
+
+    @Test
+    void listarMiembrosExclusivos_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        when(miembrosActividadService.listarExclusivos(1L, 10L, 100L, 55L))
+                .thenReturn(List.of(new MiembroExclusivoResponse(
+                        30L, 20L, 11L, 2L, "Luna", 2L, "Modelo", true, null)));
+
+        mockMvc.perform(get("/proyectos/100/actividades/55/miembros-exclusivos")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idMiembro").value(20L))
+                .andExpect(jsonPath("$[0].puedeEliminar").value(true));
+    }
+
+    @Test
+    void eliminar_conDecisiones_devuelve204() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(post("/proyectos/100/actividades/55/eliminar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "motivo": "Falta de presupuesto",
+                                  "decisiones": [
+                                    {
+                                      "idMiembro": 20,
+                                      "accion": "GUARDAR"
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarActividadService).eliminar(
+                eq(1L), eq(10L), eq(100L), eq(55L), any(EliminarActividadRequest.class));
+    }
+
+    @Test
+    void eliminar_sinDecisiones_devuelve400() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        mockMvc.perform(post("/proyectos/100/actividades/55/eliminar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "motivo": "Falta de presupuesto"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(eliminarActividadService, never()).eliminar(
+                any(), any(), any(), any(), any(EliminarActividadRequest.class));
     }
 }

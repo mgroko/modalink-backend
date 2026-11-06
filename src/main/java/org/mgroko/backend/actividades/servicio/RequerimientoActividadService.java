@@ -13,21 +13,30 @@ import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
+import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActCaractValor;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.ValorCaracteristicaId;
+import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
+import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
+import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.HabilidadRepository;
+import org.mgroko.backend.repositorio.MiembroProyectoRepository;
+import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
@@ -43,6 +52,9 @@ public class RequerimientoActividadService {
     private final HabilidadRepository habilidadRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
+    private final CupoRequerimientoService cupoRequerimientoService;
+    private final PerfilRepository perfilRepository;
+    private final MiembroProyectoRepository miembroProyectoRepository;
 
     public RequerimientoActividadService(
             ProfesionRepository profesionRepository,
@@ -50,13 +62,19 @@ public class RequerimientoActividadService {
             ValorCaracteristicaRepository valorCaracteristicaRepository,
             HabilidadRepository habilidadRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
-            RequerimientoActCaractValorRepository requerimientoActCaractValorRepository) {
+            RequerimientoActCaractValorRepository requerimientoActCaractValorRepository,
+            CupoRequerimientoService cupoRequerimientoService,
+            PerfilRepository perfilRepository,
+            MiembroProyectoRepository miembroProyectoRepository) {
         this.profesionRepository = profesionRepository;
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.valorCaracteristicaRepository = valorCaracteristicaRepository;
         this.habilidadRepository = habilidadRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoActCaractValorRepository = requerimientoActCaractValorRepository;
+        this.cupoRequerimientoService = cupoRequerimientoService;
+        this.perfilRepository = perfilRepository;
+        this.miembroProyectoRepository = miembroProyectoRepository;
     }
 
     public RequerimientoActividadResponse persistir(
@@ -86,12 +104,18 @@ public class RequerimientoActividadService {
 
         persistirValoresCaracteristicas(caracteristicasEntidad, idsValoresPorCaracteristica);
 
-        return toResponse(guardado, idsValoresPorCaracteristica);
+        return toResponse(
+                guardado,
+                idsValoresPorCaracteristica,
+                cupoRequerimientoService.calcularActividad(guardado),
+                false);
     }
 
     public RequerimientoActividadResponse actualizar(
             RequerimientoActividad requerimiento,
             CrearRequerimientoActividadRequest request) {
+
+        validarNoEsSnapshot(requerimiento);
 
         Profesion profesion = profesionRepository.findById(request.idProfesion())
                 .orElseThrow(() -> new ProfesionNoEncontradaException(
@@ -102,18 +126,21 @@ public class RequerimientoActividadService {
         requerimiento.setDescripcion(
                 request.descripcion() != null ? request.descripcion().trim() : null);
 
+        // Se borran solo los valores; las filas de requerimiento_act_caract se
+        // actualizan en el lugar para no chocar con el indice unico
+        // (id_requerimiento_act, id_caracteristica) al insertar antes del delete.
         for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
-            requerimientoActCaractValorRepository
-                    .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
+            if (caracteristica.getIdReqActCaract() != null) {
+                requerimientoActCaractValorRepository
+                        .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
+            }
         }
-        requerimiento.getCaracteristicas().clear();
 
         Map<Long, List<Long>> idsValoresPorCaracteristica = new HashMap<>();
-        List<RequerimientoActCaract> caracteristicasEntidad = construirCaracteristicas(
+        sincronizarCaracteristicas(
                 requerimiento,
                 request.caracteristicas(),
                 idsValoresPorCaracteristica);
-        requerimiento.getCaracteristicas().addAll(caracteristicasEntidad);
 
         requerimiento.getHabilidades().clear();
         requerimiento.getHabilidades().addAll(resolverHabilidades(request.habilidades()));
@@ -121,12 +148,26 @@ public class RequerimientoActividadService {
         RequerimientoActividad guardado = requerimientoActividadRepository
                 .saveAndFlush(requerimiento);
 
-        persistirValoresCaracteristicas(caracteristicasEntidad, idsValoresPorCaracteristica);
+        persistirValoresCaracteristicas(
+                requerimiento.getCaracteristicas(), idsValoresPorCaracteristica);
 
-        return toResponse(guardado, idsValoresPorCaracteristica);
+        return toResponse(
+                guardado,
+                idsValoresPorCaracteristica,
+                cupoRequerimientoService.calcularActividad(guardado),
+                false);
     }
 
     public void eliminar(RequerimientoActividad requerimiento) {
+        validarNoEsSnapshot(requerimiento);
+        eliminarFisico(requerimiento);
+    }
+
+    /**
+     * Eliminación física usada por la limpieza de una actividad completa.
+     * También borra snapshots históricos de esa actividad.
+     */
+    public void eliminarFisico(RequerimientoActividad requerimiento) {
         for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
             requerimientoActCaractValorRepository
                     .deleteByIdReqActCaract(caracteristica.getIdReqActCaract());
@@ -134,13 +175,42 @@ public class RequerimientoActividadService {
         requerimientoActividadRepository.delete(requerimiento);
     }
 
+    private void validarNoEsSnapshot(RequerimientoActividad requerimiento) {
+        if (requerimiento != null && requerimiento.getFechaArchivado() != null) {
+            throw new RequerimientoInvalidoException(
+                    "Un requerimiento archivado es inmutable y no puede modificarse ni eliminarse.");
+        }
+    }
+
+    /**
+     * Lista los requerimientos para la vista de detalle/edición. Incluye el
+     * cupo, pero {@code puedePostularse} siempre es {@code false}: la
+     * elegibilidad del candidato se consulta en la búsqueda de actividades.
+     */
     public List<RequerimientoActividadResponse> listarPorActividad(Long idActividad) {
+        return listarPorActividad(idActividad, null, null);
+    }
+
+    /**
+     * Lista los requerimientos para el detalle público de la actividad,
+     * calculando {@code puedePostularse} con la misma regla que UC-52.
+     */
+    public List<RequerimientoActividadResponse> listarPorActividad(
+            Long idActividad,
+            Long idPerfilActivo,
+            Proyecto proyecto) {
+
         List<RequerimientoActividad> requerimientos =
                 requerimientoActividadRepository.findByActividad_IdActividad(idActividad);
 
         if (requerimientos.isEmpty()) {
             return List.of();
         }
+
+        ContextoElegibilidad contexto = cargarContexto(proyecto, idPerfilActivo);
+
+        Map<Long, CupoRequerimiento> cupos =
+                cupoRequerimientoService.calcularActividades(requerimientos);
 
         List<Long> idsCaracteristicas = requerimientos.stream()
                 .flatMap(requerimiento -> requerimiento.getCaracteristicas().stream())
@@ -171,15 +241,61 @@ public class RequerimientoActividadService {
                         caracteristica.getCaracteristica().getIdCaracteristica(),
                         idsValores);
             }
-            resultado.add(toResponse(requerimiento, idsValoresPorCaracteristica));
+            CupoRequerimiento cupo = cupos.get(requerimiento.getIdRequerimiento());
+            if (cupo == null) {
+                int cantidad = requerimiento.getCantidad() != null
+                        ? requerimiento.getCantidad()
+                        : 0;
+                cupo = new CupoRequerimiento(cantidad, 0, cantidad, false);
+            }
+            boolean puedePostularse = ElegibilidadActividad.puedePostularse(
+                    proyecto,
+                    requerimiento,
+                    cupo,
+                    contexto.idProfesionPerfil(),
+                    contexto.puedeSerPostulante());
+
+            resultado.add(toResponse(
+                    requerimiento,
+                    idsValoresPorCaracteristica,
+                    cupo,
+                    puedePostularse));
         }
 
         return resultado;
     }
 
+    private ContextoElegibilidad cargarContexto(
+            Proyecto proyecto,
+            Long idPerfilActivo) {
+
+        if (proyecto == null || idPerfilActivo == null) {
+            return new ContextoElegibilidad(null, false);
+        }
+
+        Perfil perfil = perfilRepository.findByIdConProfesion(idPerfilActivo)
+                .orElseThrow(PerfilNoEncontradoException::new);
+
+        Long idProfesionPerfil = perfil.getProfesion() != null
+                ? perfil.getProfesion().getIdProfesion()
+                : null;
+
+        MiembroProyecto membresia = miembroProyectoRepository
+                .findMiembroActivoConRol(proyecto.getIdProyecto(), idPerfilActivo)
+                .orElse(null);
+
+        boolean puedeSerPostulante = membresia == null
+                || RolProyectoUsuario.desde(membresia.getRolProyecto())
+                        == RolProyectoUsuario.MIEMBRO;
+
+        return new ContextoElegibilidad(idProfesionPerfil, puedeSerPostulante);
+    }
+
     private RequerimientoActividadResponse toResponse(
             RequerimientoActividad guardado,
-            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+            Map<Long, List<Long>> idsValoresPorCaracteristica,
+            CupoRequerimiento cupo,
+            boolean puedePostularse) {
 
         List<CaracteristicaRequerimientoResponse> caracteristicas = new ArrayList<>();
         for (RequerimientoActCaract caracteristicaRequerimiento : guardado.getCaracteristicas()) {
@@ -206,7 +322,11 @@ public class RequerimientoActividadService {
                 guardado.getProfesion().getIdProfesion(),
                 guardado.getProfesion().getNombre(),
                 caracteristicas,
-                habilidades);
+                habilidades,
+                cupo.cubiertos(),
+                cupo.faltantes(),
+                cupo.satisfecho(),
+                puedePostularse);
     }
 
     private List<RequerimientoActCaract> construirCaracteristicas(
@@ -221,32 +341,9 @@ public class RequerimientoActividadService {
 
         Set<Long> vistas = new HashSet<>();
         for (CrearRequerimientoCaractRequest caracteristicaRequest : caracteristicasRequest) {
-            if (!vistas.add(caracteristicaRequest.idCaracteristica())) {
-                throw new RequerimientoInvalidoException(
-                        "La caracteristica tecnica " + caracteristicaRequest.idCaracteristica()
-                                + " esta duplicada en el requerimiento.");
-            }
-
-            CaracteristicaTecnica caracteristica = caracteristicaTecnicaRepository
-                    .findById(caracteristicaRequest.idCaracteristica())
-                    .orElseThrow(() -> new CaracteristicaNoEncontradaException(
-                            "Caracteristica tecnica no encontrada: "
-                                    + caracteristicaRequest.idCaracteristica()));
-
-            if (!caracteristica.getProfesion().getIdProfesion()
-                    .equals(requerimiento.getProfesion().getIdProfesion())) {
-                throw new CaracteristicaProfesionNoCoincideException(
-                        "La caracteristica tecnica " + caracteristicaRequest.idCaracteristica()
-                                + " no corresponde a la profesion del requerimiento.");
-            }
-
-            validarRangoYValores(caracteristica, caracteristicaRequest);
-
-            if (caracteristicaRequest.valores() != null && !caracteristicaRequest.valores().isEmpty()) {
-                idsValoresPorCaracteristica.put(
-                        caracteristica.getIdCaracteristica(),
-                        caracteristicaRequest.valores());
-            }
+            CaracteristicaTecnica caracteristica =
+                    resolverCaracteristica(requerimiento, caracteristicaRequest, vistas);
+            registrarValores(caracteristica, caracteristicaRequest, idsValoresPorCaracteristica);
 
             resultado.add(RequerimientoActCaract.builder()
                     .requerimientoActividad(requerimiento)
@@ -257,6 +354,92 @@ public class RequerimientoActividadService {
         }
 
         return resultado;
+    }
+
+    /**
+     * Sincroniza las características de un requerimiento existente sin borrar y
+     * recrear las filas que se mantienen. Evita el choque con el índice único
+     * {@code (id_requerimiento_act, id_caracteristica)} cuando Hibernate
+     * intenta insertar la nueva fila antes del orphan removal de la anterior.
+     */
+    private void sincronizarCaracteristicas(
+            RequerimientoActividad requerimiento,
+            List<CrearRequerimientoCaractRequest> caracteristicasRequest,
+            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+
+        Map<Long, RequerimientoActCaract> actuales = new HashMap<>();
+        for (RequerimientoActCaract actual : requerimiento.getCaracteristicas()) {
+            actuales.put(actual.getCaracteristica().getIdCaracteristica(), actual);
+        }
+
+        Set<Long> solicitadas = new HashSet<>();
+        Set<Long> vistas = new HashSet<>();
+
+        if (caracteristicasRequest != null) {
+            for (CrearRequerimientoCaractRequest caracteristicaRequest : caracteristicasRequest) {
+                CaracteristicaTecnica caracteristica =
+                        resolverCaracteristica(requerimiento, caracteristicaRequest, vistas);
+                solicitadas.add(caracteristica.getIdCaracteristica());
+                registrarValores(caracteristica, caracteristicaRequest, idsValoresPorCaracteristica);
+
+                RequerimientoActCaract actual =
+                        actuales.get(caracteristica.getIdCaracteristica());
+                if (actual != null) {
+                    actual.setValorMin(caracteristicaRequest.valorMin());
+                    actual.setValorMax(caracteristicaRequest.valorMax());
+                } else {
+                    requerimiento.getCaracteristicas().add(RequerimientoActCaract.builder()
+                            .requerimientoActividad(requerimiento)
+                            .caracteristica(caracteristica)
+                            .valorMin(caracteristicaRequest.valorMin())
+                            .valorMax(caracteristicaRequest.valorMax())
+                            .build());
+                }
+            }
+        }
+
+        requerimiento.getCaracteristicas().removeIf(actual ->
+                !solicitadas.contains(actual.getCaracteristica().getIdCaracteristica()));
+    }
+
+    private CaracteristicaTecnica resolverCaracteristica(
+            RequerimientoActividad requerimiento,
+            CrearRequerimientoCaractRequest request,
+            Set<Long> vistas) {
+
+        if (!vistas.add(request.idCaracteristica())) {
+            throw new RequerimientoInvalidoException(
+                    "La caracteristica tecnica " + request.idCaracteristica()
+                            + " esta duplicada en el requerimiento.");
+        }
+
+        CaracteristicaTecnica caracteristica = caracteristicaTecnicaRepository
+                .findById(request.idCaracteristica())
+                .orElseThrow(() -> new CaracteristicaNoEncontradaException(
+                        "Caracteristica tecnica no encontrada: "
+                                + request.idCaracteristica()));
+
+        if (!caracteristica.getProfesion().getIdProfesion()
+                .equals(requerimiento.getProfesion().getIdProfesion())) {
+            throw new CaracteristicaProfesionNoCoincideException(
+                    "La caracteristica tecnica " + request.idCaracteristica()
+                            + " no corresponde a la profesion del requerimiento.");
+        }
+
+        validarRangoYValores(caracteristica, request);
+        return caracteristica;
+    }
+
+    private void registrarValores(
+            CaracteristicaTecnica caracteristica,
+            CrearRequerimientoCaractRequest request,
+            Map<Long, List<Long>> idsValoresPorCaracteristica) {
+
+        if (request.valores() != null && !request.valores().isEmpty()) {
+            idsValoresPorCaracteristica.put(
+                    caracteristica.getIdCaracteristica(),
+                    request.valores());
+        }
     }
 
     private void validarRangoYValores(
@@ -351,5 +534,8 @@ public class RequerimientoActividadService {
             resultado.add(habilidad);
         }
         return resultado;
+    }
+
+    private record ContextoElegibilidad(Long idProfesionPerfil, boolean puedeSerPostulante) {
     }
 }

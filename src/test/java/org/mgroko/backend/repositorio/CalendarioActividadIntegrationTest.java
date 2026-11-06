@@ -75,6 +75,9 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
     private ActividadRepository actividadRepository;
 
     @Autowired
+    private AsignacionActividadRepository asignacionActividadRepository;
+
+    @Autowired
     private PaisRepository paisRepository;
 
     @Autowired
@@ -155,7 +158,10 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 .fechaInicio(LocalDate.now()).estado(estado).privacidad(Privacidad.Publico).build();
         em.persist(proyecto);
 
-        Planificacion planificacion = Planificacion.builder().proyecto(proyecto).build();
+        Planificacion planificacion = Planificacion.builder()
+                .proyecto(proyecto)
+                .fechaEntrega(LocalDate.now().plusDays(30))
+                .build();
         em.persist(planificacion);
 
         MiembroProyecto miembro = MiembroProyecto.builder()
@@ -186,6 +192,25 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 .motivo("Bloqueo de prueba").build());
     }
 
+    /**
+     * Inserta un bloqueo manual que solapa una actividad ya agendada. El
+     * trigger de inserción lo impediría; para probar la protección de baja se
+     * desactiva solo durante el insert y se vuelve a activar inmediatamente.
+     */
+    private BloqueoAgenda guardarBloqueoSinValidarActividad(
+            Agenda agenda, LocalDateTime inicio, LocalDateTime fin) {
+        em.createNativeQuery(
+                "ALTER TABLE bloqueo_agenda DISABLE TRIGGER trg_bloqueo_no_actividad")
+                .executeUpdate();
+        try {
+            return guardarBloqueo(agenda, inicio, fin);
+        } finally {
+            em.createNativeQuery(
+                    "ALTER TABLE bloqueo_agenda ENABLE TRIGGER trg_bloqueo_no_actividad")
+                    .executeUpdate();
+        }
+    }
+
     // ------------------------------------------------------------------
     // Trigger: no liberar un bloqueo cubierto por actividad activa
     // ------------------------------------------------------------------
@@ -194,16 +219,16 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
     void eliminarBloqueoCubiertoPorActividad_lanzaExcepcion() {
         Usuario usuario = guardarUsuario("act@example.com", "88880001");
         Agenda agenda = agendaDe(usuario);
-        // Actividad 10:00-12:00 (margen 60 -> ocupa 09:00-13:00)
+        // Actividad 10:00-12:00 con margen 60 -> buffer 09:30-12:30.
         crearCadenaActividad(usuario, EstadoProyecto.Publicado,
                 LocalDateTime.of(2026, 9, 15, 10, 0), 120);
-        BloqueoAgenda bloqueo = guardarBloqueo(agenda,
+        BloqueoAgenda bloqueo = guardarBloqueoSinValidarActividad(agenda,
                 LocalDateTime.of(2026, 9, 15, 10, 30), LocalDateTime.of(2026, 9, 15, 11, 30));
 
         assertExcepcionConMensaje(() -> {
             bloqueoAgendaRepository.delete(bloqueo);
             em.flush();
-        }, "No se puede liberar un horario comprometido por una actividad");
+        }, "El bloqueo se superpone con una actividad agendada del profesional");
     }
 
     @Test
@@ -215,17 +240,17 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
         // a tocar el margen, así que se sube a 60 para que la premisa del test se cumpla.
         agenda.setMargenActividadMinutos(60);
         em.flush();
-        // Actividad 10:00-12:00 (margen 60 -> ocupa 09:00-13:00)
+        // Actividad 10:00-12:00 con margen total 60 -> buffer 09:30-12:30.
         crearCadenaActividad(usuario, EstadoProyecto.Confirmado,
                 LocalDateTime.of(2026, 9, 15, 10, 0), 120);
-        // Bloqueo [08:30, 09:30]: solapa solo por el margen de la actividad.
-        BloqueoAgenda bloqueo = guardarBloqueo(agenda,
-                LocalDateTime.of(2026, 9, 15, 8, 30), LocalDateTime.of(2026, 9, 15, 9, 30));
+        // Bloqueo [08:30, 09:31]: solapa solo por la mitad izquierda del margen.
+        BloqueoAgenda bloqueo = guardarBloqueoSinValidarActividad(agenda,
+                LocalDateTime.of(2026, 9, 15, 8, 30), LocalDateTime.of(2026, 9, 15, 9, 31));
 
         assertExcepcionConMensaje(() -> {
             bloqueoAgendaRepository.delete(bloqueo);
             em.flush();
-        }, "No se puede liberar un horario comprometido por una actividad");
+        }, "El bloqueo se superpone con una actividad agendada del profesional");
     }
 
     @Test
@@ -330,6 +355,20 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
                 usuario.getIdUsuario(), List.of(EstadoProyecto.Publicado, EstadoProyecto.Confirmado));
 
         assertTrue(actividades.isEmpty());
+    }
+
+    @Test
+    void findPerfilesDeUsuarioPorActividades_devuelveElPerfilAsignado() {
+        Usuario usuario = guardarUsuario("find.perfiles@example.com", "88880011");
+        Actividad actividad = crearCadenaActividad(usuario, EstadoProyecto.Publicado,
+                LocalDateTime.of(2026, 9, 15, 10, 0), 120);
+
+        List<AsignacionActividad> asignaciones =
+                asignacionActividadRepository.findPerfilesDeUsuarioPorActividades(
+                        List.of(actividad.getIdActividad()), usuario.getIdUsuario());
+
+        assertEquals(1, asignaciones.size());
+        assertEquals("Luna", asignaciones.get(0).getMiembro().getPerfil().getNombreArtistico());
     }
 
     /**

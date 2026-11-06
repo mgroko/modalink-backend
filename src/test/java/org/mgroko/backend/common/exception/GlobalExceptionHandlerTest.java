@@ -33,6 +33,20 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void mediaTypeNoSoportado_responde415ConCodigoEstable() {
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleHttpMediaTypeNotSupported(
+                        new org.springframework.web.HttpMediaTypeNotSupportedException(
+                                "Content-Type no soportado"));
+
+        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, respuesta.getStatusCode());
+        assertEquals(415, respuesta.getBody().get("httpStatus"));
+        assertEquals("CONTENT_TYPE_NO_SOPORTADO", respuesta.getBody().get("codigo"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("no es compatible"));
+    }
+
+    @Test
     void formatoInvalido_responde400ConElMensaje() {
         ResponseEntity<Map<String, Object>> respuesta = manejador.handleFormatoImagenInvalido(
                 new FormatoImagenInvalidoException("El archivo no corresponde a una imagen JPEG, PNG o WEBP válida."));
@@ -58,6 +72,38 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void ultimoDirectorDetectadoPorTrigger_responde409() {
+        DataIntegrityViolationException ex = new DataIntegrityViolationException(
+                "Error de integridad",
+                new RuntimeException(
+                        "El proyecto (ID 100) debe conservar al menos un director activo."));
+
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleDataIntegrityViolation(ex);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("al menos un director activo"));
+    }
+
+    @Test
+    void asignacionDuplicadaUsuarioDetectadaPorTrigger_responde409() {
+        DataIntegrityViolationException ex = new DataIntegrityViolationException(
+                "Error de integridad",
+                new RuntimeException(
+                        "ASIGNACION_DUPLICADA_USUARIO: el usuario 2 ya está asignado a la actividad 18."));
+
+        ResponseEntity<Map<String, Object>> respuesta =
+                manejador.handleDataIntegrityViolation(ex);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertTrue(respuesta.getBody().get("message").toString()
+                .contains("otro perfil"));
+    }
+
+    @Test
     void requerimientoConVinculos_responde409() {
         ResponseEntity<Map<String, Object>> respuesta =
                 manejador.handleRequerimientoConVinculos(
@@ -65,6 +111,8 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
         assertEquals(409, respuesta.getBody().get("httpStatus"));
+        assertEquals("REQUERIMIENTO_CON_VINCULOS", respuesta.getBody().get("codigo"));
+        assertEquals(7L, respuesta.getBody().get("idRequerimiento"));
         assertTrue(respuesta.getBody().get("message").toString()
                 .contains("requerimiento 7"));
     }

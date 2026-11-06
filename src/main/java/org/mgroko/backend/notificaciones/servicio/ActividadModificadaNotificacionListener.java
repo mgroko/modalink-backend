@@ -75,7 +75,8 @@ public class ActividadModificadaNotificacionListener {
                     NotificacionService.TIPO_ACTIVIDAD_MODIFICADA,
                     mensaje,
                     "ACTIVIDAD",
-                    evento.idActividad()));
+                    evento.idActividad(),
+                    evento.idProyecto()));
         }
 
         notificacionService.registrarTodas(notificaciones);

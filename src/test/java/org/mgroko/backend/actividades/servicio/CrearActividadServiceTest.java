@@ -9,18 +9,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.actividades.dto.CrearActividadRequest;
 import org.mgroko.backend.actividades.enums.UnidadDuracion;
-import org.mgroko.backend.actividades.exception.FechaEntregaNoDefinidaException;
 import org.mgroko.backend.actividades.exception.NombreActividadDuplicadoException;
 import org.mgroko.backend.actividades.exception.PredecesoraInvalidaException;
 import org.mgroko.backend.modelo.Actividad;
@@ -29,10 +28,13 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -48,6 +50,9 @@ class CrearActividadServiceTest {
     private PlanificacionRepository planificacionRepository;
 
     @Mock
+    private ProyectoRepository proyectoRepository;
+
+    @Mock
     private PerfilRepository perfilRepository;
 
     @Mock
@@ -61,6 +66,9 @@ class CrearActividadServiceTest {
 
     @Mock
     private CronogramaService cronogramaService;
+
+    @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
 
     @InjectMocks
     private CrearActividadService crearActividadService;
@@ -89,25 +97,25 @@ class CrearActividadServiceTest {
 
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
                 .thenReturn(Optional.of(perfil));
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(Optional.of(planificacion));
     }
 
     @Test
-    void crear_conDatosValidos_guardaActividadYRecalculaCronograma() {
+    void crear_conDatosValidos_guardaActividadSinHorarioDefinitivo() {
         when(actividadRepository.existeNombreEnPlanificacion(50L, "Montaje"))
                 .thenReturn(false);
 
-        AtomicReference<Actividad> guardada = new AtomicReference<>();
         when(actividadRepository.saveAndFlush(any(Actividad.class)))
                 .thenAnswer(invocation -> {
                     Actividad actividad = invocation.getArgument(0);
                     actividad.setIdActividad(55L);
-                    guardada.set(actividad);
                     return actividad;
                 });
-        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
-                .thenAnswer(invocation -> List.of(guardada.get()));
+        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
 
         CrearActividadRequest request = new CrearActividadRequest(
                 "  Montaje  ",
@@ -123,14 +131,58 @@ class CrearActividadServiceTest {
         assertThat(response.idActividad()).isEqualTo(55L);
         assertThat(response.nombre()).isEqualTo("Montaje");
         assertThat(response.duracionMinutos()).isEqualTo(120);
-        assertThat(response.fechaHoraInicio())
-                .isEqualTo(LocalDateTime.of(2026, 11, 10, 21, 59));
-        assertThat(response.fechaHoraFin())
-                .isEqualTo(LocalDateTime.of(2026, 11, 10, 23, 59));
+        assertThat(response.fechaHoraInicio()).isNull();
+        assertThat(response.fechaHoraFin()).isNull();
         assertThat(response.estado()).isEqualTo("PENDIENTE");
+        assertThat(response.horarioPreferenciaInicio()).isNull();
 
         verify(proyectoSecurityService).validarPermiso(100L, 10L, "CREAR_ACTIVIDAD");
-        verify(cronogramaService).recalcular(any(Planificacion.class), any());
+        verify(cronogramaService, never()).recalcular(any(Planificacion.class), any());
+    }
+
+    @Test
+    void crear_duracionEnMinutos_guardaElTotalSinConvertir() {
+        when(actividadRepository.existeNombreEnPlanificacion(50L, "Ajuste"))
+                .thenReturn(false);
+        when(actividadRepository.saveAndFlush(any(Actividad.class)))
+                .thenAnswer(invocation -> {
+                    Actividad actividad = invocation.getArgument(0);
+                    actividad.setIdActividad(57L);
+                    return actividad;
+                });
+        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+
+        CrearActividadRequest request = new CrearActividadRequest(
+                "Ajuste", null, 45, UnidadDuracion.MINUTOS, null, null, null);
+
+        ActividadResponse response = crearActividadService.crear(1L, 10L, 100L, request);
+
+        assertThat(response.duracionMinutos()).isEqualTo(45);
+    }
+
+    @Test
+    void crear_proyectoConfirmado_reprogramaElProyecto() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+        when(actividadRepository.existeNombreEnPlanificacion(50L, "Montaje"))
+                .thenReturn(false);
+        when(actividadRepository.saveAndFlush(any(Actividad.class)))
+                .thenAnswer(invocation -> {
+                    Actividad actividad = invocation.getArgument(0);
+                    actividad.setIdActividad(55L);
+                    return actividad;
+                });
+        when(cronogramaService.calcularProyeccion(any(Planificacion.class), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+
+        CrearActividadRequest request = new CrearActividadRequest(
+                "Montaje", null, 1, UnidadDuracion.HORAS, null, null, null);
+
+        crearActividadService.crear(1L, 10L, 100L, request);
+
+        verify(actividadRepository).saveAndFlush(any(Actividad.class));
+        verify(reprogramarProyectoService).reprogramarActividad(
+                100L, 55L, MotivoReprogramacion.CREACION_ACTIVIDAD, Map.of());
     }
 
     @Test
@@ -148,18 +200,26 @@ class CrearActividadServiceTest {
     }
 
     @Test
-    void crear_sinFechaEntrega_lanzaExcepcion() {
+    void crear_sinFechaEntrega_permiteHorarioPendiente() {
         planificacion.setFechaEntrega(null);
         when(actividadRepository.existeNombreEnPlanificacion(50L, "Montaje"))
                 .thenReturn(false);
-
+        when(actividadRepository.saveAndFlush(any(Actividad.class)))
+                .thenAnswer(invocation -> {
+                    Actividad actividad = invocation.getArgument(0);
+                    actividad.setIdActividad(56L);
+                    return actividad;
+                });
         CrearActividadRequest request = new CrearActividadRequest(
                 "Montaje", null, 1, UnidadDuracion.HORAS, null, null, null);
 
-        assertThatThrownBy(() -> crearActividadService.crear(1L, 10L, 100L, request))
-                .isInstanceOf(FechaEntregaNoDefinidaException.class);
+        var response = crearActividadService.crear(1L, 10L, 100L, request);
 
-        verify(actividadRepository, never()).saveAndFlush(any());
+        assertThat(response.fechaHoraInicio()).isNull();
+        assertThat(response.estadoCronograma()).isEqualTo("SIN_FECHA_ENTREGA");
+        assertThat(response.inicioProyectado()).isNull();
+        verify(actividadRepository).saveAndFlush(any());
+        verify(cronogramaService, never()).calcularProyeccion(any(Planificacion.class), any());
     }
 
     @Test

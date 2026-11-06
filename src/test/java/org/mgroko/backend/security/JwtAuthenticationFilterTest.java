@@ -2,7 +2,9 @@ package org.mgroko.backend.security;
 
 import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -12,12 +14,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mgroko.backend.modelo.PermisoGlobal;
+import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
+import java.util.Set;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -95,13 +101,78 @@ class JwtAuthenticationFilterTest {
                 .idUsuario(123L)
                 .estado(EstadoUsuario.Activo)
                 .build();
-        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioActivo));
+        when(usuarioRepository.findByIdConRolYPermisos(123L)).thenReturn(Optional.of(usuarioActivo));
 
         filter.doFilterInternal(request, response, filterChain);
 
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         assertEquals("123", authentication.getPrincipal());
         verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilter_usaRolYPermisosDeBD_enLugarDelClaim() throws Exception {
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        Cookie jwtCookie = new Cookie("jwt", "token-valido");
+        when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
+
+        Claims claimsSimulados = new io.jsonwebtoken.impl.DefaultClaims(
+                java.util.Map.of("sub", "123", "rolGlobal", "Usuario"));
+        when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
+
+        PermisoGlobal permiso = PermisoGlobal.builder().nombre("VER_USUARIOS").build();
+        RolGlobal rolAdministrador = RolGlobal.builder()
+                .codigo("ADMINISTRADOR")
+                .nombre("Administrador")
+                .permisos(Set.of(permiso))
+                .build();
+
+        Usuario usuarioActivo = Usuario.builder()
+                .idUsuario(123L)
+                .estado(EstadoUsuario.Activo)
+                .rolGlobal(rolAdministrador)
+                .build();
+        when(usuarioRepository.findByIdConRolYPermisos(123L)).thenReturn(Optional.of(usuarioActivo));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertTrue(authentication.getAuthorities()
+                .contains(new SimpleGrantedAuthority("ROLE_ADMINISTRADOR")));
+        assertTrue(authentication.getAuthorities()
+                .contains(new SimpleGrantedAuthority("VER_USUARIOS")));
+        assertFalse(authentication.getAuthorities()
+                .contains(new SimpleGrantedAuthority("ROLE_USUARIO")));
+    }
+
+    @Test
+    void doFilter_administrador_descartaPerfilActivoDelToken() throws Exception {
+        filter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        Cookie jwtCookie = new Cookie("jwt", "token-valido");
+        when(request.getCookies()).thenReturn(new Cookie[]{jwtCookie});
+
+        Claims claimsSimulados = new io.jsonwebtoken.impl.DefaultClaims(
+                java.util.Map.of("sub", "123", "idPerfilActivo", 10, "nombreArtisticoActivo", "Luna"));
+        when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
+
+        RolGlobal rolAdministrador = RolGlobal.builder()
+                .codigo("ADMINISTRADOR")
+                .nombre("Administrador")
+                .build();
+
+        Usuario usuarioActivo = Usuario.builder()
+                .idUsuario(123L)
+                .estado(EstadoUsuario.Activo)
+                .rolGlobal(rolAdministrador)
+                .build();
+        when(usuarioRepository.findByIdConRolYPermisos(123L)).thenReturn(Optional.of(usuarioActivo));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        ContextoAutenticacion contexto = (ContextoAutenticacion) authentication.getDetails();
+        assertNull(contexto.idPerfilActivo());
+        assertNull(contexto.nombreArtisticoActivo());
     }
 
     @Test
@@ -129,7 +200,7 @@ class JwtAuthenticationFilterTest {
         Claims claimsSimulados = mock(Claims.class);
         when(claimsSimulados.getSubject()).thenReturn("999");
         when(jwtService.validarYObtenerClaims("token-valido")).thenReturn(claimsSimulados);
-        when(usuarioRepository.findById(999L)).thenReturn(Optional.empty());
+        when(usuarioRepository.findByIdConRolYPermisos(999L)).thenReturn(Optional.empty());
 
         filter.doFilterInternal(request, response, filterChain);
 
@@ -151,7 +222,7 @@ class JwtAuthenticationFilterTest {
                 .idUsuario(123L)
                 .estado(EstadoUsuario.Deshabilitado)
                 .build();
-        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioDeshabilitado));
+        when(usuarioRepository.findByIdConRolYPermisos(123L)).thenReturn(Optional.of(usuarioDeshabilitado));
 
         filter.doFilterInternal(request, response, filterChain);
 
@@ -173,7 +244,7 @@ class JwtAuthenticationFilterTest {
                 .idUsuario(123L)
                 .estado(EstadoUsuario.Activo)
                 .build();
-        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioActivo));
+        when(usuarioRepository.findByIdConRolYPermisos(123L)).thenReturn(Optional.of(usuarioActivo));
 
         filter.doFilterInternal(request, response, filterChain);
 
@@ -198,7 +269,7 @@ class JwtAuthenticationFilterTest {
                 .idUsuario(123L)
                 .estado(EstadoUsuario.Activo)
                 .build();
-        when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuarioActivo));
+        when(usuarioRepository.findByIdConRolYPermisos(123L)).thenReturn(Optional.of(usuarioActivo));
 
         filter.doFilterInternal(request, response, filterChain);
 

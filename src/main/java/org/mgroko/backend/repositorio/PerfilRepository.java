@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.mgroko.backend.admin.dto.AdminDashboardProfesionRow;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -53,7 +54,22 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * @param idUsuario el ID del usuario dueño del perfil
      * @return el perfil si existe y pertenece al usuario
      */
+    @EntityGraph(attributePaths = "profesion")
     Optional<Perfil> findByIdPerfilAndUsuarioIdUsuario(Long idPerfil, Long idUsuario);
+
+    /**
+     * Busca un perfil por su ID con la profesión inicializada. Se usa para
+     * calcular elegibilidad sin consultas perezosas adicionales.
+     *
+     * @param idPerfil identificador del perfil
+     * @return el perfil con su profesión, si existe
+     */
+    @Query("""
+        SELECT p FROM Perfil p
+        LEFT JOIN FETCH p.profesion
+        WHERE p.idPerfil = :idPerfil
+    """)
+    Optional<Perfil> findByIdConProfesion(@Param("idPerfil") Long idPerfil);
 
     /**
      * Busca los perfiles en un estado cuya fecha de solicitud de baja sea
@@ -85,4 +101,93 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      */
     @Query("select p.idPerfil from Perfil p where p.estado = :estado and p.imagen is not null")
     List<Long> buscarIdsConFoto(@Param("estado") EstadoPerfil estado);
+
+    /**
+     * Identificadores de los perfiles que tienen asociada una habilidad.
+     * Se usa para notificar a los perfiles afectados cuando el administrador
+     * modifica o elimina una habilidad del catálogo.
+     *
+     * @param idHabilidad identificador de la habilidad
+     * @return identificadores de los perfiles asociados
+     */
+    @Query("""
+        SELECT p.idPerfil FROM Perfil p
+        JOIN p.habilidades h
+        WHERE h.idHabilidad = :idHabilidad
+    """)
+    List<Long> findIdsPerfilByHabilidad(@Param("idHabilidad") Long idHabilidad);
+
+    /**
+     * Candidatos activos para cubrir una vacante de actividad.
+     *
+     * <p>La consulta aplica los filtros duros del módulo de reemplazos:
+     * profesión, perfil/usuario activos, que el perfil no sea miembro activo
+     * del proyecto y que el usuario no esté asignado a la actividad. Las
+     * habilidades y características se evalúan después, en memoria, porque
+     * este proceso las usa para ordenar y no para excluir.</p>
+     */
+    @Query("""
+        SELECT DISTINCT p FROM Perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion pr
+        LEFT JOIN FETCH u.ubicacion ub
+        LEFT JOIN FETCH ub.ciudad c
+        LEFT JOIN FETCH c.provincia prov
+        LEFT JOIN FETCH p.imagen
+        LEFT JOIN FETCH p.habilidades
+        LEFT JOIN FETCH p.caracteristicas cp
+        LEFT JOIN FETCH cp.caracteristicaTecnica
+        LEFT JOIN FETCH cp.valorCaracteristica
+        WHERE p.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+          AND u.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+          AND pr.idProfesion = :idProfesion
+          AND NOT EXISTS (
+              SELECT 1 FROM MiembroProyecto mp
+              WHERE mp.proyecto.idProyecto = :idProyecto
+                AND mp.perfil.idPerfil = p.idPerfil
+                AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM AsignacionActividad aa
+              JOIN aa.miembro m
+              JOIN m.perfil p2
+              WHERE aa.actividad.idActividad = :idActividad
+                AND p2.usuario.idUsuario = u.idUsuario
+                AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          )
+    """)
+    List<Perfil> buscarCandidatosReemplazoActividad(
+            @Param("idProfesion") Long idProfesion,
+            @Param("idProyecto") Long idProyecto,
+            @Param("idActividad") Long idActividad);
+
+    /**
+     * Candidatos activos para cubrir una vacante de requerimiento general.
+     * No se excluye por actividad porque la vacante no tiene una.
+     */
+    @Query("""
+        SELECT DISTINCT p FROM Perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion pr
+        LEFT JOIN FETCH u.ubicacion ub
+        LEFT JOIN FETCH ub.ciudad c
+        LEFT JOIN FETCH c.provincia prov
+        LEFT JOIN FETCH p.imagen
+        LEFT JOIN FETCH p.habilidades
+        LEFT JOIN FETCH p.caracteristicas cp
+        LEFT JOIN FETCH cp.caracteristicaTecnica
+        LEFT JOIN FETCH cp.valorCaracteristica
+        WHERE p.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+          AND u.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+          AND pr.idProfesion = :idProfesion
+          AND NOT EXISTS (
+              SELECT 1 FROM MiembroProyecto mp
+              WHERE mp.proyecto.idProyecto = :idProyecto
+                AND mp.perfil.idPerfil = p.idPerfil
+                AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          )
+    """)
+    List<Perfil> buscarCandidatosReemplazoGeneral(
+            @Param("idProfesion") Long idProfesion,
+            @Param("idProyecto") Long idProyecto);
 }

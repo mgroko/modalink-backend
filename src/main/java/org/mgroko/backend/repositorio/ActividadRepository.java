@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -26,14 +27,17 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
     @Query("""
         SELECT DISTINCT a
         FROM Actividad a
+        JOIN FETCH a.planificacion pl
+        JOIN FETCH pl.proyecto pr
         JOIN AsignacionActividad asg ON asg.actividad = a
         JOIN asg.miembro m
         JOIN m.perfil per
         WHERE per.usuario.idUsuario = :idUsuario
           AND m.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
-          AND a.planificacion.proyecto.estado IN :estados
+          AND pr.estado IN :estados
           AND a.estado IN (org.mgroko.backend.modelo.enums.EstadoActividad.PENDIENTE,
                             org.mgroko.backend.modelo.enums.EstadoActividad.EN_CURSO)
+          AND a.fechaHoraInicio IS NOT NULL
     """)
     List<Actividad> findActividadesDeUsuario(
             @Param("idUsuario") Long idUsuario,
@@ -122,6 +126,12 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
             @Param("idActividad") Long idActividad,
             @Param("idPlanificacion") Long idPlanificacion);
 
+    /**
+     * Actividades de la planificación de un proyecto, sin cargar dependencias.
+     * Se usa para validar el estado requerido por UC-37.
+     */
+    List<Actividad> findByPlanificacionProyectoIdProyecto(Long idProyecto);
+
     @Query("""
         SELECT DISTINCT a FROM Actividad a
         LEFT JOIN FETCH a.predecesoras
@@ -151,4 +161,16 @@ public interface ActividadRepository extends JpaRepository<Actividad, Long>, Jpa
     @Query(value = "DELETE FROM hito_actividad WHERE id_actividad = :idActividad",
             nativeQuery = true)
     int deleteHitoActividadByActividadId(@Param("idActividad") Long idActividad);
+
+    /**
+     * Resuelve el proyecto de cada actividad indicada. Se usa para enriquecer
+     * las notificaciones sin persistir un dato derivable.
+     */
+    @Query("""
+        SELECT a.idActividad AS entidadId,
+               a.planificacion.proyecto.idProyecto AS idProyecto
+        FROM Actividad a
+        WHERE a.idActividad IN :ids
+    """)
+    List<ProyectoDeEntidad> findProyectoPorIds(@Param("ids") Collection<Long> ids);
 }

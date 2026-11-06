@@ -26,4 +26,15 @@ public enum EstadoProyecto {
             case CANCELADO -> "Cancelado";
         };
     }
+
+    /**
+     * Indica si el proyecto admite reprogramación de actividades.
+     *
+     * <p>Los proyectos publicados y confirmados tienen cronograma calculable.
+     * Un borrador no se programa y un proyecto finalizado o cancelado no se
+     * modifica.</p>
+     */
+    public boolean permiteReprogramacion() {
+        return this == PUBLICADO || this == CONFIRMADO;
+    }
 }

@@ -13,12 +13,14 @@ import org.mgroko.backend.modelo.Pais;
 import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Ubicacion;
+import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.repositorio.CiudadRepository;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.PaisRepository;
 import org.mgroko.backend.repositorio.ProvinciaRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UbicacionRepository;
+import org.mgroko.backend.repositorio.UsuarioIdentidadRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -35,6 +37,9 @@ class AdminSeederTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private UsuarioIdentidadRepository usuarioIdentidadRepository;
 
     @Mock
     private RolGlobalRepository rolGlobalRepository;
@@ -77,6 +82,8 @@ class AdminSeederTest {
 
     private void prepararFlujoDeCreacion() {
         when(usuarioRepository.existsByCorreo("admin@modalink.com")).thenReturn(false);
+        when(usuarioRepository.save(org.mockito.ArgumentMatchers.any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         when(rolGlobalRepository.findByNombre("Administrador"))
                 .thenReturn(Optional.of(RolGlobal.builder().idRolGlobal(1L).nombre("Administrador").build()));
         when(generoRepository.findByCodigo("no_decirlo"))

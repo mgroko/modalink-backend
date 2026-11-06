@@ -219,6 +219,7 @@ public class CrearProyectoService {
                         RolProyectoUsuario.desde(rolDirector),
                         Boolean.TRUE,
                         permisosDirector,
+                        Boolean.FALSE,
                         Boolean.FALSE)
         );
     }

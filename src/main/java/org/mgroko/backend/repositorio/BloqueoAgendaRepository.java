@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.BloqueoAgenda;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositorio de bloqueos manuales de la agenda. Un bloqueo manual es un
@@ -46,4 +48,26 @@ public interface BloqueoAgendaRepository extends JpaRepository<BloqueoAgenda, Lo
      */
     boolean existsByAgenda_IdAgendaAndFechaHoraInicioLessThanAndFechaHoraFinGreaterThan(
             Long idAgenda, LocalDateTime fechaHoraFin, LocalDateTime fechaHoraInicio);
+
+    /**
+     * Devuelve los bloqueos manuales que se superponen con el rango indicado.
+     * Se usa al verificar disponibilidad (UC-26/UC-70) para no cargar todos
+     * los bloqueos de la agenda.
+     *
+     * @param idAgenda identificador de la agenda
+     * @param desde    extremo inferior del rango
+     * @param hasta    extremo superior del rango
+     * @return bloqueos que solapan el rango, ordenados por inicio
+     */
+    @Query("""
+        SELECT b FROM BloqueoAgenda b
+        WHERE b.agenda.idAgenda = :idAgenda
+          AND b.fechaHoraInicio < :hasta
+          AND b.fechaHoraFin > :desde
+        ORDER BY b.fechaHoraInicio
+    """)
+    List<BloqueoAgenda> findSolapados(
+            @Param("idAgenda") Long idAgenda,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
 }

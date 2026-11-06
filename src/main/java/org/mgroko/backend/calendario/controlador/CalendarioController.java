@@ -1,12 +1,18 @@
 package org.mgroko.backend.calendario.controlador;
 
+import java.util.Objects;
+
 import org.mgroko.backend.calendario.dto.BloqueoResponse;
 import org.mgroko.backend.calendario.dto.CalendarioResponse;
 import org.mgroko.backend.calendario.dto.ConfigJornadaRequest;
 import org.mgroko.backend.calendario.dto.ConfigJornadaResponse;
 import org.mgroko.backend.calendario.dto.MarcarNoDisponibleRequest;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
+import org.mgroko.backend.proyectos.dto.ResumenReprogramacionResponse;
+import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
+import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,13 +26,18 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 @RestController
+@PreAuthorize("hasRole('USUARIO')")
 @RequestMapping("/calendario")
 public class CalendarioController {
 
     private final CalendarioService calendarioService;
+    private final JornadaReprogramacionService jornadaReprogramacionService;
 
-    public CalendarioController(CalendarioService calendarioService) {
+    public CalendarioController(
+            CalendarioService calendarioService,
+            JornadaReprogramacionService jornadaReprogramacionService) {
         this.calendarioService = calendarioService;
+        this.jornadaReprogramacionService = jornadaReprogramacionService;
     }
 
     @GetMapping
@@ -45,7 +56,24 @@ public class CalendarioController {
             @Valid @RequestBody ConfigJornadaRequest request,
             Authentication authentication) {
         Long idUsuario = idUsuario(authentication);
-        return ResponseEntity.ok(calendarioService.configurarJornada(idUsuario, request));
+
+        ConfigJornadaResponse anterior = calendarioService.obtenerJornada(idUsuario);
+        ConfigJornadaResponse actual = calendarioService.configurarJornada(idUsuario, request);
+
+        MotivoReprogramacion motivo = Objects.equals(
+                anterior.margenActividadMinutos(),
+                actual.margenActividadMinutos())
+                ? MotivoReprogramacion.CAMBIO_JORNADA
+                : MotivoReprogramacion.CAMBIO_MARGEN;
+        ResumenReprogramacionResponse reprogramacion = anterior.equals(actual)
+                ? ResumenReprogramacionResponse.vacio()
+                : jornadaReprogramacionService.reprogramarAfectados(
+                        idUsuario, motivo);
+
+        return ResponseEntity.ok(new ConfigJornadaResponse(
+                actual.margenActividadMinutos(),
+                actual.dias(),
+                reprogramacion));
     }
 
     @PostMapping("/bloqueos")
@@ -53,7 +81,10 @@ public class CalendarioController {
             @Valid @RequestBody MarcarNoDisponibleRequest request,
             Authentication authentication) {
         Long idUsuario = idUsuario(authentication);
-        return ResponseEntity.ok(calendarioService.marcarNoDisponible(idUsuario, request));
+        BloqueoResponse bloqueo = calendarioService.marcarNoDisponible(idUsuario, request);
+        jornadaReprogramacionService.reprogramarAfectados(
+                idUsuario, MotivoReprogramacion.CAMBIO_BLOQUEO);
+        return ResponseEntity.ok(bloqueo);
     }
 
     @DeleteMapping("/bloqueos/{idBloqueo}")
@@ -62,6 +93,8 @@ public class CalendarioController {
             Authentication authentication) {
         Long idUsuario = idUsuario(authentication);
         calendarioService.marcarDisponible(idUsuario, idBloqueo);
+        jornadaReprogramacionService.reprogramarAfectados(
+                idUsuario, MotivoReprogramacion.CAMBIO_BLOQUEO);
         return ResponseEntity.noContent().build();
     }
 

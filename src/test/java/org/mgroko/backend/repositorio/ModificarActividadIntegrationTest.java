@@ -3,6 +3,7 @@ package org.mgroko.backend.repositorio;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.mgroko.backend.actividades.servicio.ModificarActividadService;
 import org.mgroko.backend.actividades.servicio.ObtenerActividadService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
+import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.InvitacionActividad;
@@ -31,6 +33,7 @@ import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Provincia;
+import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
@@ -40,7 +43,9 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
@@ -131,14 +136,96 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
     }
 
     @Test
+    void modificar_reenviaMismaCaracteristica_actualizaSinViolarIndiceUnico() {
+        Escenario escenario = crearEscenario();
+
+        Profesion profesion = em.find(Profesion.class, escenario.idProfesion());
+        CaracteristicaTecnica altura = CaracteristicaTecnica.builder()
+                .codigo("ALTURA_UC50")
+                .nombre("Altura UC50")
+                .tipoDato(CaracteristicaTecnica.TIPO_NUMERICO)
+                .profesion(profesion)
+                .build();
+        em.persist(altura);
+
+        RequerimientoActividad requerimiento = em.find(
+                RequerimientoActividad.class, escenario.idRequerimiento());
+        RequerimientoActCaract existente = RequerimientoActCaract.builder()
+                .requerimientoActividad(requerimiento)
+                .caracteristica(altura)
+                .valorMin(new BigDecimal("170"))
+                .valorMax(new BigDecimal("180"))
+                .build();
+        em.persist(existente);
+        em.flush();
+        Long idCaracteristicaRequerimiento = existente.getIdReqActCaract();
+
+        // El servicio debe cargar el requerimiento desde la BD, como en una
+        // request real, para que la colección de características no quede
+        // vacía por el contexto de persistencia del test.
+        em.clear();
+
+        ModificarActividadRequest request = new ModificarActividadRequest(
+                "Montaje con altura",
+                "Reenvia la misma caracteristica",
+                1,
+                UnidadDuracion.HORAS,
+                null,
+                List.of(),
+                List.of(new ModificarRequerimientoActividadRequest(
+                        escenario.idRequerimiento(),
+                        1,
+                        escenario.idProfesion(),
+                        "Requerimiento actualizado",
+                        List.of(new CrearRequerimientoCaractRequest(
+                                altura.getIdCaracteristica(),
+                                new BigDecimal("165"),
+                                new BigDecimal("175"),
+                                List.of())),
+                        List.of())),
+                EstadoActividad.PENDIENTE);
+
+        ActividadResponse response = modificarActividadService.modificar(
+                escenario.idUsuario(),
+                escenario.idPerfil(),
+                escenario.idProyecto(),
+                escenario.idActividad(),
+                request);
+
+        assertThat(response.requerimientos()).singleElement().satisfies(r ->
+                assertThat(r.caracteristicas()).singleElement().satisfies(c -> {
+                    assertThat(c.codigo()).isEqualTo("ALTURA_UC50");
+                    assertThat(c.valorMin()).isEqualByComparingTo("165");
+                    assertThat(c.valorMax()).isEqualByComparingTo("175");
+                }));
+
+        em.flush();
+        em.clear();
+
+        RequerimientoActCaract actualizado = em.find(
+                RequerimientoActCaract.class, idCaracteristicaRequerimiento);
+        assertThat(actualizado).isNotNull();
+        assertThat(actualizado.getValorMin()).isEqualByComparingTo("165");
+        assertThat(actualizado.getValorMax()).isEqualByComparingTo("175");
+
+        Long cantidad = em.createQuery("""
+                        SELECT COUNT(c) FROM RequerimientoActCaract c
+                        WHERE c.requerimientoActividad.idRequerimiento = :id
+                        """, Long.class)
+                .setParameter("id", escenario.idRequerimiento())
+                .getSingleResult();
+        assertThat(cantidad).isEqualTo(1);
+    }
+
+    @Test
     void modificar_superaFechaEntrega_persisteCambiosYDevuelveAlerta() {
         Escenario escenario = crearEscenario();
 
         ModificarActividadRequest request = new ModificarActividadRequest(
                 "Montaje final",
                 "Duracion que desborda la entrega",
-                60,
-                UnidadDuracion.DIAS,
+                86400,
+                UnidadDuracion.MINUTOS,
                 null,
                 List.of(),
                 List.of(new ModificarRequerimientoActividadRequest(
@@ -216,7 +303,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
     }
 
     @Test
-    void modificar_requerimientoConPostulacion_lanzaExcepcionYNoElimina() {
+    void modificar_requerimientoConPostulacionAceptadaDeInactivoOmitido_seArchiva() {
         Escenario escenario = crearEscenario();
         Perfil perfil = em.find(Perfil.class, escenario.idPerfil());
         RequerimientoActividad requerimiento = em.find(
@@ -225,6 +312,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
         em.persist(PostulacionActividad.builder()
                 .perfil(perfil)
                 .requerimiento(requerimiento)
+                .estado(EstadoSolicitud.ACEPTADA)
                 .build());
         em.flush();
 
@@ -238,22 +326,34 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
                 List.of(),
                 EstadoActividad.PENDIENTE);
 
-        assertThatThrownBy(() -> modificarActividadService.modificar(
+        modificarActividadService.modificar(
                 escenario.idUsuario(),
                 escenario.idPerfil(),
                 escenario.idProyecto(),
                 escenario.idActividad(),
-                request))
-                .isInstanceOf(RequerimientoConVinculosException.class)
-                .hasMessageContaining("requerimiento " + escenario.idRequerimiento());
+                request);
 
         em.clear();
         assertThat(em.find(RequerimientoActividad.class, escenario.idRequerimiento()))
-                .isNotNull();
+                .isNull();
+        RequerimientoActividad snapshot = em.createQuery("""
+                        SELECT r FROM RequerimientoActividad r
+                        WHERE r.idRequerimientoOrigen = :id
+                        """, RequerimientoActividad.class)
+                .setParameter("id", escenario.idRequerimiento())
+                .getSingleResult();
+        assertThat(snapshot.getFechaArchivado()).isNotNull();
+        PostulacionActividad postulacion = em.createQuery("""
+                        SELECT p FROM PostulacionActividad p
+                        WHERE p.requerimiento.idRequerimiento = :id
+                        """, PostulacionActividad.class)
+                .setParameter("id", snapshot.getIdRequerimiento())
+                .getSingleResult();
+        assertThat(postulacion.getEstado()).isEqualTo(EstadoSolicitud.ACEPTADA);
     }
 
     @Test
-    void modificar_requerimientoConInvitacion_lanzaExcepcionYNoElimina() {
+    void modificar_requerimientoConInvitacionAceptadaDeInactivoOmitido_seArchiva() {
         Escenario escenario = crearEscenario();
         Perfil remitente = em.find(Perfil.class, escenario.idPerfil());
         RequerimientoActividad requerimiento = em.find(
@@ -278,6 +378,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
                 .perfilRemitente(remitente)
                 .perfilDestinatario(destinatario)
                 .requerimiento(requerimiento)
+                .estado(EstadoSolicitud.ACEPTADA)
                 .build());
         em.flush();
 
@@ -291,18 +392,29 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
                 List.of(),
                 EstadoActividad.PENDIENTE);
 
-        assertThatThrownBy(() -> modificarActividadService.modificar(
+        modificarActividadService.modificar(
                 escenario.idUsuario(),
                 escenario.idPerfil(),
                 escenario.idProyecto(),
                 escenario.idActividad(),
-                request))
-                .isInstanceOf(RequerimientoConVinculosException.class)
-                .hasMessageContaining("requerimiento " + escenario.idRequerimiento());
+                request);
 
         em.clear();
         assertThat(em.find(RequerimientoActividad.class, escenario.idRequerimiento()))
-                .isNotNull();
+                .isNull();
+        RequerimientoActividad snapshot = em.createQuery("""
+                        SELECT r FROM RequerimientoActividad r
+                        WHERE r.idRequerimientoOrigen = :id
+                        """, RequerimientoActividad.class)
+                .setParameter("id", escenario.idRequerimiento())
+                .getSingleResult();
+        InvitacionActividad invitacion = em.createQuery("""
+                        SELECT i FROM InvitacionActividad i
+                        WHERE i.requerimiento.idRequerimiento = :id
+                        """, InvitacionActividad.class)
+                .setParameter("id", snapshot.getIdRequerimiento())
+                .getSingleResult();
+        assertThat(invitacion.getEstado()).isEqualTo(EstadoSolicitud.ACEPTADA);
     }
 
     @Test

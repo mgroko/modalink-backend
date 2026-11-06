@@ -9,8 +9,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -18,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.actividades.dto.CrearRequerimientoActividadRequest;
 import org.mgroko.backend.actividades.dto.ModificarActividadRequest;
 import org.mgroko.backend.actividades.dto.ModificarRequerimientoActividadRequest;
@@ -39,17 +46,19 @@ import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
-import org.mgroko.backend.modelo.enums.EstadoCronograma;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoSnapshotService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
+import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -67,6 +76,9 @@ class ModificarActividadServiceTest {
 
     @Mock
     private ActividadRepository actividadRepository;
+
+    @Mock
+    private ProyectoRepository proyectoRepository;
 
     @Mock
     private PlanificacionRepository planificacionRepository;
@@ -87,6 +99,12 @@ class ModificarActividadServiceTest {
     private RequerimientoActividadRepository requerimientoActividadRepository;
 
     @Mock
+    private org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
+
+    @Mock
+    private RequerimientoProteccionService requerimientoProteccionService;
+
+    @Mock
     private PostulacionActividadRepository postulacionActividadRepository;
 
     @Mock
@@ -99,7 +117,19 @@ class ModificarActividadServiceTest {
     private AsignacionActividadRepository asignacionActividadRepository;
 
     @Mock
+    private ReprogramarProyectoService reprogramarProyectoService;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ActividadOrigenService actividadOrigenService;
+
+    @Mock
+    private RequerimientoSnapshotService requerimientoSnapshotService;
+
+    @Mock
+    private Clock reloj;
 
     @InjectMocks
     private ModificarActividadService modificarActividadService;
@@ -110,6 +140,9 @@ class ModificarActividadServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(reloj.instant()).thenReturn(Instant.parse("2026-11-01T00:00:00Z"));
+        when(reloj.getZone()).thenReturn(ZoneOffset.UTC);
+
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
         perfil = Perfil.builder()
                 .idPerfil(10L)
@@ -128,6 +161,7 @@ class ModificarActividadServiceTest {
         planificacion = Planificacion.builder()
                 .idPlanificacion(50L)
                 .proyecto(proyecto)
+                .fechaEntrega(LocalDate.of(2026, 11, 30))
                 .build();
 
         actividad = Actividad.builder()
@@ -142,6 +176,8 @@ class ModificarActividadServiceTest {
 
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(10L, 1L))
                 .thenReturn(Optional.of(perfil));
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(planificacion.getProyecto()));
         when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(55L, 50L))
@@ -152,12 +188,24 @@ class ModificarActividadServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(actividad));
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of());
         when(requerimientoActividadService.listarPorActividad(55L))
                 .thenReturn(List.of());
         when(asignacionActividadRepository.findActivasByActividadId(55L))
                 .thenReturn(List.of());
-        when(cronogramaService.recalcularTolerandoDesborde(planificacion, List.of(actividad)))
-                .thenReturn(EstadoCronograma.NORMAL);
+        // Fase 2: la respuesta se arma con el cálculo CPM, no con evaluar()
+        when(cronogramaService.calcularProyeccion(any(), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+        when(cronogramaService.estadoDe(any())).thenAnswer(invocation -> {
+            CalculoCpm calculo = invocation.getArgument(0);
+            if (calculo.viable() == null) {
+                return org.mgroko.backend.modelo.enums.EstadoCronograma.SIN_FECHA_ENTREGA;
+            }
+            return Boolean.TRUE.equals(calculo.viable())
+                    ? org.mgroko.backend.modelo.enums.EstadoCronograma.NORMAL
+                    : org.mgroko.backend.modelo.enums.EstadoCronograma.ALERTA_DESBORDE;
+        });
     }
 
     @Test
@@ -183,7 +231,7 @@ class ModificarActividadServiceTest {
             assertThat(profesional.nombreArtistico()).isEqualTo("Luna");
             assertThat(profesional.nombreProfesion()).isEqualTo("Modelo");
         });
-        verify(cronogramaService).recalcularTolerandoDesborde(eq(planificacion), any());
+        verify(cronogramaService).calcularProyeccion(eq(planificacion), any());
 
         ArgumentCaptor<ActividadModificadaEvent> evento =
                 ArgumentCaptor.forClass(ActividadModificadaEvent.class);
@@ -195,9 +243,21 @@ class ModificarActividadServiceTest {
     }
 
     @Test
+    void modificar_duracionEnMinutos_guardaElTotalSinConvertir() {
+        ModificarActividadRequest request = new ModificarActividadRequest(
+                "Montaje final", null, 90, UnidadDuracion.MINUTOS, null,
+                List.of(), List.of(), EstadoActividad.PENDIENTE);
+
+        ActividadResponse response = modificarActividadService.modificar(
+                1L, 10L, 100L, 55L, request);
+
+        assertThat(response.duracionMinutos()).isEqualTo(90);
+    }
+
+    @Test
     void modificar_conDesborde_devuelveActividadPersistidaYAlerta() {
-        when(cronogramaService.recalcularTolerandoDesborde(planificacion, List.of(actividad)))
-                .thenReturn(EstadoCronograma.ALERTA_DESBORDE);
+        when(cronogramaService.calcularProyeccion(planificacion, List.of(actividad)))
+                .thenReturn(new CalculoCpm(Map.of(), 600L, 300L, false, List.of()));
 
         ActividadResponse response = modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
@@ -205,7 +265,7 @@ class ModificarActividadServiceTest {
 
         assertThat(response.estadoCronograma()).isEqualTo("ALERTA_DESBORDE");
         verify(actividadRepository).saveAndFlush(actividad);
-        verify(cronogramaService).recalcularTolerandoDesborde(eq(planificacion), any());
+        verify(cronogramaService).calcularProyeccion(eq(planificacion), any());
     }
 
     @Test
@@ -308,15 +368,13 @@ class ModificarActividadServiceTest {
     @Test
     void modificar_requerimientoConPostulacion_lanzaExcepcion() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
-        when(postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(true);
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
 
         ModificarRequerimientoActividadRequest requerimientoRequest =
                 new ModificarRequerimientoActividadRequest(
-                        7L, 1, 2L, null, List.of(), List.of());
+                        7L, 2, 2L, null, List.of(), List.of());
 
         assertThatThrownBy(() -> modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
@@ -332,18 +390,13 @@ class ModificarActividadServiceTest {
     @Test
     void modificar_requerimientoConInvitacion_lanzaExcepcion() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
-        when(postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(false);
-        when(invitacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(true);
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
 
         ModificarRequerimientoActividadRequest requerimientoRequest =
                 new ModificarRequerimientoActividadRequest(
-                        7L, 1, 2L, null, List.of(), List.of());
+                        7L, 2, 2L, null, List.of(), List.of());
 
         assertThatThrownBy(() -> modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
@@ -430,6 +483,96 @@ class ModificarActividadServiceTest {
     }
 
     @Test
+    void modificar_alCancelar_reconectaSucesorasAPredecesoras() {
+        Actividad predecesora = Actividad.builder()
+                .idActividad(1L)
+                .nombre("Bocetos")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.PENDIENTE)
+                .planificacion(planificacion)
+                .build();
+
+        Actividad sucesora = Actividad.builder()
+                .idActividad(60L)
+                .nombre("Fitting")
+                .duracionMinutos(60)
+                .estado(EstadoActividad.PENDIENTE)
+                .planificacion(planificacion)
+                .predecesoras(new HashSet<>(Set.of(actividad)))
+                .build();
+
+        when(actividadRepository.findByIdsAndPlanificacion(any(), eq(50L)))
+                .thenReturn(List.of(predecesora));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(predecesora, actividad, sucesora));
+
+        modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.CANCELADA,
+                        List.of(1L), null));
+
+        assertThat(sucesora.getPredecesoras())
+                .extracting(Actividad::getIdActividad)
+                .containsExactly(1L);
+        verify(actividadRepository).flush();
+    }
+
+    @Test
+    void modificar_proyectoConfirmadoConCambioDeDuracion_lanzaExcepcion() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+
+        assertThatThrownBy(() -> modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 2, EstadoActividad.PENDIENTE, null, null)))
+                .isInstanceOf(org.mgroko.backend.actividades.exception
+                        .EstadoProyectoNoPermiteModificarActividadesException.class);
+
+        verify(actividadRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void modificar_proyectoConfirmadoRequerimientoSinVinculos_permiteCambiarlo() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+        actividad.setNombre("Montaje final");
+        RequerimientoActividad requerimiento = crearRequerimiento();
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of(requerimiento));
+
+        ModificarRequerimientoActividadRequest requerimientoRequest =
+                new ModificarRequerimientoActividadRequest(
+                        7L, 2, 2L, null, List.of(), List.of());
+
+        modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
+                        List.of(requerimientoRequest)));
+
+        verify(requerimientoActividadService).actualizar(
+                eq(requerimiento), any());
+    }
+
+    @Test
+    void modificar_proyectoConfirmadoRequerimientoConPendiente_lanzaExcepcion() {
+        planificacion.getProyecto().setEstado(EstadoProyecto.CONFIRMADO);
+        actividad.setNombre("Montaje final");
+        RequerimientoActividad requerimiento = crearRequerimiento();
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of(requerimiento));
+        when(requerimientoProteccionService.estaProtegido(7L))
+                .thenReturn(true);
+
+        ModificarRequerimientoActividadRequest requerimientoRequest =
+                new ModificarRequerimientoActividadRequest(
+                        7L, 2, 2L, null, List.of(), List.of());
+
+        assertThatThrownBy(() -> modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
+                        List.of(requerimientoRequest))))
+                .isInstanceOf(RequerimientoConVinculosException.class);
+    }
+
+    @Test
     void modificar_desdeEnCursoAFinalizada_permiteCambioDeEstado() {
         actividad.setEstado(EstadoActividad.EN_CURSO);
 
@@ -442,29 +585,46 @@ class ModificarActividadServiceTest {
     }
 
     @Test
-    void modificar_requerimientoConVinculosOmitido_lanzaExcepcion() {
+    void modificar_requerimientoConVinculosSinCambios_noLanzaExcepcion() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
-        when(postulacionActividadRepository
-                .existsByRequerimiento_IdRequerimiento(7L))
-                .thenReturn(true);
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
 
-        assertThatThrownBy(() -> modificarActividadService.modificar(
+        ModificarRequerimientoActividadRequest requerimientoRequest =
+                new ModificarRequerimientoActividadRequest(
+                        7L, 1, 2L, null, List.of(), List.of());
+
+        modificarActividadService.modificar(
                 1L, 10L, 100L, 55L,
                 request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
-                        List.of())))
-                .isInstanceOf(RequerimientoConVinculosException.class);
+                        List.of(requerimientoRequest)));
+
+        verify(requerimientoActividadService, never()).actualizar(any(), any());
+        verify(requerimientoActividadService, never()).eliminar(any());
+    }
+
+    @Test
+    void modificar_requerimientoConVinculosOmitido_seConserva() {
+        RequerimientoActividad requerimiento = crearRequerimiento();
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
+                .thenReturn(List.of(requerimiento));
+        when(requerimientoProteccionService.estaProtegido(7L)).thenReturn(true);
+
+        modificarActividadService.modificar(
+                1L, 10L, 100L, 55L,
+                request("Montaje final", null, 1, EstadoActividad.PENDIENTE, null,
+                        List.of()));
 
         verify(requerimientoActividadService, never()).eliminar(requerimiento);
         verify(requerimientoActividadService, never()).actualizar(any(), any());
-        verify(actividadRepository, never()).saveAndFlush(any());
+        verify(actividadRepository).saveAndFlush(actividad);
     }
 
     @Test
     void modificar_requerimientoSinVinculosOmitido_loElimina() {
         RequerimientoActividad requerimiento = crearRequerimiento();
-        when(requerimientoActividadRepository.findByActividad_IdActividad(55L))
+        when(requerimientoActividadRepository.findByActividadIdForUpdate(55L))
                 .thenReturn(List.of(requerimiento));
         when(postulacionActividadRepository
                 .existsByRequerimiento_IdRequerimiento(7L))
@@ -502,6 +662,7 @@ class ModificarActividadServiceTest {
                 .idRequerimiento(7L)
                 .actividad(actividad)
                 .cantidad(1)
+                .profesion(Profesion.builder().idProfesion(2L).build())
                 .build();
     }
 

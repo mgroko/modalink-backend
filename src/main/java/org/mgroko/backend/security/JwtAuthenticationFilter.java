@@ -3,8 +3,11 @@ package org.mgroko.backend.security;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
+import org.mgroko.backend.modelo.PermisoGlobal;
+import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -55,31 +58,51 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtService.validarYObtenerClaims(jwt);
             String subject = claims.getSubject();
 
-            Optional<Usuario> usuarioOpt = usuarioRepository.findById(Long.parseLong(subject));
+            Optional<Usuario> usuarioOpt = usuarioRepository.findByIdConRolYPermisos(Long.parseLong(subject));
             if (usuarioOpt.isEmpty() || !usuarioOpt.get().getEstado().permiteAcceso()) {
                 SecurityContextHolder.clearContext();
                 filterChain.doFilter(request, response);
                 return;
             }
 
+            Usuario usuario = usuarioOpt.get();
             List<GrantedAuthority> authorities = new ArrayList<>();
 
-            String rolGlobal = claims.get("rolGlobal", String.class);
+            // Las autoridades se construyen desde la base de datos, no desde
+            // el claim: así un cambio de rol aplica sin esperar al próximo login.
+            RolGlobal rolGlobal = usuario.getRolGlobal();
             if (rolGlobal != null) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + rolGlobal.toUpperCase()));
-            }
+                String codigoRol = rolGlobal.getCodigo() != null
+                        ? rolGlobal.getCodigo()
+                        : rolGlobal.getNombre();
+                if (codigoRol != null && !codigoRol.isBlank()) {
+                    authorities.add(new SimpleGrantedAuthority(
+                            "ROLE_" + codigoRol.toUpperCase(Locale.ROOT)));
+                }
 
-            List<?> permisosGlobales = claims.get("permisosGlobales", List.class);
-            if (permisosGlobales != null) {
-                for (Object permiso : permisosGlobales) {
-                    authorities.add(new SimpleGrantedAuthority(String.valueOf(permiso)));
+                if (rolGlobal.getPermisos() != null) {
+                    for (PermisoGlobal permiso : rolGlobal.getPermisos()) {
+                        if (permiso.getNombre() != null && !permiso.getNombre().isBlank()) {
+                            authorities.add(new SimpleGrantedAuthority(permiso.getNombre()));
+                        }
+                    }
                 }
             }
-            
+
+            Long idPerfilActivo = obtenerClaimLong(claims, "idPerfilActivo");
+            String nombreArtisticoActivo = claims.get("nombreArtisticoActivo", String.class);
+
+            // El administrador nunca opera con un perfil activo, aunque un
+            // token viejo o un dato inconsistente lo incluyan.
+            if (PerfilAccessPolicy.esAdministrador(usuario)) {
+                idPerfilActivo = null;
+                nombreArtisticoActivo = null;
+            }
+
             ContextoAutenticacion contexto = new ContextoAutenticacion(
                     Long.parseLong(subject),
-                    obtenerClaimLong(claims, "idPerfilActivo"),
-                    claims.get("nombreArtisticoActivo", String.class)
+                    idPerfilActivo,
+                    nombreArtisticoActivo
             );
 
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(

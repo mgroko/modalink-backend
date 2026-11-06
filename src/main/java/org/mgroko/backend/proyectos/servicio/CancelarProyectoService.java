@@ -196,6 +196,7 @@ public class CancelarProyectoService {
                         NotificacionService.TIPO_PROYECTO_CANCELADO,
                         mensaje,
                         ENTIDAD_PROYECTO,
+                        proyecto.getIdProyecto(),
                         proyecto.getIdProyecto()));
             }
         }
@@ -220,7 +221,8 @@ public class CancelarProyectoService {
                         NotificacionService.TIPO_POSTULACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_POSTULACION_GRAL,
-                        postulacion.getIdPostulacionGral()));
+                        postulacion.getIdPostulacionGral(),
+                        proyecto.getIdProyecto()));
             }
         }
     }
@@ -244,7 +246,8 @@ public class CancelarProyectoService {
                         NotificacionService.TIPO_POSTULACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_POSTULACION_ACTIVIDAD,
-                        postulacion.getIdPostulacion()));
+                        postulacion.getIdPostulacion(),
+                        proyecto.getIdProyecto()));
             }
         }
     }
@@ -268,7 +271,8 @@ public class CancelarProyectoService {
                         NotificacionService.TIPO_INVITACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_INVITACION_GRAL,
-                        invitacion.getIdInvitacionGral()));
+                        invitacion.getIdInvitacionGral(),
+                        proyecto.getIdProyecto()));
             }
         }
     }
@@ -292,7 +296,8 @@ public class CancelarProyectoService {
                         NotificacionService.TIPO_INVITACION_RECHAZADA,
                         mensaje,
                         ENTIDAD_INVITACION_ACTIVIDAD,
-                        invitacion.getIdInvitacion()));
+                        invitacion.getIdInvitacion(),
+                        proyecto.getIdProyecto()));
             }
         }
     }

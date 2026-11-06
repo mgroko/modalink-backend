@@ -2,28 +2,32 @@ package org.mgroko.backend.actividades.servicio;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.dto.ActividadResponse;
+import org.mgroko.backend.actividades.dto.CalculoCpm;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
-import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
-import org.mgroko.backend.modelo.enums.EstadoCronograma;
+import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
-import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -48,26 +52,33 @@ class ObtenerActividadServiceTest {
     private PerfilRepository perfilRepository;
 
     @Mock
-    private ProyectoSecurityService proyectoSecurityService;
+    private ProyectoVisibilidadService proyectoVisibilidadService;
 
     @Mock
     private RequerimientoActividadService requerimientoActividadService;
 
     @Mock
-    private AsignacionActividadRepository asignacionActividadRepository;
+    private RequerimientoProteccionService requerimientoProteccionService;
 
     @Mock
     private CronogramaService cronogramaService;
+
+    @Mock
+    private AsignacionActividadRepository asignacionActividadRepository;
+
+    @Mock
+    private ActividadOrigenService actividadOrigenService;
 
     @InjectMocks
     private ObtenerActividadService obtenerActividadService;
 
     private Actividad actividad;
+    private Perfil perfil;
 
     @BeforeEach
     void setUp() {
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
-        Perfil perfil = Perfil.builder()
+        perfil = Perfil.builder()
                 .idPerfil(10L)
                 .nombreArtistico("Luna")
                 .estado(EstadoPerfil.Activo)
@@ -83,6 +94,7 @@ class ObtenerActividadServiceTest {
         Planificacion planificacion = Planificacion.builder()
                 .idPlanificacion(50L)
                 .proyecto(proyecto)
+                .fechaEntrega(LocalDate.of(2026, 11, 10))
                 .build();
 
         actividad = Actividad.builder()
@@ -107,14 +119,40 @@ class ObtenerActividadServiceTest {
                 .thenReturn(Optional.of(planificacion));
         when(actividadRepository.findByIdActividadAndPlanificacionIdPlanificacion(55L, 50L))
                 .thenReturn(Optional.of(actividad));
-        when(requerimientoActividadService.listarPorActividad(55L))
+        when(requerimientoActividadService.listarPorActividad(
+                eq(55L), eq(10L), any(Proyecto.class)))
                 .thenReturn(List.of());
         when(asignacionActividadRepository.findActivasByActividadId(55L))
                 .thenReturn(List.of(asignacion));
         when(actividadRepository.findConPredecesorasByPlanificacion(50L))
                 .thenReturn(List.of(actividad));
-        when(cronogramaService.evaluar(any(), any()))
-                .thenReturn(EstadoCronograma.NORMAL);
+        when(cronogramaService.calcularProyeccion(any(), any()))
+                .thenReturn(new CalculoCpm(Map.of(), 0L, 600L, true, List.of()));
+    }
+
+    @Test
+    void obtener_actividadEnCurso_incluyeMiembroEliminadoComoHistorico() {
+        actividad.setEstado(EstadoActividad.EN_CURSO);
+        var asignacion = org.mgroko.backend.modelo.AsignacionActividad.builder()
+                .idAsignacionAct(77L)
+                .miembro(MiembroProyecto.builder()
+                        .idMiembro(88L)
+                        .perfil(perfil)
+                        .estadoParticipacion(EstadoParticipacion.ELIMINADO)
+                        .build())
+                .actividad(actividad)
+                .build();
+        when(asignacionActividadRepository.findByActividadIdConMiembroPerfil(55L))
+                .thenReturn(List.of(asignacion));
+
+        ActividadResponse response = obtenerActividadService.obtener(1L, 10L, 100L, 55L);
+
+        assertThat(response.profesionalesAsignados())
+                .singleElement()
+                .satisfies(profesional -> {
+                    assertThat(profesional.estadoParticipacion()).isEqualTo("ELIMINADO");
+                    assertThat(profesional.activo()).isFalse();
+                });
     }
 
     @Test
@@ -128,7 +166,6 @@ class ObtenerActividadServiceTest {
             assertThat(profesional.nombreArtistico()).isEqualTo("Luna");
             assertThat(profesional.nombreProfesion()).isEqualTo("Modelo");
         });
-        verify(proyectoSecurityService).validarPermiso(
-                100L, 10L, ModificarActividadService.PERMISO_MODIFICAR_ACTIVIDAD);
+        verify(proyectoVisibilidadService).validarAcceso(any(Proyecto.class), eq(10L));
     }
 }

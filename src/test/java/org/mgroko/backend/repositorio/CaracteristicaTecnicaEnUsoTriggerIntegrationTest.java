@@ -42,9 +42,9 @@ class CaracteristicaTecnicaEnUsoTriggerIntegrationTest extends AbstractPostgresI
     private Long asignarAlturaAPerfil() {
         Long idUsuario = jdbc.queryForObject("""
                 INSERT INTO usuario (nombre, apellido, dni, fecha_nacimiento, correo,
-                                     estado, proveedor_auth, id_genero, id_rol_global)
+                                     estado, id_genero, id_rol_global)
                 VALUES ('Trigger', 'Tester', '99000111', '1990-01-01', 'trigger.en.uso@mail.com',
-                        'ACTIVO', 'LOCAL', 1, 1)
+                        'ACTIVO', 1, 1)
                 RETURNING id_usuario
                 """, Long.class);
 

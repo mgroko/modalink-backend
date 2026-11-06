@@ -1,5 +1,7 @@
 package org.mgroko.backend.auth;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -47,7 +49,7 @@ import jakarta.servlet.http.Cookie;
  * La lógica del filtro JWT se testea por separado en
  * JwtAuthenticationFilterTest.
  */
-@WebMvcTest(controllers = AuthController.class)
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class LogoutIntegrationTest {
 
@@ -86,6 +88,12 @@ class LogoutIntegrationTest {
 
         @MockitoBean
         private JwtCookieFactory jwtCookieFactory;
+
+        @MockitoBean
+        private org.mgroko.backend.auth.oauth.GoogleAuthService googleAuthService;
+
+        @MockitoBean
+        private org.mgroko.backend.auth.oauth.RegistroPendienteService registroPendienteService;
 
         @MockitoBean
         private UsuarioRepository usuarioRepository;

@@ -224,7 +224,9 @@ class ProyectoPropioIntegrationTest extends AbstractPostgresIntegrationTest {
                 .getSingleResult();
 
         Planificacion planificacion = Planificacion.builder()
-                .proyecto(e.proyectoDirector()).build();
+                .proyecto(e.proyectoDirector())
+                .fechaEntrega(LocalDate.now().plusDays(30))
+                .build();
         em.persist(planificacion);
 
         Actividad futura = crearActividad(planificacion, "Sesion futura",

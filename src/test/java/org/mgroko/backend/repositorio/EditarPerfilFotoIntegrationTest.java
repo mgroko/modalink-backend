@@ -23,6 +23,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,6 +97,13 @@ class EditarPerfilFotoIntegrationTest extends AbstractPostgresIntegrationTest {
         idImagenAjena = guardarImagen("foto-sol");
         asociarFoto(idPerfilConFoto, idImagenPropia);
         asociarFoto(idPerfilConOtraFoto, idImagenAjena);
+
+        SecurityContextHolder.getContext().setAuthentication(principal(usuario));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void limpiarContextoDeSeguridad() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -151,7 +160,9 @@ class EditarPerfilFotoIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static UsernamePasswordAuthenticationToken principal(Usuario usuario) {
         return new UsernamePasswordAuthenticationToken(
-                String.valueOf(usuario.getIdUsuario()), null, List.of());
+                String.valueOf(usuario.getIdUsuario()),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USUARIO")));
     }
 
     private Long asociarFoto(Long idPerfil, Long idImagen) {

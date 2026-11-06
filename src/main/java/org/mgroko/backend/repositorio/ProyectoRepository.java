@@ -1,6 +1,7 @@
 package org.mgroko.backend.repositorio;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.admin.dto.AdminDashboardProvinciaRow;
 import org.mgroko.backend.modelo.Proyecto;
@@ -10,12 +11,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSpecificationExecutor<Proyecto> {
 
     Page<Proyecto> findByEstadoIn(List<EstadoProyecto> estados, Pageable pageable);
+
+    List<Proyecto> findByEstadoIn(List<EstadoProyecto> estados);
+
+    List<Proyecto> findByEstado(EstadoProyecto estado);
 
     Page<Proyecto> findByEstadoNot(EstadoProyecto estado, Pageable pageable);
 
@@ -53,4 +62,30 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSp
             @Param("idRolProyecto") Long idRolProyecto,
             @Param("estado") EstadoParticipacion estado
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Proyecto p WHERE p.idProyecto = :idProyecto")
+    Optional<Proyecto> findByIdParaGestion(@Param("idProyecto") Long idProyecto);
+
+    /**
+     * Bloqueo pesimista del proyecto para la transición a FINALIZADO (UC-37).
+     * Evita que dos solicitudes concurrentes finalicen el mismo proyecto.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Proyecto p WHERE p.idProyecto = :idProyecto")
+    Optional<Proyecto> findByIdParaFinalizar(@Param("idProyecto") Long idProyecto);
+
+    /**
+     * Detalle de proyecto con toda la cadena de ubicación inicializada.
+     * Evita las consultas perezosas de ubicación/ciudad/provincia/país al
+     * armar el {@code ProyectoResponse}.
+     */
+    @EntityGraph(attributePaths = {
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    @Query("SELECT p FROM Proyecto p WHERE p.idProyecto = :idProyecto")
+    Optional<Proyecto> findByIdConUbicacion(@Param("idProyecto") Long idProyecto);
 }

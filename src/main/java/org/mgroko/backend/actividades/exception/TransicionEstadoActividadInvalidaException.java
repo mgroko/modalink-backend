@@ -10,4 +10,8 @@ public class TransicionEstadoActividadInvalidaException extends RuntimeException
         super("No se puede cambiar el estado de la actividad de "
                 + estadoActual + " a " + estadoNuevo + ".");
     }
+
+    public TransicionEstadoActividadInvalidaException(String mensaje) {
+        super(mensaje);
+    }
 }

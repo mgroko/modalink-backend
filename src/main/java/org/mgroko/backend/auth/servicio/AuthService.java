@@ -28,14 +28,17 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PermisoGlobal;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.UsuarioIdentidad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
+import org.mgroko.backend.repositorio.UsuarioIdentidadRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.JwtService;
+import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.mgroko.backend.usuario.servicio.ReactivarCuentaService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -46,6 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioIdentidadRepository usuarioIdentidadRepository;
     private final RolGlobalRepository rolGlobalRepository;
     private final GeneroRepository generoRepository;
     private final PerfilRepository perfilRepository;
@@ -56,6 +60,7 @@ public class AuthService {
 
     public AuthService(
             UsuarioRepository usuarioRepository,
+            UsuarioIdentidadRepository usuarioIdentidadRepository,
             RolGlobalRepository rolGlobalRepository,
             GeneroRepository generoRepository,
             BCryptPasswordEncoder passwordEncoder,
@@ -64,6 +69,7 @@ public class AuthService {
             ConfiguracionSistemaService configuracionSistemaService,
             ReactivarCuentaService reactivarCuentaService) {
         this.usuarioRepository = usuarioRepository;
+        this.usuarioIdentidadRepository = usuarioIdentidadRepository;
         this.rolGlobalRepository = rolGlobalRepository;
         this.generoRepository = generoRepository;
         this.passwordEncoder = passwordEncoder;
@@ -110,12 +116,17 @@ public class AuthService {
                 .fechaNacimiento(request.fechaNacimiento())
                 .correo(correo)
                 .passwordHash(passwordEncoder.encode(request.password()))
-                .proveedorAuth(ProveedorAuth.LOCAL)
                 .rolGlobal(rolUsuario)
                 .genero(genero)
                 .build();
 
         Usuario guardado = usuarioRepository.save(usuario);
+        usuarioIdentidadRepository.save(UsuarioIdentidad.builder()
+                .usuario(guardado)
+                .proveedor(ProveedorAuth.LOCAL)
+                .correo(correo)
+                .correoVerificado(false)
+                .build());
 
         String token = jwtService.generarToken(
                 guardado.getIdUsuario().toString(),
@@ -127,7 +138,15 @@ public class AuthService {
     @Transactional(readOnly = true)
     public LoginResultado login(LoginRequest request) {
         Usuario usuario = autenticar(request);
+        validarEstadoCuenta(usuario);
+        return construirLoginResultado(usuario);
+    }
 
+    /**
+     * Valida que la cuenta pueda iniciar sesión. Las cuentas pendientes de baja
+     * se rechazan con la información necesaria para ofrecer la reactivación.
+     */
+    public void validarEstadoCuenta(Usuario usuario) {
         if (!usuario.getEstado().permiteAcceso()) {
             throw new UsuarioDeshabilitadoException("Tu usuario está deshabilitado. Contactá al administrador.");
         }
@@ -135,8 +154,26 @@ public class AuthService {
         if (usuario.getEstado() == EstadoUsuario.PENDIENTE_BAJA) {
             bloquearLoginPendienteBaja(usuario);
         }
+    }
 
-        return construirLoginResultado(usuario);
+    /**
+     * Para el login con Google: si la cuenta está pendiente de baja, se
+     * reactiva automáticamente dentro del plazo (UC-07). Si está deshabilitada
+     * o dada de baja, se rechaza el acceso.
+     *
+     * @return true si la cuenta fue reactivada
+     */
+    @Transactional
+    public boolean reactivarSiPendienteBaja(Usuario usuario) {
+        if (usuario.getEstado() == EstadoUsuario.PENDIENTE_BAJA) {
+            reactivarCuentaService.reactivarCuenta(usuario.getIdUsuario());
+            usuario.setEstado(EstadoUsuario.Activo);
+            usuario.setFechaSolicitudBaja(null);
+            return true;
+        }
+
+        validarEstadoCuenta(usuario);
+        return false;
     }
 
     /**
@@ -186,8 +223,8 @@ public class AuthService {
                 "El plazo de " + diasBaja + " días para recuperar la cuenta ha expirado.");
     }
 
-    private LoginResultado construirLoginResultado(Usuario usuario) {
-        Perfil perfilActivoInicial = resolverPerfilActivoPorDefecto(usuario.getIdUsuario());
+    public LoginResultado construirLoginResultado(Usuario usuario) {
+        Perfil perfilActivoInicial = resolverPerfilActivoPorDefecto(usuario);
 
         String token = jwtService.generarToken(
                 usuario.getIdUsuario().toString(),
@@ -227,16 +264,22 @@ public class AuthService {
         claims.put("rolGlobal", usuario.getRolGlobal().getNombre());
         claims.put("permisosGlobales", obtenerNombresPermisosGlobales(usuario.getRolGlobal().getNombre()));
 
-        if (perfilActivo != null) {
+        if (perfilActivo != null && !PerfilAccessPolicy.esAdministrador(usuario)) {
             claims.put("idPerfilActivo", perfilActivo.getIdPerfil());
             claims.put("nombreArtisticoActivo", perfilActivo.getNombreArtistico());
         }
         return claims;
     }
 
-    public Perfil resolverPerfilActivoPorDefecto(Long idUsuario) {
+    public Perfil resolverPerfilActivoPorDefecto(Usuario usuario) {
+        // El administrador no posee perfil creativo: nunca se resuelve uno
+        // por defecto, ni siquiera si existiera un dato inconsistente.
+        if (PerfilAccessPolicy.esAdministrador(usuario)) {
+            return null;
+        }
+
         List<Perfil> perfilesActivos = perfilRepository
-                .findByUsuario_IdUsuarioAndEstado(idUsuario, EstadoPerfil.Activo);
+                .findByUsuario_IdUsuarioAndEstado(usuario.getIdUsuario(), EstadoPerfil.Activo);
         return perfilesActivos.size() == 1 ? perfilesActivos.get(0) : null;
     }
 

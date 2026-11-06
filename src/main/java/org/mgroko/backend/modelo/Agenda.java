@@ -26,7 +26,8 @@ import lombok.Setter;
 public class Agenda {
 
     /**
-     * Margen por defecto en minutos. Alineado con el DEFAULT de la columna
+     * Margen total por defecto en minutos entre dos actividades consecutivas.
+     * Alineado con el DEFAULT de la columna
      * {@code agenda.margen_actividad_min}, el seed y el fallback de la clave
      * {@code AGENDA_MARGEN_ACTIVIDAD_MIN} en {@code configuracion_sistema}.
      * El valor efectivo por agenda se resuelve en el servicio de calendario.
