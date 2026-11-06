@@ -38,6 +38,7 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.GeneroRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
+import org.mgroko.backend.repositorio.UsuarioIdentidadRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.JwtService;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
@@ -70,6 +71,9 @@ class AuthServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private UsuarioIdentidadRepository usuarioIdentidadRepository;
 
     @Mock
     private RolGlobalRepository rolGlobalRepository;

@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
-import org.mgroko.backend.modelo.enums.ProveedorAuth;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,15 +50,6 @@ public class Usuario {
     // null si el usuario solo se registró vía Google
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "proveedor_auth", nullable = false, length = 20)
-    @Builder.Default
-    private ProveedorAuth proveedorAuth = ProveedorAuth.LOCAL;
-
-    // "sub" devuelto por Google; null si proveedor_auth = LOCAL
-    @Column(name = "id_externo", length = 100)
-    private String idExterno;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 20)

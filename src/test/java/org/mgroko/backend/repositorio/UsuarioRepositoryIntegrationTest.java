@@ -17,8 +17,10 @@ import org.mgroko.backend.admin.servicio.ExpirarDeshabilitacionService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.UsuarioIdentidad;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.modelo.enums.ProveedorAuth;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,6 +48,9 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private UsuarioIdentidadRepository usuarioIdentidadRepository;
 
     @Autowired
     private GeneroRepository generoRepository;
@@ -228,5 +233,85 @@ class UsuarioRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
         assertEquals(EstadoUsuario.Activo, resultado.get().getEstado());
         assertNull(resultado.get().getMotivoDeshabilitacion());
         assertNull(resultado.get().getFechaHastaDeshabilitacion());
+    }
+
+    // ------------------------------------------------------------------
+    // UC-09: usuario_identidad
+    // ------------------------------------------------------------------
+
+    @Test
+    void save_identidadLocal_seEncuentraPorUsuarioYProveedor() {
+        Usuario usuario = guardarUsuarioBase();
+        UsuarioIdentidad identidad = usuarioIdentidadRepository.saveAndFlush(
+                UsuarioIdentidad.builder()
+                        .usuario(usuario)
+                        .proveedor(ProveedorAuth.LOCAL)
+                        .correo(usuario.getCorreo())
+                        .correoVerificado(false)
+                        .build());
+
+        assertNotNull(identidad.getIdIdentidad());
+        assertTrue(usuarioIdentidadRepository
+                .findByUsuario_IdUsuarioAndProveedor(usuario.getIdUsuario(), ProveedorAuth.LOCAL)
+                .isPresent());
+    }
+
+    @Test
+    void save_identidadGoogle_seEncuentraPorSub() {
+        Usuario usuario = guardarUsuarioBase();
+        usuarioIdentidadRepository.saveAndFlush(UsuarioIdentidad.builder()
+                .usuario(usuario)
+                .proveedor(ProveedorAuth.GOOGLE)
+                .idExterno("google-sub-1")
+                .correo(usuario.getCorreo())
+                .correoVerificado(true)
+                .build());
+
+        assertTrue(usuarioIdentidadRepository
+                .findByProveedorAndIdExterno(ProveedorAuth.GOOGLE, "google-sub-1")
+                .isPresent());
+    }
+
+    @Test
+    void save_dosIdentidadesGoogleConMismoSub_lanzaExcepcion() {
+        Usuario primero = guardarUsuarioBase();
+        Usuario segundo = usuarioRepository.saveAndFlush(
+                construirUsuario("segundo@example.com", "87654321"));
+
+        usuarioIdentidadRepository.saveAndFlush(UsuarioIdentidad.builder()
+                .usuario(primero)
+                .proveedor(ProveedorAuth.GOOGLE)
+                .idExterno("google-sub-1")
+                .correo(primero.getCorreo())
+                .correoVerificado(true)
+                .build());
+
+        assertThrows(DataIntegrityViolationException.class,
+                () -> usuarioIdentidadRepository.saveAndFlush(UsuarioIdentidad.builder()
+                        .usuario(segundo)
+                        .proveedor(ProveedorAuth.GOOGLE)
+                        .idExterno("google-sub-1")
+                        .correo(segundo.getCorreo())
+                        .correoVerificado(true)
+                        .build()));
+    }
+
+    @Test
+    void save_dosIdentidadesMismoUsuarioYProveedor_lanzaExcepcion() {
+        Usuario usuario = guardarUsuarioBase();
+        usuarioIdentidadRepository.saveAndFlush(UsuarioIdentidad.builder()
+                .usuario(usuario)
+                .proveedor(ProveedorAuth.LOCAL)
+                .correo(usuario.getCorreo())
+                .correoVerificado(false)
+                .build());
+
+        assertThrows(DataIntegrityViolationException.class,
+                () -> usuarioIdentidadRepository.saveAndFlush(UsuarioIdentidad.builder()
+                        .usuario(usuario)
+                        .proveedor(ProveedorAuth.LOCAL)
+                        .correo(usuario.getCorreo())
+                        .correoVerificado(false)
+                        .build()));
     }
 }

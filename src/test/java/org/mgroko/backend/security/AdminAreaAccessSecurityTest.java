@@ -1,10 +1,15 @@
 package org.mgroko.backend.security;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.controlador.AdminUsuarioController;
 import org.mgroko.backend.admin.servicio.AdminUsuarioService;
+import org.mgroko.backend.auth.oauth.CookieOAuth2AuthorizationRequestRepository;
+import org.mgroko.backend.auth.oauth.GoogleOAuth2FailureHandler;
+import org.mgroko.backend.auth.oauth.GoogleOAuth2SuccessHandler;
 import org.mgroko.backend.home.controlador.HomeController;
 import org.mgroko.backend.home.servicio.HomeOportunidadesService;
 import org.mgroko.backend.perfiles.controlador.CaracteristicaTecnicaController;
@@ -29,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Verifica la separación de áreas: el administrador no puede entrar al
  * dashboard de usuario y el usuario común no puede entrar al panel admin.
  */
-@WebMvcTest(controllers = {
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = {
         HomeController.class,
         AdminUsuarioController.class,
         ProfesionController.class,
@@ -61,6 +66,18 @@ class AdminAreaAccessSecurityTest {
 
     @MockitoBean
     private UsuarioRepository usuarioRepository;
+
+    @MockitoBean
+    private CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
+
+    @MockitoBean
+    private GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
+
+    @MockitoBean
+    private GoogleOAuth2FailureHandler googleOAuth2FailureHandler;
+
+    @MockitoBean
+    private org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
 
     @Test
     void administrador_noPuedeAccederAlDashboardDeUsuario() throws Exception {

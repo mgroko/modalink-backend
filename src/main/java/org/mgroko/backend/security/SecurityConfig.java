@@ -2,10 +2,15 @@ package org.mgroko.backend.security;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.mgroko.backend.auth.oauth.CookieOAuth2AuthorizationRequestRepository;
+import org.mgroko.backend.auth.oauth.GoogleOAuth2FailureHandler;
+import org.mgroko.backend.auth.oauth.GoogleOAuth2SuccessHandler;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -35,10 +40,26 @@ public class SecurityConfig {
 
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepository;
+    private final CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
+    private final GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
+    private final GoogleOAuth2FailureHandler googleOAuth2FailureHandler;
+    private final String frontendUrl;
 
-    public SecurityConfig(JwtService jwtService, UsuarioRepository usuarioRepository) {
+    public SecurityConfig(
+            JwtService jwtService,
+            UsuarioRepository usuarioRepository,
+            CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
+            GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler,
+            GoogleOAuth2FailureHandler googleOAuth2FailureHandler,
+            @Value("${app.frontend.url:http://localhost:5173}") String frontendUrl) {
         this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
+        this.authorizationRequestRepository = authorizationRequestRepository;
+        this.googleOAuth2SuccessHandler = googleOAuth2SuccessHandler;
+        this.googleOAuth2FailureHandler = googleOAuth2FailureHandler;
+        this.frontendUrl = frontendUrl != null && frontendUrl.endsWith("/")
+                ? frontendUrl.substring(0, frontendUrl.length() - 1)
+                : frontendUrl;
     }
 
     /**
@@ -49,7 +70,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOrigins(List.of("http://localhost:5173"));
+        List<String> origenes = new ArrayList<>();
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            origenes.add(frontendUrl);
+        }
+        if (!origenes.contains("http://localhost:5173")) {
+            origenes.add("http://localhost:5173");
+        }
+        corsConfig.setAllowedOrigins(origenes);
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         corsConfig.setAllowedHeaders(Arrays.asList("*"));
         corsConfig.setAllowCredentials(true);
@@ -76,6 +104,10 @@ public class SecurityConfig {
                         "/auth/login",
                         "/auth/registro",
                         "/auth/reactivar-cuenta",
+                        "/auth/google",
+                        "/auth/google/**",
+                        "/oauth2/**",
+                        "/login/oauth2/**",
                         "/error",
                         "/uploads/**",
                         "/actuator/health",
@@ -138,9 +170,19 @@ public class SecurityConfig {
 
             .cors(Customizer.withDefaults())
 
+            .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(authorization -> authorization
+                        .authorizationRequestRepository(authorizationRequestRepository))
+                .successHandler(googleOAuth2SuccessHandler)
+                .failureHandler(googleOAuth2FailureHandler))
+
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                // El onboarding de Google viaja con un ticket firmado en cookie
+                // HttpOnly y SameSite=Lax; no hay sesión previa para emitir un
+                // XSRF-TOKEN antes del callback.
+                .ignoringRequestMatchers("/auth/google/**")
             )
             .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
 

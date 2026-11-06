@@ -175,22 +175,30 @@
 | **Actor** | Usuario, Google OAuth  |  |
 | **Objetivos asociados**  | OBJ-01 |  |
 | **Requisitos asociados**  | IRQ-01  |  |
-| **Descripción**  | El caso de uso comienza cuando el sistema requiere interactuar con el servicio externo de Google OAuth para validar credenciales y permitir el acceso seguro al sistema. |  |
+| **Descripción**  | El caso de uso comienza cuando el usuario decide registrarse o iniciar sesión con su cuenta de Google. El sistema valida la identidad con Google y, si es un usuario nuevo, completa el registro con los datos que Google no provee (DNI, fecha de nacimiento y género). |  |
 | **Precondición**  | \- |  |
 | **Secuencia normal**  | **Paso** | **Acción** |
 |  | 1 | El sistema redirige la petición de autenticación al servidor de Google OAuth. |
 |  | 2 | El sistema externo Google OAuth solicita permisos al usuario. |
 |  | 3 | El usuario autoriza el acceso a sus datos básicos. |
 |  | 4 | Google OAuth valida las credenciales y envía al sistema un token de autorización junto con los datos del usuario. |
-|  | 5 | El sistema recibe el token y los datos del usuario. |
-| **Postcondición** | Se validó la identidad del usuario a través de Google. Se obtuvo el correo electrónico, nombre y apellido del usuario. |  |
+|  | 5 | El sistema valida el token, obtiene el correo verificado y busca una identidad Google existente. |
+|  | 6 | Si la identidad existe, el sistema inicia sesión y emite el JWT. |
+|  | 7 | Si no existe pero hay un usuario local con el mismo correo verificado, el sistema vincula automáticamente la identidad Google e inicia sesión. |
+|  | 8 | Si no existe, el sistema emite un ticket de registro de vida corta y solicita DNI, fecha de nacimiento y género. |
+|  | 9 | El sistema crea la cuenta con `password_hash = NULL`, vincula la identidad Google y emite el JWT. |
+| **Postcondición** | Se validó la identidad del usuario a través de Google y se obtuvo una sesión válida. En usuarios nuevos, la cuenta queda creada con los datos obligatorios del dominio. |  |
+| **Flujo alternativo** | 5.1 | Si la cuenta está `PENDIENTE_BAJA` y el plazo no venció, el sistema la reactiva automáticamente y continúa con el inicio de sesión. |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 4 | Si el servicio de Google no responde o el token es inválido, el sistema informa el fallo técnico y el caso de uso finaliza. |
+|  | 4 | Si el servicio de Google no responde, el token es inválido o el correo no está verificado, el sistema informa el fallo técnico y el caso de uso finaliza. |
+|  | 5 | Si el usuario está deshabilitado o dado de baja, el sistema rechaza el acceso. |
+|  | 8 | Si el ticket de registro expiró, el sistema solicita reiniciar el flujo con Google. |
+|  | 9 | Si el DNI ya existe, el usuario es menor de 18 años o el género no es válido, el sistema informa el error y no crea la cuenta. |
 | **Rendimiento**  | **Paso** | **Cota de tiempo**  |
 |  | 4 | 3 segundos |
 | **Frecuencia**  | 70 veces/día |  |
 | **Estabilidad**  | media |  |
-| **Comentarios** | \- |  |
+| **Comentarios** | La tabla `usuario_identidad` permite que un mismo usuario tenga identidad LOCAL y GOOGLE sin duplicar la cuenta. |  |
 
 | UC–10 | Crear perfil |  |
 | ----- | ----- | ----- |

@@ -790,3 +790,74 @@ cronograma. Si el proyecto está `CONFIRMADO`, las actividades conservan sus
 fechas. El historial de actividades muestra a los profesionales con
 `estadoParticipacion = BAJA_VOLUNTARIA` cuando la actividad está `EN_CURSO`,
 `FINALIZADA` o `CANCELADA`; no los muestra en `PENDIENTE`.
+
+## UC-09 — Autenticar mediante Google OAuth
+
+**Implementación:** `GET /auth/google`, `GET /auth/google/pendiente` y
+`POST /auth/google/completar`, atendidos por `AuthController` y
+`GoogleAuthService`, con `usuario_identidad` como fuente de proveedores.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Usuario
+    participant Front as Frontend
+    participant API as AuthController
+    participant OAuth as Spring OAuth2 Client
+    participant Google as Google OAuth
+    participant Servicio as GoogleAuthService
+    participant IdentidadRepo as UsuarioIdentidadRepository
+    participant UsuarioRepo as UsuarioRepository
+    participant Auth as AuthService
+
+    Usuario->>Front: Clic "Continuar con Google"
+    Front->>API: GET /auth/google
+    API-->>Front: 302 /oauth2/authorization/google
+    Front->>OAuth: GET /oauth2/authorization/google
+    OAuth->>OAuth: Guardar state en cookie firmada
+    OAuth-->>Usuario: 302 accounts.google.com
+    Usuario->>Google: Autoriza acceso
+    Google-->>OAuth: GET /login/oauth2/code/google?code&state
+    OAuth->>Google: Canjear code por token
+    Google-->>OAuth: userinfo (sub, email, email_verified, name)
+    OAuth->>Servicio: autenticar(GoogleUserData)
+
+    alt email_verified = false
+        Servicio-->>OAuth: CuentaGoogleNoVerificada
+        OAuth-->>Front: 302 /login?googleError=google_auth_failed
+    else Identidad GOOGLE existente
+        Servicio->>IdentidadRepo: findByProveedorAndIdExterno(GOOGLE, sub)
+        IdentidadRepo-->>Servicio: UsuarioIdentidad
+        Servicio->>Auth: reactivarSiPendienteBaja(usuario)
+        Servicio->>Auth: construirLoginResultado(usuario)
+        Auth-->>Servicio: JWT
+        Servicio-->>OAuth: LoginResultado
+        OAuth-->>Front: 302 /auth/google/callback + Set-Cookie jwt
+    else Usuario local con el mismo correo
+        Servicio->>UsuarioRepo: findByCorreo(correo)
+        UsuarioRepo-->>Servicio: Usuario
+        Servicio->>IdentidadRepo: save(UsuarioIdentidad GOOGLE)
+        Servicio->>Auth: construirLoginResultado(usuario)
+        Servicio-->>OAuth: LoginResultado
+        OAuth-->>Front: 302 /auth/google/callback + Set-Cookie jwt
+    else Usuario nuevo
+        Servicio->>Servicio: crearTicketRegistro(datosGoogle)
+        Servicio-->>OAuth: RegistroPendiente(ticket)
+        OAuth-->>Front: 302 /auth/google/completar + Set-Cookie google_registro
+        Front->>API: GET /auth/google/pendiente
+        API-->>Front: nombre, apellido, correo
+        Usuario->>Front: Completa DNI, fecha y género
+        Front->>API: POST /auth/google/completar
+        API->>Servicio: completarRegistro(ticket, request)
+        Servicio->>Servicio: Validar DNI, edad y género
+        Servicio->>UsuarioRepo: save(Usuario con password_hash NULL)
+        Servicio->>IdentidadRepo: save(UsuarioIdentidad GOOGLE)
+        Servicio->>Auth: construirLoginResultado(usuario)
+        Auth-->>Servicio: JWT
+        API-->>Front: AuthResponse + Set-Cookie jwt
+    end
+```
+
+La cuenta canónica sigue siendo `usuario`; `usuario_identidad` solo resuelve
+con qué proveedor se autenticó. El onboarding es obligatorio antes de crear la
+cuenta para no relajar las restricciones de DNI, edad y género.

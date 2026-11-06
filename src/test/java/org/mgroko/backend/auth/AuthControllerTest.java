@@ -1,5 +1,7 @@
 package org.mgroko.backend.auth;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -9,11 +11,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.auth.controlador.AuthController;
 import org.mgroko.backend.auth.dto.AuthResponse;
+import org.mgroko.backend.auth.dto.CompletarRegistroGoogleRequest;
 import org.mgroko.backend.auth.dto.LoginRequest;
 import org.mgroko.backend.auth.dto.RegistroRequest;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
+import org.mgroko.backend.auth.oauth.GoogleUserData;
+import org.mgroko.backend.auth.oauth.GoogleAuthResult;
+import org.mgroko.backend.auth.servicio.AuthService.LoginResultado;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
+import org.mgroko.backend.auth.oauth.GoogleAuthService;
+import org.mgroko.backend.auth.oauth.RegistroPendienteService;
 import org.mgroko.backend.auth.servicio.AuthService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.mgroko.backend.security.JwtCookieFactory;
@@ -42,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@WebMvcTest(controllers = AuthController.class)
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = AuthController.class)
 @AutoConfigureMockMvc(addFilters = false) // probamos el controller, no la cadena de seguridad
 class AuthControllerTest {
 
@@ -60,6 +68,12 @@ class AuthControllerTest {
 
         @MockitoBean
         private JwtCookieFactory jwtCookieFactory;
+
+        @MockitoBean
+        private GoogleAuthService googleAuthService;
+
+        @MockitoBean
+        private RegistroPendienteService registroPendienteService;
 
         @AfterEach
         void limpiarContexto() {
@@ -358,6 +372,82 @@ class AuthControllerTest {
 
                 mockMvc.perform(get("/auth/me").principal(authentication))
                                 .andExpect(status().isUnauthorized());
+        }
+
+        // ---------------------------------------------------------------
+        // /auth/google
+        // ---------------------------------------------------------------
+
+        @Test
+        void iniciarGoogle_sinSesion_redirigeAlProveedor() throws Exception {
+                mockMvc.perform(get("/auth/google"))
+                                .andExpect(status().isFound())
+                                .andExpect(header().string("Location", "/oauth2/authorization/google"));
+        }
+
+        @Test
+        void iniciarGoogle_conSesionActiva_redirigeAlFrontendConError() throws Exception {
+                var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());
+
+                mockMvc.perform(get("/auth/google").principal(authentication))
+                                .andExpect(status().isFound())
+                                .andExpect(header().string("Location",
+                                                "http://localhost:5173/login?googleError=sesion_activa"));
+        }
+
+        @Test
+        void obtenerRegistroPendiente_conTicket_devuelveDatosParaPrellenar() throws Exception {
+                when(registroPendienteService.leerTicket("ticket-google"))
+                                .thenReturn(new GoogleUserData("sub-1", "ana@example.com", true, "Ana", "Gómez", null));
+
+                mockMvc.perform(get("/auth/google/pendiente")
+                                .cookie(new jakarta.servlet.http.Cookie("google_registro", "ticket-google")))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.nombre").value("Ana"))
+                                .andExpect(jsonPath("$.apellido").value("Gómez"))
+                                .andExpect(jsonPath("$.correo").value("ana@example.com"));
+        }
+
+        @Test
+        void completarRegistroGoogle_conTicketValido_devuelve200YCookieJwt() throws Exception {
+                UsuarioResponse usuario = usuarioResponse(10L, "ana@example.com");
+                LoginResultado resultado = new LoginResultado("token-google", new AuthResponse(usuario));
+
+                when(googleAuthService.completarRegistro(any(), any(CompletarRegistroGoogleRequest.class)))
+                                .thenReturn(resultado);
+                when(jwtCookieFactory.crear("token-google"))
+                                .thenReturn(ResponseCookie.from("jwt", "token-google").build());
+                when(jwtCookieFactory.crearRegistroPendienteExpirada())
+                                .thenReturn(ResponseCookie.from("google_registro", "").maxAge(0).build());
+
+                CompletarRegistroGoogleRequest request = new CompletarRegistroGoogleRequest(
+                                "Ana", "Gómez", "12345678", LocalDate.of(1990, 1, 1), "NO_DECIRLO", null);
+
+                mockMvc.perform(post("/auth/google/completar")
+                                .cookie(new jakarta.servlet.http.Cookie("google_registro", "ticket-google"))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string("Set-Cookie",
+                                                org.hamcrest.Matchers.containsString("jwt=token-google")))
+                                .andExpect(jsonPath("$.usuario.correo").value("ana@example.com"));
+        }
+
+        @Test
+        void completarRegistroGoogle_sinTicket_devuelve401() throws Exception {
+                when(googleAuthService.completarRegistro(org.mockito.ArgumentMatchers.isNull(),
+                                any(CompletarRegistroGoogleRequest.class)))
+                                .thenThrow(new org.mgroko.backend.auth.exception.RegistroPendienteInvalidoException(
+                                                "El proceso de registro con Google expiró."));
+
+                CompletarRegistroGoogleRequest request = new CompletarRegistroGoogleRequest(
+                                "Ana", "Gómez", "12345678", LocalDate.of(1990, 1, 1), "NO_DECIRLO", null);
+
+                mockMvc.perform(post("/auth/google/completar")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(jsonPath("$.codigo").value("REGISTRO_GOOGLE_INVALIDO"));
         }
 
 }

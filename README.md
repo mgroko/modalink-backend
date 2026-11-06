@@ -15,6 +15,7 @@ Proyecto final de la carrera Analista en Sistemas de Computación, desarrollado 
 | Framework          | Spring Boot 4.1.0 (Web, Security, Data JPA, Validation, Actuator) |
 | Base de datos      | PostgreSQL                                   |                                      |
 | Autenticación      | JWT (JJWT 0.13.0) en cookies HTTP-only + CSRF vía `CookieCsrfTokenRepository` |
+| Autenticación federada | Google OAuth2 (Authorization Code) + `usuario_identidad` |
 | Hashing de contraseñas | BCrypt                                   |
 | Testing            | JUnit 5, Spring Security Test, Testcontainers (PostgreSQL), JaCoCo |
 | Build              | Maven                                        |
@@ -27,8 +28,9 @@ Frontend relacionado: [modalink-frontend](https://github.com/mgroko/modalink-fro
 src/main/java/org/mgroko/backend/
 ├── Application.java
 ├── auth/                # Controlador, servicio y mapper de autenticación
-│   ├── dto/             # LoginRequest, RegistroRequest, AuthResponse, UsuarioResponse
-│   └── exception/       # Excepciones de dominio (correo/DNI duplicado, edad inválida, etc.)
+│   ├── dto/             # LoginRequest, RegistroRequest, AuthResponse, UsuarioResponse, onboarding Google
+│   ├── exception/       # Excepciones de dominio (correo/DNI duplicado, edad inválida, etc.)
+│   └── oauth/           # Flujo Google OAuth2, ticket de registro y handlers
 ├── common/exception/    # GlobalExceptionHandler y ErrorResponse
 ├── controlador/         # Controladores generales (HomeController)
 ├── modelo/               # Entidades JPA del dominio (Usuario, Perfil, Proyecto, Actividad, etc.)
@@ -70,10 +72,16 @@ Variables de entorno soportadas (con valores por defecto para desarrollo):
 |-----------------------|-------------------------------------------|-----------------------------------------------------|
 | `JWT_SECRET`          | Clave de firma de los tokens JWT           | `cambiar-este-valor-en-produccion-por-uno-largo-y-random` |
 | `JWT_EXPIRATION_MS`   | Tiempo de expiración del JWT en ms          | `3600000` (1 hora)                                   |
+| `GOOGLE_CLIENT_ID`    | Client ID de Google Cloud                   | `dev-google-client-id` (placeholder)                |
+| `GOOGLE_CLIENT_SECRET`| Client Secret de Google Cloud               | `dev-google-client-secret` (placeholder)            |
+| `GOOGLE_REDIRECT_URI` | Redirect URI registrado en Google           | `http://localhost:8080/login/oauth2/code/google`    |
+| `FRONTEND_URL`        | URL del frontend para redirigir tras OAuth  | `http://localhost:5173`                             |
+| `COOKIE_SECURE`       | Marca la cookie como `Secure`               | `false`                                             |
+| `COOKIE_SAME_SITE`    | `SameSite` de las cookies                   | `Lax`                                               |
 
-⚠️ En producción, `JWT_SECRET` debe reemplazarse por un valor largo y aleatorio, y la cookie `jwt` debe marcarse como `secure(true)`.
+⚠️ En producción, `JWT_SECRET` debe reemplazarse por un valor largo y aleatorio, y las cookies deben usar `COOKIE_SECURE=true` (HTTPS). Si el frontend y el backend quedan en sitios distintos, usar `COOKIE_SAME_SITE=None`.
 
-CORS está habilitado solo para `http://localhost:5173` (frontend en desarrollo con Vite).
+CORS está habilitado para `FRONTEND_URL` (por defecto `http://localhost:5173`, frontend en desarrollo con Vite).
 
 ## Cómo levantar el proyecto
 
@@ -95,7 +103,61 @@ Todos bajo el prefijo `/auth` (público, no requiere autenticación previa salvo
 |--------|-------------------|---------------------------------------------------------------------|
 | POST   | `/auth/registro`  | Registra un nuevo usuario. Valida correo/DNI duplicados, edad mínima (18) y rol global. Devuelve el JWT en una cookie HTTP-only. |
 | POST   | `/auth/login`     | Autentica con correo y contraseña. Devuelve el JWT en cookie HTTP-only. |
+| GET    | `/auth/google`    | Inicia el flujo OAuth2 con Google (redirige al proveedor). |
+| GET    | `/auth/google/pendiente` | Devuelve nombre, apellido y correo de Google para prellenar el onboarding (ticket en cookie HttpOnly). |
+| POST   | `/auth/google/completar` | Completa DNI, fecha de nacimiento y género; crea la cuenta si no existe y devuelve el JWT. |
 | GET    | `/auth/me`        | Devuelve los datos del usuario autenticado (según el JWT de la cookie). |
+
+### Autenticación con Google (UC-09)
+
+1. El frontend navega a `GET /auth/google`.
+2. El backend redirige a Google con un `state` firmado y valida el código de autorización.
+3. Al volver, el backend valida la identidad y busca al usuario:
+   - Si ya tiene una identidad `GOOGLE`, inicia sesión.
+   - Si existe un usuario local con el mismo correo verificado, vincula la identidad automáticamente.
+   - Si no existe, emite un ticket de registro de 10 minutos y redirige al onboarding.
+4. El onboarding pide DNI, fecha de nacimiento y género (Google no los provee) y crea la cuenta con `password_hash = NULL`.
+5. Si la cuenta estaba `PENDIENTE_BAJA`, se reactiva automáticamente dentro del plazo.
+
+La tabla `usuario_identidad` es la fuente de verdad de proveedores (`LOCAL`/`GOOGLE`); `usuario` conserva el correo canónico y el `password_hash` local.
+
+#### Configurar Google Cloud (desarrollo local)
+
+1. Crear un proyecto en Google Cloud Console.
+2. Configurar la pantalla de consentimiento OAuth en modo **Testing** y agregar los usuarios de prueba.
+3. Crear credenciales **OAuth 2.0 Client ID** de tipo **Web application**.
+4. Agregar como *Authorized redirect URI*: `http://localhost:8080/login/oauth2/code/google`.
+5. Exportar `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` antes de levantar el backend.
+
+Propiedades equivalentes en `application.properties` (el archivo local está
+ignorado por git):
+
+```properties
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET}
+spring.security.oauth2.client.registration.google.scope=openid,email,profile
+spring.security.oauth2.client.registration.google.redirect-uri=${GOOGLE_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
+spring.security.oauth2.client.registration.google.authorization-grant-type=authorization_code
+spring.security.oauth2.client.provider.google.authorization-uri=https://accounts.google.com/o/oauth2/v2/auth
+spring.security.oauth2.client.provider.google.token-uri=https://oauth2.googleapis.com/token
+spring.security.oauth2.client.provider.google.user-info-uri=https://openidconnect.googleapis.com/v1/userinfo
+spring.security.oauth2.client.provider.google.user-name-attribute=sub
+
+app.frontend.url=${FRONTEND_URL:http://localhost:5173}
+app.cookie.secure=${COOKIE_SECURE:false}
+app.cookie.same-site=${COOKIE_SAME_SITE:Lax}
+```
+
+La aplicación arranca sin credenciales reales (usa placeholders), pero el flujo con Google recién funciona cuando se configuran.
+
+#### Migración de base de datos
+
+Antes de levantar esta versión sobre una base existente, ejecutar
+`docs/3_diseño/migraciones/2026-11-06_uc09_google_oauth.sql` con la aplicación
+detenida. La migración crea `usuario_identidad`, hace backfill de todos los
+usuarios locales y recién después elimina `usuario.proveedor_auth` e
+`usuario.id_externo`. La carpeta `migraciones/` está ignorada por git; el
+archivo se conserva localmente.
 
 ### Gestión de perfiles (requiere autenticación)
 
@@ -144,8 +206,8 @@ Las validaciones de negocio (duplicados, edad mínima, existencia de rol) están
 
 ## Roadmap
 
-- [ ] Recuperación de contraseña (ya en desarrollo en el frontend)
-- [ ] Autenticación con Google OAuth
+- [x] Autenticación con Google OAuth
+- [ ] Recuperación de contraseña (no hay UC definido; se eliminaron los restos del frontend)
 - [ ] Gestión de perfiles y proyectos
 - [ ] Postulaciones e invitaciones a proyectos/actividades
 - [ ] Agenda y bloqueo de disponibilidad

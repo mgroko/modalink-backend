@@ -140,6 +140,48 @@ Cuando las credenciales son válidas pero la cuenta está en estado `PENDIENTE_B
 
 > `POST /usuario/reactivar-cuenta` (§2.3, requiere auth) **sigue existiendo** para reactivar desde una sesión ya iniciada; `/auth/reactivar-cuenta` es el camino a usar cuando el login fue bloqueado (no hay sesión).
 
+### 2.6 Autenticación con Google (`/auth/google`)
+
+| Método | Endpoint | Descripción | Autorización |
+|--------|----------|-------------|--------------|
+| GET | `/auth/google` | Redirige al flujo OAuth2 de Google | Público |
+| GET | `/auth/google/pendiente` | Devuelve `nombre`, `apellido` y `correo` para prellenar el onboarding | Público (cookie `google_registro`) |
+| POST | `/auth/google/completar` | Completa el registro con DNI, fecha de nacimiento y género | Público (cookie `google_registro`) |
+
+**Flujo frontend:**
+
+1. Botón “Continuar con Google” → `window.location.href = API_BASE_URL + "/auth/google"`.
+2. Google vuelve al backend, que redirige a:
+   - `/auth/google/callback?status=success` si la sesión ya está lista.
+   - `/auth/google/completar` si el usuario es nuevo.
+   - `/login?googleError=...` si hubo un fallo.
+3. `GoogleCallbackView` llama `GET /auth/me`, hidrata `authState` y redirige según rol/perfil.
+4. `GoogleCompletarView` llama `GET /auth/google/pendiente`, muestra el formulario y hace `POST /auth/google/completar`.
+5. El backend responde `AuthResponse` + `Set-Cookie: jwt=...` y limpia la cookie `google_registro`.
+
+**Request de `POST /auth/google/completar`:**
+
+```json
+{
+  "nombre": "Ana",
+  "apellido": "Gómez",
+  "dni": "12345678",
+  "fechaNacimiento": "1990-05-15",
+  "genero": "NO_DECIRLO",
+  "localidadId": null
+}
+```
+
+**Errores esperados:**
+
+| Código | Causa |
+|--------|-------|
+| `401` + `REGISTRO_GOOGLE_INVALIDO` | Ticket ausente, vencido o inválido |
+| `400` | Validación de DNI, edad, género o campos |
+| `409` | DNI ya registrado (mensaje de validación) |
+| `403` + `GOOGLE_EMAIL_NO_VERIFICADO` | Google no confirmó el correo |
+| `409` + `GOOGLE_IDENTIDAD_CONFLICTO` | La cuenta Google ya está vinculada a otro usuario |
+
 ## 3. Modelos de Datos para Frontend
 
 ### 3.1 DatosPersonalesRequest

@@ -5,11 +5,14 @@ import java.nio.file.Files;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import java.io.IOException;
 import java.nio.file.Path;
 
-@SpringBootApplication
+// La app define su propia SecurityFilterChain en SecurityConfig; la cadena
+// OAuth2 auto-configurada no es necesaria y rompe los tests de slice.
+@SpringBootApplication(exclude = OAuth2ClientWebSecurityAutoConfiguration.class)
 @EnableScheduling
 public class Application {
 

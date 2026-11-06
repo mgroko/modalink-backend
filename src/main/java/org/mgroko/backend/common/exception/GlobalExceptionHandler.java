@@ -23,10 +23,13 @@ import org.mgroko.backend.admin.exception.ValorCodigoDuplicadoException;
 import org.mgroko.backend.admin.exception.ValorEnUsoException;
 import org.mgroko.backend.auth.exception.CorreoDuplicadoException;
 import org.mgroko.backend.auth.exception.CredencialesInvalidasException;
+import org.mgroko.backend.auth.exception.CuentaGoogleNoVerificadaException;
 import org.mgroko.backend.auth.exception.DniDuplicadoException;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
+import org.mgroko.backend.auth.exception.IdentidadGoogleConflictoException;
 import org.mgroko.backend.auth.exception.RegistroConSesionActivaException;
+import org.mgroko.backend.auth.exception.RegistroPendienteInvalidoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
@@ -110,6 +113,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<Map<String, Object>> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(RegistroPendienteInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRegistroPendienteInvalido(
+            RegistroPendienteInvalidoException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "REGISTRO_GOOGLE_INVALIDO", HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(CuentaGoogleNoVerificadaException.class)
+    public ResponseEntity<Map<String, Object>> handleCuentaGoogleNoVerificada(
+            CuentaGoogleNoVerificadaException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "GOOGLE_EMAIL_NO_VERIFICADO", HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(IdentidadGoogleConflictoException.class)
+    public ResponseEntity<Map<String, Object>> handleIdentidadGoogleConflicto(
+            IdentidadGoogleConflictoException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), "GOOGLE_IDENTIDAD_CONFLICTO", HttpStatus.CONFLICT);
     }
 
     /**

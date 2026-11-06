@@ -11,6 +11,7 @@ import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.UsuarioIdentidad;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.modelo.enums.ProveedorAuth;
 import org.mgroko.backend.repositorio.CiudadRepository;
@@ -19,6 +20,7 @@ import org.mgroko.backend.repositorio.PaisRepository;
 import org.mgroko.backend.repositorio.ProvinciaRepository;
 import org.mgroko.backend.repositorio.RolGlobalRepository;
 import org.mgroko.backend.repositorio.UbicacionRepository;
+import org.mgroko.backend.repositorio.UsuarioIdentidadRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -32,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminSeeder implements CommandLineRunner {
 
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioIdentidadRepository usuarioIdentidadRepository;
     private final RolGlobalRepository rolGlobalRepository;
     private final GeneroRepository generoRepository;
     private final UbicacionRepository ubicacionRepository;
@@ -74,14 +77,19 @@ public class AdminSeeder implements CommandLineRunner {
                 .fechaNacimiento(LocalDate.now().minusYears(22)) 
                 .correo(correo)
                 .passwordHash(passwordEncoder.encode(adminPassword))
-                .proveedorAuth(ProveedorAuth.LOCAL)
                 .estado(EstadoUsuario.Activo)
                 .rolGlobal(rolAdministrador)
                 .genero(genero)
                 .ubicacion(ubicacionDefault)
                 .build();
 
-        usuarioRepository.save(admin);
+        Usuario adminGuardado = usuarioRepository.save(admin);
+        usuarioIdentidadRepository.save(UsuarioIdentidad.builder()
+                .usuario(adminGuardado)
+                .proveedor(ProveedorAuth.LOCAL)
+                .correo(correo)
+                .correoVerificado(false)
+                .build());
     }
 
     private Ubicacion obtenerOCrearUbicacionDefault() {

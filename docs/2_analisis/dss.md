@@ -111,7 +111,15 @@
        - El actor Google OAuth envía el mensaje `notificarFalloAutenticación()` al sistema.
        - El sistema retorna `mensajeFallo()` al actor Usuario.
      - `[Credenciales válidas]`:
-       - El actor Google OAuth envía el mensaje `datosAutenticación()` al sistema.
+       - El actor Google OAuth envía el mensaje `datosAutenticación(sub, correo, emailVerificado, nombre, apellido)` al sistema.
+  5. El sistema ejecuta `resolverIdentidad(sub, correo)` sobre `usuario_identidad`.
+  6. **Bloque Alternativo (`alt`)**:
+     - `[Identidad Google existente]`: el sistema ejecuta `iniciarSesion(usuario)` y retorna el JWT.
+     - `[Usuario local con el mismo correo verificado]`: el sistema ejecuta `vincularIdentidad(usuario, sub)` y retorna el JWT.
+     - `[Cuenta PENDIENTE_BAJA dentro del plazo]`: el sistema ejecuta `reactivarCuenta(usuario)` y retorna el JWT.
+     - `[Usuario nuevo]`: el sistema ejecuta `crearTicketRegistro(datosGoogle)` y redirige al onboarding.
+  7. El actor Usuario envía `completarRegistro(nombre, apellido, dni, fechaNacimiento, genero)`.
+  8. El sistema valida DNI único, mayoría de edad y género; crea el usuario y la identidad Google; retorna el JWT.
 
 ---
 

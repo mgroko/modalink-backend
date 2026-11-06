@@ -1,5 +1,7 @@
 package org.mgroko.backend.admin.controlador;
 
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -18,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = AdminUsuarioPerfilController.class)
+@WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = AdminUsuarioPerfilController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AdminUsuarioPerfilControllerTest {
 
