@@ -121,9 +121,12 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                     .findConDetalleByReemplazo(reemplazo.getIdReemplazo());
             assertThat(candidatos)
                     .as("candidatos de %s", reemplazo.getTipo())
-                    .isNotEmpty();
-            assertThat(candidatos).allMatch(c -> c.getPerfil().getIdPerfil()
-                    .equals(escenario.idPerfilCandidato()));
+                    .hasSize(1);
+            assertThat(candidatos).allMatch(c -> c.getPerfil().getProfesion()
+                    .getIdProfesion().equals(escenario.idProfesion()));
+            assertThat(candidatos)
+                    .extracting(c -> c.getPerfil().getIdPerfil())
+                    .containsExactly(escenario.idPerfilCandidato());
         }
     }
 
@@ -315,7 +318,13 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
 
         RolGlobal rolGlobal = rolGlobalRepository.findByNombre("Usuario").orElseThrow();
         Genero genero = generoRepository.findByCodigo("mujer").orElseThrow();
-        Profesion profesion = em.find(Profesion.class, 2L);
+        Profesion profesion = Profesion.builder()
+                .codigo("TEST_REEMPLAZO_" + sufijo)
+                .nombre("Profesión reemplazo " + sufijo)
+                .descripcion("Profesión aislada para test de reemplazos")
+                .build();
+        em.persist(profesion);
+        em.flush();
 
         Usuario usuarioDirector = crearUsuario(
                 baseCorreo + "director@example.com", baseDni + "1", rolGlobal, genero);
@@ -410,7 +419,8 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                 perfilCandidato.getIdPerfil(),
                 miembroBaja.getIdMiembro(),
                 perfilBaja.getIdPerfil(),
-                actividad.getIdActividad());
+                actividad.getIdActividad(),
+                profesion.getIdProfesion());
     }
 
     private Usuario crearUsuario(
@@ -499,6 +509,7 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
             Long idPerfilCandidato,
             Long idMiembroBaja,
             Long idPerfilBaja,
-            Long idActividad) {
+            Long idActividad,
+            Long idProfesion) {
     }
 }
