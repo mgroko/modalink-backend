@@ -165,6 +165,12 @@ public class PlanificadorRecursosService {
             ids.add(actividad.getIdActividad());
         }
 
+        // Las fechas persistidas de estas mismas actividades son solo una
+        // proyección previa del cronograma. El planificador las recoloca y las
+        // modela en memoria, así que no deben contarse otra vez como bloqueos
+        // externos del calendario.
+        Set<Long> idsActividadesPropias = actividadesPorId.keySet();
+
         Map<Long, Long> iniciosFijos = construirIniciosFijos(
                 actividades,
                 fechaInicio,
@@ -319,7 +325,8 @@ public class PlanificadorRecursosService {
                             actividad,
                             inicioMinimo,
                             inicioMaximo,
-                            bloqueosExtra);
+                            bloqueosExtra,
+                            idsActividadesPropias);
             disponibilidad.put(idActividad, resultado);
 
             if (!resultado.disponible() || resultado.inicioSeleccionado() == null) {

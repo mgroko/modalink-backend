@@ -425,6 +425,40 @@ class CalendarioDisponibilidadTest {
         assertThat(resultado.inicioSeleccionado()).isEqualTo(INICIO.plusMinutes(150));
     }
 
+    @Test
+    void verificarDisponibilidadEnRango_excluyeActividadesIndicadas() {
+        Planificacion planificacion = planificacion(INICIO);
+        Actividad actividad = actividad(1L, "A", 60, planificacion);
+        Actividad propia = actividad(2L, "Propia", 60, planificacion);
+        propia.setFechaHoraInicio(INICIO);
+
+        when(jornadaAgendaRepository.findByAgenda_IdAgendaOrderByDiaSemana(10L))
+                .thenReturn(List.of(jornadaCorrida(1, LocalTime.of(9, 0), LocalTime.of(18, 0))));
+        when(actividadRepository.findActividadesDeUsuario(eq(1L), anyCollection()))
+                .thenReturn(List.of(propia));
+
+        ResultadoDisponibilidad bloqueada =
+                calendarioService.verificarDisponibilidadMiembrosEnRango(
+                        List.of(1L),
+                        actividad,
+                        INICIO,
+                        INICIO.plusHours(2),
+                        Map.of());
+
+        ResultadoDisponibilidad conExclusion =
+                calendarioService.verificarDisponibilidadMiembrosEnRango(
+                        List.of(1L),
+                        actividad,
+                        INICIO,
+                        INICIO.plusHours(2),
+                        Map.of(),
+                        Set.of(2L));
+
+        assertThat(bloqueada.disponible()).isFalse();
+        assertThat(conExclusion.disponible()).isTrue();
+        assertThat(conExclusion.inicioSeleccionado()).isEqualTo(INICIO.plusMinutes(15));
+    }
+
     private Agenda agenda() {
         return Agenda.builder()
                 .idAgenda(10L)

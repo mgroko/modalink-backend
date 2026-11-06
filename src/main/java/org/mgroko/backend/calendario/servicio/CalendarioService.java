@@ -259,7 +259,29 @@ public class CalendarioService {
                 rango.inicio(),
                 rango.fin(),
                 rango.tentativa(),
-                Map.of());
+                Map.of(),
+                Set.of());
+    }
+
+    /**
+     * Variante de {@link #verificarDisponibilidadMiembrosEnRango(Collection,
+     * Actividad, LocalDateTime, LocalDateTime, Map, Set)} sin exclusiones.
+     */
+    @Transactional(readOnly = true)
+    public ResultadoDisponibilidad verificarDisponibilidadMiembrosEnRango(
+            Collection<Long> idsUsuarios,
+            Actividad actividad,
+            LocalDateTime inicio,
+            LocalDateTime fin,
+            Map<Long, List<Intervalo>> bloqueosExtra) {
+
+        return verificarDisponibilidadMiembrosEnRango(
+                idsUsuarios,
+                actividad,
+                inicio,
+                fin,
+                bloqueosExtra,
+                Set.of());
     }
 
     /**
@@ -271,12 +293,17 @@ public class CalendarioService {
      * <p>No recalcula el CPM ni lee la fecha del proyecto: el rango y los
      * bloqueos extra son responsabilidad del llamador.</p>
      *
-     * @param idsUsuarios    usuarios que deben compartir el hueco
-     * @param actividad      actividad a colocar
-     * @param inicio         inicio mínimo absoluto del rango
-     * @param fin            fin máximo absoluto del rango
-     * @param bloqueosExtra  intervalos ya reservados por la planificación en
-     *                       curso, indexados por usuario
+     * @param idsUsuarios            usuarios que deben compartir el hueco
+     * @param actividad              actividad a colocar
+     * @param inicio                 inicio mínimo absoluto del rango
+     * @param fin                    fin máximo absoluto del rango
+     * @param bloqueosExtra          intervalos ya reservados por la planificación
+     *                               en curso, indexados por usuario
+     * @param idsActividadesExcluidas actividades que no deben contarse como
+     *                               bloqueo. El planificador pasa las de la
+     *                               misma planificación que está recolocando:
+     *                               sus fechas viejas son solo una proyección y
+     *                               ya se modelan en memoria.
      * @return disponibilidad y hueco seleccionado
      */
     @Transactional(readOnly = true)
@@ -285,7 +312,8 @@ public class CalendarioService {
             Actividad actividad,
             LocalDateTime inicio,
             LocalDateTime fin,
-            Map<Long, List<Intervalo>> bloqueosExtra) {
+            Map<Long, List<Intervalo>> bloqueosExtra,
+            Set<Long> idsActividadesExcluidas) {
 
         if (idsUsuarios == null || idsUsuarios.isEmpty()) {
             return new ResultadoDisponibilidad(
@@ -306,7 +334,8 @@ public class CalendarioService {
                 inicio,
                 fin,
                 false,
-                bloqueosExtra == null ? Map.of() : bloqueosExtra);
+                bloqueosExtra == null ? Map.of() : bloqueosExtra,
+                idsActividadesExcluidas == null ? Set.of() : idsActividadesExcluidas);
     }
 
     /**
@@ -365,7 +394,8 @@ public class CalendarioService {
             LocalDateTime desde,
             LocalDateTime hasta,
             boolean provisional,
-            Map<Long, List<Intervalo>> bloqueosExtra) {
+            Map<Long, List<Intervalo>> bloqueosExtra,
+            Set<Long> idsActividadesExcluidas) {
 
         List<DetalleMiembroDisponibilidad> detalles = new ArrayList<>();
         List<List<Intervalo>> huecosPorMiembro = new ArrayList<>();
@@ -377,7 +407,7 @@ public class CalendarioService {
             margenActividad = Math.max(margenActividad, margen);
             List<Intervalo> ventanas = ventanasDe(agenda, desde, hasta);
             List<Intervalo> bloqueos = new ArrayList<>(
-                    bloqueosDe(idUsuario, agenda, desde, hasta));
+                    bloqueosDe(idUsuario, agenda, desde, hasta, idsActividadesExcluidas));
             int margenIzquierdo = MargenActividad.izquierdo(margen);
             int margenDerecho = MargenActividad.derecho(margen);
             for (Intervalo extra : bloqueosExtra.getOrDefault(idUsuario, List.of())) {

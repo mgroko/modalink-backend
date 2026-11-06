@@ -6,7 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -74,7 +76,7 @@ class PlanificadorRecursosServiceTest {
                 .thenReturn(List.of(asignacion));
         LocalDateTime inicioHueco = LocalDateTime.of(2026, 11, 1, 10, 0);
         when(calendarioService.verificarDisponibilidadMiembrosEnRango(
-                anyCollection(), eq(actividad), any(), any(), anyMap()))
+                anyCollection(), eq(actividad), any(), any(), anyMap(), anySet()))
                 .thenReturn(disponible(inicioHueco, 60));
 
         PlanificadorRecursosService.Resultado resultado =
@@ -82,6 +84,32 @@ class PlanificadorRecursosServiceTest {
 
         assertThat(resultado.inicios().get(1L)).isEqualTo(inicioHueco);
         assertThat(resultado.calculo().viable()).isTrue();
+    }
+
+    @Test
+    void planificar_excluyeLasActividadesPropiasDelCalculoDeBloqueos() {
+        Actividad primera = actividad(1L, "Aullar", 60, EstadoActividad.PENDIENTE);
+        Actividad segunda = actividad(2L, "Escarbar", 60, EstadoActividad.PENDIENTE);
+        segunda.setPredecesoras(Set.of(primera));
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10));
+
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(
+                        asignacion(10L, 20L, 30L, primera),
+                        asignacion(11L, 20L, 30L, segunda)));
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(primera), any(), any(), anyMap(), eq(Set.of(1L, 2L))))
+                .thenReturn(disponible(INICIO, 60));
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(segunda), any(), any(), anyMap(), eq(Set.of(1L, 2L))))
+                .thenReturn(disponible(INICIO.plusHours(2), 60));
+
+        service.planificar(planificacion, List.of(primera, segunda), INICIO, false);
+
+        verify(calendarioService).verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(primera), any(), any(), anyMap(), eq(Set.of(1L, 2L)));
+        verify(calendarioService).verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(segunda), any(), any(), anyMap(), eq(Set.of(1L, 2L)));
     }
 
     @Test
@@ -123,7 +151,7 @@ class PlanificadorRecursosServiceTest {
         when(asignacionRepository.findActivasByActividadIds(anyCollection()))
                 .thenReturn(List.of(asignacion));
         when(calendarioService.verificarDisponibilidadMiembrosEnRango(
-                anyCollection(), eq(actividad), any(), any(), anyMap()))
+                anyCollection(), eq(actividad), any(), any(), anyMap(), anySet()))
                 .thenReturn(new ResultadoDisponibilidad(
                         false, false, INICIO, INICIO.plusHours(8),
                         null, null, "SIN_HUECO", List.of()));
@@ -240,7 +268,7 @@ class PlanificadorRecursosServiceTest {
                 .thenReturn(List.of(asignacion(10L, 20L, 30L, libre)));
         LocalDateTime inicioHueco = INICIO.plusHours(1);
         when(calendarioService.verificarDisponibilidadMiembrosEnRango(
-                anyCollection(), eq(libre), any(), any(), anyMap()))
+                anyCollection(), eq(libre), any(), any(), anyMap(), anySet()))
                 .thenReturn(disponible(inicioHueco, 60));
 
         PlanificadorRecursosService.Resultado resultado =
@@ -279,7 +307,7 @@ class PlanificadorRecursosServiceTest {
         when(asignacionRepository.findActivasByActividadIds(anyCollection()))
                 .thenReturn(List.of(asignacion(10L, 20L, 30L, actividad)));
         when(calendarioService.verificarDisponibilidadMiembrosEnRango(
-                anyCollection(), eq(actividad), any(), any(), anyMap()))
+                anyCollection(), eq(actividad), any(), any(), anyMap(), anySet()))
                 .thenAnswer(inv -> disponible(inv.getArgument(2), 30));
 
         PlanificadorRecursosService.Resultado resultado = servicioTarde.planificar(
@@ -302,7 +330,7 @@ class PlanificadorRecursosServiceTest {
                         asignacion(10L, 20L, 30L, fija),
                         asignacion(11L, 20L, 30L, libre)));
         when(calendarioService.verificarDisponibilidadMiembrosEnRango(
-                anyCollection(), eq(libre), any(), any(), anyMap()))
+                anyCollection(), eq(libre), any(), any(), anyMap(), anySet()))
                 .thenAnswer(inv -> disponible(inv.getArgument(2), 30));
 
         PlanificadorRecursosService.Resultado resultado = servicioTarde.planificar(
@@ -321,7 +349,7 @@ class PlanificadorRecursosServiceTest {
         when(asignacionRepository.findActivasByActividadIds(anyCollection()))
                 .thenReturn(List.of(asignacion(10L, 20L, 30L, actividad)));
         when(calendarioService.verificarDisponibilidadMiembrosEnRango(
-                anyCollection(), eq(actividad), any(), any(), anyMap()))
+                anyCollection(), eq(actividad), any(), any(), anyMap(), anySet()))
                 .thenReturn(disponible(LocalDateTime.of(2026, 11, 1, 11, 30), 30));
 
         assertThatThrownBy(() -> servicioTarde.planificar(
