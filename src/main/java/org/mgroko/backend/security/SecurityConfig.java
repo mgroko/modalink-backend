@@ -104,6 +104,7 @@ public class SecurityConfig {
                         "/proyectos/**",
                         "/postulaciones/**",
                         "/invitaciones/**",
+                        "/reemplazos/**",
                         "/calendario/**",
                         "/usuario/**",
                         "/habilidades/**")

@@ -36,7 +36,15 @@ public final class NotificacionTitulos {
             Map.entry("HABILIDAD_MODIFICADA", "Habilidad modificada"),
             Map.entry("HABILIDAD_ELIMINADA", "Habilidad eliminada"),
             Map.entry("INTEGRANTE_ELIMINADO", "Integrante eliminado"),
-            Map.entry("INTEGRANTE_BAJA_VOLUNTARIA", "Baja voluntaria de integrante"));
+            Map.entry("INTEGRANTE_BAJA_VOLUNTARIA", "Baja voluntaria de integrante"),
+            Map.entry("REEMPLAZO_CANDIDATOS_DISPONIBLES", "Candidatos de reemplazo"),
+            Map.entry("REEMPLAZO_SIN_CANDIDATOS", "Reemplazo sin candidatos"),
+            Map.entry("REEMPLAZO_INVITACION_RECIBIDA", "Invitación de reemplazo"),
+            Map.entry("REEMPLAZO_CANDIDATO_RECHAZO", "Candidato rechazó la invitación"),
+            Map.entry("REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION", "Incorporación pendiente de aprobación"),
+            Map.entry("REEMPLAZO_INCORPORACION_APROBADA", "Incorporación aprobada"),
+            Map.entry("REEMPLAZO_INCORPORACION_RECHAZADA", "Incorporación rechazada"),
+            Map.entry("REEMPLAZO_CANCELADO", "Reemplazo cancelado"));
 
     private NotificacionTitulos() {
     }

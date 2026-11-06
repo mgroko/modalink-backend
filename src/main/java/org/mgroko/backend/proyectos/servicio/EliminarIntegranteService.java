@@ -26,9 +26,13 @@ import org.mgroko.backend.proyectos.exception.MiembroProyectoNoEncontradoExcepti
 import org.mgroko.backend.proyectos.exception.MotivoEliminacionIntegranteObligatorioException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException;
+import org.mgroko.backend.reemplazos.enums.OrigenReemplazo;
+import org.mgroko.backend.reemplazos.evento.ReemplazoNecesarioEvent;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PlanificacionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +60,8 @@ public class EliminarIntegranteService {
     private final RequerimientoSnapshotService requerimientoSnapshotService;
     private final Clock reloj;
 
+    private ApplicationEventPublisher eventPublisher;
+
     public EliminarIntegranteService(
             PerfilRepository perfilRepository,
             PlanificacionRepository planificacionRepository,
@@ -71,6 +77,15 @@ public class EliminarIntegranteService {
         this.notificacionService = notificacionService;
         this.requerimientoSnapshotService = requerimientoSnapshotService;
         this.reloj = reloj;
+    }
+
+    /**
+     * Publicador opcional para no cambiar el constructor usado por los tests
+     * unitarios existentes. En producción Spring inyecta el publisher real.
+     */
+    @Autowired(required = false)
+    public void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -154,6 +169,25 @@ public class EliminarIntegranteService {
         miembroProyectoRepository.saveAndFlush(miembro);
 
         notificarIntegranteEliminado(proyecto, miembro.getPerfil(), motivo);
+        publicarReemplazo(proyecto, miembro);
+    }
+
+    private void publicarReemplazo(Proyecto proyecto, MiembroProyecto miembro) {
+        if (eventPublisher == null
+                || proyecto == null
+                || proyecto.getEstado() != EstadoProyecto.CONFIRMADO
+                || miembro == null
+                || miembro.getIdMiembro() == null
+                || miembro.getPerfil() == null
+                || miembro.getPerfil().getIdPerfil() == null) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new ReemplazoNecesarioEvent(
+                proyecto.getIdProyecto(),
+                miembro.getIdMiembro(),
+                miembro.getPerfil().getIdPerfil(),
+                OrigenReemplazo.ELIMINACION));
     }
 
     private String normalizarMotivo(EliminarIntegranteRequest request) {

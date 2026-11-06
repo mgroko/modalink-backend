@@ -49,6 +49,22 @@ public class NotificacionService {
     public static final String TIPO_INTEGRANTE_ELIMINADO = "INTEGRANTE_ELIMINADO";
     public static final String TIPO_INTEGRANTE_BAJA_VOLUNTARIA =
             "INTEGRANTE_BAJA_VOLUNTARIA";
+    public static final String TIPO_REEMPLAZO_CANDIDATOS_DISPONIBLES =
+            "REEMPLAZO_CANDIDATOS_DISPONIBLES";
+    public static final String TIPO_REEMPLAZO_SIN_CANDIDATOS =
+            "REEMPLAZO_SIN_CANDIDATOS";
+    public static final String TIPO_REEMPLAZO_INVITACION_RECIBIDA =
+            "REEMPLAZO_INVITACION_RECIBIDA";
+    public static final String TIPO_REEMPLAZO_CANDIDATO_RECHAZO =
+            "REEMPLAZO_CANDIDATO_RECHAZO";
+    public static final String TIPO_REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION =
+            "REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION";
+    public static final String TIPO_REEMPLAZO_INCORPORACION_APROBADA =
+            "REEMPLAZO_INCORPORACION_APROBADA";
+    public static final String TIPO_REEMPLAZO_INCORPORACION_RECHAZADA =
+            "REEMPLAZO_INCORPORACION_RECHAZADA";
+    public static final String TIPO_REEMPLAZO_CANCELADO =
+            "REEMPLAZO_CANCELADO";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;
