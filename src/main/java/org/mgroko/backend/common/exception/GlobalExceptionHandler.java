@@ -322,6 +322,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.perfiles.exception.ResenaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleResenaNoEncontrada(
+            org.mgroko.backend.perfiles.exception.ResenaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(org.mgroko.backend.notificaciones.exception.NotificacionNoEncontradaException.class)
     public ResponseEntity<Map<String, Object>> handleNotificacionNoEncontrada(
             org.mgroko.backend.notificaciones.exception.NotificacionNoEncontradaException ex) {
