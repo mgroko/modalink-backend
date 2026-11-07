@@ -80,6 +80,8 @@ public class SecurityConfig {
         corsConfig.setAllowedOrigins(origenes);
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         corsConfig.setAllowedHeaders(Arrays.asList("*"));
+        // El frontend necesita leer el nombre del archivo descargado (UC-67).
+        corsConfig.setExposedHeaders(Arrays.asList("Content-Disposition"));
         corsConfig.setAllowCredentials(true);
         corsConfig.setMaxAge(3600L);
 

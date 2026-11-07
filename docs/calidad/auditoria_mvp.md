@@ -20,8 +20,11 @@ El MVP cubre:
 - Estado y baja física de postulaciones e invitaciones.
 - Configuración del sistema.
 - Reportes de perfil.
-- Inmutabilidad del log.
+- Inmutabilidad del log (`UPDATE`, `DELETE` y `TRUNCATE`).
 - Consulta paginada con filtros para el administrador (UC-67).
+- Resumen agregado por tipo de evento y por entidad afectada.
+- Exportación CSV y PDF con tope configurable.
+- Fallback `OTRO` para eventos no catalogados, preservando el código original.
 
 ---
 
@@ -69,12 +72,15 @@ CREATE TABLE tipo_evento_auditoria (
 
 ```sql
 ALTER TABLE auditoria
-    ADD COLUMN entidad_clave varchar(100),
-    ADD COLUMN tipo_evento   varchar(60) REFERENCES tipo_evento_auditoria(codigo);
+    ADD COLUMN entidad_clave        varchar(100),
+    ADD COLUMN tipo_evento          varchar(60) REFERENCES tipo_evento_auditoria(codigo),
+    ADD COLUMN tipo_evento_original varchar(60);
 ```
 
 `id_usuario` pasa a significar **operador real**. La entidad afectada se
 identifica con `entidad_afectada` + `id_afectado` (o `entidad_clave`).
+`tipo_evento_original` conserva el código que envió el trigger, aunque no esté
+en el catálogo y se resuelva como `OTRO`.
 
 ### 3.3. Detalle
 
@@ -104,6 +110,7 @@ ALTER TABLE detalle_auditoria
 | `INVITACION_ELIMINADA` | idem DELETE | `registro` |
 | `CONFIGURACION_ACTUALIZADA` | `configuracion_sistema` INSERT/UPDATE/DELETE | `valor`, `descripcion` |
 | `REPORTE_ESTADO_CAMBIADO` | `reporte` INSERT/UPDATE | `estado`, `motivo`, `id_admin_revisor` |
+| `OTRO` | Cualquier código no catalogado | Se preserva en `tipo_evento_original` |
 
 ---
 
@@ -153,9 +160,9 @@ GET /admin/auditoria?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_A
 |---|---|---|---|
 | `fechaDesde` | `date` ISO | Sí | Inicio inclusive |
 | `fechaHasta` | `date` ISO | Sí | Fin inclusive |
-| `tipos` | `string` repetible o separado por comas | No | Si falta, todos los activos |
+| `tipos` | `string` repetible o separado por comas | No | Si falta, no se filtra por tipo: incluye históricos y no catalogados |
 | `page` | `int` | No | `>= 0`, default 0 |
-| `size` | `int` | No | `1..100`, default 20 |
+| `size` | `int` | No | `1..AUDITORIA_PAGINA_MAX`, default 20 |
 
 **Respuesta `200`:**
 
@@ -174,6 +181,9 @@ GET /admin/auditoria?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_A
       "usuarioNombre": "Admin ModaLink",
       "usuarioBd": "modalink_api",
       "ipUsuario": "203.0.113.10",
+      "tipoEventoOriginal": "USUARIO_DESHABILITADO",
+      "legacy": false,
+      "operador": "Admin ModaLink",
       "detalle": [
         {
           "campo": "estado",
@@ -200,7 +210,30 @@ GET /admin/auditoria/tipos
 
 Devuelve los tipos activos con `codigo`, `nombre`, `descripcion` y `modulo`.
 
-### 6.3. Tabla de decisión
+### 6.3. Resumen
+
+```http
+GET /admin/auditoria/resumen?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_ALTA
+```
+
+Devuelve `totalRegistros`, `porTipoEvento[]` y `porEntidad[]`. Sin filtro de
+tipos, las filas históricas se agrupan como `SIN_TIPO` con etiqueta
+“Sin tipo (histórico)”.
+
+### 6.4. Exportación
+
+```http
+GET /admin/auditoria/export?formato=CSV&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+GET /admin/auditoria/export?formato=PDF&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+```
+
+- `formato` obligatorio (`CSV` o `PDF`).
+- Tope configurable en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000).
+- El PDF incluye encabezado, resumen y tabla de eventos.
+- El CSV usa UTF-8 con BOM, separador `;` y escapado RFC 4180.
+- Las filas históricas muestran “No disponible (histórico)” como operador.
+
+### 6.5. Tabla de decisión
 
 | # | fechaDesde | fechaHasta | tipos | Resultado | HTTP |
 |---|---|---|---|---|---|
@@ -209,14 +242,17 @@ Devuelve los tipos activos con `codigo`, `nombre`, `descripcion` y `modulo`.
 | 3 | `null` | válida | cualquiera | `FECHAS_OBLIGATORIAS` | 400 |
 | 4 | desde > hasta | — | — | `RANGO_FECHAS_INVALIDO` | 400 |
 | 5 | rango > máximo | — | — | `RANGO_FECHAS_EXCEDIDO` | 400 |
-| 6 | válida | válida | vacío | Todos los tipos activos | 200 |
+| 6 | válida | válida | vacío | Todos los registros, incluidos históricos y no catalogados | 200 |
 | 7 | válida | válida | 1 tipo válido | Solo ese tipo | 200 |
 | 8 | válida | válida | varios tipos válidos | Unión sin duplicados | 200 |
 | 9 | válida | válida | tipo inexistente | `TIPO_EVENTO_INVALIDO` | 400 |
 | 10 | válida | válida | duplicados | Se deduplican | 200 |
 | 11 | válida | válida | válidos, página fuera de rango | Página vacía | 200 |
-| 12 | válida | válida | válidos, `size > 100` | `PAGINACION_INVALIDA` | 400 |
+| 12 | válida | válida | válidos, `size > AUDITORIA_PAGINA_MAX` | `PAGINACION_INVALIDA` | 400 |
 | 13 | válida | válida | válidos, `size <= 0` | `PAGINACION_INVALIDA` | 400 |
+| 14 | válida | válida | válidos, exportación sin `formato` | `FORMATO_EXPORTACION_INVALIDO` | 400 |
+| 15 | válida | válida | válidos, exportación con formato inválido | `FORMATO_EXPORTACION_INVALIDO` | 400 |
+| 16 | válida | válida | válidos, exportación > tope | `EXPORTACION_EXCEDIDA` | 400 |
 
 Los códigos de error se devuelven en el campo `codigo` del cuerpo estándar de
 `GlobalExceptionHandler`.
@@ -227,6 +263,8 @@ Los códigos de error se devuelven en el campo `codigo` del cuerpo estándar de
 
 - Trigger `trg_auditoria_no_update_delete` en `auditoria`.
 - Trigger `trg_detalle_auditoria_no_update_delete` en `detalle_auditoria`.
+- Triggers `trg_auditoria_no_truncate` y `trg_detalle_auditoria_no_truncate`.
+- Bypass transaccional de mantenimiento: `set_config('app.auditoria_admin', 'true', true)`.
 - Rol `modalink_api` con solo `INSERT`/`SELECT` sobre ambas tablas.
 - `TRUNCATE` revocado al rol de la API.
 
@@ -238,6 +276,7 @@ Los códigos de error se devuelven en el campo `codigo` del cuerpo estándar de
 
 - `(fecha_hora DESC, tipo_evento)`
 - `(entidad_afectada, id_afectado)`
+- `(entidad_afectada, fecha_hora DESC)`
 - `(id_usuario, fecha_hora DESC)`
 - `(id_auditoria)` en `detalle_auditoria`
 
@@ -245,7 +284,7 @@ Prueba de carga (`AuditoriaPerformanceIT`):
 
 - 100.000 eventos en 180 días.
 - Consulta de 30 días con 3 tipos.
-- Resultado obtenido: **p50 = 47 ms, p95 = 57 ms**.
+- Resultado obtenido: **p50 = 56 ms, p95 = 67 ms**.
 - Cota exigida: p95 < 2.000 ms.
 
 ---
@@ -257,6 +296,7 @@ Prueba de carga (`AuditoriaPerformanceIT`):
 - `docs/3_diseño/ModaLinkBD.sql`
 - `src/test/resources/ModaLinkBD.sql`
 - `docs/3_diseño/migraciones/2026-11-06_uc67_auditoria_mvp.sql`
+- `docs/3_diseño/migraciones/2026-11-07_uc67_fixes_export.sql`
 
 ### 9.2. Backend
 
@@ -265,9 +305,13 @@ Prueba de carga (`AuditoriaPerformanceIT`):
 | `Auditoria` | Entidad de lectura del evento |
 | `DetalleAuditoria` | Entidad de lectura del detalle |
 | `TipoEventoAuditoria` | Catálogo |
-| `AuditoriaRepository` | Consulta con Specification |
-| `ListarAuditoriaService` | Validaciones, filtros y paginación |
-| `AdminAuditoriaController` | `GET /admin/auditoria` y `/tipos` |
+| `AuditoriaRepository` | Consulta con Specification y agregados |
+| `AuditoriaFiltroService` | Validación y normalización compartida de filtros |
+| `ListarAuditoriaService` | Listado paginado y catálogo |
+| `AuditoriaResumenService` | Totales por tipo y entidad |
+| `AuditoriaExportService` | Exportación CSV y PDF |
+| `AuditoriaMapper` | Mapeo al contrato, legado y operador |
+| `AdminAuditoriaController` | Listado, tipos, resumen y exportación |
 | `AuditarOperacion` | Anotación de métodos auditados |
 | `AuditoriaSesionService` | Setea `app.id_usuario` |
 | `AuditoriaOperadorAspect` | Abre/une transacción y propaga el operador |
@@ -294,12 +338,16 @@ Prueba de carga (`AuditoriaPerformanceIT`):
 
 | Tipo | Clase | Resultado |
 |---|---|---|
+| Unitario | `AuditoriaFiltroServiceTest` | 6 tests OK |
 | Unitario | `ListarAuditoriaServiceTest` | 14 tests OK |
-| MVC | `AdminAuditoriaControllerTest` | 3 tests OK |
-| Integración | `AuditoriaTriggerIntegrationTest` | 10 tests OK |
+| Unitario | `AuditoriaExportServiceTest` | 1 test OK |
+| MVC | `AdminAuditoriaControllerTest` | 6 tests OK |
+| Integración | `AuditoriaTriggerIntegrationTest` | 15 tests OK |
+| Integración | `AuditoriaConsultaIntegrationTest` | 5 tests OK |
+| Integración | `AuditoriaMigracionIdempotenciaTest` | 1 test OK |
 | Integración | `ReportePerfilIntegrationTest` | 5 tests OK (regresión) |
 | Integración | `PublicarProyectoIntegrationTest` | 8 tests OK (regresión) |
-| Carga | `AuditoriaPerformanceIT` | p95 = 57 ms |
+| Carga | `AuditoriaPerformanceIT` | p95 = 67 ms (manual) |
 
 ---
 
@@ -307,6 +355,8 @@ Prueba de carga (`AuditoriaPerformanceIT`):
 
 - No se auditan lecturas, login/logout ni intentos fallidos.
 - La IP es la de la conexión a PostgreSQL.
-- Los procesos automáticos no tienen actor.
+- Los procesos automáticos no tienen actor y se muestran como “Sistema / automático”.
 - No hay retención ni hash chain.
-- Las filas históricas no tienen `tipo_evento`.
+- Las filas históricas no tienen `tipo_evento` ni `tipo_evento_original`; se muestran sin filtro y se agrupan como `SIN_TIPO`.
+- No se backfillean los históricos: su `id_usuario` puede no representar al operador real. Se muestra “No disponible (histórico)”.
+- La exportación no está sujeta a la cota de 2 segundos del listado, pero tiene tope de registros.

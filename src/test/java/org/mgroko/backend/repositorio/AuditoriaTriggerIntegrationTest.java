@@ -1,6 +1,7 @@
 package org.mgroko.backend.repositorio;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
@@ -44,7 +45,8 @@ class AuditoriaTriggerIntegrationTest extends AbstractPostgresIntegrationTest {
         long idUsuario = insertarUsuario("Alta");
 
         Map<String, Object> evento = jdbcTemplate.queryForMap("""
-                SELECT id_usuario, tipo_evento, entidad_afectada, id_afectado
+                SELECT id_usuario, tipo_evento, tipo_evento_original,
+                       entidad_afectada, id_afectado
                 FROM auditoria
                 WHERE entidad_afectada = 'usuario'
                   AND id_afectado = ?
@@ -54,8 +56,17 @@ class AuditoriaTriggerIntegrationTest extends AbstractPostgresIntegrationTest {
                 """, idUsuario);
 
         assertThat(evento.get("tipo_evento")).isEqualTo("USUARIO_ALTA");
+        assertThat(evento.get("tipo_evento_original")).isEqualTo("USUARIO_ALTA");
         assertThat(((Number) evento.get("id_usuario")).longValue()).isEqualTo(idUsuario);
         assertThat(((Number) evento.get("id_afectado")).longValue()).isEqualTo(idUsuario);
+    }
+
+    @Test
+    void codigoDesconocidoSeResuelveComoOtro() {
+        String resuelto = jdbcTemplate.queryForObject(
+                "SELECT fn_evento_auditoria('EVENTO_INEXISTENTE')", String.class);
+
+        assertThat(resuelto).isEqualTo("OTRO");
     }
 
     @Test
@@ -412,6 +423,34 @@ class AuditoriaTriggerIntegrationTest extends AbstractPostgresIntegrationTest {
                 "UPDATE detalle_auditoria SET valor_nuevo = 'hack' WHERE id_detalle_auditoria = ?",
                 idDetalle))
                 .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void auditoria_esInmutableAnteTruncate() {
+        insertarUsuario("InmutableTruncate");
+
+        assertThatThrownBy(() -> jdbcTemplate.execute(
+                "TRUNCATE auditoria, detalle_auditoria"))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void auditoria_truncatePermitidoConBypassDeMantenimiento() {
+        insertarUsuario("BypassTruncate");
+
+        // Bypass transaccional: el trigger no lanza la excepción y el
+        // TRUNCATE se ejecuta dentro de la transacción de test (se revierte
+        // al terminar el método, por lo que no contamina la base compartida).
+        jdbcTemplate.queryForObject(
+                "SELECT set_config('app.auditoria_admin', 'true', true)", String.class);
+
+        assertThatCode(() -> jdbcTemplate.execute(
+                "TRUNCATE auditoria, detalle_auditoria"))
+                .doesNotThrowAnyException();
+
+        Long restantes = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM auditoria", Long.class);
+        assertThat(restantes).isZero();
     }
 
     private void setOperador(long idUsuario) {

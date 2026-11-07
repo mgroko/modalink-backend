@@ -5,20 +5,29 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.auditoria.dto.AuditoriaDetalleResponse;
 import org.mgroko.backend.auditoria.dto.AuditoriaEventoResponse;
+import org.mgroko.backend.auditoria.dto.AuditoriaFiltroResuelto;
+import org.mgroko.backend.auditoria.dto.AuditoriaResumenEntidadResponse;
+import org.mgroko.backend.auditoria.dto.AuditoriaResumenResponse;
+import org.mgroko.backend.auditoria.dto.AuditoriaResumenTipoResponse;
 import org.mgroko.backend.auditoria.dto.TipoEventoAuditoriaResponse;
 import org.mgroko.backend.auditoria.exception.AuditoriaFiltroInvalidoException;
+import org.mgroko.backend.auditoria.servicio.AuditoriaExportService;
+import org.mgroko.backend.auditoria.servicio.AuditoriaResumenService;
 import org.mgroko.backend.auditoria.servicio.ListarAuditoriaService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +51,12 @@ class AdminAuditoriaControllerTest {
     @MockitoBean
     private ListarAuditoriaService listarAuditoriaService;
 
+    @MockitoBean
+    private AuditoriaResumenService auditoriaResumenService;
+
+    @MockitoBean
+    private AuditoriaExportService auditoriaExportService;
+
     @Test
     void listar_devuelvePaginaDeEventos() throws Exception {
         var evento = new AuditoriaEventoResponse(
@@ -56,6 +71,9 @@ class AdminAuditoriaControllerTest {
                 "Admin ModaLink",
                 "modalink_api",
                 "203.0.113.10",
+                "USUARIO_DESHABILITADO",
+                false,
+                "Admin ModaLink",
                 List.of(new AuditoriaDetalleResponse("estado", "ACTIVO", "DESHABILITADO")));
 
         when(listarAuditoriaService.listar(
@@ -99,6 +117,64 @@ class AdminAuditoriaControllerTest {
 
         assertThat(annotation).isNotNull();
         assertThat(annotation.value()).isEqualTo("hasRole('ADMINISTRADOR')");
+    }
+
+    @Test
+    void resumen_devuelveTotales() throws Exception {
+        when(auditoriaResumenService.obtenerResumen(
+                eq(LocalDate.of(2026, 11, 1)),
+                eq(LocalDate.of(2026, 11, 7)),
+                any()))
+                .thenReturn(new AuditoriaResumenResponse(
+                        LocalDate.of(2026, 11, 1),
+                        LocalDate.of(2026, 11, 7),
+                        List.of(),
+                        2L,
+                        List.of(new AuditoriaResumenTipoResponse(
+                                "USUARIO_ALTA", "Alta de usuario", 2L)),
+                        List.of(new AuditoriaResumenEntidadResponse("usuario", 2L))));
+
+        mockMvc.perform(get("/admin/auditoria/resumen")
+                        .principal(new UsernamePasswordAuthenticationToken("1", null, List.of()))
+                        .param("fechaDesde", "2026-11-01")
+                        .param("fechaHasta", "2026-11-07"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRegistros").value(2))
+                .andExpect(jsonPath("$.porTipoEvento[0].codigo").value("USUARIO_ALTA"));
+    }
+
+    @Test
+    void exportarCsv_configuraHeadersYDelegaEnServicio() throws Exception {
+        AuditoriaFiltroResuelto filtro = new AuditoriaFiltroResuelto(
+                LocalDateTime.of(2026, 11, 1, 0, 0),
+                LocalDateTime.of(2026, 11, 7, 23, 59, 59),
+                null,
+                Map.of());
+
+        when(auditoriaExportService.validarExportacion(
+                eq(LocalDate.of(2026, 11, 1)),
+                eq(LocalDate.of(2026, 11, 7)),
+                any()))
+                .thenReturn(filtro);
+
+        AdminAuditoriaController controller = new AdminAuditoriaController(
+                listarAuditoriaService, auditoriaResumenService, auditoriaExportService);
+
+        var response = controller.exportar(
+                LocalDate.of(2026, 11, 1),
+                LocalDate.of(2026, 11, 7),
+                null,
+                "CSV",
+                new UsernamePasswordAuthenticationToken("1", null, List.of()));
+
+        assertThat(response.getHeaders().getContentType().toString())
+                .contains("text/csv");
+        assertThat(response.getHeaders().getContentDisposition().getFilename())
+                .isEqualTo("auditoria_2026-11-01_2026-11-07.csv");
+
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        response.getBody().writeTo(salida);
+        verify(auditoriaExportService).exportarCsv(filtro, salida);
     }
 
     @Test

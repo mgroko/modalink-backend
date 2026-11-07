@@ -18,6 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auditoria.exception.AuditoriaFiltroInvalidoException;
+import org.mgroko.backend.auditoria.mapper.AuditoriaMapper;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Auditoria;
 import org.mgroko.backend.modelo.TipoEventoAuditoria;
@@ -54,15 +55,22 @@ class ListarAuditoriaServiceTest {
 
     @BeforeEach
     void setUp() {
+        AuditoriaFiltroService auditoriaFiltroService = new AuditoriaFiltroService(
+                configuracionSistemaService,
+                tipoEventoAuditoriaRepository);
+
         service = new ListarAuditoriaService(
                 auditoriaRepository,
                 detalleAuditoriaRepository,
                 tipoEventoAuditoriaRepository,
                 usuarioRepository,
-                configuracionSistemaService);
+                auditoriaFiltroService,
+                new AuditoriaMapper());
 
         lenient().when(configuracionSistemaService.obtenerRangoMaximoAuditoriaDias())
                 .thenReturn(90);
+        lenient().when(configuracionSistemaService.obtenerPaginaMaximaAuditoria())
+                .thenReturn(100);
         lenient().when(tipoEventoAuditoriaRepository
                 .findByActivoTrueOrderByModuloAscNombreAsc())
                 .thenReturn(List.of(USUARIO_ALTA));

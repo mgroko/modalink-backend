@@ -449,9 +449,9 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Responsabilidades** | Listar los eventos críticos de auditoría en un rango de fechas, con filtros opcionales por tipo de evento. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-67 |
-| **Notas** | Solo rol Administrador. Las fechas son obligatorias e inclusivas. Si no se envían tipos, se devuelven todos los tipos activos. El rango máximo se configura en `AUDITORIA_RANGO_MAX_DIAS` (default 90). Tamaño de página máximo: 100. Orden: `fechaHora DESC, idAuditoria DESC`. |
-| **Excepciones** | Fechas ausentes (`FECHAS_OBLIGATORIAS`), rango invertido (`RANGO_FECHAS_INVALIDO`), rango excedido (`RANGO_FECHAS_EXCEDIDO`), tipo inexistente (`TIPO_EVENTO_INVALIDO`), paginación inválida (`PAGINACION_INVALIDA`). |
-| **Salida** | `PaginaResponse<AuditoriaEventoResponse>` con `idAuditoria`, `fechaHora`, `tipoEvento`, `tipoEventoNombre`, `entidadAfectada`, `entidadClave`, `idAfectado`, `idUsuario`, `usuarioNombre`, `usuarioBd`, `ipUsuario` y `detalle[]`. |
+| **Notas** | Solo rol Administrador. Las fechas son obligatorias e inclusivas. Si no se envían tipos, **no se aplica filtro por tipo**: se incluyen los históricos (`tipo_evento = NULL`) y los eventos fuera del catálogo. El rango máximo se configura en `AUDITORIA_RANGO_MAX_DIAS` (default 90). El tamaño máximo de página se configura en `AUDITORIA_PAGINA_MAX` (default 100). Orden: `fechaHora DESC, idAuditoria DESC`. |
+| **Excepciones** | Fechas ausentes (`FECHAS_OBLIGATORIAS`), rango invertido (`RANGO_FECHAS_INVALIDO`), rango excedido (`RANGO_FECHAS_EXCEDIDO`), catálogo vacío (`CATALOGO_VACIO`), tipo inexistente (`TIPO_EVENTO_INVALIDO`), paginación inválida (`PAGINACION_INVALIDA`). |
+| **Salida** | `PaginaResponse<AuditoriaEventoResponse>` con `idAuditoria`, `fechaHora`, `tipoEvento`, `tipoEventoNombre`, `entidadAfectada`, `entidadClave`, `idAfectado`, `idUsuario`, `usuarioNombre`, `usuarioBd`, `ipUsuario`, `tipoEventoOriginal`, `legacy`, `operador` y `detalle[]`. |
 | **Precondición** | El usuario está autenticado con rol Administrador. |
 | **Postcondición** | No modifica datos. Devuelve la página solicitada o una página vacía si no hay coincidencias. |
 
@@ -463,5 +463,27 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Notas** | Solo rol Administrador. |
 | **Excepciones** | Ninguna esperable. |
 | **Salida** | Lista de `TipoEventoAuditoriaResponse` (`codigo`, `nombre`, `descripcion`, `modulo`). |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. |
+
+| Nombre | obtenerResumenAuditoria(fechaDesde, fechaHasta, tipos) |
+| :---- | :---- |
+| **Responsabilidades** | Calcular el total de registros y los agregados por tipo de evento y por entidad afectada. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. Usa los mismos filtros y validaciones que el listado. Sin filtro de tipos, las filas con `tipo_evento = NULL` se agrupan como `SIN_TIPO`. Con filtro de tipos, no se incluye `SIN_TIPO`. |
+| **Excepciones** | Las mismas que el listado. |
+| **Salida** | `AuditoriaResumenResponse` con `fechaDesde`, `fechaHasta`, `tiposAplicados`, `totalRegistros`, `porTipoEvento[]` y `porEntidad[]`. |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. |
+
+| Nombre | exportarAuditoria(formato, fechaDesde, fechaHasta, tipos) |
+| :---- | :---- |
+| **Responsabilidades** | Exportar el resultado filtrado a CSV o PDF, con tope configurable. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. `formato` es obligatorio (`CSV` o `PDF`). El tope se configura en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000); si se supera, devuelve `400`. El PDF incluye encabezado, resumen y tabla de eventos. Las filas históricas muestran “No disponible (histórico)” como operador. |
+| **Excepciones** | Fechas/tipos inválidos, `FORMATO_EXPORTACION_INVALIDO`, `EXPORTACION_EXCEDIDA`. |
+| **Salida** | Archivo CSV (`text/csv`) o PDF (`application/pdf`) con `Content-Disposition: attachment`. |
 | **Precondición** | El usuario está autenticado con rol Administrador. |
 | **Postcondición** | No modifica datos. |

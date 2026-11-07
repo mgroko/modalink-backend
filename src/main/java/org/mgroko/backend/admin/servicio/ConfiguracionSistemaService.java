@@ -31,6 +31,9 @@ public class ConfiguracionSistemaService {
             "DISPONIBILIDAD_TOLERANCIA_PREFERENCIA_MIN";
     public static final String CLAVE_DIAS_BAJA = "DIAS_BAJA";
     public static final String CLAVE_AUDITORIA_RANGO_MAX_DIAS = "AUDITORIA_RANGO_MAX_DIAS";
+    public static final String CLAVE_AUDITORIA_EXPORT_MAX_REGISTROS = "AUDITORIA_EXPORT_MAX_REGISTROS";
+    public static final String CLAVE_AUDITORIA_PAGINA_MAX = "AUDITORIA_PAGINA_MAX";
+    public static final String CLAVE_AUDITORIA_PDF_MAX_CAMBIOS = "AUDITORIA_PDF_MAX_CAMBIOS_POR_FILA";
     public static final String CLAVE_IMAGEN_MAX_LADO_PX = "IMAGEN_MAX_LADO_PX";
     public static final String CLAVE_IMAGEN_MAX_MEGAPIXELES = "IMAGEN_MAX_MEGAPIXELES";
     public static final String CLAVE_IMAGEN_CALIDAD_WEBP = "IMAGEN_CALIDAD_WEBP";
@@ -74,6 +77,9 @@ Mis condiciones de trabajo
     private static final int DEFAULT_MARGEN_ACTIVIDAD_MIN = 30;
     private static final int DEFAULT_DIAS_BAJA = 30;
     private static final int DEFAULT_AUDITORIA_RANGO_MAX_DIAS = 90;
+    private static final int DEFAULT_AUDITORIA_EXPORT_MAX_REGISTROS = 10_000;
+    private static final int DEFAULT_AUDITORIA_PAGINA_MAX = 100;
+    private static final int DEFAULT_AUDITORIA_PDF_MAX_CAMBIOS = 5;
 
     private final ConfiguracionSistemaRepository configuracionSistemaRepository;
     private final ExpirarDeshabilitacionService expirarDeshabilitacionService;
@@ -183,15 +189,6 @@ Mis condiciones de trabajo
     }
 
     /**
-     * Plantilla base de términos y condiciones para perfiles (UC-23). Se lee
-     * de {@code configuracion_sistema} (clave
-     * {@link #CLAVE_PERFIL_TYC_PLANTILLA}). Si la fila falta, está vacía o
-     * supera el máximo permitido, se usa la plantilla por defecto del código.
-     *
-     * @return texto de la plantilla, nunca vacío y con un máximo de
-     *         {@link #PERFIL_TYC_MAX_CARACTERES} caracteres
-     */
-    /**
      * Rango máximo de días permitido en la consulta de auditoría (UC-67).
      * Ante fila ausente o valor inválido se usa 90 días.
      */
@@ -202,6 +199,48 @@ Mis condiciones de trabajo
         return dias > 0 ? dias : DEFAULT_AUDITORIA_RANGO_MAX_DIAS;
     }
 
+    /**
+     * Cantidad máxima de registros que se pueden exportar desde UC-67.
+     * Ante fila ausente o valor inválido se usa 10.000.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaximoExportacionAuditoria() {
+        int maximo = obtenerValorEntero(
+                CLAVE_AUDITORIA_EXPORT_MAX_REGISTROS, DEFAULT_AUDITORIA_EXPORT_MAX_REGISTROS);
+        return maximo > 0 ? maximo : DEFAULT_AUDITORIA_EXPORT_MAX_REGISTROS;
+    }
+
+    /**
+     * Tamaño máximo de página permitido en el listado de auditoría (UC-67).
+     * Ante fila ausente o valor inválido se usa 100.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerPaginaMaximaAuditoria() {
+        int maximo = obtenerValorEntero(
+                CLAVE_AUDITORIA_PAGINA_MAX, DEFAULT_AUDITORIA_PAGINA_MAX);
+        return maximo > 0 ? maximo : DEFAULT_AUDITORIA_PAGINA_MAX;
+    }
+
+    /**
+     * Cantidad máxima de cambios que se muestran por fila en el PDF de
+     * auditoría. Ante fila ausente o valor inválido se usa 5.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxCambiosPdfAuditoria() {
+        int maximo = obtenerValorEntero(
+                CLAVE_AUDITORIA_PDF_MAX_CAMBIOS, DEFAULT_AUDITORIA_PDF_MAX_CAMBIOS);
+        return maximo > 0 ? maximo : DEFAULT_AUDITORIA_PDF_MAX_CAMBIOS;
+    }
+
+    /**
+     * Plantilla base de términos y condiciones para perfiles (UC-23). Se lee
+     * de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_PERFIL_TYC_PLANTILLA}). Si la fila falta, está vacía o
+     * supera el máximo permitido, se usa la plantilla por defecto del código.
+     *
+     * @return texto de la plantilla, nunca vacío y con un máximo de
+     *         {@link #PERFIL_TYC_MAX_CARACTERES} caracteres
+     */
     @Transactional(readOnly = true)
     public String obtenerPlantillaTerminosCondiciones() {
         return configuracionSistemaRepository.findByClave(CLAVE_PERFIL_TYC_PLANTILLA)

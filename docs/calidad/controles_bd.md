@@ -2,7 +2,7 @@
 
 > **Alcance:** MVP de auditoría del trabajo final.
 > **Esquema canónico:** `docs/3_diseño/ModaLinkBD.sql`.
-> **Migración para bases existentes:** `docs/3_diseño/migraciones/2026-11-06_uc67_auditoria_mvp.sql`.
+> **Migraciones para bases existentes:** `docs/3_diseño/migraciones/2026-11-06_uc67_auditoria_mvp.sql` y `docs/3_diseño/migraciones/2026-11-07_uc67_fixes_export.sql`.
 > **Caso de uso:** UC-67 — Generar informe de auditoría.
 
 ---
@@ -20,15 +20,16 @@ por fechas y tipos de evento para el administrador.
 - Cambios de estado y bajas físicas de postulaciones e invitaciones.
 - Cambios de configuración del sistema.
 - Alta y resolución de reportes de perfil (trigger preexistente, ahora con tipo de evento).
-- Inmutabilidad del log y rol de BD restringido.
-- UC-67: listado paginado, filtros y rango máximo configurable.
+- Fallback `OTRO` para códigos de evento no catalogados.
+- Inmutabilidad del log (`UPDATE`, `DELETE` y `TRUNCATE`) y rol de BD restringido.
+- UC-67: listado paginado, resumen agregado y exportación CSV/PDF con topes configurables.
 
 ### 1.2. Fuera del alcance
 
 - Login/logout y accesos denegados.
 - Auditoría de lecturas.
 - Perfiles, T&C, actividades, calendario, reemplazos, catálogos e imágenes.
-- Hash chain, particionado, retención/purga y exportación.
+- Hash chain, particionado y retención/purga.
 - Frontend de UC-67.
 
 ---
@@ -60,7 +61,8 @@ Catálogo cerrado de eventos críticos.
 | `ip_usuario` | `varchar(45)` | IP de conexión a BD (`inet_client_addr()`) |
 | `id_tipo_auditoria` | `int8` | FK a `tipo_accion_auditoria` (`INSERT`/`UPDATE`/`DELETE`) |
 | `id_usuario` | `int8` | **Operador real** de la aplicación (no el afectado) |
-| `tipo_evento` | `varchar(60)` | FK a `tipo_evento_auditoria` |
+| `tipo_evento` | `varchar(60)` | FK a `tipo_evento_auditoria`; puede ser `OTRO` |
+| `tipo_evento_original` | `varchar(60)` | Código original del trigger, aun cuando se resuelva como `OTRO` |
 
 ### 2.3. `detalle_auditoria`
 
@@ -90,6 +92,7 @@ Catálogo cerrado de eventos críticos.
 | `INVITACION_ELIMINADA` | Baja física de invitación | INVITACIONES |
 | `CONFIGURACION_ACTUALIZADA` | Alta/edición/baja de configuración | ADMINISTRACION |
 | `REPORTE_ESTADO_CAMBIADO` | Alta o resolución de reporte | REPORTES |
+| `OTRO` | Código de evento no presente en el catálogo | SISTEMA |
 
 ---
 
@@ -105,6 +108,11 @@ Catálogo cerrado de eventos críticos.
 | `trg_auditar_estado_invitacion_gral` | `invitacion_gral` | `AFTER UPDATE OF estado OR DELETE` | `INVITACION_ESTADO_CAMBIADO` / `INVITACION_ELIMINADA` |
 | `trg_auditar_estado_invitacion_actividad` | `invitacion_actividad` | `AFTER UPDATE OF estado OR DELETE` | idem |
 | `trg_auditar_configuracion` | `configuracion_sistema` | `AFTER INSERT OR UPDATE OR DELETE` | `CONFIGURACION_ACTUALIZADA` |
+
+Todos los triggers resuelven el código con `fn_evento_auditoria(...)`. Si el
+código no está en `tipo_evento_auditoria`, se guarda como `OTRO` y se conserva
+el código original en `auditoria.tipo_evento_original`; la operación de negocio
+no falla.
 
 ### 4.1. Reglas de detalle
 
@@ -138,8 +146,10 @@ SELECT set_config('app.id_usuario', '<idUsuario>', true);
 
 ### 6.1. Trigger de inmutabilidad
 
-`fn_auditoria_inmutable()` bloquea `UPDATE` y `DELETE` sobre `auditoria` y
-`detalle_auditoria` con una excepción de PL/pgSQL.
+`fn_auditoria_inmutable()` bloquea `UPDATE`, `DELETE` y `TRUNCATE` sobre
+`auditoria` y `detalle_auditoria` con una excepción de PL/pgSQL. Existe un
+bypass explícito y transaccional para mantenimiento:
+`set_config('app.auditoria_admin', 'true', true)`.
 
 ### 6.2. Rol de la API
 
@@ -167,6 +177,7 @@ En tests se mantiene `postgres` para poder limpiar datos con `TRUNCATE`.
 |---|---|
 | `idx_auditoria_fecha_tipo` | `(fecha_hora DESC, tipo_evento)` |
 | `idx_auditoria_entidad` | `(entidad_afectada, id_afectado)` |
+| `idx_auditoria_entidad_fecha` | `(entidad_afectada, fecha_hora DESC)` |
 | `idx_auditoria_usuario` | `(id_usuario, fecha_hora DESC)` |
 | `idx_detalle_auditoria` | `(id_auditoria)` |
 
@@ -183,14 +194,36 @@ GET /admin/auditoria?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_A
 
 - Solo rol `ADMINISTRADOR`.
 - `fechaDesde` y `fechaHasta` obligatorias.
-- `tipos` opcional; si no se envía, devuelve todos los activos.
+- `tipos` opcional; si no se envía, **no se filtra por tipo** y se incluyen históricos y eventos fuera del catálogo.
 - Rango máximo configurable en `AUDITORIA_RANGO_MAX_DIAS` (default 90).
+- Tamaño máximo de página configurable en `AUDITORIA_PAGINA_MAX` (default 100).
 - Orden: `fecha_hora DESC, id_auditoria DESC`.
-- Tamaño máximo de página: 100.
+
+### 8.1. Resumen
+
+```http
+GET /admin/auditoria/resumen?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_ALTA
+```
+
+Devuelve `totalRegistros`, `porTipoEvento[]` y `porEntidad[]`. Sin filtro de
+tipos, las filas históricas se agrupan como `SIN_TIPO`.
+
+### 8.2. Exportación
+
+```http
+GET /admin/auditoria/export?formato=CSV&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+GET /admin/auditoria/export?formato=PDF&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+```
+
+- `formato` obligatorio (`CSV` o `PDF`).
+- Tope configurable en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000).
+- El PDF incluye encabezado, resumen y tabla de eventos.
+- Las filas históricas muestran “No disponible (histórico)” como operador.
+- El CSV usa UTF-8 con BOM, separador `;` y escapado RFC 4180.
 
 La tabla de decisión completa y el contrato de respuesta están en
-`docs/3_diseño/auditoria_mvp.md` y en la ficha de frontend
-`docs/frontend/aplicadas/ficha-tecnica-auditoria-admin.md`.
+`docs/calidad/auditoria_mvp.md` y en la ficha de frontend
+`docs/frontend/ficha-tecnica-auditoria-admin.md`.
 
 ---
 
@@ -198,9 +231,13 @@ La tabla de decisión completa y el contrato de respuesta están en
 
 | Nivel | Prueba | Qué cubre |
 |---|---|---|
-| Unitario | `ListarAuditoriaServiceTest` | Validaciones, tabla de decisión, catálogo |
-| MVC | `AdminAuditoriaControllerTest` | Contrato de listado, filtros y errores |
-| Integración | `AuditoriaTriggerIntegrationTest` | Triggers de usuario, proyecto, postulación, invitación, configuración e inmutabilidad |
+| Unitario | `AuditoriaFiltroServiceTest` | Fechas, tipos, catálogo vacío y paginación |
+| Unitario | `ListarAuditoriaServiceTest` | Listado, filtros y catálogo |
+| Unitario | `AuditoriaExportServiceTest` | CSV, escapado y sanitización de fórmulas |
+| MVC | `AdminAuditoriaControllerTest` | Listado, resumen, exportación y errores |
+| Integración | `AuditoriaTriggerIntegrationTest` | Triggers de usuario, proyecto, postulación, invitación, configuración, `OTRO` e inmutabilidad (`UPDATE`, `DELETE`, `TRUNCATE` y bypass) |
+| Integración | `AuditoriaConsultaIntegrationTest` | Históricos, resumen, CSV y PDF |
+| Integración | `AuditoriaMigracionIdempotenciaTest` | La migración de UC-67 se puede aplicar dos veces sin errores |
 | Integración | `ReportePerfilIntegrationTest` | Trigger de reporte y regresión |
 | Integración | `PublicarProyectoIntegrationTest` | Trigger de proyecto y regresión |
 | Carga | `AuditoriaPerformanceIT` | 100.000 eventos, p95 < 2 s |
@@ -216,7 +253,8 @@ mvn -Dtest=AuditoriaPerformanceIT test
 ## 10. Limitaciones conocidas
 
 - La IP registrada es la de la conexión a PostgreSQL, no la IP real del navegador.
-- Los schedulers automáticos registran `id_usuario = NULL`.
 - No se auditan lecturas ni intentos fallidos.
 - No hay retención, particionado ni hash chain en este MVP.
-- Las filas históricas previas a la migración no tienen `tipo_evento`; UC-67 las excluye cuando se filtra por tipo.
+- Las filas históricas previas a la migración no tienen `tipo_evento` ni `tipo_evento_original`; se muestran sin filtro y se agrupan como `SIN_TIPO` en el resumen.
+- No se backfillean los históricos: `id_usuario` puede no representar al operador real en esas filas. La UI/CSV/PDF muestran “No disponible (histórico)”.
+- Los schedulers automáticos nuevos registran `id_usuario = NULL` y se muestran como “Sistema / automático”.

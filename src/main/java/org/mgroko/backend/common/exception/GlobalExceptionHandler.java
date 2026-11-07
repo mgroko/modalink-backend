@@ -1250,4 +1250,25 @@ public class GlobalExceptionHandler {
         return buildErrorResponseConCodigo(ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.auditoria.exception.FormatoExportacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleFormatoExportacionInvalido(
+            org.mgroko.backend.auditoria.exception.FormatoExportacionInvalidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "FORMATO_EXPORTACION_INVALIDO", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.auditoria.exception.ExportacionAuditoriaExcedidaException.class)
+    public ResponseEntity<Map<String, Object>> handleExportacionAuditoriaExcedida(
+            org.mgroko.backend.auditoria.exception.ExportacionAuditoriaExcedidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "EXPORTACION_EXCEDIDA", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.auditoria.exception.ErrorGenerandoPdfException.class)
+    public ResponseEntity<Map<String, Object>> handleErrorGenerandoPdf(
+            org.mgroko.backend.auditoria.exception.ErrorGenerandoPdfException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "ERROR_GENERANDO_PDF", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
 }

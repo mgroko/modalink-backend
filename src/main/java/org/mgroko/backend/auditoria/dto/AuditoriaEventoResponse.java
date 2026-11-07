@@ -15,6 +15,9 @@ public record AuditoriaEventoResponse(
         String usuarioNombre,
         String usuarioBd,
         String ipUsuario,
+        String tipoEventoOriginal,
+        boolean legacy,
+        String operador,
         List<AuditoriaDetalleResponse> detalle
 ) {
 }

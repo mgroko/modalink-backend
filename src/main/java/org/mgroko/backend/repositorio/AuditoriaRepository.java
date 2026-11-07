@@ -7,5 +7,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AuditoriaRepository
-        extends JpaRepository<Auditoria, Long>, JpaSpecificationExecutor<Auditoria> {
+        extends JpaRepository<Auditoria, Long>,
+                JpaSpecificationExecutor<Auditoria>,
+                AuditoriaResumenRepository {
 }

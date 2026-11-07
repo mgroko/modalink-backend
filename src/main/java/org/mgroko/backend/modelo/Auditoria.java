@@ -62,4 +62,7 @@ public class Auditoria {
 
     @Column(name = "tipo_evento", length = 60)
     private String tipoEvento;
+
+    @Column(name = "tipo_evento_original", length = 60)
+    private String tipoEventoOriginal;
 }

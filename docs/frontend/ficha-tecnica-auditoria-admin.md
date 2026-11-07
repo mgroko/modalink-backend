@@ -18,7 +18,10 @@ La pantalla debe:
 2. permitir seleccionar uno o varios tipos de evento (o ninguno = todos);
 3. listar los eventos paginados, del más reciente al más antiguo;
 4. permitir expandir un evento para ver el detalle campo a campo;
-5. informar claramente cuando el rango supera el máximo permitido.
+5. mostrar el resumen agregado por tipo de evento y por entidad;
+6. permitir descargar el resultado filtrado en CSV o PDF;
+7. informar claramente cuando el rango o la exportación superan el máximo permitido;
+8. distinguir los registros históricos, cuyo operador no está disponible.
 
 El backend no modifica datos: es una consulta de solo lectura.
 
@@ -41,9 +44,9 @@ GET /admin/auditoria
 |---|---|---|---|
 | `fechaDesde` | `date` ISO (`YYYY-MM-DD`) | Sí | Inicio del rango, inclusive |
 | `fechaHasta` | `date` ISO (`YYYY-MM-DD`) | Sí | Fin del rango, inclusive |
-| `tipos` | `string` repetible o separado por comas | No | Códigos de evento. Si no se envía, devuelve todos los activos |
+| `tipos` | `string` repetible o separado por comas | No | Códigos de evento. Si no se envía, no se filtra por tipo: incluye históricos y no catalogados |
 | `page` | `int` | No | Página, base 0. Default `0` |
-| `size` | `int` | No | Tamaño, `1..100`. Default `20` |
+| `size` | `int` | No | Tamaño, `1..AUDITORIA_PAGINA_MAX`. Default `20` |
 
 Ejemplo:
 
@@ -68,6 +71,9 @@ GET /admin/auditoria?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_A
       "usuarioNombre": "Admin ModaLink",
       "usuarioBd": "modalink_api",
       "ipUsuario": "203.0.113.10",
+      "tipoEventoOriginal": "USUARIO_DESHABILITADO",
+      "legacy": false,
+      "operador": "Admin ModaLink",
       "detalle": [
         {
           "campo": "estado",
@@ -106,6 +112,9 @@ GET /admin/auditoria?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_A
 | `usuarioNombre` | Nombre y apellido del operador, si existe |
 | `usuarioBd` | Rol de BD (`modalink_api` en producción) |
 | `ipUsuario` | IP registrada por la conexión a BD |
+| `tipoEventoOriginal` | Código original del trigger, útil cuando `tipoEvento = OTRO` |
+| `legacy` | `true` para registros previos a la migración, sin tipo de evento |
+| `operador` | Texto listo para mostrar: nombre, “Sistema / automático” o “No disponible (histórico)” |
 | `detalle` | Lista de cambios `campo` / `valorAnterior` / `valorNuevo` |
 
 ### 2.2. Catálogo de tipos
@@ -131,6 +140,69 @@ Respuesta `200`:
 
 La UI puede agrupar las opciones por `modulo`.
 
+### 2.3. Resumen agregado
+
+```http
+GET /admin/auditoria/resumen?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_ALTA
+```
+
+**Autorización:** solo rol `ADMINISTRADOR`.
+
+Respuesta `200`:
+
+```json
+{
+  "fechaDesde": "2026-11-01",
+  "fechaHasta": "2026-11-07",
+  "tiposAplicados": [],
+  "totalRegistros": 42,
+  "porTipoEvento": [
+    {
+      "codigo": "USUARIO_ALTA",
+      "nombre": "Alta de usuario",
+      "total": 20
+    },
+    {
+      "codigo": "SIN_TIPO",
+      "nombre": "Sin tipo (histórico)",
+      "total": 3
+    }
+  ],
+  "porEntidad": [
+    {
+      "entidad": "usuario",
+      "total": 25
+    }
+  ]
+}
+```
+
+Sin filtro de tipos, los históricos se agrupan como `SIN_TIPO`. Con filtro de
+tipos, `SIN_TIPO` no aparece.
+
+### 2.4. Exportación
+
+```http
+GET /admin/auditoria/export?formato=CSV&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+GET /admin/auditoria/export?formato=PDF&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+```
+
+**Autorización:** solo rol `ADMINISTRADOR`.
+
+| Parámetro | Obligatorio | Regla |
+|---|---|---|
+| `formato` | Sí | `CSV` o `PDF` |
+| `fechaDesde` | Sí | Igual que el listado |
+| `fechaHasta` | Sí | Igual que el listado |
+| `tipos` | No | Igual que el listado |
+
+- El tope de registros se configura en `AUDITORIA_EXPORT_MAX_REGISTROS`.
+- Si se supera, el backend responde `400` con `EXPORTACION_EXCEDIDA`.
+- El PDF incluye encabezado, resumen y tabla.
+- CSV: UTF-8 con BOM, separador `;`.
+- Nombre de archivo: `auditoria_YYYY-MM-DD_YYYY-MM-DD.csv` o `.pdf`.
+- La UI debe ofrecer dos botones: **Exportar CSV** y **Exportar PDF**.
+
 ---
 
 ## 3. Catálogo de eventos
@@ -149,6 +221,7 @@ La UI puede agrupar las opciones por `modulo`.
 | `INVITACION_ELIMINADA` | Baja de invitación | INVITACIONES |
 | `CONFIGURACION_ACTUALIZADA` | Cambio de configuración | ADMINISTRACION |
 | `REPORTE_ESTADO_CAMBIADO` | Alta o resolución de reporte | REPORTES |
+| `OTRO` | Evento no clasificado | SISTEMA |
 
 ---
 
@@ -170,8 +243,11 @@ Todos los errores usan el cuerpo estándar:
 | `400` | `FECHAS_OBLIGATORIAS` | Falta `fechaDesde` o `fechaHasta` |
 | `400` | `RANGO_FECHAS_INVALIDO` | `fechaDesde > fechaHasta` |
 | `400` | `RANGO_FECHAS_EXCEDIDO` | El rango supera `AUDITORIA_RANGO_MAX_DIAS` |
+| `400` | `CATALOGO_VACIO` | Se pidieron tipos y no hay catálogo activo |
 | `400` | `TIPO_EVENTO_INVALIDO` | Algún código de `tipos` no existe o está inactivo |
-| `400` | `PAGINACION_INVALIDA` | `page < 0`, `size <= 0` o `size > 100` |
+| `400` | `PAGINACION_INVALIDA` | `page < 0`, `size <= 0` o `size > AUDITORIA_PAGINA_MAX` |
+| `400` | `FORMATO_EXPORTACION_INVALIDO` | Falta `formato` o no es `CSV`/`PDF` |
+| `400` | `EXPORTACION_EXCEDIDA` | La exportación supera `AUDITORIA_EXPORT_MAX_REGISTROS` |
 | `401` | — | Sesión ausente o expirada |
 | `403` | `ROL_NO_PERMITIDO` | El usuario no es Administrador |
 
@@ -183,12 +259,14 @@ Todos los errores usan el cuerpo estándar:
 | Solo una fecha | Mostrar error `FECHAS_OBLIGATORIAS` |
 | `fechaDesde > fechaHasta` | Mostrar error `RANGO_FECHAS_INVALIDO` |
 | Rango mayor al máximo | Mostrar error `RANGO_FECHAS_EXCEDIDO` con el máximo vigente |
-| Sin tipos seleccionados | Consultar todos los tipos activos |
+| Sin tipos seleccionados | Consultar todos los registros, incluidos históricos y no catalogados |
 | Un tipo seleccionado | Filtrar por ese código |
 | Varios tipos | Filtrar por la unión, sin duplicados |
 | Tipo inexistente | Mostrar error `TIPO_EVENTO_INVALIDO` |
 | Página fuera de rango | Mostrar página vacía |
-| `size > 100` o `size <= 0` | Mostrar error `PAGINACION_INVALIDA` |
+| `size > AUDITORIA_PAGINA_MAX` o `size <= 0` | Mostrar error `PAGINACION_INVALIDA` |
+| Exportar sin formato | Mostrar error `FORMATO_EXPORTACION_INVALIDO` |
+| Exportación sobre el tope | Mostrar error `EXPORTACION_EXCEDIDA` |
 
 ---
 
@@ -211,12 +289,16 @@ Columnas sugeridas:
 | Fecha y hora | `fechaHora` |
 | Evento | `tipoEventoNombre` (fallback `tipoEvento`) |
 | Entidad | `entidadAfectada` + `idAfectado` |
-| Operador | `usuarioNombre` (fallback `usuarioBd` o “Sistema”) |
+| Operador | `operador` (incluye “No disponible (histórico)” y “Sistema / automático”) |
 | IP | `ipUsuario` |
 | Detalle | Botón/chevron para expandir `detalle[]` |
 
 - Orden fijo del backend: más reciente primero.
 - Paginación con tamaño 20 por defecto.
+- Si `legacy = true`, mostrar una marca “Histórico” y no usar `idUsuario` como operador.
+- Si `tipoEvento = OTRO`, mostrar `tipoEventoOriginal` como dato secundario.
+- Agregar botones **Exportar CSV** y **Exportar PDF**; deshabilitarlos mientras no haya filtros válidos.
+- Mostrar el resumen por tipo/entidad arriba de la tabla, con `GET /admin/auditoria/resumen`.
 - Estado vacío: “No hay eventos de auditoría para los filtros seleccionados.”
 - Estado de carga: skeleton o spinner.
 - En móvil, priorizar fecha, evento y operador; el detalle se abre en un panel.
@@ -238,7 +320,7 @@ Mostrar una tabla de dos columnas:
 
 - La pantalla debe estar dentro del área de administración.
 - Si el usuario no es Administrador, el backend responde `403`; la UI debe redirigir o mostrar “No tenés permiso”.
-- No hay exportación en el MVP.
+- La exportación CSV/PDF está disponible para el Administrador.
 
 ---
 
@@ -262,21 +344,39 @@ GET /admin/auditoria?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=USUARIO_D
 GET /admin/auditoria?fechaDesde=2026-11-01&fechaHasta=2026-11-07&tipos=PROYECTO_ESTADO_CAMBIADO,POSTULACION_ESTADO_CAMBIADO,INVITACION_ESTADO_CAMBIADO
 ```
 
+### 6.4. Resumen
+
+```http
+GET /admin/auditoria/resumen?fechaDesde=2026-11-01&fechaHasta=2026-11-07
+```
+
+### 6.5. Exportar CSV
+
+```http
+GET /admin/auditoria/export?formato=CSV&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+```
+
+### 6.6. Exportar PDF
+
+```http
+GET /admin/auditoria/export?formato=PDF&fechaDesde=2026-11-01&fechaHasta=2026-11-07
+```
+
 ---
 
 ## 7. Fuera de alcance
 
-- Exportación CSV/PDF.
 - Auditoría de consultas o exportaciones.
 - Login/logout y accesos denegados.
 - Retención y purga.
 - Edición o borrado de eventos (el log es inmutable).
+- Backfill de registros históricos.
 
 ---
 
 ## 8. Referencias
 
-- `docs/3_diseño/auditoria_mvp.md`
+- `docs/calidad/auditoria_mvp.md`
 - `docs/calidad/controles_bd.md`
 - `docs/2_analisis/contratos.md` (UC-67)
 - `docs/5_estado_sistema/estado_uc.md` (UC-67)

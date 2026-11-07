@@ -232,6 +232,7 @@ CREATE TABLE auditoria(
     id_tipo_auditoria    int8            NOT NULL,
     id_usuario           int8,
     tipo_evento          varchar(60),
+    tipo_evento_original varchar(60),
     CONSTRAINT "PK_auditoria" PRIMARY KEY (id_auditoria)
 )
 ;
@@ -1926,6 +1927,32 @@ BEGIN
     RETURN v_usuario::bigint;
 END $$ LANGUAGE plpgsql STABLE;
 
+-- Resuelve el código de evento contra el catálogo. Si el código no está
+-- catalogado, se guarda como OTRO sin romper la operación de negocio.
+CREATE OR REPLACE FUNCTION fn_evento_auditoria(p_codigo varchar)
+RETURNS varchar AS $$
+BEGIN
+    IF p_codigo IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM tipo_evento_auditoria WHERE codigo = p_codigo
+    ) THEN
+        RETURN p_codigo;
+    END IF;
+
+    RAISE WARNING 'Evento de auditoría no catalogado: %', p_codigo;
+
+    IF EXISTS (
+        SELECT 1 FROM tipo_evento_auditoria WHERE codigo = 'OTRO'
+    ) THEN
+        RETURN 'OTRO';
+    END IF;
+
+    RETURN NULL;
+END $$ LANGUAGE plpgsql STABLE;
+
 -- Auditoria sobre tabla proyecto    
 CREATE OR REPLACE FUNCTION fn_auditar_cambio_proyecto() RETURNS trigger AS $$
 DECLARE
@@ -1954,7 +1981,8 @@ BEGIN
             ip_usuario,
             id_tipo_auditoria,
             id_usuario,
-            tipo_evento
+            tipo_evento,
+            tipo_evento_original
         ) VALUES (
             CURRENT_USER,
             'proyecto',
@@ -1963,6 +1991,7 @@ BEGIN
             inet_client_addr()::varchar,
             v_id_tipo_auditoria,
             v_id_usuario,
+            fn_evento_auditoria('PROYECTO_ESTADO_CAMBIADO'),
             'PROYECTO_ESTADO_CAMBIADO'
         ) RETURNING id_auditoria INTO v_id_auditoria;
 
@@ -2580,7 +2609,8 @@ BEGIN
         ip_usuario,
         id_tipo_auditoria,
         id_usuario,
-        tipo_evento
+        tipo_evento,
+        tipo_evento_original
     ) VALUES (
         CURRENT_USER,
         'usuario',
@@ -2589,6 +2619,7 @@ BEGIN
         inet_client_addr()::varchar,
         v_id_tipo_auditoria,
         v_id_usuario,
+        fn_evento_auditoria(v_tipo_evento),
         v_tipo_evento
     ) RETURNING id_auditoria INTO v_id_auditoria;
 
@@ -2662,7 +2693,8 @@ BEGIN
         ip_usuario,
         id_tipo_auditoria,
         id_usuario,
-        tipo_evento
+        tipo_evento,
+        tipo_evento_original
     ) VALUES (
         CURRENT_USER,
         'reporte',
@@ -2671,6 +2703,7 @@ BEGIN
         inet_client_addr()::varchar,
         v_id_tipo_auditoria,
         v_id_usuario,
+        fn_evento_auditoria('REPORTE_ESTADO_CAMBIADO'),
         'REPORTE_ESTADO_CAMBIADO'
     ) RETURNING id_auditoria INTO v_id_auditoria;
 
@@ -2757,7 +2790,8 @@ BEGIN
         ip_usuario,
         id_tipo_auditoria,
         id_usuario,
-        tipo_evento
+        tipo_evento,
+        tipo_evento_original
     ) VALUES (
         CURRENT_USER,
         TG_TABLE_NAME,
@@ -2766,6 +2800,7 @@ BEGIN
         inet_client_addr()::varchar,
         v_id_tipo_auditoria,
         fn_auditoria_usuario_actual(),
+        fn_evento_auditoria(v_tipo_evento),
         v_tipo_evento
     ) RETURNING id_auditoria INTO v_id_auditoria;
 
@@ -2871,7 +2906,8 @@ BEGIN
         ip_usuario,
         id_tipo_auditoria,
         id_usuario,
-        tipo_evento
+        tipo_evento,
+        tipo_evento_original
     ) VALUES (
         CURRENT_USER,
         'configuracion_sistema',
@@ -2881,6 +2917,7 @@ BEGIN
         inet_client_addr()::varchar,
         v_id_tipo_auditoria,
         fn_auditoria_usuario_actual(),
+        fn_evento_auditoria('CONFIGURACION_ACTUALIZADA'),
         'CONFIGURACION_ACTUALIZADA'
     ) RETURNING id_auditoria INTO v_id_auditoria;
 
@@ -2904,6 +2941,17 @@ CREATE TRIGGER trg_auditar_configuracion
 -- trigger agrega una segunda barrera para cualquier otro rol.
 CREATE OR REPLACE FUNCTION fn_auditoria_inmutable() RETURNS trigger AS $$
 BEGIN
+    -- Bypass explícito y transaccional para tareas de mantenimiento.
+    IF current_setting('app.auditoria_admin', true) = 'true' THEN
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSIF TG_OP = 'UPDATE' THEN
+            RETURN NEW;
+        ELSE
+            RETURN NULL;
+        END IF;
+    END IF;
+
     RAISE EXCEPTION 'La tabla % es inmutable: no se permite %', TG_TABLE_NAME, TG_OP;
 END $$ LANGUAGE plpgsql;
 
@@ -2916,6 +2964,16 @@ DROP TRIGGER IF EXISTS trg_detalle_auditoria_no_update_delete ON detalle_auditor
 CREATE TRIGGER trg_detalle_auditoria_no_update_delete
     BEFORE UPDATE OR DELETE ON detalle_auditoria
     FOR EACH ROW EXECUTE FUNCTION fn_auditoria_inmutable();
+
+DROP TRIGGER IF EXISTS trg_auditoria_no_truncate ON auditoria;
+CREATE TRIGGER trg_auditoria_no_truncate
+    BEFORE TRUNCATE ON auditoria
+    FOR EACH STATEMENT EXECUTE FUNCTION fn_auditoria_inmutable();
+
+DROP TRIGGER IF EXISTS trg_detalle_auditoria_no_truncate ON detalle_auditoria;
+CREATE TRIGGER trg_detalle_auditoria_no_truncate
+    BEFORE TRUNCATE ON detalle_auditoria
+    FOR EACH STATEMENT EXECUTE FUNCTION fn_auditoria_inmutable();
 
 
 
@@ -3070,6 +3128,7 @@ CREATE UNIQUE INDEX "UQ_tipo_accion_auditoria_nombre" ON tipo_accion_auditoria(n
 -- Indices de consulta de auditoria (UC-67)
 CREATE INDEX idx_auditoria_fecha_tipo ON auditoria (fecha_hora DESC, tipo_evento);
 CREATE INDEX idx_auditoria_entidad ON auditoria (entidad_afectada, id_afectado);
+CREATE INDEX idx_auditoria_entidad_fecha ON auditoria (entidad_afectada, fecha_hora DESC);
 CREATE INDEX idx_auditoria_usuario ON auditoria (id_usuario, fecha_hora DESC);
 CREATE INDEX idx_detalle_auditoria ON detalle_auditoria (id_auditoria);
 
@@ -4118,7 +4177,8 @@ INSERT INTO tipo_evento_auditoria (codigo, nombre, descripcion, modulo) VALUES
     ('INVITACION_ESTADO_CAMBIADO','Cambio de estado de invitación',   'Transición de estado de una invitación general o de actividad', 'INVITACIONES'),
     ('INVITACION_ELIMINADA',      'Baja de invitación',               'Eliminación física de una invitación', 'INVITACIONES'),
     ('CONFIGURACION_ACTUALIZADA', 'Cambio de configuración',          'Alta, modificación o baja de una clave de configuración del sistema', 'ADMINISTRACION'),
-    ('REPORTE_ESTADO_CAMBIADO',   'Cambio de estado de reporte',      'Alta o resolución de un reporte de perfil', 'REPORTES')
+    ('REPORTE_ESTADO_CAMBIADO',   'Cambio de estado de reporte',      'Alta o resolución de un reporte de perfil', 'REPORTES'),
+    ('OTRO',                      'Evento no clasificado',            'Código de evento no presente en el catálogo', 'SISTEMA')
 ON CONFLICT (codigo) DO UPDATE
     SET nombre      = EXCLUDED.nombre,
         descripcion = EXCLUDED.descripcion,
@@ -4127,6 +4187,9 @@ ON CONFLICT (codigo) DO UPDATE
 
 INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('AUDITORIA_RANGO_MAX_DIAS',          '90',          'Rango maximo de dias permitido en la consulta de auditoria (UC-67)'),
+    ('AUDITORIA_EXPORT_MAX_REGISTROS',    '10000',       'Maximo de registros exportables en UC-67'),
+    ('AUDITORIA_PAGINA_MAX',              '100',         'Tamano maximo de pagina permitido en el listado de auditoria (UC-67)'),
+    ('AUDITORIA_PDF_MAX_CAMBIOS_POR_FILA','5',           'Maximo de cambios mostrados por fila en el PDF de auditoria (UC-67)'),
     ('SCHEDULER_DESHABILITACION_HORA',   '2',           'Hora del dia (0-23) en la que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_MINUTO', '0',           'Minuto (0-59) en el que se ejecuta el scheduler de deshabilitacion'),
     ('SCHEDULER_DESHABILITACION_CRON',   '0 0 2 * * *', 'Expresion cron para el scheduler de deshabilitacion de usuarios'),
