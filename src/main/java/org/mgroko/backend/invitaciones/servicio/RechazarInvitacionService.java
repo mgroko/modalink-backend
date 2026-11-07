@@ -1,5 +1,7 @@
 package org.mgroko.backend.invitaciones.servicio;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,6 +50,7 @@ public class RechazarInvitacionService {
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final NotificacionService notificacionService;
+    private final Clock reloj;
 
     public RechazarInvitacionService(
             PerfilRepository perfilRepository,
@@ -56,7 +59,8 @@ public class RechazarInvitacionService {
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
             MiembroProyectoRepository miembroProyectoRepository,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService,
+            Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.invitacionGralRepository = invitacionGralRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
@@ -64,6 +68,7 @@ public class RechazarInvitacionService {
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.notificacionService = notificacionService;
+        this.reloj = reloj;
     }
 
     @Transactional
@@ -95,6 +100,7 @@ public class RechazarInvitacionService {
         validarProyecto(proyecto);
 
         invitacion.setEstado(EstadoSolicitud.RECHAZADA);
+        invitacion.setFechaRechazo(LocalDateTime.now(reloj));
         invitacionGralRepository.saveAndFlush(invitacion);
 
         notificarDirectores(
@@ -145,6 +151,7 @@ public class RechazarInvitacionService {
         validarProyecto(proyecto);
 
         invitacion.setEstado(EstadoSolicitud.RECHAZADA);
+        invitacion.setFechaRechazo(LocalDateTime.now(reloj));
         invitacionActividadRepository.saveAndFlush(invitacion);
 
         notificarDirectores(

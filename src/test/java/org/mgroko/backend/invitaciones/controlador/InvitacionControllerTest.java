@@ -427,6 +427,7 @@ class InvitacionControllerTest {
                 DireccionInvitacion.RECIBIDA,
                 EstadoSolicitud.PENDIENTE,
                 LocalDateTime.of(2026, 11, 4, 12, 0),
+                null,
                 5L,
                 "Proyecto UC30",
                 null,

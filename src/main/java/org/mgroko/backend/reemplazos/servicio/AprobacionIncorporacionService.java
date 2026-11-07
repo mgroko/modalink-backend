@@ -212,8 +212,9 @@ public class AprobacionIncorporacionService {
         reemplazo.setIdAsignacionResultante(idAsignacion);
         reemplazoRepository.saveAndFlush(reemplazo);
 
-        // El primero que aceptó y fue aprobado cubre la vacante: el resto de
-        // las invitaciones de este proceso desaparece.
+        // El primero que aceptó y fue aprobado cubre la vacante: se eliminan
+        // las demás invitaciones del proceso, salvo los rechazos del
+        // profesional, que se conservan como historial.
         candidatoRepository.deleteOtrosCandidatos(idReemplazo, idCandidato);
 
         notificacionService.notificarCandidato(

@@ -155,6 +155,24 @@ class BuscarInvitacionServiceTest {
     }
 
     @Test
+    void buscar_invitacionRechazada_exponeFechaDeRechazo() {
+        LocalDateTime fechaRechazo = LocalDateTime.of(2026, 11, 6, 18, 30);
+        InvitacionGral rechazada = general(
+                otro, activo, proyecto, EstadoSolicitud.RECHAZADA,
+                LocalDateTime.of(2026, 11, 3, 10, 0));
+        rechazada.setFechaRechazo(fechaRechazo);
+        when(invitacionGralRepository.buscarPorPerfil(ID_PERFIL_ACTIVO))
+                .thenReturn(List.of(rechazada));
+
+        PaginaResponse<InvitacionBusquedaResponse> respuesta =
+                servicio.buscar(ID_PERFIL_ACTIVO, null, 0, 20, false);
+
+        assertThat(respuesta.contenido()).hasSize(1);
+        assertThat(respuesta.contenido().getFirst().fechaRechazo())
+                .isEqualTo(fechaRechazo);
+    }
+
+    @Test
     void buscar_porNombreProyecto_esParcialEIgnoraMayusculas() {
         prepararDosInvitaciones();
 

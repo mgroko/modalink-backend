@@ -1,5 +1,6 @@
 package org.mgroko.backend.reemplazos.servicio;
 
+import java.util.Comparator;
 import java.util.List;
 
 import org.mgroko.backend.modelo.Perfil;
@@ -38,6 +39,9 @@ public class ReemplazoQueryService {
                     EstadoCandidatoReemplazo.INVITADO,
                     EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION,
                     EstadoCandidatoReemplazo.APROBADO);
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_RECHAZADOS =
+            List.of(EstadoCandidatoReemplazo.RECHAZADO);
 
     private final ReemplazoRepository reemplazoRepository;
     private final ReemplazoCandidatoRepository reemplazoCandidatoRepository;
@@ -105,6 +109,30 @@ public class ReemplazoQueryService {
                 .buscarInvitacionesDePerfil(idPerfilActivo, ESTADOS_INVITACION)
                 .stream()
                 .map(ReemplazoMapper::toInvitacion)
+                .toList();
+    }
+
+    /**
+     * Invitaciones de reemplazo rechazadas por el propio profesional.
+     *
+     * <p>Sólo se incluye el estado {@code RECHAZADO}: las invitaciones
+     * eliminadas por el director (borrado masivo al cubrir la vacante) y las
+     * canceladas junto con el proceso no forman parte de este historial.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<InvitacionReemplazoResponse> listarInvitacionesRechazadas(
+            Long idUsuario,
+            Long idPerfilActivo) {
+
+        validarPerfilActivo(idUsuario, idPerfilActivo);
+
+        return reemplazoCandidatoRepository
+                .buscarInvitacionesDePerfil(idPerfilActivo, ESTADOS_RECHAZADOS)
+                .stream()
+                .map(ReemplazoMapper::toInvitacion)
+                .sorted(Comparator.comparing(
+                        InvitacionReemplazoResponse::fechaRespuesta,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 

@@ -166,6 +166,15 @@ public class ReemplazoController {
                 idPerfilActivo(authentication)));
     }
 
+    @GetMapping("/reemplazos/invitaciones/rechazadas")
+    public ResponseEntity<List<InvitacionReemplazoResponse>> invitacionesRechazadas(
+            Authentication authentication) {
+
+        return ResponseEntity.ok(queryService.listarInvitacionesRechazadas(
+                idUsuario(authentication),
+                idPerfilActivo(authentication)));
+    }
+
     @PostMapping("/reemplazos/invitaciones/{idCandidato}/aceptar")
     public ResponseEntity<CandidatoReemplazoResponse> aceptar(
             @PathVariable Long idCandidato,

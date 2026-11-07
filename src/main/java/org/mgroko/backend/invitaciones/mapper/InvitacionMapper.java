@@ -67,6 +67,7 @@ public final class InvitacionMapper {
                 direccion(enviada),
                 invitacion.getEstado(),
                 invitacion.getFechaEnvio(),
+                invitacion.getFechaRechazo(),
                 idProyecto,
                 invitacion.getProyecto().getNombre(),
                 invitacion.getRequerimientoGral() != null
@@ -97,6 +98,7 @@ public final class InvitacionMapper {
                 direccion(enviada),
                 invitacion.getEstado(),
                 invitacion.getFechaEnvio(),
+                invitacion.getFechaRechazo(),
                 proyecto.getIdProyecto(),
                 proyecto.getNombre(),
                 null,

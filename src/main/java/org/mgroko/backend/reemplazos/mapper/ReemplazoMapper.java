@@ -141,7 +141,9 @@ public final class ReemplazoMapper {
                 candidato.getFechaInvitacion(),
                 actividad != null ? actividad.getFechaHoraInicio() : null,
                 actividad != null ? actividad.getDuracionMinutos() : null,
-                candidato.getMensaje());
+                candidato.getMensaje(),
+                candidato.getFechaRespuesta(),
+                candidato.getMotivoRespuesta());
     }
 
     private static CaracteristicaResponse toCaracteristica(CaracteristicaPerfil caracteristica) {
