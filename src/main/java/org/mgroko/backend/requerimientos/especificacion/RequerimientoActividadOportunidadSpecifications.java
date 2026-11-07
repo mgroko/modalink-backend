@@ -6,6 +6,7 @@ import java.util.List;
 import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Planificacion;
@@ -104,6 +105,11 @@ public final class RequerimientoActividadOportunidadSpecifications {
             predicates.add(cb.equal(actividad.get("idActividad"), filtro.idActividad()));
         }
 
+        if (tieneTexto(filtro.provinciaId()) || tieneTexto(filtro.localidadId())) {
+            predicates.add(conUbicacion(cb, proyecto,
+                    filtro.provinciaId(), filtro.localidadId()));
+        }
+
         if (tieneTexto(filtro.texto())) {
             String patron = LikePatrones.contiene(filtro.texto());
             predicates.add(cb.or(
@@ -140,6 +146,30 @@ public final class RequerimientoActividadOportunidadSpecifications {
 
     private static boolean tieneTexto(String valor) {
         return valor != null && !valor.isBlank();
+    }
+
+    /**
+     * Ubicación del proyecto de la actividad. Los ids son los identificadores
+     * externos del catálogo Georef expuestos por la API de ubicaciones.
+     */
+    private static Predicate conUbicacion(
+            CriteriaBuilder cb,
+            Path<Proyecto> proyecto,
+            String provinciaId,
+            String localidadId) {
+
+        Path<Ciudad> ciudad = proyecto.get("ubicacion").get("ciudad");
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (tieneTexto(provinciaId)) {
+            predicates.add(cb.equal(
+                    ciudad.get("provincia").get("idExterno"), provinciaId));
+        }
+        if (tieneTexto(localidadId)) {
+            predicates.add(cb.equal(ciudad.get("idExterno"), localidadId));
+        }
+
+        return cb.and(predicates.toArray(new Predicate[0]));
     }
 
     private static Predicate conCupoDisponible(

@@ -500,7 +500,7 @@ class ProyectoControllerTest {
                 new org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse(
                         100L, "Desfile Primavera", "Colección primavera",
                         LocalDate.of(2026, 6, 1), "Borrador", "Publico",
-                        false, 10L, "Luna Diseños"));
+                        false, 10L, "Luna Diseños", null));
         var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(
                 contenido, 0, 20, 1, 1, true, true);
 
@@ -517,6 +517,9 @@ class ProyectoControllerTest {
                         .param("nombre", "Desfile")
                         .param("estado", "PUBLICADO")
                         .param("director", "Luna")
+                        .param("idProfesion", "3")
+                        .param("provinciaId", "06")
+                        .param("localidadId", "06049010000")
                         .param("page", "0")
                         .param("size", "20")
                         .principal(auth))
@@ -540,6 +543,9 @@ class ProyectoControllerTest {
         assertThat(filtro.nombre()).isEqualTo("Desfile");
         assertThat(filtro.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoProyecto.PUBLICADO);
         assertThat(filtro.director()).isEqualTo("Luna");
+        assertThat(filtro.idProfesion()).isEqualTo(3L);
+        assertThat(filtro.provinciaId()).isEqualTo("06");
+        assertThat(filtro.localidadId()).isEqualTo("06049010000");
     }
 
     @Test
@@ -576,7 +582,7 @@ class ProyectoControllerTest {
                 new org.mgroko.backend.proyectos.dto.ProyectoBusquedaResponse(
                         100L, "Desfile Primavera", "Colección primavera",
                         LocalDate.of(2026, 6, 1), "Publicado", "Publico",
-                        false, 10L, "Luna Diseños"));
+                        false, 10L, "Luna Diseños", null));
         var pagina = new org.mgroko.backend.common.dto.PaginaResponse<>(contenido, 0, 20, 1, 1, true, true);
 
         when(buscarProyectoService.buscarProyectos(

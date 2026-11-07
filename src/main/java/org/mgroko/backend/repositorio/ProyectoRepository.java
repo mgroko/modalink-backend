@@ -14,11 +14,25 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
 public interface ProyectoRepository extends JpaRepository<Proyecto, Long>, JpaSpecificationExecutor<Proyecto> {
+
+    /**
+     * Búsqueda paginada de proyectos con la cadena de ubicación inicializada.
+     * Evita N+1 al armar la respuesta de UC-29 (ciudad/provincia en la tarjeta).
+     * Sólo agrega relaciones to-one, por lo que no altera el count.
+     */
+    @EntityGraph(attributePaths = {
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    Page<Proyecto> findAll(Specification<Proyecto> spec, Pageable pageable);
 
     Page<Proyecto> findByEstadoIn(List<EstadoProyecto> estados, Pageable pageable);
 

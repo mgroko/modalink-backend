@@ -142,7 +142,11 @@ public interface RequerimientoActividadRepository
         JOIN FETCH r.profesion
         JOIN FETCH r.actividad a
         JOIN FETCH a.planificacion p
-        JOIN FETCH p.proyecto
+        JOIN FETCH p.proyecto proy
+        LEFT JOIN FETCH proy.ubicacion ub
+        LEFT JOIN FETCH ub.ciudad ciu
+        LEFT JOIN FETCH ciu.provincia prov
+        LEFT JOIN FETCH prov.pais pais
         LEFT JOIN FETCH r.caracteristicas c
         LEFT JOIN FETCH c.caracteristica
         LEFT JOIN FETCH r.habilidades

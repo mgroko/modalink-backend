@@ -71,7 +71,11 @@ public interface RequerimientoGralProyectoRepository
     @Query("""
         SELECT DISTINCT r FROM RequerimientoGralProyecto r
         JOIN FETCH r.profesion
-        JOIN FETCH r.proyecto
+        JOIN FETCH r.proyecto proy
+        LEFT JOIN FETCH proy.ubicacion ub
+        LEFT JOIN FETCH ub.ciudad ciu
+        LEFT JOIN FETCH ciu.provincia prov
+        LEFT JOIN FETCH prov.pais pais
         LEFT JOIN FETCH r.caracteristicas c
         LEFT JOIN FETCH c.caracteristica
         LEFT JOIN FETCH r.habilidades

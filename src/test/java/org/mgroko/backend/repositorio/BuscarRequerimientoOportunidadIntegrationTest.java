@@ -12,9 +12,11 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.home.servicio.HomeOportunidadesService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.MiembroProyecto;
+import org.mgroko.backend.modelo.Pais;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PerfilTyc;
 import org.mgroko.backend.modelo.PerfilTycId;
@@ -22,11 +24,13 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.PostulacionGral;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.Provincia;
 import org.mgroko.backend.modelo.RequerimientoGralCaract;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
+import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
@@ -306,6 +310,102 @@ class BuscarRequerimientoOportunidadIntegrationTest extends AbstractPostgresInte
                 .containsExactly(TipoRequerimiento.ACTIVIDAD, TipoRequerimiento.GENERAL);
         assertThat(home.oportunidades().get(1).yaPostulado()).isTrue();
         assertThat(home.oportunidades().get(0).yaPostulado()).isFalse();
+    }
+
+    @Test
+    void filtraGeneralesYActividadesPorUbicacionDelProyecto() {
+        Perfil perfil = crearPerfil("UBI", "99400020", "Modelo");
+        Pais pais = paisArgentina();
+        Provincia provincia = crearProvincia("UBI_P", "Provincia Ubi", pais);
+        Ciudad ciudad = crearCiudad("UBI_C", "Ciudad Ubi", provincia);
+        Ubicacion ubicacion = crearUbicacion(ciudad);
+
+        Proyecto conUbicacion = crearProyecto(
+                "Con ubicacion UBI", EstadoProyecto.PUBLICADO, Privacidad.PUBLICO, true);
+        conUbicacion.setUbicacion(ubicacion);
+        RequerimientoGralProyecto generalConUbicacion = crearRequerimientoGeneral(
+                conUbicacion, perfil.getProfesion(), 1, "General UBI");
+        Planificacion planificacionConUbicacion = crearPlanificacion(conUbicacion);
+        Actividad actividadConUbicacion = crearActividad(
+                planificacionConUbicacion, "Actividad UBI");
+        RequerimientoActividad requerimientoActividadConUbicacion =
+                crearRequerimientoActividad(
+                        actividadConUbicacion, perfil.getProfesion(), 1, "Actividad UBI");
+
+        Proyecto sinUbicacion = crearProyecto(
+                "Sin ubicacion UBI", EstadoProyecto.PUBLICADO, Privacidad.PUBLICO, true);
+        crearRequerimientoGeneral(
+                sinUbicacion, perfil.getProfesion(), 1, "General sin UBI");
+        Planificacion planificacionSinUbicacion = crearPlanificacion(sinUbicacion);
+        Actividad actividadSinUbicacion = crearActividad(
+                planificacionSinUbicacion, "Actividad sin UBI");
+        crearRequerimientoActividad(
+                actividadSinUbicacion, perfil.getProfesion(), 1, "Actividad sin UBI");
+
+        em.flush();
+
+        BuscarRequerimientosGlobalFiltro filtro = new BuscarRequerimientosGlobalFiltro(
+                null, null, null, null, null, null, null, null, null, null,
+                provincia.getIdExterno(), null);
+
+        PaginaResponse<RequerimientoOportunidadResponse> generales =
+                buscarGeneralesService.buscar(
+                        perfil.getIdPerfil(), filtro, 0, 20, false);
+
+        assertThat(generales.contenido())
+                .extracting(RequerimientoOportunidadResponse::idRequerimiento)
+                .containsExactly(generalConUbicacion.getIdRequerimientoGral());
+        assertThat(generales.contenido().getFirst().ciudad()).isNotNull();
+        assertThat(generales.contenido().getFirst().ciudad().nombre())
+                .isEqualTo("Ciudad Ubi");
+
+        PaginaResponse<RequerimientoOportunidadResponse> actividades =
+                buscarActividadService.buscar(
+                        perfil.getIdPerfil(), filtro, 0, 20, false);
+
+        assertThat(actividades.contenido())
+                .extracting(RequerimientoOportunidadResponse::idRequerimiento)
+                .containsExactly(requerimientoActividadConUbicacion.getIdRequerimiento());
+        assertThat(actividades.contenido().getFirst().ciudad()).isNotNull();
+        assertThat(actividades.contenido().getFirst().ciudad().nombre())
+                .isEqualTo("Ciudad Ubi");
+    }
+
+    private Pais paisArgentina() {
+        return em.createQuery("SELECT p FROM Pais p WHERE p.codigoIso = 'AR'", Pais.class)
+                .getSingleResult();
+    }
+
+    private Provincia crearProvincia(String idExterno, String nombre, Pais pais) {
+        Provincia provincia = Provincia.builder()
+                .nombre(nombre)
+                .idExterno(idExterno)
+                .fuenteApi("TEST")
+                .activo(true)
+                .pais(pais)
+                .build();
+        em.persist(provincia);
+        return provincia;
+    }
+
+    private Ciudad crearCiudad(String idExterno, String nombre, Provincia provincia) {
+        Ciudad ciudad = Ciudad.builder()
+                .nombre(nombre)
+                .idExterno(idExterno)
+                .fuenteApi("TEST")
+                .activo(true)
+                .provincia(provincia)
+                .build();
+        em.persist(ciudad);
+        return ciudad;
+    }
+
+    private Ubicacion crearUbicacion(Ciudad ciudad) {
+        Ubicacion ubicacion = Ubicacion.builder()
+                .ciudad(ciudad)
+                .build();
+        em.persist(ubicacion);
+        return ubicacion;
     }
 
     private BuscarRequerimientosGlobalFiltro filtroVacio() {

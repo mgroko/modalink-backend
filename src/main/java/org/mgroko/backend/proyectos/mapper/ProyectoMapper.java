@@ -38,7 +38,10 @@ public final class ProyectoMapper {
                 proyecto.getPrivacidad() != null ? proyecto.getPrivacidad().name() : null,
                 proyecto.getAceptaPostulacionGral(),
                 director != null ? director.getIdPerfil() : null,
-                director != null ? director.getNombreArtistico() : null
+                director != null ? director.getNombreArtistico() : null,
+                proyecto.getUbicacion() != null
+                        ? UbicacionMapper.toCiudadResponse(proyecto.getUbicacion().getCiudad())
+                        : null
         );
     }
 
