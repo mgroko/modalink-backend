@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
@@ -97,6 +98,15 @@ class LogoutIntegrationTest {
 
         @MockitoBean
         private UsuarioRepository usuarioRepository;
+
+        @BeforeEach
+        void prepararCookieExpirada() {
+                when(jwtCookieFactory.crearExpirada())
+                                .thenReturn(ResponseCookie.from("jwt", "")
+                                                .maxAge(0)
+                                                .path("/")
+                                                .build());
+        }
 
         @AfterEach
         void limpiarContexto() {

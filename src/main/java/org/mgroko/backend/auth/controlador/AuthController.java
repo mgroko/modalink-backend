@@ -157,7 +157,11 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            // Aunque no haya una sesión válida, se limpia cualquier cookie
+            // JWT residual para evitar que el navegador siga enviándola.
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header(HttpHeaders.SET_COOKIE, jwtCookieFactory.crearExpirada().toString())
+                    .build();
         }
 
         SecurityContextHolder.clearContext();

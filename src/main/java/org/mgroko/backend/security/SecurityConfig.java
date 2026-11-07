@@ -13,6 +13,7 @@ import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,8 +24,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -36,6 +37,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
+@Import(CsrfConfig.class)
 public class SecurityConfig {
 
     private final JwtService jwtService;
@@ -92,7 +94,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
+            HttpSecurity http,
+            CsrfTokenRepository csrfTokenRepository
     ) throws Exception {
 
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
@@ -181,14 +184,14 @@ public class SecurityConfig {
                 .failureHandler(googleOAuth2FailureHandler))
 
             .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRepository(csrfTokenRepository)
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                 // El onboarding de Google viaja con un ticket firmado en cookie
                 // HttpOnly y SameSite=Lax; no hay sesión previa para emitir un
                 // XSRF-TOKEN antes del callback.
                 .ignoringRequestMatchers("/auth/google/**")
             )
-            .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(new CsrfCookieFilter(csrfTokenRepository), UsernamePasswordAuthenticationFilter.class)
 
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

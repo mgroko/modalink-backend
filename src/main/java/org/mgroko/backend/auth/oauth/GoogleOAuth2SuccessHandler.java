@@ -11,6 +11,8 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,14 +25,17 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
 
     private final GoogleAuthService googleAuthService;
     private final JwtCookieFactory jwtCookieFactory;
+    private final CsrfTokenRepository csrfTokenRepository;
     private final String frontendUrl;
 
     public GoogleOAuth2SuccessHandler(
             GoogleAuthService googleAuthService,
             JwtCookieFactory jwtCookieFactory,
+            CsrfTokenRepository csrfTokenRepository,
             @Value("${app.frontend.url:http://localhost:5173}") String frontendUrl) {
         this.googleAuthService = googleAuthService;
         this.jwtCookieFactory = jwtCookieFactory;
+        this.csrfTokenRepository = csrfTokenRepository;
         this.frontendUrl = quitarBarraFinal(frontendUrl);
     }
 
@@ -44,6 +49,11 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
             GoogleUserData datos = GoogleUserData.desde(oauth2User);
             GoogleAuthResult resultado = googleAuthService.autenticar(datos);
+
+            // El callback OAuth no pasa por el CsrfCookieFilter; se emite el
+            // XSRF-TOKEN para que el frontend pueda hacer logout y peticiones
+            // mutantes con la sesión recién creada.
+            guardarCsrfToken(request, response);
 
             if (resultado.requiereCompletarRegistro()) {
                 agregarCookie(response, jwtCookieFactory.crearRegistroPendiente(resultado.ticket()));
@@ -62,6 +72,14 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             log.warn("Falló el inicio de sesión con Google: {}", ex.getClass().getSimpleName());
             response.sendRedirect(frontendUrl + "/login?googleError=google_auth_failed");
         }
+    }
+
+    private void guardarCsrfToken(HttpServletRequest request, HttpServletResponse response) {
+        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        if (csrfToken == null) {
+            csrfToken = csrfTokenRepository.generateToken(request);
+        }
+        csrfTokenRepository.saveToken(csrfToken, request, response);
     }
 
     private void agregarCookie(HttpServletResponse response, ResponseCookie cookie) {
