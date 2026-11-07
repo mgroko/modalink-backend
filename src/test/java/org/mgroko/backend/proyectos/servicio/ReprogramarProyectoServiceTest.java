@@ -6,13 +6,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,6 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.actividades.servicio.CronogramaService;
+import org.mgroko.backend.calendario.dto.ResultadoDisponibilidad;
+import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
@@ -361,6 +367,114 @@ class ReprogramarProyectoServiceTest {
                 Map.of(2L, List.of(30L)));
 
         assertThat(objetivo.getFechaHoraInicio()).isEqualTo(INICIO_NUEVO);
+    }
+
+    @Test
+    void reprogramarActividad_proyectoPublicadoConFechasProvisionalesDeAyer_noRompeElCronograma() {
+        Clock reloj = Clock.fixed(
+                Instant.parse("2026-11-07T13:00:00Z"), ZoneId.of("UTC"));
+        CronogramaService cronogramaReal = new CronogramaService(reloj);
+        PlanificadorRecursosService planificadorReal =
+                new PlanificadorRecursosService(
+                        cronogramaReal,
+                        calendarioService,
+                        asignacionActividadRepository);
+        ReprogramarProyectoService servicioReal = new ReprogramarProyectoService(
+                proyectoRepository,
+                planificacionRepository,
+                actividadRepository,
+                asignacionActividadRepository,
+                planificadorReal,
+                calendarioService,
+                cronogramaReal);
+
+        Proyecto proyecto = proyectoPublicado();
+        Planificacion planificacion = planificacion(proyecto);
+        LocalDateTime provisionalAyer = LocalDateTime.of(2026, 11, 6, 15, 19);
+        LocalDateTime ahora = LocalDateTime.of(2026, 11, 7, 13, 0);
+
+        // Reproduce "El Sol de Mexico": proyecto publicado sin fecha de inicio,
+        // con fechas provisionales persistidas el día anterior.
+        Actividad predecesora = actividad(
+                1L, "Apertura", 60, EstadoActividad.PENDIENTE, provisionalAyer);
+        Actividad objetivo = actividad(
+                2L, "Prueba de diseños", 120, EstadoActividad.PENDIENTE,
+                provisionalAyer.plusHours(1));
+        objetivo.setPredecesoras(Set.of(predecesora));
+
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(predecesora, objetivo));
+        when(asignacionActividadRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of());
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(objetivo), any(), any(), anyMap(), anySet()))
+                .thenAnswer(inv -> new ResultadoDisponibilidad(
+                        true,
+                        false,
+                        inv.getArgument(2),
+                        inv.getArgument(3),
+                        inv.getArgument(2),
+                        ((LocalDateTime) inv.getArgument(2)).plusMinutes(120),
+                        null,
+                        List.of(),
+                        ResultadoPreferencia.SIN_PREFERENCIA,
+                        null,
+                        null,
+                        List.of()));
+
+        servicioReal.reprogramarActividad(
+                100L,
+                2L,
+                MotivoReprogramacion.ASIGNACION,
+                Map.of(2L, List.of(30L)));
+
+        assertThat(objetivo.getFechaHoraInicio()).isAfterOrEqualTo(ahora);
+    }
+
+    @Test
+    void reprogramarActividad_proyectoConfirmado_anclaPendientesDentroDelCronograma() {
+        Proyecto proyecto = proyectoConfirmado();
+        Planificacion planificacion = planificacion(proyecto);
+
+        Actividad predecesora = actividad(
+                1L, "Predecesora", 60, EstadoActividad.PENDIENTE, INICIO_VIEJO);
+        Actividad objetivo = actividad(
+                2L, "Objetivo", 60, EstadoActividad.PENDIENTE,
+                INICIO_VIEJO.plusHours(1));
+        objetivo.setPredecesoras(Set.of(predecesora));
+
+        when(proyectoRepository.findByIdParaGestion(100L))
+                .thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyectoForUpdate(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(predecesora, objetivo));
+        when(planificadorRecursosService.planificar(
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO),
+                eq(true), anyMap(), anyMap()))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(1L, INICIO_VIEJO, 2L, INICIO_NUEVO),
+                        Map.of(),
+                        null));
+
+        service.reprogramarActividad(
+                100L,
+                2L,
+                MotivoReprogramacion.ASIGNACION,
+                Map.of(2L, List.of(30L)));
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<Map<Long, LocalDateTime>> captor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(planificadorRecursosService).planificar(
+                eq(planificacion), anyList(), eq(INICIO_PROYECTO),
+                eq(true), anyMap(), captor.capture());
+
+        assertThat(captor.getValue()).containsEntry(1L, INICIO_VIEJO);
     }
 
     @Test
