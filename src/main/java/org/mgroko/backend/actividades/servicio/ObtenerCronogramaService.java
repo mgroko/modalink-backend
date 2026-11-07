@@ -91,7 +91,9 @@ public class ObtenerCronogramaService {
                 .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
 
         CalculoCpm calculo = cronogramaService.calcularProyeccion(planificacion, todas);
-        LocalDateTime inicio = cronogramaService.inicioEfectivo(planificacion);
+        LocalDateTime inicio = calculo.inicio() != null
+                ? calculo.inicio()
+                : cronogramaService.inicioEfectivo(planificacion);
         boolean tentativo = cronogramaService.esTentativa(planificacion);
 
         List<Long> rutaCritica = calculo.nodos().values().stream()

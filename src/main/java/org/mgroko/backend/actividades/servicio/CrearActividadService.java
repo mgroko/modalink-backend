@@ -157,7 +157,7 @@ public class CrearActividadService {
                 List.of(),
                 estadoCronograma,
                 calculo,
-                calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
+                calculo == null ? null : calculo.inicio(),
                 calculo == null || cronogramaService.esTentativa(planificacion),
                 OrigenInicioResolver.resolver(guardada, proyecto, false));
     }

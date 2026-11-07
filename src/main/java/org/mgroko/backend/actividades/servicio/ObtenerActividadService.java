@@ -120,7 +120,7 @@ public class ObtenerActividadService {
                         .toList(),
                 estadoCronograma,
                 calculo,
-                calculo == null ? null : cronogramaService.inicioEfectivo(planificacion),
+                calculo == null ? null : calculo.inicio(),
                 calculo == null || cronogramaService.esTentativa(planificacion),
                 actividadOrigenService.calcular(actividad));
     }

@@ -436,6 +436,70 @@ class ReprogramarProyectoServiceTest {
     }
 
     @Test
+    void simularAsignacion_proyectoPublicadoConEnCursoAnteriorAlOrigen_noRompeElCronograma() {
+        Clock reloj = Clock.fixed(
+                Instant.parse("2026-11-07T13:00:00Z"), ZoneId.of("UTC"));
+        CronogramaService cronogramaReal = new CronogramaService(reloj);
+        PlanificadorRecursosService planificadorReal =
+                new PlanificadorRecursosService(
+                        cronogramaReal,
+                        calendarioService,
+                        asignacionActividadRepository);
+        ReprogramarProyectoService servicioReal = new ReprogramarProyectoService(
+                proyectoRepository,
+                planificacionRepository,
+                actividadRepository,
+                asignacionActividadRepository,
+                planificadorReal,
+                calendarioService,
+                cronogramaReal);
+
+        Proyecto proyecto = proyectoPublicado();
+        Planificacion planificacion = planificacion(proyecto);
+        LocalDateTime inicioAyer = LocalDateTime.of(2026, 11, 6, 15, 19);
+        LocalDateTime ahora = LocalDateTime.of(2026, 11, 7, 13, 0);
+
+        // Reproduce el escenario de la captura: "Apertura" ya está EN_CURSO
+        // con un inicio real anterior al "hoy" estimado del proyecto publicado.
+        Actividad apertura = actividad(
+                1L, "Apertura", 60, EstadoActividad.EN_CURSO, inicioAyer);
+        Actividad objetivo = actividad(
+                2L, "Prueba de diseños", 120, EstadoActividad.PENDIENTE,
+                inicioAyer.plusHours(1));
+        objetivo.setPredecesoras(Set.of(apertura));
+
+        when(proyectoRepository.findById(100L)).thenReturn(Optional.of(proyecto));
+        when(planificacionRepository.findByProyectoIdProyecto(100L))
+                .thenReturn(Optional.of(planificacion));
+        when(actividadRepository.findConPredecesorasByPlanificacion(50L))
+                .thenReturn(List.of(apertura, objetivo));
+        when(asignacionActividadRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of());
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), any(Actividad.class), any(), any(), anyMap(), anySet()))
+                .thenAnswer(inv -> new ResultadoDisponibilidad(
+                        true,
+                        false,
+                        inv.getArgument(2),
+                        inv.getArgument(3),
+                        inv.getArgument(2),
+                        ((LocalDateTime) inv.getArgument(2)).plusMinutes(120),
+                        null,
+                        List.of(),
+                        ResultadoPreferencia.SIN_PREFERENCIA,
+                        null,
+                        null,
+                        List.of()));
+
+        ReprogramarProyectoService.SimulacionAsignacion simulacion =
+                servicioReal.simularAsignacion(100L, 2L, List.of(30L));
+
+        assertThat(simulacion.inicioPropuesto()).isAfterOrEqualTo(ahora);
+        assertThat(simulacion.disponibilidad()).isNotNull();
+        assertThat(simulacion.disponibilidad().disponible()).isTrue();
+    }
+
+    @Test
     void reprogramarActividad_proyectoConfirmado_anclaPendientesDentroDelCronograma() {
         Proyecto proyecto = proyectoConfirmado();
         Planificacion planificacion = planificacion(proyecto);
