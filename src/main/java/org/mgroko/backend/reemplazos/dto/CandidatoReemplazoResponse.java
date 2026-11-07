@@ -34,5 +34,6 @@ public record CandidatoReemplazoResponse(
         LocalDateTime fechaInvitacion,
         LocalDateTime fechaRespuesta,
         LocalDateTime fechaDecision,
-        String motivoDecision) {
+        String motivoDecision,
+        Long idTycAceptado) {
 }

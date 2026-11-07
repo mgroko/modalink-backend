@@ -367,7 +367,7 @@ class EliminarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 .getSingleResult();
 
         MiembroProyecto miembroDirector = crearMiembro(
-                proyecto, perfilDirector, rolDirector, 1L);
+                proyecto, perfilDirector, rolDirector, null);
         MiembroProyecto miembro = crearMiembro(
                 proyecto, perfilMiembro, rolMiembro, null);
         MiembroProyecto miembroSolo = crearMiembro(

@@ -114,7 +114,8 @@ public final class ReemplazoMapper {
                 candidato.getFechaInvitacion(),
                 candidato.getFechaRespuesta(),
                 candidato.getFechaDecision(),
-                candidato.getMotivoDecision());
+                candidato.getMotivoDecision(),
+                candidato.getIdTycAceptado());
     }
 
     public static InvitacionReemplazoResponse toInvitacion(ReemplazoCandidato candidato) {

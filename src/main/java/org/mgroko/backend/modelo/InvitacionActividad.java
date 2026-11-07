@@ -38,4 +38,11 @@ public class InvitacionActividad {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_requerimiento_act", nullable = false)
     private RequerimientoActividad requerimiento;
+
+    /**
+     * Versión de los términos y condiciones del perfil destinatario que el
+     * proyecto aceptó al enviar la invitación (UC-23 / UC-31).
+     */
+    @Column(name = "id_tyc_aceptado")
+    private Long idTycAceptado;
 }

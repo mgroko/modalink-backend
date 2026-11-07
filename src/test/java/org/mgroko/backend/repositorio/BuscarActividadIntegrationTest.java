@@ -148,7 +148,7 @@ class BuscarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 .proyecto(proyecto)
                 .perfil(perfil)
                 .rolProyecto(rolMiembro())
-                .idTycAceptado(1L)
+                .idTycAceptado(null)
                 .estadoParticipacion(estado)
                 .build());
     }

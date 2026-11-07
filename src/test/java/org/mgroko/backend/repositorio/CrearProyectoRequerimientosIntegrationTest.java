@@ -100,7 +100,7 @@ class CrearProyectoRequerimientosIntegrationTest extends AbstractPostgresIntegra
 
     private void aceptarTyPerfil(Long idPerfil) {
         jdbcTemplate.update(
-                "INSERT INTO perfil_tyc (id_perfil, id_tyc, descripcion, fecha_inicio) VALUES (?, 1, 'TyC UC-24', NOW())",
+                "INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio, fecha_fin) VALUES (?, 'TyC UC-24', NOW() - INTERVAL '1 day', NOW())",
                 idPerfil);
     }
 

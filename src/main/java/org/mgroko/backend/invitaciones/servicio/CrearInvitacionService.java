@@ -24,6 +24,7 @@ import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
@@ -62,6 +63,7 @@ public class CrearInvitacionService {
     private final CupoRequerimientoService cupoRequerimientoService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
+    private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
     private final Clock reloj;
 
     public CrearInvitacionService(
@@ -75,6 +77,7 @@ public class CrearInvitacionService {
             CupoRequerimientoService cupoRequerimientoService,
             ProyectoSecurityService proyectoSecurityService,
             NotificacionService notificacionService,
+            GestionTerminosCondicionesService gestionTerminosCondicionesService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
@@ -86,6 +89,7 @@ public class CrearInvitacionService {
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
+        this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
         this.reloj = reloj;
     }
 
@@ -114,6 +118,9 @@ public class CrearInvitacionService {
         validarPuedeRecibirInvitacion(idProyecto, remitente, destinatario);
         validarSinInvitacionPendiente(idProyecto, destinatario);
 
+        Long idTycAceptado = gestionTerminosCondicionesService.validarAceptacion(
+                destinatario.getIdPerfil(), request.aceptacionTerminos());
+
         InvitacionGral invitacion = InvitacionGral.builder()
                 .perfilRemitente(remitente)
                 .perfilDestinatario(destinatario)
@@ -122,6 +129,7 @@ public class CrearInvitacionService {
                 .mensaje(normalizarMensaje(request.mensaje()))
                 .estado(EstadoSolicitud.PENDIENTE)
                 .fechaEnvio(LocalDateTime.now(reloj))
+                .idTycAceptado(idTycAceptado)
                 .build();
 
         try {
@@ -162,6 +170,9 @@ public class CrearInvitacionService {
         validarPuedeRecibirInvitacion(idProyecto, remitente, destinatario);
         validarSinInvitacionPendiente(idProyecto, destinatario);
 
+        Long idTycAceptado = gestionTerminosCondicionesService.validarAceptacion(
+                destinatario.getIdPerfil(), request.aceptacionTerminos());
+
         InvitacionActividad invitacion = InvitacionActividad.builder()
                 .perfilRemitente(remitente)
                 .perfilDestinatario(destinatario)
@@ -169,6 +180,7 @@ public class CrearInvitacionService {
                 .mensaje(normalizarMensaje(request.mensaje()))
                 .estado(EstadoSolicitud.PENDIENTE)
                 .fechaEnvio(LocalDateTime.now(reloj))
+                .idTycAceptado(idTycAceptado)
                 .build();
 
         try {

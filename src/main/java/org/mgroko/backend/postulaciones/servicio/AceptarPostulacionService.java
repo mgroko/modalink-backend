@@ -35,6 +35,8 @@ import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
+import org.mgroko.backend.postulaciones.dto.AceptarPostulacionRequest;
 import org.mgroko.backend.postulaciones.dto.AdvertenciaSobrecompromiso;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
@@ -90,6 +92,7 @@ public class AceptarPostulacionService {
     private final ActividadRepository actividadRepository;
     private final CronogramaService cronogramaService;
     private final ApplicationEventPublisher eventPublisher;
+    private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
     private final Clock reloj;
 
     public AceptarPostulacionService(
@@ -110,6 +113,7 @@ public class AceptarPostulacionService {
             ActividadRepository actividadRepository,
             CronogramaService cronogramaService,
             ApplicationEventPublisher eventPublisher,
+            GestionTerminosCondicionesService gestionTerminosCondicionesService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
@@ -128,6 +132,7 @@ public class AceptarPostulacionService {
         this.actividadRepository = actividadRepository;
         this.cronogramaService = cronogramaService;
         this.eventPublisher = eventPublisher;
+        this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
         this.reloj = reloj;
     }
 
@@ -137,6 +142,16 @@ public class AceptarPostulacionService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idPostulacion) {
+        return aceptarGeneral(idUsuario, idPerfilActivo, idProyecto, idPostulacion, null);
+    }
+
+    @Transactional
+    public PostulacionGestionadaResponse aceptarGeneral(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            Long idPostulacion,
+            AceptarPostulacionRequest request) {
 
         Proyecto proyecto = cargarProyectoAutorizado(
                 idUsuario, idPerfilActivo, idProyecto);
@@ -185,7 +200,12 @@ public class AceptarPostulacionService {
                     "El postulante ya es miembro activo de este proyecto.");
         }
 
-        MiembroProyecto miembro = crearMiembro(proyecto, postulante, requerimiento);
+        Long idTycAceptado = gestionTerminosCondicionesService.validarAceptacion(
+                postulante.getIdPerfil(),
+                request != null ? request.aceptacionTerminos() : null);
+
+        MiembroProyecto miembro = crearMiembro(
+                proyecto, postulante, requerimiento, idTycAceptado);
 
         postulacion.setEstado(EstadoSolicitud.ACEPTADA);
         postulacion = postulacionGralRepository.saveAndFlush(postulacion);
@@ -200,7 +220,11 @@ public class AceptarPostulacionService {
                 requerimiento.getIdRequerimientoGral(),
                 postulante.getIdPerfil(),
                 miembro.getIdMiembro(),
-                null);
+                null,
+                null,
+                null,
+                List.of(),
+                idTycAceptado);
     }
 
     @Transactional
@@ -209,6 +233,16 @@ public class AceptarPostulacionService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idPostulacion) {
+        return aceptarActividad(idUsuario, idPerfilActivo, idProyecto, idPostulacion, null);
+    }
+
+    @Transactional
+    public PostulacionGestionadaResponse aceptarActividad(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            Long idPostulacion,
+            AceptarPostulacionRequest request) {
 
         Proyecto proyecto = cargarProyectoAutorizado(
                 idUsuario, idPerfilActivo, idProyecto);
@@ -253,6 +287,10 @@ public class AceptarPostulacionService {
             throw new PerfilEnBajaException(
                     "El perfil postulante no se encuentra activo.");
         }
+
+        Long idTycAceptado = gestionTerminosCondicionesService.validarAceptacion(
+                postulante.getIdPerfil(),
+                request != null ? request.aceptacionTerminos() : null);
 
         MiembroProyecto miembro = miembroProyectoRepository
                 .findMiembroActivoConRol(idProyecto, postulante.getIdPerfil())
@@ -314,8 +352,14 @@ public class AceptarPostulacionService {
                 disponibilidad);
 
         if (miembro == null) {
-            miembro = crearMiembro(proyecto, postulante, null);
+            miembro = crearMiembro(proyecto, postulante, null, idTycAceptado);
+        } else if (miembro.getIdTycAceptado() == null && idTycAceptado != null) {
+            miembro.setIdTycAceptado(idTycAceptado);
+            miembro = miembroProyectoRepository.saveAndFlush(miembro);
         }
+        // La respuesta refleja la versión efectivamente registrada en la
+        // membresía, que puede ser anterior si el integrante ya existía.
+        idTycAceptado = miembro.getIdTycAceptado();
 
         if (proyecto.getEstado() != null
                 && proyecto.getEstado().permiteReprogramacion()
@@ -363,7 +407,8 @@ public class AceptarPostulacionService {
                 asignacion.getIdAsignacionAct(),
                 disponibilidad.resultadoPreferencia(),
                 disponibilidad.desvioMinutos(),
-                advertencias);
+                advertencias,
+                idTycAceptado);
     }
 
     /**
@@ -532,7 +577,8 @@ public class AceptarPostulacionService {
     private MiembroProyecto crearMiembro(
             Proyecto proyecto,
             Perfil postulante,
-            RequerimientoGralProyecto requerimientoGral) {
+            RequerimientoGralProyecto requerimientoGral,
+            Long idTycAceptado) {
 
         RolProyecto rolMiembro = rolProyectoRepository.findByCodigo(ROL_MIEMBRO)
                 .orElseThrow(() -> new RolProyectoNoEncontradoException(ROL_MIEMBRO));
@@ -544,6 +590,7 @@ public class AceptarPostulacionService {
                 .estadoParticipacion(EstadoParticipacion.ACTIVO)
                 .fechaAlta(LocalDateTime.now(reloj))
                 .requerimientoGral(requerimientoGral)
+                .idTycAceptado(idTycAceptado)
                 .build());
     }
 

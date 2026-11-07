@@ -418,3 +418,25 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Precondición** | La postulación debe estar en estado ‘Pendiente’ |
 | **Postcondición** | Se eliminó una instancia de Postulacion unaPostulacion |
 
+| Nombre | configurarTerminosCondiciones(unPerfil, texto) |
+| :---- | :---- |
+| **Responsabilidades** | Registrar una nueva versión de los términos y condiciones del perfil. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-23 |
+| **Notas** | El texto debe tener entre 1 y 5000 caracteres. Si el texto es igual a la versión vigente, no se crea una versión nueva. |
+| **Excepciones** | Perfil inexistente o ajeno, perfil no activo, texto vacío o mayor a 5000 caracteres. |
+| **Salida** | TerminosCondicionesResponse |
+| **Precondición** | El usuario está autenticado, el perfil existe y está en estado Activo. |
+| **Postcondición** | Se cerró la versión vigente anterior y se creó una nueva versión vigente asociada al perfil. |
+
+| Nombre | aceptarTerminosDePerfil(unPerfil, idTyc, aceptaTerminos) |
+| :---- | :---- |
+| **Responsabilidades** | Validar que el proyecto acepte la versión vigente de los términos y condiciones del perfil que se incorpora. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-23, UC-28, UC-31, UC-34, UC-38 bis |
+| **Notas** | Si el perfil no tiene T&C configurados, no se exige aceptación y el id queda nulo. |
+| **Excepciones** | Falta la aceptación, la versión enviada no es la vigente o el perfil ya no tiene versión vigente. |
+| **Salida** | idTycAceptado |
+| **Precondición** | El perfil destinatario existe y está activo. |
+| **Postcondición** | Se registró la versión aceptada en la invitación o en la membresía del proyecto. |
+

@@ -81,11 +81,17 @@ public class PerfilMapper {
 
     public static org.mgroko.backend.perfiles.dto.PerfilDetalleResponse toDetalleResponse(Perfil perfil,
             boolean esPropietario) {
-        return toDetalleResponse(perfil, esPropietario, null);
+        return toDetalleResponse(perfil, esPropietario, null, null);
     }
 
     public static org.mgroko.backend.perfiles.dto.PerfilDetalleResponse toDetalleResponse(Perfil perfil,
             boolean esPropietario, Integer diasBaja) {
+        return toDetalleResponse(perfil, esPropietario, diasBaja, null);
+    }
+
+    public static org.mgroko.backend.perfiles.dto.PerfilDetalleResponse toDetalleResponse(Perfil perfil,
+            boolean esPropietario, Integer diasBaja,
+            org.mgroko.backend.perfiles.dto.TerminosCondicionesResponse terminosCondiciones) {
         List<CaracteristicaResponse> caracteristicas = perfil.getCaracteristicas().stream()
                 .sorted(Comparator.comparing(c -> c.getCaracteristicaTecnica().getCodigo()))
                 .map(PerfilMapper::toCaracteristicaResponse)
@@ -121,7 +127,8 @@ public class PerfilMapper {
                 habilidades,
                 caracteristicas,
                 esPropietario,
-                fechaLimite(perfil, diasBaja)
+                fechaLimite(perfil, diasBaja),
+                terminosCondiciones
         );
     }
 

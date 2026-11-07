@@ -809,6 +809,25 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    /**
+     * Conflicto de aceptación de términos y condiciones de un perfil. Incluye
+     * la versión vigente para que el cliente pueda refrescar el texto.
+     */
+    @ExceptionHandler(org.mgroko.backend.perfiles.exception.TerminosCondicionesException.class)
+    public ResponseEntity<Map<String, Object>> handleTerminosCondiciones(
+            org.mgroko.backend.perfiles.exception.TerminosCondicionesException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("codigo", ex.getCodigo());
+        response.put("message", ex.getMessage());
+        response.put("idPerfil", ex.getIdPerfil());
+        response.put("idTycVigente", ex.getIdTycVigente());
+        response.put("descripcionVigente", ex.getDescripcionVigente());
+        response.put("esPlantilla", ex.isEsPlantilla());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     
 
     /**

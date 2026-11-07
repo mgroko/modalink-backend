@@ -861,3 +861,61 @@ sequenceDiagram
 La cuenta canónica sigue siendo `usuario`; `usuario_identidad` solo resuelve
 con qué proveedor se autenticó. El onboarding es obligatorio antes de crear la
 cuenta para no relajar las restricciones de DNI, edad y género.
+
+## UC-23 — Configurar términos y condiciones
+
+**Implementación actual:** `GET/PUT /perfiles/{idPerfil}/terminos-condiciones`,
+atendido por `PerfilTerminosCondicionesController` y
+`GestionTerminosCondicionesService`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Usuario
+    participant API as PerfilTerminosCondicionesController
+    participant Servicio as GestionTerminosCondicionesService
+    participant PerfilRepo as PerfilRepository
+    participant TycRepo as PerfilTycRepository
+    participant Config as ConfiguracionSistemaService
+    participant DB as PostgreSQL
+
+    Usuario->>API: GET /perfiles/{idPerfil}/terminos-condiciones
+    API->>Servicio: obtener(idUsuario, idPerfil)
+    Servicio->>PerfilRepo: findById(idPerfil)
+    PerfilRepo-->>Servicio: Perfil
+    Servicio->>TycRepo: findFirstBy...FechaFinIsNull(idPerfil)
+    alt Existe versión vigente
+        TycRepo-->>Servicio: PerfilTyc
+        Servicio-->>API: TerminosCondicionesResponse (esPlantilla=false)
+    else No existe versión
+        Servicio->>Config: obtenerPlantillaTerminosCondiciones()
+        Config-->>Servicio: texto de plantilla
+        Servicio-->>API: TerminosCondicionesResponse (esPlantilla=true)
+    end
+    API-->>Usuario: 200 OK
+
+    Usuario->>API: PUT /perfiles/{idPerfil}/terminos-condiciones {descripcion}
+    API->>Servicio: actualizar(idUsuario, idPerfil, request)
+    Servicio->>PerfilRepo: findByIdPerfilAndUsuarioIdUsuarioForUpdate(...)
+    PerfilRepo-->>Servicio: Perfil (lock pesimista)
+    alt Perfil no Activo
+        Servicio-->>API: PerfilEnBajaException (409)
+    else Perfil Activo
+        Servicio->>TycRepo: buscar versión vigente
+        alt Mismo texto
+            Servicio-->>API: versión vigente sin cambios
+        else Texto distinto
+            Servicio->>TycRepo: cerrar versión vigente (fecha_fin)
+            Servicio->>TycRepo: nextIdTyc()
+            Servicio->>DB: persist nueva versión
+            Servicio-->>API: TerminosCondicionesResponse
+        end
+    end
+    API-->>Usuario: 200 OK
+```
+
+La versión vigente se incluye en `GET /perfiles/{idPerfil}`. Cuando un proyecto
+incorpora al perfil, el director debe aceptar esa versión; el id aceptado se
+guarda en `invitacion_gral.id_tyc_aceptado`,
+`invitacion_actividad.id_tyc_aceptado` o
+`miembros_proyecto.id_tyc_aceptado` según el flujo.

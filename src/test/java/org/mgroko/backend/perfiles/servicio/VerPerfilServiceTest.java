@@ -44,6 +44,9 @@ class VerPerfilServiceTest {
     @Mock
     private ConfiguracionSistemaService configuracionSistemaService;
 
+    @Mock
+    private GestionTerminosCondicionesService gestionTerminosCondicionesService;
+
     @InjectMocks
     private VerPerfilService verPerfilService;
 

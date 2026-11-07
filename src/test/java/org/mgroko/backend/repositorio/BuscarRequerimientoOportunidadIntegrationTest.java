@@ -437,7 +437,7 @@ class BuscarRequerimientoOportunidadIntegrationTest extends AbstractPostgresInte
                 .proyecto(proyecto)
                 .perfil(perfil)
                 .rolProyecto(rol)
-                .idTycAceptado(1L)
+                .idTycAceptado(null)
                 .estadoParticipacion(estado)
                 .build());
     }

@@ -15,12 +15,14 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
+import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
 import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
+import org.mgroko.backend.reemplazos.dto.AprobarCandidatoRequest;
 import org.mgroko.backend.reemplazos.dto.CandidatoReemplazoResponse;
 import org.mgroko.backend.reemplazos.enums.EstadoCandidatoReemplazo;
 import org.mgroko.backend.reemplazos.enums.EstadoReemplazo;
@@ -61,6 +63,7 @@ public class AprobacionIncorporacionService {
     private final ReprogramarProyectoService reprogramarProyectoService;
     private final ReemplazoNotificacionService notificacionService;
     private final ApplicationEventPublisher eventPublisher;
+    private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
     private final Clock reloj;
 
     public AprobacionIncorporacionService(
@@ -76,6 +79,7 @@ public class AprobacionIncorporacionService {
             ReprogramarProyectoService reprogramarProyectoService,
             ReemplazoNotificacionService notificacionService,
             ApplicationEventPublisher eventPublisher,
+            GestionTerminosCondicionesService gestionTerminosCondicionesService,
             Clock reloj) {
         this.reemplazoRepository = reemplazoRepository;
         this.candidatoRepository = candidatoRepository;
@@ -89,6 +93,7 @@ public class AprobacionIncorporacionService {
         this.reprogramarProyectoService = reprogramarProyectoService;
         this.notificacionService = notificacionService;
         this.eventPublisher = eventPublisher;
+        this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
         this.reloj = reloj;
     }
 
@@ -99,6 +104,18 @@ public class AprobacionIncorporacionService {
             Long idProyecto,
             Long idReemplazo,
             Long idCandidato) {
+        return aprobar(idUsuario, idPerfilActivo, idProyecto, idReemplazo,
+                idCandidato, null);
+    }
+
+    @Transactional
+    public CandidatoReemplazoResponse aprobar(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            Long idReemplazo,
+            Long idCandidato,
+            AprobarCandidatoRequest request) {
 
         queryService.validarPerfilActivo(idUsuario, idPerfilActivo);
         proyectoSecurityService.validarDirector(idProyecto, idPerfilActivo);
@@ -115,7 +132,12 @@ public class AprobacionIncorporacionService {
         validarProyectoYVacante(reemplazo);
         validarCandidatoActivo(candidato);
 
+        Long idTycAceptado = gestionTerminosCondicionesService.validarAceptacion(
+                candidato.getPerfil().getIdPerfil(),
+                request != null ? request.aceptacionTerminos() : null);
+
         Long idMiembro;
+        Long idTycRegistrado = idTycAceptado;
         Long idAsignacion = null;
 
         if (reemplazo.getTipo() == TipoReemplazo.ACTIVIDAD) {
@@ -139,8 +161,10 @@ public class AprobacionIncorporacionService {
                                 List.of(candidato.getUsuario().getIdUsuario())));
             }
 
-            MiembroProyecto miembro = obtenerOCrearMiembro(reemplazo, candidato, null);
+            MiembroProyecto miembro = obtenerOCrearMiembro(
+                    reemplazo, candidato, null, idTycAceptado);
             idMiembro = miembro.getIdMiembro();
+            idTycRegistrado = miembro.getIdTycAceptado();
 
             if (asignacionActividadRepository
                     .existsByMiembro_IdMiembroAndActividad_IdActividad(
@@ -167,8 +191,10 @@ public class AprobacionIncorporacionService {
             MiembroProyecto miembro = obtenerOCrearMiembro(
                     reemplazo,
                     candidato,
-                    reemplazo.getRequerimientoGral());
+                    reemplazo.getRequerimientoGral(),
+                    idTycAceptado);
             idMiembro = miembro.getIdMiembro();
+            idTycRegistrado = miembro.getIdTycAceptado();
         }
 
         LocalDateTime ahora = LocalDateTime.now(reloj);
@@ -177,6 +203,7 @@ public class AprobacionIncorporacionService {
         candidato.setIdUsuarioDecision(idUsuario);
         candidato.setIdMiembroCreado(idMiembro);
         candidato.setIdAsignacionCreada(idAsignacion);
+        candidato.setIdTycAceptado(idTycRegistrado);
         candidatoRepository.saveAndFlush(candidato);
 
         reemplazo.setEstado(EstadoReemplazo.CUBIERTO);
@@ -323,15 +350,24 @@ public class AprobacionIncorporacionService {
     private MiembroProyecto obtenerOCrearMiembro(
             Reemplazo reemplazo,
             ReemplazoCandidato candidato,
-            RequerimientoGralProyecto requerimientoGral) {
+            RequerimientoGralProyecto requerimientoGral,
+            Long idTycAceptado) {
 
         var existente = miembroProyectoRepository.findMiembroActivoConRol(
                 reemplazo.getProyecto().getIdProyecto(),
                 candidato.getPerfil().getIdPerfil());
         if (existente.isPresent()) {
             MiembroProyecto miembro = existente.get();
+            boolean requiereGuardar = false;
             if (requerimientoGral != null && miembro.getRequerimientoGral() == null) {
                 miembro.setRequerimientoGral(requerimientoGral);
+                requiereGuardar = true;
+            }
+            if (miembro.getIdTycAceptado() == null && idTycAceptado != null) {
+                miembro.setIdTycAceptado(idTycAceptado);
+                requiereGuardar = true;
+            }
+            if (requiereGuardar) {
                 miembroProyectoRepository.saveAndFlush(miembro);
             }
             return miembro;
@@ -348,6 +384,7 @@ public class AprobacionIncorporacionService {
                     .estadoParticipacion(EstadoParticipacion.ACTIVO)
                     .fechaAlta(LocalDateTime.now(reloj))
                     .requerimientoGral(requerimientoGral)
+                    .idTycAceptado(idTycAceptado)
                     .build());
         } catch (DataIntegrityViolationException ex) {
             throw new ReemplazoNoGestionableException(

@@ -94,6 +94,16 @@ class ListarMiembrosProyectoServiceTest {
     }
 
     @Test
+    void listar_exponeIdTycAceptado() {
+        miembro.setIdTycAceptado(7L);
+
+        PaginaResponse<MiembroProyectoResponse> pagina = service.listar(
+                1L, 10L, 100L, null, null, null, 0, 20, true);
+
+        assertThat(pagina.contenido().get(1).idTycAceptado()).isEqualTo(7L);
+    }
+
+    @Test
     void listar_otroDirectorConDirectorActivo_esEliminable() {
         miembro.setRolProyecto(rol(3L, "DIRECTOR", "Director de proyecto"));
         when(miembroProyectoRepository.buscarActivosDeProyectoConPerfilProfesionYRol(100L))

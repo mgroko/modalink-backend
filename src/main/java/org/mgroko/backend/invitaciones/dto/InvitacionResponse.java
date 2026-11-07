@@ -14,6 +14,32 @@ public record InvitacionResponse(
         Long idRequerimientoActividad,
         Long idPerfilRemitente,
         Long idPerfilDestinatario,
-        String mensaje
+        String mensaje,
+        Long idTycAceptado
 ) {
+
+    public InvitacionResponse(
+            Long idInvitacion,
+            TipoInvitacion tipo,
+            EstadoSolicitud estado,
+            LocalDateTime fechaEnvio,
+            Long idProyecto,
+            Long idRequerimientoGral,
+            Long idRequerimientoActividad,
+            Long idPerfilRemitente,
+            Long idPerfilDestinatario,
+            String mensaje) {
+        this(
+                idInvitacion,
+                tipo,
+                estado,
+                fechaEnvio,
+                idProyecto,
+                idRequerimientoGral,
+                idRequerimientoActividad,
+                idPerfilRemitente,
+                idPerfilDestinatario,
+                mensaje,
+                null);
+    }
 }

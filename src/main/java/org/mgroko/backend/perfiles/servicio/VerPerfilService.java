@@ -21,12 +21,15 @@ public class VerPerfilService {
     private final PerfilRepository perfilRepository;
     private final UsuarioRepository usuarioRepository;
     private final ConfiguracionSistemaService configuracionSistemaService;
+    private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
 
     public VerPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository,
-            ConfiguracionSistemaService configuracionSistemaService) {
+            ConfiguracionSistemaService configuracionSistemaService,
+            GestionTerminosCondicionesService gestionTerminosCondicionesService) {
         this.perfilRepository = perfilRepository;
         this.usuarioRepository = usuarioRepository;
         this.configuracionSistemaService = configuracionSistemaService;
+        this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
     }
 
     @Transactional(readOnly = true)
@@ -51,7 +54,11 @@ public class VerPerfilService {
             if (perfil.getEstado() == EstadoPerfil.Baja) {
                 throw new PerfilNoEncontradoException("Perfil no encontrado.");
             }
-            return PerfilMapper.toDetalleResponse(perfil, true, diasBaja);
+            return PerfilMapper.toDetalleResponse(
+                    perfil,
+                    true,
+                    diasBaja,
+                    gestionTerminosCondicionesService.obtenerParaPerfil(perfil));
         }
 
         // Si es un tercero viendo el perfil:
@@ -65,6 +72,10 @@ public class VerPerfilService {
             throw new PerfilNoEncontradoException("Perfil no encontrado.");
         }
 
-        return PerfilMapper.toDetalleResponse(perfil, false, diasBaja);
+        return PerfilMapper.toDetalleResponse(
+                perfil,
+                false,
+                diasBaja,
+                gestionTerminosCondicionesService.obtenerParaPerfil(perfil));
     }
 }

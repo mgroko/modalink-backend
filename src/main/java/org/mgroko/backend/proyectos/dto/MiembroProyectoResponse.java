@@ -15,7 +15,8 @@ public record MiembroProyectoResponse(
         String rol,
         String estadoParticipacion,
         Boolean eliminable,
-        String motivoNoEliminable
+        String motivoNoEliminable,
+        Long idTycAceptado
 ) {
 
     public MiembroProyectoResponse(
@@ -41,6 +42,36 @@ public record MiembroProyectoResponse(
                 rol,
                 estadoParticipacion,
                 null,
+                null,
+                null);
+    }
+
+    public MiembroProyectoResponse(
+            Long idMiembro,
+            Long idPerfil,
+            Long idUsuario,
+            String nombreArtistico,
+            String nombreUsuario,
+            String apellidoUsuario,
+            Long idProfesion,
+            String nombreProfesion,
+            String rol,
+            String estadoParticipacion,
+            Boolean eliminable,
+            String motivoNoEliminable) {
+        this(
+                idMiembro,
+                idPerfil,
+                idUsuario,
+                nombreArtistico,
+                nombreUsuario,
+                apellidoUsuario,
+                idProfesion,
+                nombreProfesion,
+                rol,
+                estadoParticipacion,
+                eliminable,
+                motivoNoEliminable,
                 null);
     }
 }

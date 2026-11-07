@@ -166,7 +166,7 @@ class CalendarioActividadIntegrationTest extends AbstractPostgresIntegrationTest
 
         MiembroProyecto miembro = MiembroProyecto.builder()
                 .proyecto(proyecto).perfil(perfil).rolProyecto(rolMiembro())
-                .idTycAceptado(1L)
+                .idTycAceptado(null)
                 .estadoParticipacion(EstadoParticipacion.Activo).build();
         em.persist(miembro);
 

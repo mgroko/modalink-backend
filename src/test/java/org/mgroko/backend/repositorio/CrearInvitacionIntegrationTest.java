@@ -20,6 +20,8 @@ import org.mgroko.backend.invitaciones.dto.CrearInvitacionActividadBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionActividadRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralBatchRequest;
 import org.mgroko.backend.invitaciones.dto.CrearInvitacionGralRequest;
+import org.mgroko.backend.perfiles.dto.AceptacionTerminosRequest;
+import org.mgroko.backend.perfiles.exception.TerminosCondicionesException;
 import org.mgroko.backend.invitaciones.dto.InvitacionBatchResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionGestionadaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
@@ -523,6 +525,57 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(porCaracteristica.contenido()).isEmpty();
     }
 
+    @Test
+    void general_conTycVigente_exigeAceptacionYLaPropagaAlMiembro() {
+        PerfilCreado director = crearPerfil(
+                "uc23.dir@example.com", "88823001", "Directora UC23", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc23.dest@example.com", "88823002", "Destinataria UC23", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC23");
+
+        Long idTyc = jdbcTemplate.queryForObject("""
+                INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio)
+                VALUES (?, 'Términos vigentes UC-23', NOW())
+                RETURNING id_tyc
+                """, Long.class, destinatario.idPerfil());
+
+        assertThatThrownBy(() -> crearInvitacionService.invitarAProyecto(
+                director.idUsuario(),
+                director.idPerfil(),
+                publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatario.idPerfil(), "Te invito")))
+                .isInstanceOf(TerminosCondicionesException.class)
+                .extracting("codigo")
+                .isEqualTo(TerminosCondicionesException.NO_ACEPTADOS);
+
+        InvitacionResponse respuesta = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(),
+                director.idPerfil(),
+                publicado.idProyecto(),
+                new CrearInvitacionGralRequest(
+                        destinatario.idPerfil(),
+                        null,
+                        "Te invito",
+                        new AceptacionTerminosRequest(idTyc, true)));
+
+        assertThat(respuesta.idTycAceptado()).isEqualTo(idTyc);
+
+        aceptarInvitacionService.aceptarGeneral(
+                destinatario.idUsuario(),
+                destinatario.idPerfil(),
+                respuesta.idInvitacion());
+
+        Long idTycMiembro = jdbcTemplate.queryForObject("""
+                SELECT id_tyc_aceptado
+                FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil());
+
+        assertThat(idTycMiembro).isEqualTo(idTyc);
+    }
+
     private PerfilCreado crearPerfil(
             String correo,
             String dni,
@@ -550,8 +603,8 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                         "Perfil de prueba UC-31.", List.of()));
 
         jdbcTemplate.update(
-                "INSERT INTO perfil_tyc (id_perfil, id_tyc, descripcion, fecha_inicio) "
-                        + "VALUES (?, 1, 'TyC UC-31', NOW())",
+                "INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio, fecha_fin) "
+                        + "VALUES (?, 'TyC UC-31', NOW() - INTERVAL '1 day', NOW())",
                 perfil.idPerfil());
 
         return new PerfilCreado(usuario.getIdUsuario(), perfil.idPerfil());

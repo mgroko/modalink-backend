@@ -50,6 +50,8 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.perfiles.dto.AceptacionTerminosRequest;
+import org.mgroko.backend.postulaciones.dto.AceptarPostulacionRequest;
 import org.mgroko.backend.postulaciones.dto.PostulacionGestionadaResponse;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoEncontradaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
@@ -67,10 +69,12 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -111,6 +115,8 @@ class AceptarPostulacionServiceTest {
     private CronogramaService cronogramaService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private GestionTerminosCondicionesService gestionTerminosCondicionesService;
 
     private AceptarPostulacionService service;
 
@@ -147,6 +153,7 @@ class AceptarPostulacionServiceTest {
                 actividadRepository,
                 cronogramaService,
                 eventPublisher,
+                gestionTerminosCondicionesService,
                 reloj);
 
         director = Perfil.builder()
@@ -221,6 +228,36 @@ class AceptarPostulacionServiceTest {
         verify(miembroProyectoRepository).saveAndFlush(any(MiembroProyecto.class));
         verify(postulacionGralRepository).saveAndFlush(postulacion);
         verify(notificacionService).registrarTodas(any());
+    }
+
+    @Test
+    void aceptarGeneral_conAceptacionTyc_guardaIdEnMiembro() {
+        prepararCaminoFeliz();
+        when(gestionTerminosCondicionesService.validarAceptacion(
+                eq(12L), any())).thenReturn(7L);
+        when(miembroProyectoRepository.saveAndFlush(any(MiembroProyecto.class)))
+                .thenAnswer(invocation -> {
+                    MiembroProyecto miembro = invocation.getArgument(0);
+                    miembro.setIdMiembro(88L);
+                    return miembro;
+                });
+        when(postulacionGralRepository.saveAndFlush(any(PostulacionGral.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificacionService.crear(
+                any(Usuario.class), any(Perfil.class),
+                eq(NotificacionService.TIPO_POSTULACION_ACEPTADA),
+                any(String.class), eq("POSTULACION_GRAL"), eq(77L), any(Long.class)))
+                .thenReturn(new Notificacion());
+
+        ArgumentCaptor<MiembroProyecto> captor =
+                ArgumentCaptor.forClass(MiembroProyecto.class);
+
+        service.aceptarGeneral(1L, 10L, 5L, 77L,
+                new AceptarPostulacionRequest(
+                        new AceptacionTerminosRequest(7L, true)));
+
+        verify(miembroProyectoRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getIdTycAceptado()).isEqualTo(7L);
     }
 
     @Test

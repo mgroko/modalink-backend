@@ -2,6 +2,7 @@ package org.mgroko.backend.postulaciones.controlador;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.postulaciones.dto.AceptarPostulacionRequest;
 import org.mgroko.backend.postulaciones.dto.BuscarPostulacionesFiltro;
 import org.mgroko.backend.postulaciones.dto.CrearPostulacionActividadRequest;
 import org.mgroko.backend.postulaciones.dto.CrearPostulacionGralRequest;
@@ -105,24 +106,34 @@ public class PostulacionController {
     public ResponseEntity<PostulacionGestionadaResponse> aceptarGeneral(
             @PathVariable Long idProyecto,
             @PathVariable Long idPostulacion,
+            @RequestBody(required = false) @Valid AceptarPostulacionRequest request,
             Authentication authentication) {
 
         Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
 
-        return ResponseEntity.ok(aceptarPostulacionService.aceptarGeneral(
-                idUsuario, idPerfilActivo(authentication), idProyecto, idPostulacion));
+        return ResponseEntity.ok(request == null
+                ? aceptarPostulacionService.aceptarGeneral(
+                        idUsuario, idPerfilActivo, idProyecto, idPostulacion)
+                : aceptarPostulacionService.aceptarGeneral(
+                        idUsuario, idPerfilActivo, idProyecto, idPostulacion, request));
     }
 
     @PostMapping("/proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}/aceptar")
     public ResponseEntity<PostulacionGestionadaResponse> aceptarActividad(
             @PathVariable Long idProyecto,
             @PathVariable Long idPostulacion,
+            @RequestBody(required = false) @Valid AceptarPostulacionRequest request,
             Authentication authentication) {
 
         Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
 
-        return ResponseEntity.ok(aceptarPostulacionService.aceptarActividad(
-                idUsuario, idPerfilActivo(authentication), idProyecto, idPostulacion));
+        return ResponseEntity.ok(request == null
+                ? aceptarPostulacionService.aceptarActividad(
+                        idUsuario, idPerfilActivo, idProyecto, idPostulacion)
+                : aceptarPostulacionService.aceptarActividad(
+                        idUsuario, idPerfilActivo, idProyecto, idPostulacion, request));
     }
 
     @PostMapping("/proyectos/{idProyecto}/postulaciones/general/{idPostulacion}/rechazar")

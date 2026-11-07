@@ -29,6 +29,8 @@ import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.perfiles.dto.AceptacionTerminosRequest;
+import org.mgroko.backend.reemplazos.dto.AprobarCandidatoRequest;
 import org.mgroko.backend.reemplazos.dto.ConfirmarReemplazoRequest;
 import org.mgroko.backend.reemplazos.enums.OrigenReemplazo;
 import org.mgroko.backend.reemplazos.evento.ReemplazoNecesarioEvent;
@@ -96,6 +98,9 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private MiembroProyectoRepository miembroProyectoRepository;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Test
     @Transactional
@@ -309,6 +314,62 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                 .existsByMiembro_IdMiembroAndActividad_IdActividad(
                         reemplazoCubierto.getIdMiembroResultante(),
                         escenario.idActividad())).isTrue();
+    }
+
+    @Test
+    @Transactional
+    void aprobarCandidatoConTycVigenteRegistraLaVersionAceptada() {
+        Escenario escenario = crearEscenario();
+
+        Long idTyc = jdbcTemplate.queryForObject("""
+                INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio)
+                VALUES (?, 'Términos vigentes para reemplazo', NOW())
+                RETURNING id_tyc
+                """, Long.class, escenario.idPerfilCandidato());
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        var reemplazoActividad = reemplazoRepository
+                .findByProyectoIdProyectoOrderByFechaCreacionDesc(escenario.idProyecto())
+                .stream()
+                .filter(r -> r.getTipo().name().equals("ACTIVIDAD"))
+                .findFirst()
+                .orElseThrow();
+
+        var candidato = reemplazoCandidatoRepository
+                .findConDetalleByReemplazo(reemplazoActividad.getIdReemplazo())
+                .getFirst();
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazoActividad.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(List.of(candidato.getIdCandidato()), "Te invitamos"));
+
+        invitacionReemplazoService.aceptar(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato(),
+                candidato.getIdCandidato());
+
+        var respuesta = aprobacionIncorporacionService.aprobar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazoActividad.getIdReemplazo(),
+                candidato.getIdCandidato(),
+                new AprobarCandidatoRequest(
+                        new AceptacionTerminosRequest(idTyc, true)));
+
+        MiembroProyecto miembro = miembroProyectoRepository.findMiembroActivoConRol(
+                escenario.idProyecto(), escenario.idPerfilCandidato()).orElseThrow();
+
+        assertThat(miembro.getIdTycAceptado()).isEqualTo(idTyc);
+        assertThat(respuesta.idTycAceptado()).isEqualTo(idTyc);
     }
 
     private Escenario crearEscenario() {

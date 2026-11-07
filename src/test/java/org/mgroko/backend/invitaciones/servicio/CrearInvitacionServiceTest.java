@@ -52,6 +52,7 @@ import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
+import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mockito.ArgumentCaptor;
@@ -96,6 +97,8 @@ class CrearInvitacionServiceTest {
     private ProyectoSecurityService proyectoSecurityService;
     @Mock
     private NotificacionService notificacionService;
+    @Mock
+    private GestionTerminosCondicionesService gestionTerminosCondicionesService;
 
     private CrearInvitacionService servicio;
 
@@ -112,6 +115,7 @@ class CrearInvitacionServiceTest {
                 cupoRequerimientoService,
                 proyectoSecurityService,
                 notificacionService,
+                gestionTerminosCondicionesService,
                 RELOJ);
     }
 

@@ -532,7 +532,7 @@ class ModificarActividadIntegrationTest extends AbstractPostgresIntegrationTest 
                 .proyecto(proyecto)
                 .perfil(perfil)
                 .rolProyecto(rolDirector)
-                .idTycAceptado(1L)
+                .idTycAceptado(null)
                 .estadoParticipacion(EstadoParticipacion.Activo)
                 .build();
         em.persist(miembro);

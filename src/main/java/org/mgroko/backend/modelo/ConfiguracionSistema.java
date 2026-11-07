@@ -23,7 +23,7 @@ public class ConfiguracionSistema {
     @Column(name = "clave", length = 100, nullable = false)
     private String clave;
 
-    @Column(name = "valor", length = 255, nullable = false)
+    @Column(name = "valor", nullable = false, columnDefinition = "TEXT")
     private String valor;
 
     @Column(name = "descripcion", length = 255)

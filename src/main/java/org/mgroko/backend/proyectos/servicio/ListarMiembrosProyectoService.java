@@ -211,7 +211,8 @@ public class ListarMiembrosProyectoService {
                         ? miembro.getEstadoParticipacion().name()
                         : null,
                 motivoNoEliminable == null,
-                motivoNoEliminable);
+                motivoNoEliminable,
+                miembro.getIdTycAceptado());
     }
 
     private String motivoNoEliminable(

@@ -36,6 +36,35 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_IMAGEN_MAX_TAMANO_BYTES = "IMAGEN_MAX_TAMANO_BYTES";
     public static final String CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS = "IMAGEN_LIMPIEZA_INTERVALO_HORAS";
     public static final String CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS = "IMAGEN_LIMPIEZA_GRACIA_MINUTOS";
+    public static final String CLAVE_PERFIL_TYC_PLANTILLA = "PERFIL_TYC_PLANTILLA";
+
+    public static final int PERFIL_TYC_MAX_CARACTERES = 5000;
+
+    private static final String PLANTILLA_PERFIL_TYC_POR_DEFECTO = """
+Mis condiciones de trabajo
+
+1. Alcance. Estas condiciones se aplican a los proyectos en los que participo a través de ModaLink. Cada proyecto puede acordar condiciones particulares, que prevalecen sobre este texto si ambas partes las confirman por escrito.
+
+2. Propuesta y acuerdo previo. Antes de comenzar, acordamos por escrito el alcance del trabajo, la fecha, la duración, el lugar y la retribución (monetaria, canje u otra). No comienzo un trabajo sin acuerdo previo.
+
+3. Retribución. Los valores y la forma de pago se definen en cada proyecto. Si el trabajo es a cambio de canje o colaboración, se detalla qué recibo y en qué plazo.
+
+4. Cancelaciones y cambios. Pido aviso con anticipación razonable ante cualquier cancelación o reprogramación. Los cambios de último momento pueden implicar un ajuste de la retribución o de los plazos.
+
+5. Puntualidad y preparación. Me comprometo a llegar en tiempo y forma. Pido que me informen con antelación el horario, la locación, el equipo de trabajo y los requerimientos de la producción.
+
+6. Uso de imagen y de obra. El uso de mi imagen o de mi trabajo se limita a lo acordado (medios, plazo y territorio). Cualquier uso adicional requiere mi autorización previa. Solicito que se me acredite en las publicaciones, salvo que se acuerde lo contrario.
+
+7. Materiales y equipamiento. Cuido el material que se me confía y pido el mismo cuidado con el mío. Los daños o pérdidas se resuelven según lo acordado en el proyecto.
+
+8. Confidencialidad. Mantengo reserva sobre la información no pública de los proyectos en los que participo, salvo autorización expresa.
+
+9. Ambiente de trabajo. Trabajo en un entorno de respeto. Puedo retirarme de una sesión si se vulneran mi seguridad, mi dignidad o lo acordado.
+
+10. Contratos. Cuando el proyecto lo requiera, formalizo los acuerdos mediante los contratos generados en la plataforma, que deben ser revisados y firmados por las partes.
+
+11. Relación con ModaLink. Estas condiciones son propias de mi perfil y no reemplazan los Términos y Condiciones de ModaLink, que siempre se aplican.
+""".strip();
 
     private static final int DEFAULT_HORA = 2;
     private static final int DEFAULT_MINUTO = 0;
@@ -147,6 +176,25 @@ public class ConfiguracionSistemaService {
     public int obtenerDiasBaja() {
         int dias = obtenerValorEntero(CLAVE_DIAS_BAJA, DEFAULT_DIAS_BAJA);
         return dias > 0 ? dias : DEFAULT_DIAS_BAJA;
+    }
+
+    /**
+     * Plantilla base de términos y condiciones para perfiles (UC-23). Se lee
+     * de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_PERFIL_TYC_PLANTILLA}). Si la fila falta, está vacía o
+     * supera el máximo permitido, se usa la plantilla por defecto del código.
+     *
+     * @return texto de la plantilla, nunca vacío y con un máximo de
+     *         {@link #PERFIL_TYC_MAX_CARACTERES} caracteres
+     */
+    @Transactional(readOnly = true)
+    public String obtenerPlantillaTerminosCondiciones() {
+        return configuracionSistemaRepository.findByClave(CLAVE_PERFIL_TYC_PLANTILLA)
+                .map(ConfiguracionSistema::getValor)
+                .map(String::trim)
+                .filter(valor -> !valor.isEmpty()
+                        && valor.length() <= PERFIL_TYC_MAX_CARACTERES)
+                .orElse(PLANTILLA_PERFIL_TYC_POR_DEFECTO);
     }
 
     /**
