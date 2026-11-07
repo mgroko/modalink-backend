@@ -154,19 +154,21 @@ public class AuthController {
                 .body(resultado.response());
     }
 
+    /**
+     * Cierra la sesión. El endpoint es público y está exento de CSRF: el
+     * logout debe poder limpiar la cookie JWT incluso si el token ya venció,
+     * si no hay sesión o si el cliente perdió el token CSRF. La operación es
+     * idempotente y no tiene efectos en el servidor, solo borra la cookie.
+     */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            // Aunque no haya una sesión válida, se limpia cualquier cookie
-            // JWT residual para evitar que el navegador siga enviándola.
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .header(HttpHeaders.SET_COOKIE, jwtCookieFactory.crearExpirada().toString())
-                    .build();
-        }
-
         SecurityContextHolder.clearContext();
 
-        return ResponseEntity.ok()
+        HttpStatus estado = haySesionAutenticada(authentication)
+                ? HttpStatus.OK
+                : HttpStatus.UNAUTHORIZED;
+
+        return ResponseEntity.status(estado)
                 .header(HttpHeaders.SET_COOKIE, jwtCookieFactory.crearExpirada().toString())
                 .build();
     }

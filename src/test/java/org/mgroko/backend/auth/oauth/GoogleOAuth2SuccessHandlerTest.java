@@ -30,7 +30,7 @@ class GoogleOAuth2SuccessHandlerTest {
         googleAuthService = mock(GoogleAuthService.class);
         handler = new GoogleOAuth2SuccessHandler(
                 googleAuthService,
-                new JwtCookieFactory(false, "Lax"),
+                new JwtCookieFactory(false, "Lax", 3_600_000L),
                 CookieCsrfTokenRepository.withHttpOnlyFalse(),
                 "http://localhost:5173");
     }

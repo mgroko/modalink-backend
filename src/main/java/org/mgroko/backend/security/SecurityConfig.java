@@ -109,6 +109,11 @@ public class SecurityConfig {
                         "/auth/login",
                         "/auth/registro",
                         "/auth/reactivar-cuenta",
+                        // El logout es idempotente y debe poder limpiar la cookie
+                        // aunque el JWT esté vencido o ausente. Si quedara
+                        // protegido, Spring respondería 401 antes de llegar al
+                        // controlador y la cookie nunca se borraría.
+                        "/auth/logout",
                         "/auth/google",
                         "/auth/google/**",
                         "/oauth2/**",
@@ -130,7 +135,7 @@ public class SecurityConfig {
                     .hasAnyRole("ADMINISTRADOR", "USUARIO")
 
                 // Compartido entre ambos roles
-                .requestMatchers("/auth/me", "/auth/logout", "/notificaciones/**", "/health")
+                .requestMatchers("/auth/me", "/notificaciones/**", "/health")
                     .hasAnyRole("ADMINISTRADOR", "USUARIO")
 
                 // Solo usuario
@@ -189,8 +194,10 @@ public class SecurityConfig {
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                 // El onboarding de Google viaja con un ticket firmado en cookie
                 // HttpOnly y SameSite=Lax; no hay sesión previa para emitir un
-                // XSRF-TOKEN antes del callback.
-                .ignoringRequestMatchers("/auth/google/**")
+                // XSRF-TOKEN antes del callback. El logout también se exonera:
+                // es idempotente y debe limpiar la cookie aun cuando la sesión
+                // ya no sea válida o falte el token CSRF.
+                .ignoringRequestMatchers("/auth/google/**", "/auth/logout")
             )
             .addFilterAfter(new CsrfCookieFilter(csrfTokenRepository), UsernamePasswordAuthenticationFilter.class)
 
