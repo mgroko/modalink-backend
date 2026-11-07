@@ -1244,4 +1244,10 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.auditoria.exception.AuditoriaFiltroInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleAuditoriaFiltroInvalido(
+            org.mgroko.backend.auditoria.exception.AuditoriaFiltroInvalidoException ex) {
+        return buildErrorResponseConCodigo(ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
 }

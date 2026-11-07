@@ -440,3 +440,28 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Precondición** | El perfil destinatario existe y está activo. |
 | **Postcondición** | Se registró la versión aceptada en la invitación o en la membresía del proyecto. |
 
+---
+
+## UC-67 — Generar informe de auditoría
+
+| Nombre | listarAuditoria(fechaDesde, fechaHasta, tipos, page, size) |
+| :---- | :---- |
+| **Responsabilidades** | Listar los eventos críticos de auditoría en un rango de fechas, con filtros opcionales por tipo de evento. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. Las fechas son obligatorias e inclusivas. Si no se envían tipos, se devuelven todos los tipos activos. El rango máximo se configura en `AUDITORIA_RANGO_MAX_DIAS` (default 90). Tamaño de página máximo: 100. Orden: `fechaHora DESC, idAuditoria DESC`. |
+| **Excepciones** | Fechas ausentes (`FECHAS_OBLIGATORIAS`), rango invertido (`RANGO_FECHAS_INVALIDO`), rango excedido (`RANGO_FECHAS_EXCEDIDO`), tipo inexistente (`TIPO_EVENTO_INVALIDO`), paginación inválida (`PAGINACION_INVALIDA`). |
+| **Salida** | `PaginaResponse<AuditoriaEventoResponse>` con `idAuditoria`, `fechaHora`, `tipoEvento`, `tipoEventoNombre`, `entidadAfectada`, `entidadClave`, `idAfectado`, `idUsuario`, `usuarioNombre`, `usuarioBd`, `ipUsuario` y `detalle[]`. |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. Devuelve la página solicitada o una página vacía si no hay coincidencias. |
+
+| Nombre | listarTiposEventoAuditoria() |
+| :---- | :---- |
+| **Responsabilidades** | Devolver el catálogo de tipos de evento activos para poblar el filtro multi-selección. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. |
+| **Excepciones** | Ninguna esperable. |
+| **Salida** | Lista de `TipoEventoAuditoriaResponse` (`codigo`, `nombre`, `descripcion`, `modulo`). |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. |

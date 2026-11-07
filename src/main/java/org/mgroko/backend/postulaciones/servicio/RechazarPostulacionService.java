@@ -27,6 +27,7 @@ import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-34: rechazar una postulación general o de actividad.
@@ -59,6 +60,7 @@ public class RechazarPostulacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PostulacionGestionadaResponse rechazarGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -104,6 +106,7 @@ public class RechazarPostulacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PostulacionGestionadaResponse rechazarActividad(
             Long idUsuario,
             Long idPerfilActivo,

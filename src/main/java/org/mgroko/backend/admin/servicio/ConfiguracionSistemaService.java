@@ -15,6 +15,7 @@ import org.mgroko.backend.usuario.servicio.ExpirarCuentaService;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class ConfiguracionSistemaService {
@@ -29,6 +30,7 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_TOLERANCIA_PREFERENCIA_MIN =
             "DISPONIBILIDAD_TOLERANCIA_PREFERENCIA_MIN";
     public static final String CLAVE_DIAS_BAJA = "DIAS_BAJA";
+    public static final String CLAVE_AUDITORIA_RANGO_MAX_DIAS = "AUDITORIA_RANGO_MAX_DIAS";
     public static final String CLAVE_IMAGEN_MAX_LADO_PX = "IMAGEN_MAX_LADO_PX";
     public static final String CLAVE_IMAGEN_MAX_MEGAPIXELES = "IMAGEN_MAX_MEGAPIXELES";
     public static final String CLAVE_IMAGEN_CALIDAD_WEBP = "IMAGEN_CALIDAD_WEBP";
@@ -71,6 +73,7 @@ Mis condiciones de trabajo
     private static final String DEFAULT_CRON = "0 0 2 * * *";
     private static final int DEFAULT_MARGEN_ACTIVIDAD_MIN = 30;
     private static final int DEFAULT_DIAS_BAJA = 30;
+    private static final int DEFAULT_AUDITORIA_RANGO_MAX_DIAS = 90;
 
     private final ConfiguracionSistemaRepository configuracionSistemaRepository;
     private final ExpirarDeshabilitacionService expirarDeshabilitacionService;
@@ -99,6 +102,7 @@ Mis condiciones de trabajo
     }
 
     @Transactional
+    @AuditarOperacion
     public ConfiguracionSchedulerResponse actualizarConfiguracionDeshabilitacion(ConfigurarSchedulerRequest request) {
         int hora = request.hora();
         int minuto = request.minuto();
@@ -187,6 +191,17 @@ Mis condiciones de trabajo
      * @return texto de la plantilla, nunca vacío y con un máximo de
      *         {@link #PERFIL_TYC_MAX_CARACTERES} caracteres
      */
+    /**
+     * Rango máximo de días permitido en la consulta de auditoría (UC-67).
+     * Ante fila ausente o valor inválido se usa 90 días.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerRangoMaximoAuditoriaDias() {
+        int dias = obtenerValorEntero(
+                CLAVE_AUDITORIA_RANGO_MAX_DIAS, DEFAULT_AUDITORIA_RANGO_MAX_DIAS);
+        return dias > 0 ? dias : DEFAULT_AUDITORIA_RANGO_MAX_DIAS;
+    }
+
     @Transactional(readOnly = true)
     public String obtenerPlantillaTerminosCondiciones() {
         return configuracionSistemaRepository.findByClave(CLAVE_PERFIL_TYC_PLANTILLA)
@@ -236,6 +251,7 @@ Mis condiciones de trabajo
     }
 
     @Transactional
+    @AuditarOperacion
     public EjecutarSchedulerResponse ejecutarDeshabilitacionManual() {
         int reactivados = expirarDeshabilitacionService.reactivarVencidos();
         return new EjecutarSchedulerResponse(
@@ -262,6 +278,7 @@ Mis condiciones de trabajo
     }
 
     @Transactional
+    @AuditarOperacion
     public ConfiguracionSchedulerBajaResponse actualizarConfiguracionBaja(ConfigurarSchedulerBajaRequest request) {
         int hora = request.hora();
         int minuto = request.minuto();
@@ -298,6 +315,7 @@ Mis condiciones de trabajo
      * cuentas (UC-07) y los perfiles (UC-12) cuyo plazo venció.
      */
     @Transactional
+    @AuditarOperacion
     public EjecutarSchedulerResponse ejecutarBajaManual() {
         int diasBaja = obtenerDiasBaja();
         int cuentasExpiradas = expirarCuentaService.expirarVencidos(diasBaja);

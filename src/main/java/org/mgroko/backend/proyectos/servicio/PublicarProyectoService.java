@@ -47,6 +47,7 @@ import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-25: Publicar proyecto. Cambia el estado de "Borrador" a "Publicado",
@@ -107,6 +108,7 @@ public class PublicarProyectoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ProyectoResponse publicar(Long idUsuario, Long idPerfilActivo, Long idProyecto) {
         if (idPerfilActivo == null) {
             throw new PerfilActivoNoSeleccionadoException();

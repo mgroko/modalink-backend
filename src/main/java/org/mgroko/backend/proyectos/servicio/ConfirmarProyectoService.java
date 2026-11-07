@@ -20,6 +20,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-60: confirma un proyecto en estado Publicado.
@@ -60,6 +61,7 @@ public class ConfirmarProyectoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ConfirmarProyectoResponse confirmar(
             Long idUsuario,
             Long idPerfilActivo,

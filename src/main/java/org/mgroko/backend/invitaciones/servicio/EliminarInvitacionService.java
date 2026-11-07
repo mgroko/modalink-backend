@@ -18,6 +18,7 @@ import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-32: baja física de invitaciones pendientes.
@@ -48,6 +49,7 @@ public class EliminarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminarInvitacionGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -73,6 +75,7 @@ public class EliminarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminarInvitacionActividad(
             Long idUsuario,
             Long idPerfilActivo,

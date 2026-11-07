@@ -14,6 +14,7 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class AdminUsuarioService {
@@ -66,6 +67,7 @@ public class AdminUsuarioService {
     }
 
     @Transactional
+    @AuditarOperacion
     public AdminUsuarioResponse habilitar(Long idUsuario) {
         Usuario usuario = buscarOFallar(idUsuario);
         rechazarSiEstaEnBaja(usuario);
@@ -82,6 +84,7 @@ public class AdminUsuarioService {
      * indefinida y solo se revierte con {@code /habilitar}.
      */
     @Transactional
+    @AuditarOperacion
     public AdminUsuarioResponse deshabilitar(Long idUsuario, Long idUsuarioSolicitante, DeshabilitarUsuarioRequest request) {
         if (idUsuario.equals(idUsuarioSolicitante)) {
             throw new AutoDeshabilitacionException("No podés deshabilitar tu propia cuenta.");

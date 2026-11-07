@@ -54,6 +54,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-28: aceptar una invitación general o por actividad.
@@ -110,6 +111,7 @@ public class AceptarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse aceptarGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -180,6 +182,7 @@ public class AceptarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse aceptarActividad(
             Long idUsuario,
             Long idPerfilActivo,

@@ -33,6 +33,7 @@ import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-28: rechazar una invitación general o por actividad.
@@ -66,6 +67,7 @@ public class RechazarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse rechazarGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -116,6 +118,7 @@ public class RechazarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse rechazarActividad(
             Long idUsuario,
             Long idPerfilActivo,

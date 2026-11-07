@@ -15,6 +15,7 @@ import org.mgroko.backend.repositorio.PostulacionActividadRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-27: dar de baja una postulación a proyecto emitida por el perfil activo.
@@ -54,6 +55,7 @@ public class DarDeBajaPostulacionService {
      * @throws PostulacionYaGestionadaException    si ya no está pendiente
      */
     @Transactional
+    @AuditarOperacion
     public void darDeBajaPostulacionGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -88,6 +90,7 @@ public class DarDeBajaPostulacionService {
      * @throws PostulacionYaGestionadaException    si ya no está pendiente
      */
     @Transactional
+    @AuditarOperacion
     public void darDeBajaPostulacionActividad(
             Long idUsuario,
             Long idPerfilActivo,

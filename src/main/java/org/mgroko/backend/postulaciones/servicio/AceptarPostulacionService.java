@@ -65,6 +65,7 @@ import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-34: aceptar postulaciones a requerimientos generales y de actividad.
@@ -137,6 +138,7 @@ public class AceptarPostulacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PostulacionGestionadaResponse aceptarGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -146,6 +148,7 @@ public class AceptarPostulacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PostulacionGestionadaResponse aceptarGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -228,6 +231,7 @@ public class AceptarPostulacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PostulacionGestionadaResponse aceptarActividad(
             Long idUsuario,
             Long idPerfilActivo,
@@ -237,6 +241,7 @@ public class AceptarPostulacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PostulacionGestionadaResponse aceptarActividad(
             Long idUsuario,
             Long idPerfilActivo,
