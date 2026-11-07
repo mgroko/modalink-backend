@@ -135,6 +135,8 @@ public class SecurityConfig {
                         "/usuarios/me/**",
                         "/proyectos/**",
                         "/postulaciones/**",
+                        "/requerimientos-generales/**",
+                        "/requerimientos-actividad/**",
                         "/invitaciones/**",
                         "/reemplazos/**",
                         "/calendario/**",

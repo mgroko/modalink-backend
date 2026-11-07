@@ -4,7 +4,7 @@
 | Rol | Área permitida |
 |---|---|
 | `Administrador` | `/admin/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
-| `Usuario` | `/home/**`, `/perfiles/**`, `/proyectos/**`, `/postulaciones/**`, `/invitaciones/**`, `/calendario/**`, `/usuario/**`, `/habilidades/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
+| `Usuario` | `/home/**`, `/perfiles/**`, `/proyectos/**`, `/postulaciones/**`, `/requerimientos-generales/**`, `/requerimientos-actividad/**`, `/invitaciones/**`, `/calendario/**`, `/usuario/**`, `/habilidades/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
 
 Errores:
 
