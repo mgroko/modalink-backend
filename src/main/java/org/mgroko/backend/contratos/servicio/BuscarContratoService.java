@@ -1,6 +1,8 @@
 package org.mgroko.backend.contratos.servicio;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,6 +14,7 @@ import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.exception.ContratoFiltroInvalidoException;
 import org.mgroko.backend.contratos.mapper.ContratoMapper;
 import org.mgroko.backend.modelo.FirmaContrato;
+import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.modelo.enums.EstadoFirmaContrato;
@@ -70,6 +73,17 @@ public class BuscarContratoService {
             BuscarContratosFiltro filtro,
             int page,
             int size) {
+        return buscar(idUsuario, idPerfilActivo, filtro, page, size, false);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaResponse<ContratoBusquedaResponse> buscar(
+            Long idUsuario,
+            Long idPerfilActivo,
+            BuscarContratosFiltro filtro,
+            int page,
+            int size,
+            boolean miFirmaPendiente) {
 
         if (idPerfilActivo == null) {
             throw new PerfilActivoNoSeleccionadoException();
@@ -90,7 +104,11 @@ public class BuscarContratoService {
                 size <= 0 ? TAMANO_POR_DEFECTO : Math.min(size, TAMANO_MAXIMO));
 
         Page<ContratoResumenProyeccion> pagina =
-                contratoRepository.buscar(normalizado, idPerfilActivo, pageable);
+                contratoRepository.buscar(
+                        normalizado,
+                        idPerfilActivo,
+                        miFirmaPendiente,
+                        pageable);
 
         if (pagina.isEmpty()) {
             return new PaginaResponse<>(
@@ -121,10 +139,33 @@ public class BuscarContratoService {
                         idPerfilActivo,
                         idsProyecto));
 
+        Map<Long, Long> miembroActivoPorProyecto = new HashMap<>();
+        for (MiembroProyecto miembro : miembroProyectoRepository
+                .buscarMiembrosActivosDeProyectos(
+                        new ArrayList<>(idsProyecto),
+                        idPerfilActivo)) {
+            miembroActivoPorProyecto.put(
+                    miembro.getProyecto().getIdProyecto(),
+                    miembro.getIdMiembro());
+        }
+
         List<ContratoBusquedaResponse> contenido = pagina.getContent().stream()
                 .map(resumen -> {
                     List<FirmaContrato> firmas = firmasPorContrato
                             .getOrDefault(resumen.getIdContrato(), List.of());
+
+                    Long idMiembroActivo = miembroActivoPorProyecto
+                            .get(resumen.getIdProyecto());
+
+                    FirmaContrato miFirma = idMiembroActivo == null
+                            ? null
+                            : firmas.stream()
+                                    .filter(f -> idMiembroActivo.equals(f.getIdMiembro()))
+                                    .findFirst()
+                                    .orElse(null);
+
+                    boolean firmaPendiente = miFirma != null
+                            && miFirma.getEstadoFirma() == EstadoFirmaContrato.PENDIENTE;
 
                     boolean firmasRegistradas = firmas.stream()
                             .anyMatch(f -> f.getEstadoFirma() == EstadoFirmaContrato.FIRMADO
@@ -134,8 +175,17 @@ public class BuscarContratoService {
                     boolean proyectoApto = resumen.getEstadoProyecto() == EstadoProyecto.PUBLICADO
                             || resumen.getEstadoProyecto() == EstadoProyecto.CONFIRMADO;
 
+                    boolean estadoPendiente =
+                            resumen.getEstado() == EstadoContrato.PENDIENTE_FIRMA;
+
+                    boolean puedeFirmar = estadoPendiente
+                            && proyectoApto
+                            && firmaPendiente;
+
+                    boolean puedeRechazar = puedeFirmar;
+
                     boolean puedeModificar = proyectosDirector.contains(resumen.getIdProyecto())
-                            && resumen.getEstado() == EstadoContrato.PENDIENTE_FIRMA
+                            && estadoPendiente
                             && proyectoApto
                             && !firmasRegistradas;
 
@@ -143,7 +193,10 @@ public class BuscarContratoService {
                             resumen,
                             firmas,
                             idPerfilActivo,
-                            puedeModificar);
+                            idMiembroActivo,
+                            puedeModificar,
+                            puedeFirmar,
+                            puedeRechazar);
                 })
                 .toList();
 

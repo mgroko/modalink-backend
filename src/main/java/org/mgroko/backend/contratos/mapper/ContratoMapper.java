@@ -20,6 +20,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.TipoAcuerdoContrato;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoFirmaContrato;
 import org.mgroko.backend.repositorio.proyeccion.ContratoActivoProyeccion;
 import org.mgroko.backend.repositorio.proyeccion.ContratoResumenProyeccion;
 
@@ -151,7 +152,10 @@ public final class ContratoMapper {
             ContratoResumenProyeccion resumen,
             List<FirmaContrato> firmas,
             Long idPerfilActivo,
-            boolean puedeModificar) {
+            Long idMiembroActivo,
+            boolean puedeModificar,
+            boolean puedeFirmar,
+            boolean puedeRechazar) {
 
         List<FirmaContrato> partes = firmas == null ? List.of() : firmas;
         FirmaContrato emisor = partes.stream()
@@ -159,7 +163,7 @@ public final class ContratoMapper {
                         && resumen.getIdMiembroEmisor().equals(f.getIdMiembro()))
                 .findFirst()
                 .orElse(null);
-        FirmaContrato miFirma = miFirma(partes, idPerfilActivo);
+        FirmaContrato miFirma = miFirma(partes, idPerfilActivo, idMiembroActivo);
 
         return new ContratoBusquedaResponse(
                 resumen.getIdContrato(),
@@ -180,18 +184,25 @@ public final class ContratoMapper {
                         ? miFirma.getEstadoFirma().name()
                         : null,
                 miFirma != null ? miFirma.getFechaFirma() : null,
-                puedeModificar);
+                puedeModificar,
+                puedeFirmar,
+                puedeRechazar,
+                contarFirmados(partes),
+                contarTotalPartes(partes));
     }
 
     public static ContratoDetalleResponse toDetalleResponse(
             Contrato contrato,
             List<FirmaContrato> firmas,
             Long idPerfilActivo,
+            Long idMiembroActivo,
             boolean puedeModificarse,
-            String motivoNoModificable) {
+            String motivoNoModificable,
+            boolean puedeFirmar,
+            boolean puedeRechazar) {
 
         List<FirmaContrato> partes = firmas == null ? List.of() : firmas;
-        FirmaContrato miFirma = miFirma(partes, idPerfilActivo);
+        FirmaContrato miFirma = miFirma(partes, idPerfilActivo, idMiembroActivo);
         Proyecto proyecto = contrato.getProyecto();
         TipoAcuerdoContrato tipo = contrato.getTipoAcuerdo();
 
@@ -220,12 +231,24 @@ public final class ContratoMapper {
                         : null,
                 miFirma != null ? miFirma.getFechaFirma() : null,
                 puedeModificarse,
-                motivoNoModificable);
+                motivoNoModificable,
+                puedeFirmar,
+                puedeRechazar,
+                contarFirmados(partes),
+                contarTotalPartes(partes));
     }
 
     private static FirmaContrato miFirma(
             List<FirmaContrato> firmas,
-            Long idPerfilActivo) {
+            Long idPerfilActivo,
+            Long idMiembroActivo) {
+
+        if (idMiembroActivo != null) {
+            return firmas.stream()
+                    .filter(f -> idMiembroActivo.equals(f.getIdMiembro()))
+                    .findFirst()
+                    .orElse(null);
+        }
 
         if (idPerfilActivo == null) {
             return null;
@@ -236,6 +259,19 @@ public final class ContratoMapper {
                         && idPerfilActivo.equals(f.getMiembro().getPerfil().getIdPerfil()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private static int contarFirmados(List<FirmaContrato> firmas) {
+        return (int) firmas.stream()
+                .filter(f -> f.getEstadoFirma() == EstadoFirmaContrato.FIRMADO)
+                .count();
+    }
+
+    private static int contarTotalPartes(List<FirmaContrato> firmas) {
+        return (int) firmas.stream()
+                .filter(f -> f.getEstadoFirma() == EstadoFirmaContrato.PENDIENTE
+                        || f.getEstadoFirma() == EstadoFirmaContrato.FIRMADO)
+                .count();
     }
 
     public static String nombreCompleto(Perfil perfil) {

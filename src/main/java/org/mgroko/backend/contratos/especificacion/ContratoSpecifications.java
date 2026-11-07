@@ -38,11 +38,22 @@ public final class ContratoSpecifications {
     public static Specification<Contrato> conFiltros(
             BuscarContratosFiltro filtro,
             Long idPerfilActivo) {
+        return conFiltros(filtro, idPerfilActivo, false);
+    }
+
+    public static Specification<Contrato> conFiltros(
+            BuscarContratosFiltro filtro,
+            Long idPerfilActivo,
+            boolean miFirmaPendiente) {
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             predicates.add(conVisibilidad(query, cb, root, idPerfilActivo));
+
+            if (miFirmaPendiente) {
+                predicates.add(conMiFirmaPendiente(query, cb, root, idPerfilActivo));
+            }
 
             if (filtro == null) {
                 return cb.and(predicates.toArray(new Predicate[0]));
@@ -158,6 +169,32 @@ public final class ContratoSpecifications {
                 cb.equal(firma.get("idContrato"), root.get("idContrato")),
                 cb.equal(firma.get("miembro").get("perfil").get("idPerfil"),
                         idPerfilActivo));
+
+        return cb.exists(subquery);
+    }
+
+    /**
+     * Solo contratos donde la membresia activa del perfil tiene una firma
+     * pendiente. Se usa en UC-55 para listar lo que el usuario aun debe firmar.
+     */
+    private static Predicate conMiFirmaPendiente(
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            Path<Contrato> root,
+            Long idPerfilActivo) {
+
+        Subquery<Long> subquery = query.subquery(Long.class);
+        Root<FirmaContrato> firma = subquery.from(FirmaContrato.class);
+        Join<FirmaContrato, MiembroProyecto> miembro = firma.join("miembro");
+
+        subquery.select(firma.get("idContrato"));
+        subquery.where(
+                cb.equal(firma.get("idContrato"), root.get("idContrato")),
+                cb.equal(miembro.get("perfil").get("idPerfil"), idPerfilActivo),
+                cb.equal(miembro.get("estadoParticipacion"),
+                        EstadoParticipacion.ACTIVO),
+                cb.equal(firma.get("estadoFirma"),
+                        EstadoFirmaContrato.PENDIENTE));
 
         return cb.exists(subquery);
     }

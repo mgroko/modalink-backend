@@ -20,6 +20,10 @@ public record ContratoBusquedaResponse(
         List<ParteContratoResumenResponse> partes,
         String miEstadoFirma,
         LocalDateTime miFechaFirma,
-        boolean puedeModificar
+        boolean puedeModificar,
+        boolean puedeFirmar,
+        boolean puedeRechazar,
+        int firmados,
+        int totalPartes
 ) {
 }

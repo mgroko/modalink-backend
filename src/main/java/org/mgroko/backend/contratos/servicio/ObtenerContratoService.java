@@ -1,12 +1,14 @@
 package org.mgroko.backend.contratos.servicio;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoEncontradoException;
 import org.mgroko.backend.contratos.mapper.ContratoMapper;
 import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.FirmaContrato;
+import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.modelo.enums.EstadoFirmaContrato;
@@ -19,6 +21,7 @@ import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.repositorio.ContratoRepository;
 import org.mgroko.backend.repositorio.FirmaContratoRepository;
+import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,16 +38,19 @@ public class ObtenerContratoService {
     private final PerfilRepository perfilRepository;
     private final ContratoRepository contratoRepository;
     private final FirmaContratoRepository firmaContratoRepository;
+    private final MiembroProyectoRepository miembroProyectoRepository;
     private final ProyectoSecurityService proyectoSecurityService;
 
     public ObtenerContratoService(
             PerfilRepository perfilRepository,
             ContratoRepository contratoRepository,
             FirmaContratoRepository firmaContratoRepository,
+            MiembroProyectoRepository miembroProyectoRepository,
             ProyectoSecurityService proyectoSecurityService) {
         this.perfilRepository = perfilRepository;
         this.contratoRepository = contratoRepository;
         this.firmaContratoRepository = firmaContratoRepository;
+        this.miembroProyectoRepository = miembroProyectoRepository;
         this.proyectoSecurityService = proyectoSecurityService;
     }
 
@@ -77,6 +83,22 @@ public class ObtenerContratoService {
 
         List<FirmaContrato> firmas = firmaContratoRepository.findConPartes(idContrato);
 
+        Optional<MiembroProyecto> miembroActivo = miembroProyectoRepository
+                .findMiembroActivoConRol(idProyecto, idPerfilActivo);
+        Long idMiembroActivo = miembroActivo
+                .map(MiembroProyecto::getIdMiembro)
+                .orElse(null);
+
+        FirmaContrato miFirmaActiva = idMiembroActivo == null
+                ? null
+                : firmas.stream()
+                        .filter(f -> idMiembroActivo.equals(f.getIdMiembro()))
+                        .findFirst()
+                        .orElse(null);
+
+        boolean firmaPendiente = miFirmaActiva != null
+                && miFirmaActiva.getEstadoFirma() == EstadoFirmaContrato.PENDIENTE;
+
         boolean esDirector = proyectoSecurityService.esDirector(idProyecto, idPerfilActivo);
 
         boolean esParte = firmas.stream()
@@ -104,6 +126,13 @@ public class ObtenerContratoService {
                 && proyectoApto
                 && !firmasRegistradas;
 
+        boolean puedeFirmar = miembroActivo.isPresent()
+                && estadoApto
+                && proyectoApto
+                && firmaPendiente;
+
+        boolean puedeRechazar = puedeFirmar;
+
         String motivoNoModificable = null;
         if (!esDirector) {
             motivoNoModificable = "SIN_PERMISO";
@@ -119,7 +148,10 @@ public class ObtenerContratoService {
                 contrato,
                 firmas,
                 idPerfilActivo,
+                idMiembroActivo,
                 puedeModificarse,
-                motivoNoModificable);
+                motivoNoModificable,
+                puedeFirmar,
+                puedeRechazar);
     }
 }

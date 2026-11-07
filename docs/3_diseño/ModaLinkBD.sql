@@ -5377,7 +5377,8 @@ BEGIN
     END IF;
 
     IF NEW.estado = 'ACTIVO' THEN
-        SELECT COUNT(*), COUNT(*) FILTER (WHERE estado_firma = 'FIRMADO')
+        SELECT COUNT(*) FILTER (WHERE estado_firma IN ('PENDIENTE', 'FIRMADO')),
+               COUNT(*) FILTER (WHERE estado_firma = 'FIRMADO')
           INTO v_total, v_firmados
           FROM firma_contrato
          WHERE id_contrato = NEW.id_contrato;
@@ -5926,7 +5927,7 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    SELECT COUNT(*),
+    SELECT COUNT(*) FILTER (WHERE estado_firma IN ('PENDIENTE', 'FIRMADO')),
            COUNT(*) FILTER (WHERE estado_firma = 'FIRMADO'),
            COUNT(*) FILTER (WHERE estado_firma = 'RECHAZADO'),
            COUNT(*) FILTER (WHERE estado_firma = 'INVALIDADA')

@@ -10,13 +10,16 @@ import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
+import org.mgroko.backend.contratos.dto.RechazarContratoRequest;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerOpcionesContratoService;
 import org.mgroko.backend.contratos.servicio.PrevisualizarContratoService;
 import org.mgroko.backend.contratos.servicio.PrevisualizarModificacionContratoService;
+import org.mgroko.backend.contratos.servicio.RechazarContratoService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -52,6 +55,8 @@ public class ContratoController {
     private final ObtenerContratoService obtenerContratoService;
     private final PrevisualizarModificacionContratoService previsualizarModificacionService;
     private final ModificarContratoService modificarContratoService;
+    private final FirmarContratoService firmarContratoService;
+    private final RechazarContratoService rechazarContratoService;
 
     public ContratoController(
             ObtenerOpcionesContratoService opcionesService,
@@ -60,7 +65,9 @@ public class ContratoController {
             BuscarContratoService buscarContratoService,
             ObtenerContratoService obtenerContratoService,
             PrevisualizarModificacionContratoService previsualizarModificacionService,
-            ModificarContratoService modificarContratoService) {
+            ModificarContratoService modificarContratoService,
+            FirmarContratoService firmarContratoService,
+            RechazarContratoService rechazarContratoService) {
         this.opcionesService = opcionesService;
         this.previsualizarService = previsualizarService;
         this.generarService = generarService;
@@ -68,6 +75,8 @@ public class ContratoController {
         this.obtenerContratoService = obtenerContratoService;
         this.previsualizarModificacionService = previsualizarModificacionService;
         this.modificarContratoService = modificarContratoService;
+        this.firmarContratoService = firmarContratoService;
+        this.rechazarContratoService = rechazarContratoService;
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/opciones")
@@ -112,6 +121,7 @@ public class ContratoController {
     @GetMapping("/contratos/buscar")
     public ResponseEntity<PaginaResponse<ContratoBusquedaResponse>> buscar(
             @ModelAttribute BuscarContratosFiltro filtro,
+            @RequestParam(defaultValue = "false") boolean miFirmaPendiente,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
@@ -121,7 +131,8 @@ public class ContratoController {
                 idPerfilActivo(authentication),
                 filtro,
                 page,
-                size));
+                size,
+                miFirmaPendiente));
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/{idContrato}")
@@ -160,6 +171,34 @@ public class ContratoController {
             Authentication authentication) {
 
         return ResponseEntity.ok(modificarContratoService.modificar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato,
+                request));
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/contratos/{idContrato}/firmar")
+    public ResponseEntity<ContratoDetalleResponse> firmar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(firmarContratoService.firmar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato));
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/contratos/{idContrato}/rechazar")
+    public ResponseEntity<ContratoDetalleResponse> rechazar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            @Valid @RequestBody RechazarContratoRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(rechazarContratoService.rechazar(
                 idUsuario(authentication),
                 idPerfilActivo(authentication),
                 idProyecto,

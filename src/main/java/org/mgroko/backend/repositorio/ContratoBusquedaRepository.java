@@ -15,5 +15,6 @@ public interface ContratoBusquedaRepository {
     Page<ContratoResumenProyeccion> buscar(
             BuscarContratosFiltro filtro,
             Long idPerfilActivo,
+            boolean miFirmaPendiente,
             Pageable pageable);
 }

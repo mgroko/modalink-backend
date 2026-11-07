@@ -26,12 +26,14 @@ import org.mgroko.backend.contratos.dto.ProyectoContratoResponse;
 import org.mgroko.backend.contratos.dto.TipoAcuerdoContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerOpcionesContratoService;
 import org.mgroko.backend.contratos.servicio.PrevisualizarContratoService;
 import org.mgroko.backend.contratos.servicio.PrevisualizarModificacionContratoService;
+import org.mgroko.backend.contratos.servicio.RechazarContratoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
@@ -71,6 +73,12 @@ class ContratoControllerTest {
 
     @MockitoBean
     private ModificarContratoService modificarContratoService;
+
+    @MockitoBean
+    private FirmarContratoService firmarContratoService;
+
+    @MockitoBean
+    private RechazarContratoService rechazarContratoService;
 
     @Test
     void opciones_devuelve200ConDatosDelProyecto() throws Exception {
@@ -220,15 +228,83 @@ class ContratoControllerTest {
         ContratoBusquedaResponse fila = new ContratoBusquedaResponse(
                 55L, "Contrato", 100L, "Proyecto", 1L, "CESION",
                 "Cesion", "PENDIENTE_FIRMA", null, null, null, 1,
-                null, List.of(), null, null, true);
+                null, List.of(), "PENDIENTE", null, true,
+                true, true, 0, 1);
 
-        when(buscarContratoService.buscar(eq(1L), eq(10L), any(), eq(0), eq(20)))
+        when(buscarContratoService.buscar(
+                eq(1L), eq(10L), any(), eq(0), eq(20), eq(false)))
                 .thenReturn(new PaginaResponse<>(
                         List.of(fila), 0, 20, 1, 1, true, true));
 
         mockMvc.perform(get("/contratos/buscar").principal(auth))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contenido[0].idContrato").value(55L));
+                .andExpect(jsonPath("$.contenido[0].idContrato").value(55L))
+                .andExpect(jsonPath("$.contenido[0].puedeFirmar").value(true))
+                .andExpect(jsonPath("$.contenido[0].totalPartes").value(1));
+    }
+
+    @Test
+    void buscar_conMiFirmaPendiente_pasaElFiltroAlServicio() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(buscarContratoService.buscar(
+                eq(1L), eq(10L), any(), eq(0), eq(20), eq(true)))
+                .thenReturn(new PaginaResponse<>(
+                        List.of(), 0, 20, 0, 0, true, true));
+
+        mockMvc.perform(get("/contratos/buscar")
+                        .param("miFirmaPendiente", "true")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido").isEmpty());
+    }
+
+    @Test
+    void firmar_devuelve200() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(firmarContratoService.firmar(1L, 10L, 100L, 55L))
+                .thenReturn(detalle());
+
+        mockMvc.perform(post("/proyectos/100/contratos/55/firmar")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idContrato").value(55L));
+    }
+
+    @Test
+    void rechazar_devuelve200() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(rechazarContratoService.rechazar(
+                eq(1L), eq(10L), eq(100L), eq(55L), any()))
+                .thenReturn(detalle());
+
+        mockMvc.perform(post("/proyectos/100/contratos/55/rechazar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "motivo": "No estoy de acuerdo con la cláusula."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idContrato").value(55L));
+    }
+
+    @Test
+    void rechazar_sinMotivo_devuelve400() throws Exception {
+        var auth = autenticacion(10L);
+
+        mockMvc.perform(post("/proyectos/100/contratos/55/rechazar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "motivo": "   "
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -295,7 +371,8 @@ class ContratoControllerTest {
                 null, "TEXTO", null,
                 List.of(new ParteContratoResumenResponse(
                         11L, 3L, "Ana Pérez", "DIRECTOR", "PENDIENTE", null)),
-                "PENDIENTE", null, true, null);
+                "PENDIENTE", null, true, null,
+                true, true, 0, 1);
     }
 
     private UsernamePasswordAuthenticationToken autenticacion(Long idPerfilActivo) {

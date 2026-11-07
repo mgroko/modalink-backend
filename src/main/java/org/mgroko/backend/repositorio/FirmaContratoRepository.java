@@ -2,6 +2,7 @@ package org.mgroko.backend.repositorio;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.modelo.FirmaContrato;
 import org.mgroko.backend.modelo.FirmaContratoId;
@@ -13,6 +14,10 @@ public interface FirmaContratoRepository
         extends JpaRepository<FirmaContrato, FirmaContratoId> {
 
     List<FirmaContrato> findByIdContratoOrderByIdMiembroAsc(Long idContrato);
+
+    Optional<FirmaContrato> findByIdContratoAndIdMiembro(
+            Long idContrato,
+            Long idMiembro);
 
     @Query("""
         SELECT f FROM FirmaContrato f

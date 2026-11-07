@@ -29,6 +29,7 @@ public class ContratoBusquedaRepositoryImpl implements ContratoBusquedaRepositor
     public Page<ContratoResumenProyeccion> buscar(
             BuscarContratosFiltro filtro,
             Long idPerfilActivo,
+            boolean miFirmaPendiente,
             Pageable pageable) {
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -37,7 +38,7 @@ public class ContratoBusquedaRepositoryImpl implements ContratoBusquedaRepositor
                 cb.createQuery(ContratoResumenProyeccion.class);
         Root<Contrato> root = query.from(Contrato.class);
         Predicate predicate = ContratoSpecifications
-                .conFiltros(filtro, idPerfilActivo)
+                .conFiltros(filtro, idPerfilActivo, miFirmaPendiente)
                 .toPredicate(root, query, cb);
 
         query.select(cb.construct(
@@ -70,7 +71,7 @@ public class ContratoBusquedaRepositoryImpl implements ContratoBusquedaRepositor
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<Contrato> countRoot = countQuery.from(Contrato.class);
         Predicate countPredicate = ContratoSpecifications
-                .conFiltros(filtro, idPerfilActivo)
+                .conFiltros(filtro, idPerfilActivo, miFirmaPendiente)
                 .toPredicate(countRoot, countQuery, cb);
 
         countQuery.select(cb.countDistinct(countRoot.get("idContrato")));

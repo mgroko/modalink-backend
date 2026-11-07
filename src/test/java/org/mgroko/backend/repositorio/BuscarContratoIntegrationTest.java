@@ -374,6 +374,78 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(pagina.contenido().get(0).puedeModificar()).isFalse();
     }
 
+    @Test
+    void miFirmaPendienteFiltraSoloLoQueCadaPerfilDebeFirmar() {
+        Datos datos = crearProyectoConContrato();
+
+        PaginaResponse<ContratoBusquedaResponse> comoDirector =
+                buscar(datos.director(), datos.perfilDirector(),
+                        filtroVacio(), true);
+
+        assertThat(comoDirector.totalElementos()).isEqualTo(1);
+        ContratoBusquedaResponse filaDirector = comoDirector.contenido().get(0);
+        assertThat(filaDirector.puedeFirmar()).isTrue();
+        assertThat(filaDirector.puedeRechazar()).isTrue();
+        assertThat(filaDirector.firmados()).isZero();
+        assertThat(filaDirector.totalPartes()).isEqualTo(2);
+
+        PaginaResponse<ContratoBusquedaResponse> comoMiembro =
+                buscar(datos.miembro(), datos.perfilMiembro(),
+                        filtroVacio(), true);
+
+        assertThat(comoMiembro.totalElementos()).isEqualTo(1);
+        assertThat(comoMiembro.contenido().get(0).puedeFirmar()).isTrue();
+
+        assertThat(buscar(datos.segundoDirector(),
+                datos.perfilSegundoDirector(), filtroVacio(), true)
+                .totalElementos()).isZero();
+        assertThat(buscar(datos.miembroNoParte(),
+                datos.perfilMiembroNoParte(), filtroVacio(), true)
+                .totalElementos()).isZero();
+
+        firmarDestinatario(datos);
+
+        assertThat(buscar(datos.miembro(), datos.perfilMiembro(),
+                filtroVacio(), true).totalElementos()).isZero();
+
+        PaginaResponse<ContratoBusquedaResponse> trasFirma =
+                buscar(datos.director(), datos.perfilDirector(),
+                        filtroVacio(), true);
+
+        assertThat(trasFirma.totalElementos()).isEqualTo(1);
+        assertThat(trasFirma.contenido().get(0).puedeFirmar()).isTrue();
+        assertThat(trasFirma.contenido().get(0).firmados()).isEqualTo(1);
+    }
+
+    @Test
+    void detalleExponeFlagsYConteosDeFirma() {
+        Datos datos = crearProyectoConContrato();
+
+        ContratoDetalleResponse comoDirector = obtenerContratoService.obtener(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                datos.idContrato());
+
+        assertThat(comoDirector.puedeFirmar()).isTrue();
+        assertThat(comoDirector.puedeRechazar()).isTrue();
+        assertThat(comoDirector.firmados()).isZero();
+        assertThat(comoDirector.totalPartes()).isEqualTo(2);
+
+        firmarDestinatario(datos);
+
+        ContratoDetalleResponse comoMiembro = obtenerContratoService.obtener(
+                datos.miembro().getIdUsuario(),
+                datos.perfilMiembro().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                datos.idContrato());
+
+        assertThat(comoMiembro.puedeFirmar()).isFalse();
+        assertThat(comoMiembro.puedeRechazar()).isFalse();
+        assertThat(comoMiembro.firmados()).isEqualTo(1);
+        assertThat(comoMiembro.totalPartes()).isEqualTo(2);
+    }
+
     private void firmarDestinatario(Datos datos) {
         ContratoVersion version = contratoVersionRepository
                 .findFirstByContrato_IdContratoAndVersion(datos.idContrato(), 1)
@@ -432,12 +504,21 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
             Usuario usuario,
             Perfil perfil,
             BuscarContratosFiltro filtro) {
+        return buscar(usuario, perfil, filtro, false);
+    }
+
+    private PaginaResponse<ContratoBusquedaResponse> buscar(
+            Usuario usuario,
+            Perfil perfil,
+            BuscarContratosFiltro filtro,
+            boolean miFirmaPendiente) {
         return buscarContratoService.buscar(
                 usuario.getIdUsuario(),
                 perfil.getIdPerfil(),
                 filtro,
                 0,
-                20);
+                20,
+                miFirmaPendiente);
     }
 
     private BuscarContratosFiltro filtroVacio() {
