@@ -108,7 +108,7 @@ el historial de git sirva de bitácora adicional.
 
 | UC    | Nombre             | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | ------------------ | ----------- | ---------------- | ----- | ----------------- |
-| UC-39 | Generar contrato   | No iniciado |                  |       | Segunda iteracion |
+| UC-39 | Generar contrato   | Implementado y testeado | `GET /proyectos/{idProyecto}/contratos/opciones`, `POST /proyectos/{idProyecto}/contratos/previsualizar`, `POST /proyectos/{idProyecto}/contratos` | Sí (unitario + MVC + integración) | Segunda iteración. Requiere director activo, proyecto `PUBLICADO`/`CONFIRMADO` y al menos un miembro activo. Genera el texto desde `tipo_acuerdo_contrato.plantilla` con los placeholders `{{proyecto}}`, `{{director}}`, `{{partes}}` y `{{clausulas_adicionales}}`. El contrato se inserta como `BORRADOR` y se emite a `PENDIENTE_FIRMA`; los triggers crean la versión 1, los eventos `CREADO`/`EMITIDO`, la firma del director y las notificaciones `CONTRATO_PENDIENTE_FIRMA` con `id_proyecto`. La previsualización no persiste y devuelve conflictos si algún destinatario ya tiene un contrato `ACTIVO` del mismo tipo. |
 | UC-53 | Modificar contrato | No iniciado |                  |       | Segunda iteracion |
 | UC-54 | Eliminar contrato  | No iniciado |                  |       | Segunda iteracion |
 | UC-55 | Firmar contrato    | No iniciado |                  |       | Segunda iteracion |
@@ -134,9 +134,9 @@ el historial de git sirva de bitácora adicional.
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
 | Gestión de proyectos               | 26       | 25                      | 0            | 0           | 1           |
-| Gestión de contratos               | 5        | 0                       | 0            | 0           | 5           |
+| Gestión de contratos               | 5        | 1                       | 0            | 0           | 4           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **75**   | **52**                  | **0**        | **0**       | **23**      |
+| **Total**                          | **75**   | **53**                  | **0**        | **0**       | **22**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -147,4 +147,4 @@ el historial de git sirva de bitácora adicional.
 > son casos derivados del desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan
 > sus filas en el módulo de proyectos solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 52 de 75 casos de uso implementados y testeados = **69,3 %** del catálogo de requisitos.
+**Avance global:** 53 de 75 casos de uso implementados y testeados = **70,7 %** del catálogo de requisitos.

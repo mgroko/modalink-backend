@@ -583,6 +583,9 @@ public class GlobalExceptionHandler {
                     "El usuario ya está asignado a esta actividad con otro perfil.",
                     HttpStatus.CONFLICT);
         }
+        if (esViolacionPorContratoDuplicado(ex)) {
+            return buildContratoDuplicadoResponse(ex);
+        }
         return buildErrorResponse(
                 "Los datos enviados violan una restriccion de integridad de la base de datos.",
                 HttpStatus.BAD_REQUEST);
@@ -598,6 +601,9 @@ public class GlobalExceptionHandler {
             org.springframework.orm.jpa.JpaSystemException ex) {
         if (esViolacionPorSolapeHorario(ex)) {
             return buildSolapeHorarioResponse(ex);
+        }
+        if (esViolacionPorContratoDuplicado(ex)) {
+            return buildContratoDuplicadoResponse(ex);
         }
         return buildErrorResponse(
                 "No se pudo completar la operación por un error de persistencia.",
@@ -696,6 +702,43 @@ public class GlobalExceptionHandler {
             actual = actual.getCause();
         }
         return false;
+    }
+
+    /**
+     * Detecta la excepcion del trigger de contratos cuando un destinatario ya
+     * tiene un contrato ACTIVO del mismo tipo en el proyecto.
+     */
+    private boolean esViolacionPorContratoDuplicado(Throwable ex) {
+        Throwable actual = ex;
+        while (actual != null) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null) {
+                String normalizado = mensaje.toLowerCase(java.util.Locale.ROOT);
+                if (normalizado.contains("ya tiene un contrato activo del mismo tipo")) {
+                    return true;
+                }
+            }
+            actual = actual.getCause();
+        }
+        return false;
+    }
+
+    private ResponseEntity<Map<String, Object>> buildContratoDuplicadoResponse(Throwable ex) {
+        String detalle = mensajeMasProfundo(ex);
+        if (detalle != null) {
+            detalle = detalle.replaceFirst("(?i)^\\s*ERROR:\\s*", "");
+            int salto = detalle.indexOf('\n');
+            if (salto >= 0) {
+                detalle = detalle.substring(0, salto);
+            }
+            detalle = detalle.trim();
+        }
+        return buildErrorResponseConCodigo(
+                detalle != null && !detalle.isBlank()
+                        ? detalle
+                        : "Uno o mas destinatarios ya tienen un contrato ACTIVO del mismo tipo en el proyecto.",
+                "CONTRATO_DUPLICADO_ACTIVO",
+                HttpStatus.CONFLICT);
     }
 
     /**
@@ -1269,6 +1312,31 @@ public class GlobalExceptionHandler {
             org.mgroko.backend.auditoria.exception.ErrorGenerandoPdfException ex) {
         return buildErrorResponseConCodigo(
                 ex.getMessage(), "ERROR_GENERANDO_PDF", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.contratos.exception.ContratoNoGenerableException.class)
+    public ResponseEntity<Map<String, Object>> handleContratoNoGenerable(
+            org.mgroko.backend.contratos.exception.ContratoNoGenerableException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("codigo", ex.getCodigo());
+        response.put("conflictos", ex.getConflictos());
+        response.put("httpStatus", HttpStatus.CONFLICT.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.contratos.exception.TipoAcuerdoContratoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoAcuerdoContratoNoEncontrado(
+            org.mgroko.backend.contratos.exception.TipoAcuerdoContratoNoEncontradoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "TIPO_ACUERDO_INVALIDO", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.contratos.exception.ContratoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleContratoNoEncontrado(
+            org.mgroko.backend.contratos.exception.ContratoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
 }

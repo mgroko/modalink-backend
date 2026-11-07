@@ -49,6 +49,20 @@ public class NotificacionService {
     public static final String TIPO_INTEGRANTE_ELIMINADO = "INTEGRANTE_ELIMINADO";
     public static final String TIPO_INTEGRANTE_BAJA_VOLUNTARIA =
             "INTEGRANTE_BAJA_VOLUNTARIA";
+    public static final String TIPO_CONTRATO_PENDIENTE_FIRMA =
+            "CONTRATO_PENDIENTE_FIRMA";
+    public static final String TIPO_CONTRATO_MODIFICADO =
+            "CONTRATO_MODIFICADO";
+    public static final String TIPO_CONTRATO_FIRMADO =
+            "CONTRATO_FIRMADO";
+    public static final String TIPO_CONTRATO_ACTIVO =
+            "CONTRATO_ACTIVO";
+    public static final String TIPO_CONTRATO_RECHAZADO =
+            "CONTRATO_RECHAZADO";
+    public static final String TIPO_CONTRATO_CANCELADO =
+            "CONTRATO_CANCELADO";
+    public static final String TIPO_CONTRATO_ELIMINADO =
+            "CONTRATO_ELIMINADO";
     public static final String TIPO_REEMPLAZO_CANDIDATOS_DISPONIBLES =
             "REEMPLAZO_CANDIDATOS_DISPONIBLES";
     public static final String TIPO_REEMPLAZO_SIN_CANDIDATOS =
