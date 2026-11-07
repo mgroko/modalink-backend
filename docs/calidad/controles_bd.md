@@ -217,7 +217,8 @@ GET /admin/auditoria/export?formato=PDF&fechaDesde=2026-11-01&fechaHasta=2026-11
 
 - `formato` obligatorio (`CSV` o `PDF`).
 - Tope configurable en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000).
-- El PDF incluye encabezado, resumen y tabla de eventos.
+- El PDF incluye encabezado, resumen y tabla de eventos. La tabla muestra una
+  fila por cambio con `Campo`, `Valor anterior` y `Valor actual`.
 - Las filas históricas muestran “No disponible (histórico)” como operador.
 - El CSV usa UTF-8 con BOM, separador `;` y escapado RFC 4180.
 

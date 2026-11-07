@@ -5,13 +5,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -157,6 +159,13 @@ class AdminAuditoriaControllerTest {
                 any()))
                 .thenReturn(filtro);
 
+        doAnswer(invocation -> {
+            OutputStream salida = invocation.getArgument(1);
+            salida.write("contenido".getBytes(StandardCharsets.UTF_8));
+            return null;
+        }).when(auditoriaExportService)
+                .exportarCsv(eq(filtro), any(OutputStream.class));
+
         AdminAuditoriaController controller = new AdminAuditoriaController(
                 listarAuditoriaService, auditoriaResumenService, auditoriaExportService);
 
@@ -171,10 +180,10 @@ class AdminAuditoriaControllerTest {
                 .contains("text/csv");
         assertThat(response.getHeaders().getContentDisposition().getFilename())
                 .isEqualTo("auditoria_2026-11-01_2026-11-07.csv");
+        assertThat(response.getBody())
+                .isEqualTo("contenido".getBytes(StandardCharsets.UTF_8));
 
-        ByteArrayOutputStream salida = new ByteArrayOutputStream();
-        response.getBody().writeTo(salida);
-        verify(auditoriaExportService).exportarCsv(filtro, salida);
+        verify(auditoriaExportService).exportarCsv(eq(filtro), any(OutputStream.class));
     }
 
     @Test

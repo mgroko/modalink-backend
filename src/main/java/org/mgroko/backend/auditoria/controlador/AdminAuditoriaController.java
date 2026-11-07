@@ -1,5 +1,6 @@
 package org.mgroko.backend.auditoria.controlador;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * UC-67: informe de auditoría para administradores.
@@ -79,7 +79,7 @@ public class AdminAuditoriaController {
     }
 
     @GetMapping("/export")
-    public ResponseEntity<StreamingResponseBody> exportar(
+    public ResponseEntity<byte[]> exportar(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
             @RequestParam(required = false)
@@ -95,14 +95,15 @@ public class AdminAuditoriaController {
         String extension = formatoExportacion == FormatoExportacion.CSV ? "csv" : "pdf";
         String filename = "auditoria_" + fechaDesde + "_" + fechaHasta + "." + extension;
 
-        Long idAdministrador = idUsuario(authentication);
-        StreamingResponseBody body = outputStream -> {
-            if (formatoExportacion == FormatoExportacion.CSV) {
-                auditoriaExportService.exportarCsv(filtro, outputStream);
-            } else {
-                auditoriaExportService.exportarPdf(filtro, idAdministrador, outputStream);
-            }
-        };
+        // Se genera en memoria para que cualquier error se resuelva como una
+        // respuesta JSON normal, antes de enviar headers de descarga. El tope
+        // de registros (AUDITORIA_EXPORT_MAX_REGISTROS) acota la memoria.
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        if (formatoExportacion == FormatoExportacion.CSV) {
+            auditoriaExportService.exportarCsv(filtro, salida);
+        } else {
+            auditoriaExportService.exportarPdf(filtro, idUsuario(authentication), salida);
+        }
 
         MediaType contentType = formatoExportacion == FormatoExportacion.CSV
                 ? CSV
@@ -112,7 +113,7 @@ public class AdminAuditoriaController {
                 .contentType(contentType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + filename + "\"")
-                .body(body);
+                .body(salida.toByteArray());
     }
 
     private Long idUsuario(Authentication authentication) {

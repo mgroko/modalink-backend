@@ -36,6 +36,8 @@ import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.repositorio.AuditoriaRepository;
 import org.mgroko.backend.repositorio.DetalleAuditoriaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,6 +66,8 @@ import org.openpdf.text.pdf.PdfWriter;
  */
 @Service
 public class AuditoriaExportService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditoriaExportService.class);
 
     private static final int LOTE_IDS = 1_000;
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
@@ -163,6 +167,8 @@ public class AuditoriaExportService {
             }
             writer.flush();
         } catch (IOException ex) {
+            log.error("No se pudo generar el CSV de auditoría para el rango {} - {}",
+                    filtro.fechaDesde(), filtro.fechaHasta(), ex);
             throw new IllegalStateException("No se pudo generar el CSV de auditoría.", ex);
         }
     }
@@ -216,11 +222,17 @@ public class AuditoriaExportService {
             document.add(new Paragraph("Eventos", subtitulo));
             document.add(tablaEventos(datos.eventos(), celda, celdaBold));
         } catch (DocumentException ex) {
+            log.error("No se pudo generar el PDF de auditoría para el rango {} - {}",
+                    filtro.fechaDesde(), filtro.fechaHasta(), ex);
             throw new ErrorGenerandoPdfException(
                     "No se pudo generar el PDF de auditoría.", ex);
         } finally {
             if (document.isOpen()) {
-                document.close();
+                try {
+                    document.close();
+                } catch (RuntimeException closeEx) {
+                    log.error("Error cerrando el documento PDF de auditoría.", closeEx);
+                }
             }
         }
     }
@@ -329,26 +341,66 @@ public class AuditoriaExportService {
             List<AuditoriaEventoResponse> eventos,
             Font fuente,
             Font fuenteNegrita) {
-        PdfPTable tabla = new PdfPTable(new float[]{1.5f, 2.0f, 2.0f, 2.0f, 1.2f, 3.3f});
+        PdfPTable tabla = new PdfPTable(new float[]{
+                1.35f, 1.85f, 1.85f, 1.75f, 1.00f, 1.35f, 1.95f, 1.95f});
         tabla.setWidthPercentage(100);
         tabla.setHeaderRows(1);
-        encabezado(tabla, fuenteNegrita, "Fecha", "Evento", "Entidad / ID", "Operador", "IP", "Cambios");
+        encabezado(tabla, fuenteNegrita,
+                "Fecha", "Evento", "Entidad / ID", "Operador", "IP",
+                "Campo", "Valor anterior", "Valor actual");
 
         if (eventos.isEmpty()) {
-            tabla.addCell(celda("Sin registros para los filtros seleccionados.", fuente, 6));
+            tabla.addCell(celda("Sin registros para los filtros seleccionados.", fuente, 8));
             return tabla;
         }
 
         int maxCambios = configuracionSistemaService.obtenerMaxCambiosPdfAuditoria();
         for (AuditoriaEventoResponse evento : eventos) {
-            tabla.addCell(celda(evento.fechaHora().format(FECHA), fuente, 1));
-            tabla.addCell(celda(nombreEvento(evento), fuente, 1));
-            tabla.addCell(celda(entidad(evento), fuente, 1));
-            tabla.addCell(celda(evento.operador(), fuente, 1));
-            tabla.addCell(celda(evento.ipUsuario(), fuente, 1));
-            tabla.addCell(celda(cambiosPdf(evento.detalle(), maxCambios), fuente, 1));
+            List<AuditoriaDetalleResponse> detalles = evento.detalle();
+
+            if (detalles.isEmpty()) {
+                agregarFilaEvento(tabla, evento, "", "", "", fuente);
+                continue;
+            }
+
+            int mostrados = Math.min(detalles.size(), maxCambios);
+            for (int i = 0; i < mostrados; i++) {
+                AuditoriaDetalleResponse detalle = detalles.get(i);
+                agregarFilaEvento(tabla, evento,
+                        valorVisible(detalle.campo()),
+                        valorVisible(detalle.valorAnterior()),
+                        valorVisible(detalle.valorNuevo()),
+                        fuente);
+            }
+
+            if (detalles.size() > mostrados) {
+                agregarFilaEvento(tabla, evento,
+                        "+" + (detalles.size() - mostrados) + " más", "", "", fuente);
+            }
         }
         return tabla;
+    }
+
+    private void agregarFilaEvento(
+            PdfPTable tabla,
+            AuditoriaEventoResponse evento,
+            String campo,
+            String valorAnterior,
+            String valorNuevo,
+            Font fuente) {
+
+        tabla.addCell(celda(evento.fechaHora().format(FECHA), fuente, 1));
+        tabla.addCell(celda(nombreEvento(evento), fuente, 1));
+        tabla.addCell(celda(entidad(evento), fuente, 1));
+        tabla.addCell(celda(evento.operador(), fuente, 1));
+        tabla.addCell(celda(evento.ipUsuario(), fuente, 1));
+        tabla.addCell(celda(campo, fuente, 1));
+        tabla.addCell(celda(valorAnterior, fuente, 1));
+        tabla.addCell(celda(valorNuevo, fuente, 1));
+    }
+
+    private String valorVisible(String valor) {
+        return valor == null || valor.isBlank() ? "—" : valor;
     }
 
     private void encabezado(PdfPTable tabla, Font fuenteNegrita, String... titulos) {
@@ -408,21 +460,6 @@ public class AuditoriaExportService {
                 .map(item -> valor(item.campo()) + ": "
                         + valor(item.valorAnterior()) + " -> " + valor(item.valorNuevo()))
                 .collect(Collectors.joining(" | "));
-    }
-
-    private String cambiosPdf(List<AuditoriaDetalleResponse> detalle, int maximo) {
-        if (detalle.isEmpty()) {
-            return "";
-        }
-        String texto = detalle.stream()
-                .limit(maximo)
-                .map(item -> valor(item.campo()) + ": "
-                        + valor(item.valorAnterior()) + " -> " + valor(item.valorNuevo()))
-                .collect(Collectors.joining(" | "));
-        if (detalle.size() > maximo) {
-            texto += " | +" + (detalle.size() - maximo) + " más";
-        }
-        return texto;
     }
 
     private String valor(String valor) {

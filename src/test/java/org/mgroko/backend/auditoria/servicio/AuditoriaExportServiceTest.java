@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auditoria.dto.AuditoriaFiltroResuelto;
+import org.mgroko.backend.auditoria.dto.AuditoriaResumenResponse;
 import org.mgroko.backend.auditoria.mapper.AuditoriaMapper;
 import org.mgroko.backend.modelo.Auditoria;
 import org.mgroko.backend.modelo.DetalleAuditoria;
@@ -107,5 +109,59 @@ class AuditoriaExportServiceTest {
                 .contains("'=SUM(A1)")
                 .contains("\"a;b\"")
                 .contains("\"x\"\"y\"");
+    }
+
+    @Test
+    void pdfSoportaAcentosYCaracteresNoLatinos() throws Exception {
+        Auditoria auditoria = Auditoria.builder()
+                .idAuditoria(1L)
+                .fechaHora(LocalDateTime.of(2026, 11, 7, 10, 0))
+                .tipoEvento("USUARIO_ALTA")
+                .tipoEventoOriginal("USUARIO_ALTA")
+                .entidadAfectada("ñandú áéíóú ü 中文 😀")
+                .idAfectado(7L)
+                .usuarioBd("postgres")
+                .build();
+
+        DetalleAuditoria valor = DetalleAuditoria.builder()
+                .idDetalleAuditoria(1L)
+                .idAuditoria(1L)
+                .campo("valor")
+                .valorAnterior("90")
+                .valorNuevo("10000")
+                .build();
+        DetalleAuditoria descripcion = DetalleAuditoria.builder()
+                .idDetalleAuditoria(2L)
+                .idAuditoria(1L)
+                .campo("descripcion")
+                .valorAnterior(null)
+                .valorNuevo("Máximo de registros exportables")
+                .build();
+
+        when(auditoriaRepository.findAll(any(Specification.class), any(Sort.class)))
+                .thenReturn(List.of(auditoria));
+        when(detalleAuditoriaRepository
+                .findByIdAuditoriaInOrderByIdDetalleAuditoriaAsc(any()))
+                .thenReturn(List.of(valor, descripcion));
+        when(auditoriaResumenService.obtenerResumen(any(), any(), any()))
+                .thenReturn(new AuditoriaResumenResponse(
+                        LocalDate.of(2026, 11, 1),
+                        LocalDate.of(2026, 11, 7),
+                        List.of(),
+                        1L,
+                        List.of(),
+                        List.of()));
+
+        AuditoriaFiltroResuelto filtro = new AuditoriaFiltroResuelto(
+                LocalDateTime.of(2026, 11, 1, 0, 0),
+                LocalDateTime.of(2026, 11, 7, 23, 59, 59),
+                null,
+                Map.of());
+
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        service.exportarPdf(filtro, 1L, salida);
+
+        assertThat(salida.toByteArray())
+                .startsWith("%PDF".getBytes(StandardCharsets.US_ASCII));
     }
 }
