@@ -1339,4 +1339,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.contratos.exception.ContratoFiltroInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleContratoFiltroInvalido(
+            org.mgroko.backend.contratos.exception.ContratoFiltroInvalidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.contratos.exception.ContratoNoModificableException.class)
+    public ResponseEntity<Map<String, Object>> handleContratoNoModificable(
+            org.mgroko.backend.contratos.exception.ContratoNoModificableException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
 }

@@ -1,12 +1,22 @@
 package org.mgroko.backend.contratos.controlador;
 
+import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
+import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
+import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
 import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
+import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
+import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
+import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ModificarContratoService;
+import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerOpcionesContratoService;
 import org.mgroko.backend.contratos.servicio.PrevisualizarContratoService;
+import org.mgroko.backend.contratos.servicio.PrevisualizarModificacionContratoService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -14,9 +24,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -35,14 +48,26 @@ public class ContratoController {
     private final ObtenerOpcionesContratoService opcionesService;
     private final PrevisualizarContratoService previsualizarService;
     private final GenerarContratoService generarService;
+    private final BuscarContratoService buscarContratoService;
+    private final ObtenerContratoService obtenerContratoService;
+    private final PrevisualizarModificacionContratoService previsualizarModificacionService;
+    private final ModificarContratoService modificarContratoService;
 
     public ContratoController(
             ObtenerOpcionesContratoService opcionesService,
             PrevisualizarContratoService previsualizarService,
-            GenerarContratoService generarService) {
+            GenerarContratoService generarService,
+            BuscarContratoService buscarContratoService,
+            ObtenerContratoService obtenerContratoService,
+            PrevisualizarModificacionContratoService previsualizarModificacionService,
+            ModificarContratoService modificarContratoService) {
         this.opcionesService = opcionesService;
         this.previsualizarService = previsualizarService;
         this.generarService = generarService;
+        this.buscarContratoService = buscarContratoService;
+        this.obtenerContratoService = obtenerContratoService;
+        this.previsualizarModificacionService = previsualizarModificacionService;
+        this.modificarContratoService = modificarContratoService;
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/opciones")
@@ -82,6 +107,64 @@ public class ContratoController {
                 request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/contratos/buscar")
+    public ResponseEntity<PaginaResponse<ContratoBusquedaResponse>> buscar(
+            @ModelAttribute BuscarContratosFiltro filtro,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(buscarContratoService.buscar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                filtro,
+                page,
+                size));
+    }
+
+    @GetMapping("/proyectos/{idProyecto}/contratos/{idContrato}")
+    public ResponseEntity<ContratoDetalleResponse> detalle(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(obtenerContratoService.obtener(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato));
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/contratos/{idContrato}/previsualizar")
+    public ResponseEntity<PrevisualizacionModificacionResponse> previsualizarModificacion(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            @Valid @RequestBody ModificarContratoRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(previsualizarModificacionService.previsualizar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato,
+                request));
+    }
+
+    @PutMapping("/proyectos/{idProyecto}/contratos/{idContrato}")
+    public ResponseEntity<ContratoDetalleResponse> modificar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            @Valid @RequestBody ModificarContratoRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(modificarContratoService.modificar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato,
+                request));
     }
 
     private Long idUsuario(Authentication authentication) {

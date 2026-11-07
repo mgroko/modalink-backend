@@ -46,6 +46,7 @@ el historial de git sirva de bitácora adicional.
 | UC-12 | Eliminar perfil                         | Implementado y testeado             | `DELETE /perfiles/{idPerfil}` y `POST /perfiles/{idPerfil}/reactivar` | Sí (servicio/DTO) | Primera iteracion                                                                                                                                              |
 | UC-13 | Cambiar perfil activo                   | Implementado y testeado                | `PATCH /perfiles/{idPerfil}/activar`                                  | Sí                | Primera iteracion                                                                                                                                              |
 | UC-14 | Ver perfil                              | Implementado y testeado | `GET /perfiles/{idPerfil}` (perfil público completo o propio) y `GET /usuarios/me/perfiles` | Sí                | Primera iteracion                                                                                                                                              |
+| UC-14 bis | Ver reseñas de perfil               | Implementado y testeado | `GET /perfiles/{idPerfil}/calificaciones` y `GET /perfiles/{idPerfil}/calificaciones/{idCalificacion}` | Sí (unitario + MVC + integración) | Extensión de UC-37. Solo lectura: promedio, total, distribución 5→1, listado paginado y detalle de cada reseña. Reutiliza `calificacion_perfil`; no implementa escritura ni reporte de reseña. Visible en perfil propio y ajeno con las reglas de visibilidad de UC-14. |
 | UC-15 | Reportar perfil                         | Implementado y testeado | `POST /perfiles/{idPerfil}/reportes`, `GET /admin/reportes-perfil`, `GET /admin/reportes-perfil/{idReporte}` y `PATCH /admin/reportes-perfil/{idReporte}/estado` | Sí (unitario + integración) | Modelo genérico `reporte` (`PERFIL`/`PUBLICACION`); solo perfiles activos de usuarios activos; motivo enum + descripción máx. 200 (obligatoria en `OTRO`); un pendiente por perfil autor/entidad; autorreporte y admin bloqueados; alta `204`; alerta in-app after commit a admins activos (`PERFIL_REPORTADO`, prioridad `ALTA`); auditoría por trigger; bandeja admin solo rol `ADMINISTRADOR`. |
 | UC-16 | Buscar perfil                           | Implementado y testeado | `GET /perfiles/buscar`                                                | Sí                | Primera iteracion                                                                                                                                              |
 | UC-17 | Asignar en calendario día disponible    | Implementado y testeado | `DELETE /calendario/bloqueos/{idBloqueo}`                             | Sí                | Módulo calendario: `GET /calendario` (agenda completa) y `PUT /calendario/jornada` (jornada laboral de corrido o partida —bloques de mañana y tarde— + margen) |
@@ -109,10 +110,10 @@ el historial de git sirva de bitácora adicional.
 | UC    | Nombre             | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | ------------------ | ----------- | ---------------- | ----- | ----------------- |
 | UC-39 | Generar contrato   | Implementado y testeado | `GET /proyectos/{idProyecto}/contratos/opciones`, `POST /proyectos/{idProyecto}/contratos/previsualizar`, `POST /proyectos/{idProyecto}/contratos` | Sí (unitario + MVC + integración) | Segunda iteración. Requiere director activo, proyecto `PUBLICADO`/`CONFIRMADO` y al menos un miembro activo. Genera el texto desde `tipo_acuerdo_contrato.plantilla` con los placeholders `{{proyecto}}`, `{{director}}`, `{{partes}}` y `{{clausulas_adicionales}}`. El contrato se inserta como `BORRADOR` y se emite a `PENDIENTE_FIRMA`; los triggers crean la versión 1, los eventos `CREADO`/`EMITIDO`, la firma del director y las notificaciones `CONTRATO_PENDIENTE_FIRMA` con `id_proyecto`. La previsualización no persiste y devuelve conflictos si algún destinatario ya tiene un contrato `ACTIVO` del mismo tipo. |
-| UC-53 | Modificar contrato | No iniciado |                  |       | Segunda iteracion |
+| UC-53 | Modificar contrato | Implementado y testeado | `GET /proyectos/{idProyecto}/contratos/{idContrato}`, `POST /proyectos/{idProyecto}/contratos/{idContrato}/previsualizar`, `PUT /proyectos/{idProyecto}/contratos/{idContrato}` | Sí (unitario + MVC + integración) | Segunda iteración. Solo director activo del proyecto; contrato `PENDIENTE_FIRMA` y proyecto `PUBLICADO`/`CONFIRMADO`. Bloquea si hay firmas `FIRMADO`/`RECHAZADO`/`INVALIDADA`. Permite cambiar tipo, destinatarios, nombre, descripción y texto/cláusulas. Reconcilia firmas antes de actualizar el contrato; el trigger registra `MODIFICADO`, actualiza `fecha_modificacion`/versión y notifica `CONTRATO_MODIFICADO` a las partes actuales sin deduplicar entre modificaciones. |
 | UC-54 | Eliminar contrato  | No iniciado |                  |       | Segunda iteracion |
 | UC-55 | Firmar contrato    | No iniciado |                  |       | Segunda iteracion |
-| UC-68 | Buscar contrato    | No iniciado |                  |       | Segunda iteracion |
+| UC-68 | Buscar contrato    | Implementado y testeado | `GET /contratos/buscar`, `GET /proyectos/{idProyecto}/contratos/{idContrato}` | Sí (unitario + MVC + integración) | Segunda iteración. Búsqueda global paginada con filtros por proyecto, estado, parte, rango de emisión, rango de firma, tipo y nombre. Visibilidad: director activo ve todo el proyecto; miembro ve solo sus contratos; usuario ajeno no ve nada. Por defecto excluye `BORRADOR` y `ELIMINADO`. El listado no carga el texto legal; el detalle sí. |
 
 ## Gestión de conexiones y mensajería (5 UC)
 
@@ -130,13 +131,13 @@ el historial de git sirva de bitácora adicional.
 
 | Módulo                             | Total UC | Implementado y testeado | Implementado | En progreso | No iniciado |
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
-| Gestión de usuarios y administración | 15     | 14                      | 0            | 0           | 1           |
+| Gestión de usuarios y administración | 15     | 15                      | 0            | 0           | 0           |
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
 | Gestión de proyectos               | 26       | 25                      | 0            | 0           | 1           |
-| Gestión de contratos               | 5        | 1                       | 0            | 0           | 4           |
+| Gestión de contratos               | 5        | 3                       | 0            | 0           | 2           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **75**   | **53**                  | **0**        | **0**       | **22**      |
+| **Total**                          | **75**   | **56**                  | **0**        | **0**       | **19**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -147,4 +148,4 @@ el historial de git sirva de bitácora adicional.
 > son casos derivados del desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan
 > sus filas en el módulo de proyectos solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 53 de 75 casos de uso implementados y testeados = **70,7 %** del catálogo de requisitos.
+**Avance global:** 56 de 75 casos de uso implementados y testeados = **74,7 %** del catálogo de requisitos.

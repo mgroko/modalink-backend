@@ -37,7 +37,22 @@ public class GeneradorTextoContratoService {
             ContratoContextoService.ContextoContrato contexto,
             List<String> clausulasAdicionales) {
 
-        String plantilla = contexto.tipoAcuerdo().getPlantilla();
+        return generar(
+                contexto.proyecto(),
+                contexto.tipoAcuerdo(),
+                contexto.emisor(),
+                contexto.destinatarios(),
+                clausulasAdicionales);
+    }
+
+    public String generar(
+            Proyecto proyecto,
+            TipoAcuerdoContrato tipoAcuerdo,
+            MiembroProyecto emisor,
+            List<MiembroProyecto> destinatarios,
+            List<String> clausulasAdicionales) {
+
+        String plantilla = tipoAcuerdo.getPlantilla();
         boolean plantillaConClausulas = plantilla != null
                 && plantilla.contains("{{clausulas_adicionales}}");
 
@@ -46,7 +61,7 @@ public class GeneradorTextoContratoService {
             plantillaConClausulas = true;
         }
 
-        String partes = contexto.destinatarios().stream()
+        String partes = destinatarios.stream()
                 .map(this::describir)
                 .collect(Collectors.joining("\n- ", "- ", ""));
 
@@ -57,17 +72,22 @@ public class GeneradorTextoContratoService {
         String clausulas = renderClausulas(clausulasAdicionales);
 
         String texto = render(plantilla, Map.of(
-                "proyecto", describirProyecto(contexto.proyecto()),
-                "director", describir(contexto.emisor()),
+                "proyecto", describirProyecto(proyecto),
+                "director", describir(emisor),
                 "partes", partes,
                 "clausulas_adicionales", clausulas,
-                "tipo", contexto.tipoAcuerdo().getNombre()));
+                "tipo", tipoAcuerdo.getNombre()));
 
         if (!plantillaConClausulas) {
             texto = texto + "\n\nCLÁUSULAS ADICIONALES\n" + clausulas;
         }
 
-        if (texto.isBlank()) {
+        validarTexto(texto);
+        return texto;
+    }
+
+    public void validarTexto(String texto) {
+        if (texto == null || texto.isBlank()) {
             throw new ContratoNoGenerableException(
                     "CONTRATO_TEXTO_INVALIDO",
                     "No se pudo generar el texto del contrato.");
@@ -78,19 +98,24 @@ public class GeneradorTextoContratoService {
                     "CONTRATO_TEXTO_INVALIDO",
                     "El texto del contrato supera el máximo permitido.");
         }
-
-        return texto;
     }
 
     public String generarNombre(ContratoContextoService.ContextoContrato contexto) {
-        String nombre = contexto.tipoAcuerdo().getNombre() + " - "
-                + contexto.proyecto().getNombre();
+        return generarNombre(contexto.proyecto(), contexto.tipoAcuerdo());
+    }
+
+    public String generarNombre(Proyecto proyecto, TipoAcuerdoContrato tipoAcuerdo) {
+        String nombre = tipoAcuerdo.getNombre() + " - " + proyecto.getNombre();
         return truncar(nombre, MAX_NOMBRE);
     }
 
     public String generarDescripcion(ContratoContextoService.ContextoContrato contexto) {
+        return generarDescripcion(contexto.proyecto());
+    }
+
+    public String generarDescripcion(Proyecto proyecto) {
         return truncar(
-                "Contrato generado para el proyecto " + contexto.proyecto().getNombre(),
+                "Contrato generado para el proyecto " + proyecto.getNombre(),
                 MAX_DESCRIPCION);
     }
 

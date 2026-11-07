@@ -1,5 +1,6 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.mgroko.backend.modelo.FirmaContrato;
@@ -22,4 +23,15 @@ public interface FirmaContratoRepository
         ORDER BY f.idMiembro
     """)
     List<FirmaContrato> findConPartes(@Param("idContrato") Long idContrato);
+
+    @Query("""
+        SELECT f FROM FirmaContrato f
+        JOIN FETCH f.miembro m
+        JOIN FETCH m.perfil p
+        JOIN FETCH p.usuario
+        WHERE f.idContrato IN :idsContrato
+        ORDER BY f.idContrato, f.idMiembro
+    """)
+    List<FirmaContrato> findConPartesPorContratos(
+            @Param("idsContrato") Collection<Long> idsContrato);
 }

@@ -265,4 +265,21 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     List<MiembroProyecto> findHistoricosDeProyectoParaAuditoria(
             @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Proyectos, entre los indicados, donde el perfil es director activo.
+     * Se usa en UC-68 para calcular puedeModificar en lote.
+     */
+    @Query("""
+        SELECT mp.proyecto.idProyecto
+        FROM MiembroProyecto mp
+        JOIN mp.rolProyecto r
+        WHERE mp.perfil.idPerfil = :idPerfil
+          AND mp.proyecto.idProyecto IN :idsProyectos
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND (LOWER(r.codigo) = 'director' OR LOWER(r.nombre) LIKE 'director%')
+    """)
+    List<Long> findIdsProyectosDondeEsDirectorActivo(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idsProyectos") Collection<Long> idsProyectos);
 }

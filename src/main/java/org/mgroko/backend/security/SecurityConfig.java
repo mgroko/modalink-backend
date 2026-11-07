@@ -139,6 +139,7 @@ public class SecurityConfig {
                         "/perfiles/**",
                         "/usuarios/me/**",
                         "/proyectos/**",
+                        "/contratos/**",
                         "/postulaciones/**",
                         "/requerimientos-generales/**",
                         "/requerimientos-actividad/**",

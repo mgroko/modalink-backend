@@ -8,10 +8,14 @@ import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.repositorio.proyeccion.ContratoActivoProyeccion;
 import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ContratoRepository extends JpaRepository<Contrato, Long> {
+import jakarta.persistence.LockModeType;
+
+public interface ContratoRepository
+        extends JpaRepository<Contrato, Long>, ContratoBusquedaRepository {
 
     @Query("""
         SELECT c FROM Contrato c
@@ -23,6 +27,22 @@ public interface ContratoRepository extends JpaRepository<Contrato, Long> {
         WHERE c.idContrato = :idContrato
     """)
     Optional<Contrato> findByIdConPartes(@Param("idContrato") Long idContrato);
+
+    /**
+     * Carga el contrato con lock pesimista para serializar modificaciones
+     * concurrentes de UC-53.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT c FROM Contrato c
+        JOIN FETCH c.proyecto
+        JOIN FETCH c.tipoAcuerdo
+        JOIN FETCH c.miembroEmisor me
+        JOIN FETCH me.perfil p
+        JOIN FETCH p.usuario
+        WHERE c.idContrato = :idContrato
+    """)
+    Optional<Contrato> findByIdForUpdate(@Param("idContrato") Long idContrato);
 
     /**
      * Destinatarios que ya tienen un contrato ACTIVO del mismo tipo en el

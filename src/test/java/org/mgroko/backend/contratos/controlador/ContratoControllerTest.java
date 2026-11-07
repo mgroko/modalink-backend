@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,16 +13,25 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
+import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
 import org.mgroko.backend.contratos.dto.ParteContratoResponse;
+import org.mgroko.backend.contratos.dto.ParteContratoResumenResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
+import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
 import org.mgroko.backend.contratos.dto.ProyectoContratoResponse;
 import org.mgroko.backend.contratos.dto.TipoAcuerdoContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
+import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ModificarContratoService;
+import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerOpcionesContratoService;
 import org.mgroko.backend.contratos.servicio.PrevisualizarContratoService;
+import org.mgroko.backend.contratos.servicio.PrevisualizarModificacionContratoService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
@@ -49,6 +59,18 @@ class ContratoControllerTest {
 
     @MockitoBean
     private GenerarContratoService generarService;
+
+    @MockitoBean
+    private BuscarContratoService buscarContratoService;
+
+    @MockitoBean
+    private ObtenerContratoService obtenerContratoService;
+
+    @MockitoBean
+    private PrevisualizarModificacionContratoService previsualizarModificacionService;
+
+    @MockitoBean
+    private ModificarContratoService modificarContratoService;
 
     @Test
     void opciones_devuelve200ConDatosDelProyecto() throws Exception {
@@ -189,6 +211,91 @@ class ContratoControllerTest {
                                 }
                                 """))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void buscar_devuelve200ConPagina() throws Exception {
+        var auth = autenticacion(10L);
+
+        ContratoBusquedaResponse fila = new ContratoBusquedaResponse(
+                55L, "Contrato", 100L, "Proyecto", 1L, "CESION",
+                "Cesion", "PENDIENTE_FIRMA", null, null, null, 1,
+                null, List.of(), null, null, true);
+
+        when(buscarContratoService.buscar(eq(1L), eq(10L), any(), eq(0), eq(20)))
+                .thenReturn(new PaginaResponse<>(
+                        List.of(fila), 0, 20, 1, 1, true, true));
+
+        mockMvc.perform(get("/contratos/buscar").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].idContrato").value(55L));
+    }
+
+    @Test
+    void detalle_devuelve200() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(obtenerContratoService.obtener(1L, 10L, 100L, 55L))
+                .thenReturn(detalle());
+
+        mockMvc.perform(get("/proyectos/100/contratos/55").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idContrato").value(55L));
+    }
+
+    @Test
+    void previsualizarModificacion_devuelve200() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(previsualizarModificacionService.previsualizar(
+                eq(1L), eq(10L), eq(100L), eq(55L), any()))
+                .thenReturn(new PrevisualizacionModificacionResponse(
+                        "TEXTO", true, List.of()));
+
+        mockMvc.perform(post("/proyectos/100/contratos/55/previsualizar")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idTipoAcuerdo": 1,
+                                  "idsMiembro": [8]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.texto").value("TEXTO"));
+    }
+
+    @Test
+    void modificar_devuelve200() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(modificarContratoService.modificar(
+                eq(1L), eq(10L), eq(100L), eq(55L), any()))
+                .thenReturn(detalle());
+
+        mockMvc.perform(put("/proyectos/100/contratos/55")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idTipoAcuerdo": 1,
+                                  "idsMiembro": [8]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idContrato").value(55L));
+    }
+
+    private ContratoDetalleResponse detalle() {
+        return new ContratoDetalleResponse(
+                55L, 100L, "Proyecto", "PUBLICADO", 1L, "CESION", "Cesion",
+                "Contrato", "Descripcion", "PENDIENTE_FIRMA", 1,
+                LocalDateTime.of(2026, 11, 7, 12, 0),
+                LocalDateTime.of(2026, 11, 7, 12, 0),
+                null, "TEXTO", null,
+                List.of(new ParteContratoResumenResponse(
+                        11L, 3L, "Ana Pérez", "DIRECTOR", "PENDIENTE", null)),
+                "PENDIENTE", null, true, null);
     }
 
     private UsernamePasswordAuthenticationToken autenticacion(Long idPerfilActivo) {

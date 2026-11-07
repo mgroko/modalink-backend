@@ -609,6 +609,9 @@ CREATE TABLE calificacion_perfil(
 CREATE INDEX "IDX_calificacion_receptor"
     ON calificacion_perfil(id_perfil_receptor);
 
+CREATE INDEX "IDX_calificacion_receptor_fecha"
+    ON calificacion_perfil(id_perfil_receptor, fecha_registro DESC);
+
 CREATE INDEX "IDX_calificacion_proyecto"
     ON calificacion_perfil(id_proyecto);
 
@@ -4802,10 +4805,16 @@ CREATE INDEX "IDX_reemplazo_candidato_proyecto_estado"
     ON reemplazo_candidato(id_proyecto, estado);
 
 -- ============================================================================
--- BLOQUE DE CONTRATOS (UC-39)
+
+-- ============================================================================
+-- BLOQUE DE CONTRATOS (UC-39 / UC-53 / UC-68)
 -- Extraido de ModaLinkBD_proyecto_contratos.sql y corregido:
---   1) contrato_evento.id_contrato_version ahora referencia la PK real de contrato_version.
+--   1) contrato_evento.id_contrato_version referencia la PK real de contrato_version.
 --   2) las notificaciones de contrato guardan id_proyecto.
+--   3) firma_contrato.rol_parte admite DIRECTOR_DESTINATARIO (varchar 30).
+--   4) fecha_modificacion se actualiza ante cualquier cambio del contrato.
+--   5) el evento MODIFICADO y la notificacion CONTRATO_MODIFICADO se centralizan
+--      en fn_post_modificacion_contrato y no se deduplican entre modificaciones.
 -- ============================================================================
 
 -- 
@@ -5182,7 +5191,6 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION fn_validar_contrato_editable() RETURNS trigger AS $$
 DECLARE
     v_id_usuario BIGINT;
-    v_id_version BIGINT;
     v_hay_cambio BOOLEAN := false;
 BEGIN
     v_id_usuario := fn_usuario_actual();
@@ -5234,9 +5242,10 @@ BEGIN
 
         IF EXISTS (
             SELECT 1 FROM firma_contrato
-            WHERE id_contrato = OLD.id_contrato AND estado_firma = 'FIRMADO'
+            WHERE id_contrato = OLD.id_contrato
+              AND estado_firma IN ('FIRMADO', 'RECHAZADO', 'INVALIDADA')
         ) THEN
-            RAISE EXCEPTION 'No se puede modificar un contrato con firmas activas.';
+            RAISE EXCEPTION 'No se puede modificar un contrato con firmas registradas.';
         END IF;
 
         IF NEW.texto IS NOT NULL AND btrim(NEW.texto) <> '' THEN
@@ -5244,19 +5253,12 @@ BEGIN
                 INSERT INTO contrato_version (id_contrato, version, texto, id_usuario)
                 VALUES (OLD.id_contrato, NEW.version_actual, NEW.texto, v_id_usuario)
                 ON CONFLICT (id_contrato, version) DO NOTHING;
-
-                SELECT id_contrato_version INTO v_id_version
-                  FROM contrato_version
-                 WHERE id_contrato = OLD.id_contrato AND version = NEW.version_actual;
             ELSE
                 NEW.version_actual := OLD.version_actual + 1;
 
                 INSERT INTO contrato_version (id_contrato, version, texto, id_usuario)
-                VALUES (OLD.id_contrato, NEW.version_actual, NEW.texto, v_id_usuario)
-                RETURNING id_contrato_version INTO v_id_version;
+                VALUES (OLD.id_contrato, NEW.version_actual, NEW.texto, v_id_usuario);
             END IF;
-
-            NEW.fecha_modificacion := clock_timestamp();
         END IF;
     END IF;
 
@@ -5267,25 +5269,14 @@ BEGIN
 
         IF EXISTS (
             SELECT 1 FROM firma_contrato
-            WHERE id_contrato = OLD.id_contrato AND estado_firma = 'FIRMADO'
+            WHERE id_contrato = OLD.id_contrato
+              AND estado_firma IN ('FIRMADO', 'RECHAZADO', 'INVALIDADA')
         ) THEN
-            RAISE EXCEPTION 'No se puede modificar un contrato con firmas activas.';
+            RAISE EXCEPTION 'No se puede modificar un contrato con firmas registradas.';
         END IF;
 
-        IF v_id_version IS NULL THEN
-            SELECT id_contrato_version INTO v_id_version
-              FROM contrato_version
-             WHERE id_contrato = OLD.id_contrato AND version = NEW.version_actual;
-        END IF;
-
-        PERFORM fn_registrar_evento_contrato(
-            OLD.id_contrato,
-            NULL,
-            v_id_usuario,
-            'MODIFICADO',
-            v_id_version,
-            'Modificacion de datos del contrato'
-        );
+        -- La fecha se actualiza para cualquier cambio, no solo para el texto.
+        NEW.fecha_modificacion := clock_timestamp();
     END IF;
 
     RETURN NEW;
@@ -5635,6 +5626,100 @@ BEGIN
 
         RETURN NULL;
     END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Notifica una modificacion de contrato a las partes actuales.
+-- No deduplica entre modificaciones: cada modificacion genera su aviso.
+CREATE OR REPLACE FUNCTION fn_notificar_partes_contrato_modificado(
+    p_id_contrato BIGINT,
+    p_tipo VARCHAR,
+    p_mensaje TEXT
+) RETURNS void AS $$
+DECLARE
+    r_dest RECORD;
+    v_id_proyecto BIGINT;
+BEGIN
+    SELECT c.id_proyecto INTO v_id_proyecto
+    FROM contrato c
+    WHERE c.id_contrato = p_id_contrato;
+
+    FOR r_dest IN
+        SELECT DISTINCT p.id_usuario, p.id_perfil
+        FROM firma_contrato f
+        JOIN miembros_proyecto mp ON mp.id_miembro = f.id_miembro
+        JOIN perfil p ON p.id_perfil = mp.id_perfil
+        WHERE f.id_contrato = p_id_contrato
+          AND mp.estado_participacion = 'ACTIVO'
+    LOOP
+        INSERT INTO notificacion (
+            id_usuario_destino,
+            id_perfil_contexto,
+            tipo,
+            mensaje,
+            entidad_tipo,
+            entidad_id,
+            id_proyecto,
+            leida,
+            fecha_leida,
+            origen,
+            fecha_generada
+        ) VALUES (
+            r_dest.id_usuario,
+            r_dest.id_perfil,
+            p_tipo,
+            p_mensaje,
+            'CONTRATO',
+            p_id_contrato,
+            v_id_proyecto,
+            false,
+            NULL,
+            'TRIGGER',
+            clock_timestamp()
+        );
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Registra el evento MODIFICADO y notifica a las partes actuales cuando se
+-- actualizan datos editables del contrato sin cambiar su estado.
+CREATE OR REPLACE FUNCTION fn_post_modificacion_contrato() RETURNS trigger AS $$
+DECLARE
+    v_id_version BIGINT;
+BEGIN
+    IF OLD.estado <> 'PENDIENTE_FIRMA' OR NEW.estado <> 'PENDIENTE_FIRMA' THEN
+        RETURN NULL;
+    END IF;
+
+    IF NEW.id_tipo_acuerdo = OLD.id_tipo_acuerdo
+       AND NEW.nombre = OLD.nombre
+       AND NEW.descripcion IS NOT DISTINCT FROM OLD.descripcion
+       AND NEW.texto IS NOT DISTINCT FROM OLD.texto
+       AND NEW.fecha_modificacion IS NOT DISTINCT FROM OLD.fecha_modificacion THEN
+        RETURN NULL;
+    END IF;
+
+    SELECT cv.id_contrato_version INTO v_id_version
+    FROM contrato_version cv
+    WHERE cv.id_contrato = NEW.id_contrato
+      AND cv.version = NEW.version_actual;
+
+    PERFORM fn_registrar_evento_contrato(
+        NEW.id_contrato,
+        NEW.id_miembro_emisor,
+        fn_usuario_actual(),
+        'MODIFICADO',
+        v_id_version,
+        'Modificacion de datos del contrato'
+    );
+
+    PERFORM fn_notificar_partes_contrato_modificado(
+        NEW.id_contrato,
+        'CONTRATO_MODIFICADO',
+        'El contrato "' || NEW.nombre || '" fue modificado y esta pendiente de firma.'
+    );
 
     RETURN NULL;
 END;
@@ -6021,6 +6106,12 @@ DROP TRIGGER IF EXISTS trg_contrato_post_transicion ON contrato;
 CREATE TRIGGER trg_contrato_post_transicion
     AFTER INSERT OR UPDATE OF estado ON contrato
     FOR EACH ROW EXECUTE FUNCTION fn_post_transicion_contrato();
+
+DROP TRIGGER IF EXISTS trg_contrato_modificacion ON contrato;
+CREATE TRIGGER trg_contrato_modificacion
+    AFTER UPDATE OF id_tipo_acuerdo, nombre, descripcion, texto, fecha_modificacion
+    ON contrato
+    FOR EACH ROW EXECUTE FUNCTION fn_post_modificacion_contrato();
 
 DROP TRIGGER IF EXISTS trg_contrato_impedir_delete ON contrato;
 CREATE TRIGGER trg_contrato_impedir_delete
