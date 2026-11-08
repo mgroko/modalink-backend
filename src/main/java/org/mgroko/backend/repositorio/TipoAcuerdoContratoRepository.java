@@ -11,5 +11,18 @@ public interface TipoAcuerdoContratoRepository
 
     List<TipoAcuerdoContrato> findByActivoTrueOrderByNombreAsc();
 
+    List<TipoAcuerdoContrato> findAllByOrderByNombreAsc();
+
     Optional<TipoAcuerdoContrato> findByIdTipoAcuerdoAndActivoTrue(Long idTipoAcuerdo);
+
+    boolean existsByCodigoIgnoreCase(String codigo);
+
+    boolean existsByNombreIgnoreCase(String nombre);
+
+    boolean existsByNombreIgnoreCaseAndIdTipoAcuerdoNot(String nombre, Long idTipoAcuerdo);
+
+    boolean existsByNombreIgnoreCaseAndActivoTrueAndIdTipoAcuerdoNot(
+            String nombre, Long idTipoAcuerdo);
+
+    long countByActivoTrue();
 }

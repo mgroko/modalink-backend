@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.Contrato;
+import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.repositorio.proyeccion.ContratoActivoProyeccion;
 import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -94,4 +95,11 @@ public interface ContratoRepository
         WHERE c.idContrato IN :ids
     """)
     List<ProyectoDeEntidad> findProyectoPorIds(@Param("ids") Collection<Long> ids);
+
+    boolean existsByTipoAcuerdo_IdTipoAcuerdo(Long idTipoAcuerdo);
+
+    long countByTipoAcuerdo_IdTipoAcuerdo(Long idTipoAcuerdo);
+
+    long countByTipoAcuerdo_IdTipoAcuerdoAndEstadoIn(
+            Long idTipoAcuerdo, Collection<EstadoContrato> estados);
 }

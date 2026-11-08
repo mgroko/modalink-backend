@@ -12,7 +12,13 @@ import org.mgroko.backend.admin.exception.CaracteristicaEnUsoException;
 import org.mgroko.backend.admin.exception.CaracteristicaTecnicaNoEncontradaException;
 import org.mgroko.backend.admin.exception.HabilidadDuplicadaException;
 import org.mgroko.backend.admin.exception.HabilidadEnUsoException;
+import org.mgroko.backend.admin.exception.PlantillaContratoInvalidaException;
+import org.mgroko.backend.admin.exception.TipoContratoDuplicadoException;
+import org.mgroko.backend.admin.exception.TipoContratoEnUsoException;
+import org.mgroko.backend.admin.exception.TipoContratoNoEncontradoException;
+import org.mgroko.backend.admin.exception.TipoContratoNoModificableException;
 import org.mgroko.backend.admin.exception.TipoDatoInvalidoException;
+import org.mgroko.backend.admin.exception.UltimoTipoContratoActivoException;
 import org.mgroko.backend.admin.exception.UnidadMedidaDuplicadaException;
 import org.mgroko.backend.admin.exception.UnidadMedidaEnUsoException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
@@ -957,6 +963,54 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HabilidadEnUsoException.class)
     public ResponseEntity<Map<String, Object>> handleHabilidadEnUso(HabilidadEnUsoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(TipoContratoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoContratoNoEncontrado(
+            TipoContratoNoEncontradoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "TIPO_CONTRATO_NO_ENCONTRADO", HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(TipoContratoDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoContratoDuplicado(
+            TipoContratoDuplicadoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "TIPO_CONTRATO_DUPLICADO", HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(TipoContratoNoModificableException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoContratoNoModificable(
+            TipoContratoNoModificableException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(TipoContratoEnUsoException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoContratoEnUso(
+            TipoContratoEnUsoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "TIPO_CONTRATO_EN_USO", HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(UltimoTipoContratoActivoException.class)
+    public ResponseEntity<Map<String, Object>> handleUltimoTipoContratoActivo(
+            UltimoTipoContratoActivoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "ULTIMO_TIPO_CONTRATO_ACTIVO", HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(PlantillaContratoInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePlantillaContratoInvalida(
+            PlantillaContratoInvalidaException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("codigo", "TIPO_CONTRATO_PLANTILLA_INVALIDA");
+        response.put("message", ex.getMessage());
+        response.put("errores", ex.getErrores());
+        response.put("validacion", ex.getValidacion());
+        response.put("httpStatus", HttpStatus.BAD_REQUEST.value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(HabilidadYaAsociadaException.class)

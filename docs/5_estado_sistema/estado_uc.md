@@ -17,7 +17,7 @@ el historial de git sirva de bitácora adicional.
 
 ---
 
-## Gestión de usuarios y administración (15 UC)
+## Gestión de usuarios y administración (16 UC)
 
 | UC    | Nombre                                           | Estado                  | Endpoint / clase                                                                                                                                 | Tests | Notas                                                                                                  |
 | ----- | ------------------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------ |
@@ -36,6 +36,7 @@ el historial de git sirva de bitácora adicional.
 | UC-59 | Buscar profesiones                               | Implementado y testeado | `GET /profesiones`                                                                                                                               | Sí    | Primera iteracion                                                                                      |
 | UC-67 | Generar informe de auditoría                     | Implementado y testeado | `GET /admin/auditoria`, `GET /admin/auditoria/tipos`, `GET /admin/auditoria/resumen` y `GET /admin/auditoria/export?formato=CSV\|PDF` | Sí (unitario + MVC + integración + carga) | Segunda iteración. Catálogo de eventos críticos en `tipo_evento_auditoria` con fallback `OTRO`; auditoría por triggers de BD con operador real (`app.id_usuario` por transacción); inmutabilidad del log (`UPDATE`, `DELETE` y `TRUNCATE`); listado paginado con filtros por fechas y tipos multi-selección; históricos sin tipo agrupados como `SIN_TIPO`; resumen por tipo y entidad; exportación CSV/PDF con tope configurable; rango máximo, tamaño de página y tope de exportación en `configuracion_sistema`; solo rol Administrador. **Fase 0/1:** helper `fn_auditoria_registrar`, espejo de contratos en `auditoria`, eventos de T&C, perfiles y datos personales con valores anteriores/nuevos, e inmutabilidad de `contrato_evento`. **Fases 2-4:** identidad, habilidades de perfil, roles globales/proyecto, membresías, proyecto/actividad/asignaciones, postulaciones/invitaciones, reemplazos, calendario, calificaciones, catálogos administrativos, reparación de cronograma, schedulers y exportaciones. Ver `docs/calidad/auditoria_mvp.md` y `docs/calidad/controles_bd.md`. |
 | UC-75 | Gestionar unidades de medida                     | Implementado y testeado | `GET/POST /admin/unidades-medida`, `GET/PUT/DELETE /admin/unidades-medida/{id}`                                                                   | Sí    | Segunda iteracion. Borrado físico (solo si no está asociada a una característica técnica); `tipoDatoPermitido` NUMERICO o TEXTO. **Pendiente:** notificación a los perfiles afectados al modificar la unidad (postcondición 2.1) |
+| UC-76 | Gestionar tipos de contrato                      | Implementado y testeado | `GET/POST /admin/tipos-contrato`, `GET/PUT/DELETE /admin/tipos-contrato/{id}`, `PATCH /admin/tipos-contrato/{id}/estado`, `POST /admin/tipos-contrato/validar-plantilla` | Sí (unitario + MVC + integración) | Extensión administrativa. Código automático e inmutable; nombre y plantilla bloqueados con contratos `BORRADOR`/`PENDIENTE_FIRMA`/`ACTIVO`; desactivación permitida con contratos `ACTIVO` o cerrados pero no con pendientes ni como último activo; baja física solo sin contratos; auditoría por trigger. |
 
 ## Gestión de perfiles y disponibilidad (13 UC)
 
@@ -131,21 +132,23 @@ el historial de git sirva de bitácora adicional.
 
 | Módulo                             | Total UC | Implementado y testeado | Implementado | En progreso | No iniciado |
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
-| Gestión de usuarios y administración | 15     | 15                      | 0            | 0           | 0           |
+| Gestión de usuarios y administración | 16     | 16                      | 0            | 0           | 0           |
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
 | Gestión de proyectos               | 26       | 25                      | 0            | 0           | 1           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
 | Gestión de conexiones y mensajería | 5        | 0                       | 0            | 0           | 5           |
-| **Total**                          | **75**   | **58**                  | **0**        | **0**       | **17**      |
+| **Total**                          | **76**   | **58**                  | **0**        | **0**       | **18**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
 > `UC-70` *Asignar actividad a miembro*, `UC-71` *Configurar jornada laboral*, `UC-72` *Buscar requerimiento general*,
 > `UC-73` *Buscar requerimiento actividad*, `UC-74` *Buscar postulaciones* y `UC-75` *Gestionar unidades de medida*, pasando de 69 a 75.
+> Se agrega además **`UC-76` *Gestionar tipos de contrato*** como extensión administrativa del módulo de contratos,
+> llevando el seguimiento a 76 casos de uso.
 >
 > Los escenarios **`UC-29 bis` *Buscar proyectos propios*** y **`UC-38 bis / UC-40 bis` *Reemplazo automático de integrantes***
 > son casos derivados del desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan
 > sus filas en el módulo de proyectos solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 58 de 75 casos de uso implementados y testeados = **77,3 %** del catálogo de requisitos.
+**Avance global:** 58 de 76 casos de uso implementados y testeados = **76,3 %** del catálogo de requisitos.

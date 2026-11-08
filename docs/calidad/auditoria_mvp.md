@@ -109,6 +109,10 @@ ALTER TABLE detalle_auditoria
 | `INVITACION_ESTADO_CAMBIADO` | `invitacion_gral` / `invitacion_actividad` UPDATE estado | `estado` |
 | `INVITACION_ELIMINADA` | idem DELETE | `registro` |
 | `CONFIGURACION_ACTUALIZADA` | `configuracion_sistema` INSERT/UPDATE/DELETE | `valor`, `descripcion` |
+| `TIPO_CONTRATO_CREADO` | `tipo_acuerdo_contrato` INSERT | `nombre`, `descripcion`, `plantilla` (resumen), `activo` |
+| `TIPO_CONTRATO_MODIFICADO` | `tipo_acuerdo_contrato` UPDATE | Campos modificados; `plantilla` se guarda como longitud + MD5 |
+| `TIPO_CONTRATO_ESTADO_CAMBIADO` | `tipo_acuerdo_contrato` UPDATE solo `activo` | `activo` |
+| `TIPO_CONTRATO_ELIMINADO` | `tipo_acuerdo_contrato` DELETE | `nombre`, `descripcion`, `plantilla` (resumen), `activo` |
 | `REPORTE_ESTADO_CAMBIADO` | `reporte` INSERT/UPDATE | `estado`, `motivo`, `id_admin_revisor` |
 | `OTRO` | Cualquier código no catalogado | Se preserva en `tipo_evento_original` |
 
