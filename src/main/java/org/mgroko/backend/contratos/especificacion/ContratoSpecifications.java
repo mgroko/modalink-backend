@@ -12,6 +12,7 @@ import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.enums.EstadoFirmaContrato;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.springframework.data.jpa.domain.Specification;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -199,7 +200,13 @@ public final class ContratoSpecifications {
                 cb.equal(miembro.get("estadoParticipacion"),
                         EstadoParticipacion.ACTIVO),
                 cb.equal(firma.get("estadoFirma"),
-                        EstadoFirmaContrato.PENDIENTE));
+                        EstadoFirmaContrato.PENDIENTE),
+                // Solo contratos realmente accionables: un proyecto finalizado
+                // o cancelado conserva firmas pendientes historicas que no se
+                // pueden firmar.
+                root.get("proyecto").get("estado").in(
+                        EstadoProyecto.PUBLICADO,
+                        EstadoProyecto.CONFIRMADO));
 
         return cb.exists(subquery);
     }

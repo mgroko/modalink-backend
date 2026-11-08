@@ -1,5 +1,6 @@
 package org.mgroko.backend.repositorio;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
@@ -17,6 +18,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
@@ -50,6 +52,7 @@ public class ContratoBusquedaRepositoryImpl implements ContratoBusquedaRepositor
                 root.get("fechaCreacion"),
                 root.get("fechaEmision"),
                 root.get("fechaModificacion"),
+                root.get("fechaBaja"),
                 root.get("versionActual"),
                 root.get("proyecto").get("idProyecto"),
                 root.get("proyecto").get("nombre"),
@@ -59,9 +62,15 @@ public class ContratoBusquedaRepositoryImpl implements ContratoBusquedaRepositor
                 root.get("tipoAcuerdo").get("nombre"),
                 root.get("miembroEmisor").get("idMiembro")));
 
+        Expression<LocalDateTime> fechaOrden = cb.coalesce(
+                root.<LocalDateTime>get("fechaEmision"),
+                cb.coalesce(
+                        root.<LocalDateTime>get("fechaBaja"),
+                        root.<LocalDateTime>get("fechaCreacion")));
+
         query.where(predicate);
         query.orderBy(
-                cb.desc(root.get("fechaEmision")),
+                cb.desc(fechaOrden),
                 cb.desc(root.get("idContrato")));
 
         TypedQuery<ContratoResumenProyeccion> typedQuery = entityManager.createQuery(query);

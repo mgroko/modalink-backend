@@ -48,7 +48,8 @@ public class BuscarContratoService {
             EstadoContrato.PENDIENTE_FIRMA,
             EstadoContrato.ACTIVO,
             EstadoContrato.RECHAZADO_POR_PARTES,
-            EstadoContrato.CANCELADO);
+            EstadoContrato.CANCELADO,
+            EstadoContrato.ELIMINADO);
 
     private final PerfilRepository perfilRepository;
     private final ContratoRepository contratoRepository;

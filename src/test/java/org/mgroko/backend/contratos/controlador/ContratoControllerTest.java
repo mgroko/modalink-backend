@@ -244,8 +244,8 @@ class ContratoControllerTest {
         var auth = autenticacion(10L);
 
         ContratoBusquedaResponse fila = new ContratoBusquedaResponse(
-                55L, "Contrato", 100L, "Proyecto", 1L, "CESION",
-                "Cesion", "PENDIENTE_FIRMA", null, null, null, 1,
+                55L, "Contrato", 100L, "Proyecto", "PUBLICADO", 1L, "CESION",
+                "Cesion", "PENDIENTE_FIRMA", null, null, null, null, 1,
                 null, List.of(), "PENDIENTE", null, true,
                 true, true, 0, 1, true);
 
@@ -454,7 +454,7 @@ class ContratoControllerTest {
                 "Contrato", "Descripcion", "PENDIENTE_FIRMA", 1,
                 LocalDateTime.of(2026, 11, 7, 12, 0),
                 LocalDateTime.of(2026, 11, 7, 12, 0),
-                null, "TEXTO", null,
+                null, null, "TEXTO", null,
                 List.of(new ParteContratoResumenResponse(
                         11L, 3L, "Ana Pérez", "DIRECTOR", "PENDIENTE", null)),
                 "PENDIENTE", null, true, null,

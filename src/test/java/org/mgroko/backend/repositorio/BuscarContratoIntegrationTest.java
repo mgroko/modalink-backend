@@ -467,12 +467,13 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
-    void contratoEliminadoSeExcluyePorDefectoYSePuedePedirExplicitamente() {
+    void contratoEliminadoSeIncluyePorDefectoYSePuedeExcluirExplicitamente() {
         Datos datos = crearProyectoConContrato();
 
         em.createNativeQuery("""
                 UPDATE contrato
-                   SET estado = 'ELIMINADO'
+                   SET estado = 'ELIMINADO',
+                       fecha_baja = COALESCE(fecha_baja, clock_timestamp())
                  WHERE id_contrato = :idContrato
                 """)
                 .setParameter("idContrato", datos.idContrato())
@@ -481,19 +482,58 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         em.flush();
         em.clear();
 
-        assertThat(buscar(
+        PaginaResponse<ContratoBusquedaResponse> porDefecto = buscar(
                 datos.director(),
                 datos.perfilDirector(),
-                filtroVacio()).totalElementos()).isZero();
+                filtroVacio());
+
+        assertThat(porDefecto.totalElementos()).isEqualTo(1);
+        assertThat(porDefecto.contenido().get(0).estado()).isEqualTo("ELIMINADO");
+        assertThat(porDefecto.contenido().get(0).fechaBaja()).isNotNull();
 
         assertThat(buscar(
                 datos.director(),
                 datos.perfilDirector(),
                 new BuscarContratosFiltro(
                         null,
-                        List.of(EstadoContrato.ELIMINADO),
+                        List.of(EstadoContrato.PENDIENTE_FIRMA, EstadoContrato.ACTIVO),
                         null, null, null, null, null, null, null))
-                .totalElementos()).isEqualTo(1);
+                .totalElementos()).isZero();
+    }
+
+    @Test
+    void pendientesDeFirmaExcluyenContratosDeProyectosFinalizados() {
+        Datos datos = crearProyectoConContrato();
+
+        assertThat(buscar(
+                datos.director(),
+                datos.perfilDirector(),
+                filtroVacio(),
+                true).totalElementos()).isEqualTo(1);
+
+        jdbcTemplate.update(
+                "UPDATE proyecto SET estado = 'FINALIZADO' WHERE id_proyecto = ?",
+                datos.proyecto().getIdProyecto());
+        em.flush();
+        em.clear();
+
+        assertThat(buscar(
+                datos.director(),
+                datos.perfilDirector(),
+                filtroVacio(),
+                true).totalElementos()).isZero();
+
+        PaginaResponse<ContratoBusquedaResponse> busquedaGeneral = buscar(
+                datos.director(),
+                datos.perfilDirector(),
+                filtroVacio());
+
+        assertThat(busquedaGeneral.totalElementos()).isEqualTo(1);
+        assertThat(busquedaGeneral.contenido().get(0).estadoProyecto())
+                .isEqualTo("FINALIZADO");
+        assertThat(busquedaGeneral.contenido().get(0).puedeFirmar()).isFalse();
+        assertThat(busquedaGeneral.contenido().get(0).puedeModificar()).isFalse();
+        assertThat(busquedaGeneral.contenido().get(0).puedeEliminar()).isFalse();
     }
 
     @Test

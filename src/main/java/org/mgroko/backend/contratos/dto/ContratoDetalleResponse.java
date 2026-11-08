@@ -18,6 +18,7 @@ public record ContratoDetalleResponse(
         LocalDateTime fechaCreacion,
         LocalDateTime fechaEmision,
         LocalDateTime fechaModificacion,
+        LocalDateTime fechaBaja,
         String texto,
         EmisorContratoResponse emisor,
         List<ParteContratoResumenResponse> partes,

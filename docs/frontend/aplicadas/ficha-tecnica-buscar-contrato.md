@@ -42,8 +42,9 @@ page=0, size=20
 
 Reglas:
 
-- `estados` vacío aplica el conjunto por defecto: `PENDIENTE_FIRMA`, `ACTIVO`, `RECHAZADO_POR_PARTES`, `CANCELADO`.
-- `BORRADOR` y `ELIMINADO` se excluyen por defecto; se pueden pedir explícitamente.
+- `estados` vacío aplica el conjunto por defecto: `PENDIENTE_FIRMA`, `ACTIVO`, `RECHAZADO_POR_PARTES`, `CANCELADO`, `ELIMINADO`.
+- `ELIMINADO` se incluye por defecto para que las bajas lógicas sigan visibles. El cliente puede excluirlo enviando explícitamente la lista de estados.
+- `BORRADOR` se excluye por defecto; se puede pedir explícitamente.
 - `parte` busca por nombre artístico, nombre y apellido. No se usa DNI.
 - `fechaEmisionDesde/Hasta` y `fechaFirmaDesde/Hasta` son rangos inclusivos por día.
 - El filtro de firma matchea si cualquier firma `FIRMADO` cae en el rango.
@@ -60,6 +61,7 @@ Respuesta `200`:
       "nombre": "Cesión de derechos de imagen - Editorial Primavera",
       "idProyecto": 10,
       "nombreProyecto": "Editorial Primavera",
+      "estadoProyecto": "PUBLICADO",
       "idTipoAcuerdo": 1,
       "codigoTipoAcuerdo": "CESION_DERECHOS_IMAGEN",
       "nombreTipoAcuerdo": "Cesión de derechos de imagen",
@@ -67,6 +69,7 @@ Respuesta `200`:
       "fechaCreacion": "2026-11-07T12:00:00",
       "fechaEmision": "2026-11-07T12:00:00",
       "fechaModificacion": null,
+      "fechaBaja": null,
       "versionActual": 1,
       "emisor": {
         "idMiembro": 3,

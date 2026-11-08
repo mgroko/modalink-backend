@@ -171,6 +171,9 @@ public final class ContratoMapper {
                 resumen.getNombre(),
                 resumen.getIdProyecto(),
                 resumen.getNombreProyecto(),
+                resumen.getEstadoProyecto() != null
+                        ? resumen.getEstadoProyecto().name()
+                        : null,
                 resumen.getIdTipoAcuerdo(),
                 resumen.getCodigoTipoAcuerdo(),
                 resumen.getNombreTipoAcuerdo(),
@@ -178,6 +181,7 @@ public final class ContratoMapper {
                 resumen.getFechaCreacion(),
                 resumen.getFechaEmision(),
                 resumen.getFechaModificacion(),
+                resumen.getFechaBaja(),
                 resumen.getVersionActual(),
                 toEmisorResponse(emisor),
                 partes.stream().map(ContratoMapper::toParteResumen).toList(),
@@ -227,6 +231,7 @@ public final class ContratoMapper {
                 contrato.getFechaCreacion(),
                 contrato.getFechaEmision(),
                 contrato.getFechaModificacion(),
+                contrato.getFechaBaja(),
                 contrato.getTexto(),
                 toEmisorResponse(contrato.getMiembroEmisor()),
                 partes.stream().map(ContratoMapper::toParteResumen).toList(),

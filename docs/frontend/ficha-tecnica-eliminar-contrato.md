@@ -47,7 +47,7 @@ El backend:
 - Las firmas que ya estaban `FIRMADO` se conservan como historial.
 - Evento `ELIMINADO` registrado.
 - Notificación `CONTRATO_ELIMINADO` a las partes, excepto cuando el contrato estaba en `BORRADOR`.
-- El contrato queda excluido de la búsqueda por defecto; sigue consultable con `estados=ELIMINADO`.
+- El contrato sigue visible en la búsqueda por defecto; el cliente puede excluirlo enviando explícitamente la lista de estados sin `ELIMINADO`.
 - Si el contrato estaba `CANCELADO`, sus campos de cancelación se limpian, pero el motivo original permanece en `contrato_evento`.
 
 ---
@@ -108,8 +108,8 @@ La UI debe mostrar la acción de eliminar solo cuando `puedeEliminar = true`.
 - Pedir confirmación explícita antes de llamar al endpoint.
 - Tras `204`, quitar el contrato del listado y redirigir o refrescar la búsqueda.
 - No asumir que “eliminar” implica borrar físicamente: es una baja lógica.
-- Si se necesita ver el histórico, consultar con `estados=ELIMINADO`.
-- En la pestaña de contratos del proyecto, aplicar por defecto los estados de UC-68; no incluir `ELIMINADO` salvo en filtros avanzados.
+- Los contratos eliminados se incluyen por defecto en la búsqueda y se distinguen con el badge `Eliminado` y la fecha de baja.
+- En la pestaña de contratos del proyecto se aplican los estados por defecto de UC-68, que incluyen `ELIMINADO`; el chip permite ocultarlos.
 
 ---
 

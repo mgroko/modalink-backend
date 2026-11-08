@@ -21,6 +21,7 @@ public class ContratoResumenProyeccion {
     private final LocalDateTime fechaCreacion;
     private final LocalDateTime fechaEmision;
     private final LocalDateTime fechaModificacion;
+    private final LocalDateTime fechaBaja;
     private final Integer versionActual;
     private final Long idProyecto;
     private final String nombreProyecto;

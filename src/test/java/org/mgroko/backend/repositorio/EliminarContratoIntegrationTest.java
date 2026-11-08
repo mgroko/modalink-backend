@@ -263,9 +263,17 @@ class EliminarContratoIntegrationTest
             Datos datos,
             boolean incluirEliminados) {
 
+        List<EstadoContrato> estados = incluirEliminados
+                ? List.of(EstadoContrato.ELIMINADO)
+                : List.of(
+                        EstadoContrato.PENDIENTE_FIRMA,
+                        EstadoContrato.ACTIVO,
+                        EstadoContrato.RECHAZADO_POR_PARTES,
+                        EstadoContrato.CANCELADO);
+
         BuscarContratosFiltro filtro = new BuscarContratosFiltro(
                 datos.proyecto().getIdProyecto(),
-                incluirEliminados ? List.of(EstadoContrato.ELIMINADO) : null,
+                estados,
                 null, null, null, null, null, null, null);
 
         return buscarContratoService.buscar(
