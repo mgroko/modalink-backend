@@ -658,3 +658,36 @@
   2. El sistema retorna `unaSolicitud`.
 
 ---
+
+### **UC-43: Enviar solicitud de conexión**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. El actor envía el mensaje `enviarSolicitud(unPerfil)`.
+  2. El sistema retorna `unaSolicitud`.
+
+---
+
+### **UC-44: Eliminar conexión**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. El actor envía el mensaje `eliminarConexion(unPerfil, unaConexion)`.
+  2. El sistema retorna `operacionExitosa()`.
+
+---
+
+### **UC-45: Gestionar solicitudes de conexión**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Bloque Alternativo (`alt`)**:
+     - `[si el perfil acepta la solicitud]`:
+       - El actor envía el mensaje `aceptarSolicitud(unaSolicitud)`.
+     - `[si el perfil rechaza la solicitud]`:
+       - El actor envía el mensaje `rechazarSolicitud(unaSolicitud)`.
+
+---
