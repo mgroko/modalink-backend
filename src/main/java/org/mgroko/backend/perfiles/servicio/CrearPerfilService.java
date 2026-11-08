@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Perfil;
@@ -60,6 +61,7 @@ public class CrearPerfilService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PerfilResponse crear(Long idUsuario, CrearPerfilRequest request) {
         Usuario usuario = buscarUsuarioActivo(idUsuario);
 

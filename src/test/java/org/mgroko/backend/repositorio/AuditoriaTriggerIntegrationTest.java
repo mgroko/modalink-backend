@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.dto.DeshabilitarUsuarioRequest;
 import org.mgroko.backend.admin.servicio.AdminUsuarioService;
+import org.mgroko.backend.auditoria.dto.AuditoriaDetalleRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
@@ -36,6 +37,9 @@ class AuditoriaTriggerIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private AdminUsuarioService adminUsuarioService;
+
+    @Autowired
+    private org.mgroko.backend.auditoria.servicio.AuditoriaEventoService auditoriaEventoService;
 
     @Autowired
     private jakarta.persistence.EntityManager entityManager;
@@ -376,6 +380,199 @@ class AuditoriaTriggerIntegrationTest extends AbstractPostgresIntegrationTest {
                     assertThat(fila.get("campo")).isEqualTo("valor");
                     assertThat(fila.get("valor_anterior")).isEqualTo("90");
                     assertThat(fila.get("valor_nuevo")).isEqualTo("120");
+                });
+    }
+
+    @Test
+    void datosPersonales_registraValoresAnterioresYNuevos() {
+        long idAdmin = insertarUsuario("AdminDatos");
+        long idObjetivo = insertarUsuario("ObjetivoDatos");
+        setOperador(idAdmin);
+
+        int n = SECUENCIA.incrementAndGet();
+        String nuevoCorreo = "datos" + n + "@test.com";
+        String nuevoDni = String.format("%08d", (n + 10_000_000) % 100_000_000);
+
+        jdbcTemplate.update("""
+                UPDATE usuario
+                   SET nombre = ?, apellido = ?, correo = ?, dni = ?
+                 WHERE id_usuario = ?
+                """, "NombreNuevo", "ApellidoNuevo", nuevoCorreo, nuevoDni, idObjetivo);
+
+        Map<String, Object> evento = jdbcTemplate.queryForMap("""
+                SELECT id_auditoria, id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'usuario'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'USUARIO_DATOS_MODIFICADOS'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, idObjetivo);
+
+        assertThat(((Number) evento.get("id_usuario")).longValue()).isEqualTo(idAdmin);
+
+        List<Map<String, Object>> detalles = jdbcTemplate.queryForList("""
+                SELECT campo, valor_anterior, valor_nuevo
+                FROM detalle_auditoria
+                WHERE id_auditoria = ?
+                """, ((Number) evento.get("id_auditoria")).longValue());
+
+        assertThat(detalles)
+                .anySatisfy(fila -> {
+                    assertThat(fila.get("campo")).isEqualTo("nombre");
+                    assertThat(fila.get("valor_nuevo")).isEqualTo("NombreNuevo");
+                })
+                .anySatisfy(fila -> {
+                    assertThat(fila.get("campo")).isEqualTo("correo");
+                    assertThat(fila.get("valor_nuevo")).isEqualTo(nuevoCorreo);
+                })
+                .anySatisfy(fila -> {
+                    assertThat(fila.get("campo")).isEqualTo("dni");
+                    assertThat(fila.get("valor_nuevo")).isEqualTo(nuevoDni);
+                });
+    }
+
+    @Test
+    void perfil_registraCreacionBajaYReactivacion() {
+        long idAdmin = insertarUsuario("AdminPerfil");
+        setOperador(idAdmin);
+
+        long idPerfil = insertarPerfil(idAdmin, "PerfilAudit");
+
+        Map<String, Object> creacion = jdbcTemplate.queryForMap("""
+                SELECT id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'perfil'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'PERFIL_CREADO'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, idPerfil);
+
+        assertThat(((Number) creacion.get("id_usuario")).longValue()).isEqualTo(idAdmin);
+
+        jdbcTemplate.update("""
+                UPDATE perfil
+                   SET estado = 'PENDIENTE_BAJA',
+                       fecha_solicitud_baja = CURRENT_TIMESTAMP
+                 WHERE id_perfil = ?
+                """, idPerfil);
+
+        jdbcTemplate.update("""
+                UPDATE perfil SET estado = 'BAJA' WHERE id_perfil = ?
+                """, idPerfil);
+
+        jdbcTemplate.update("""
+                UPDATE perfil
+                   SET estado = 'ACTIVO',
+                       fecha_solicitud_baja = NULL
+                 WHERE id_perfil = ?
+                """, idPerfil);
+
+        List<String> eventos = jdbcTemplate.queryForList("""
+                SELECT tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'perfil'
+                  AND id_afectado = ?
+                ORDER BY id_auditoria
+                """, String.class, idPerfil);
+
+        assertThat(eventos)
+                .contains("PERFIL_CREADO", "PERFIL_BAJA_SOLICITADA",
+                        "PERFIL_ELIMINADO", "PERFIL_REACTIVADO");
+    }
+
+    @Test
+    void terminosCondiciones_registraVersionYAceptacion() {
+        long idAdmin = insertarUsuario("AdminTyc");
+        setOperador(idAdmin);
+
+        long idPerfil = insertarPerfil(idAdmin, "PerfilTyc");
+
+        Long idTyc = jdbcTemplate.queryForObject("""
+                INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio)
+                VALUES (?, 'Terminos de prueba', CURRENT_TIMESTAMP)
+                RETURNING id_tyc
+                """, Long.class, idPerfil);
+
+        Map<String, Object> version = jdbcTemplate.queryForMap("""
+                SELECT id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'perfil'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'TERMINOS_VERSION_CREADA'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, idPerfil);
+
+        assertThat(((Number) version.get("id_usuario")).longValue()).isEqualTo(idAdmin);
+
+        long idProyecto = insertarProyecto("ProyectoTyc");
+        Long idMiembro = jdbcTemplate.queryForObject("""
+                INSERT INTO miembros_proyecto (
+                    estado_participacion, id_proyecto, id_perfil,
+                    id_rol_proyecto, id_tyc_aceptado)
+                VALUES ('ACTIVO', ?, ?,
+                        (SELECT id_rol_proyecto FROM rol_proyecto WHERE codigo = 'MIEMBRO'),
+                        ?)
+                RETURNING id_miembro
+                """, Long.class, idProyecto, idPerfil, idTyc);
+
+        Map<String, Object> aceptacion = jdbcTemplate.queryForMap("""
+                SELECT id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'miembro_proyecto'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'TERMINOS_ACEPTADOS'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, idMiembro);
+
+        assertThat(((Number) aceptacion.get("id_usuario")).longValue()).isEqualTo(idAdmin);
+    }
+
+    @Test
+    void eventoDeAplicacion_registraOperadorYDetalle() {
+        long idAdmin = insertarUsuario("AdminEvento");
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        String.valueOf(idAdmin), null, List.of()));
+        try {
+            auditoriaEventoService.registrar(
+                    "usuario",
+                    idAdmin,
+                    "USUARIO_DATOS_MODIFICADOS",
+                    "UPDATE",
+                    List.of(new AuditoriaDetalleRequest(
+                            "campoPrueba", "antes", "despues")));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        Map<String, Object> evento = jdbcTemplate.queryForMap("""
+                SELECT id_auditoria, id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'usuario'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'USUARIO_DATOS_MODIFICADOS'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, idAdmin);
+
+        assertThat(((Number) evento.get("id_usuario")).longValue()).isEqualTo(idAdmin);
+
+        List<Map<String, Object>> detalles = jdbcTemplate.queryForList("""
+                SELECT campo, valor_anterior, valor_nuevo
+                FROM detalle_auditoria
+                WHERE id_auditoria = ?
+                """, ((Number) evento.get("id_auditoria")).longValue());
+
+        assertThat(detalles)
+                .anySatisfy(fila -> {
+                    assertThat(fila.get("campo")).isEqualTo("campoPrueba");
+                    assertThat(fila.get("valor_anterior")).isEqualTo("antes");
+                    assertThat(fila.get("valor_nuevo")).isEqualTo("despues");
                 });
     }
 

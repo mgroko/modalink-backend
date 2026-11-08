@@ -135,6 +135,33 @@ Devuelve el texto legal, partes, firmas, emisor, estado, versión y flags:
 - `motivoNoModificable`: `SIN_PERMISO`, `CONTRATO_NO_PENDIENTE_FIRMA`, `PROYECTO_NO_APTO_PARA_CONTRATO`, `CONTRATO_CON_FIRMAS_REGISTRADAS`.
 - `miEstadoFirma`, `miFechaFirma`.
 
+### 3.3. Historial de eventos
+
+```text
+GET /proyectos/{idProyecto}/contratos/{idContrato}/eventos
+```
+
+Devuelve los eventos de `contrato_evento` ordenados cronológicamente:
+
+```json
+[
+  {
+    "idEvento": 1,
+    "tipoEvento": "FIRMADO",
+    "fechaHora": "2026-11-08T10:00:00",
+    "idMiembro": 11,
+    "idPerfil": 7,
+    "nombreParte": "Ana Pérez",
+    "idUsuario": 1,
+    "nombreOperador": "Ana Gómez",
+    "version": 1,
+    "motivo": null
+  }
+]
+```
+
+Visibilidad: director activo del proyecto o parte firmante, incluido un exmiembro que conserva su firma. Un usuario ajeno recibe `403 ACCESO_DENEGADO_PROYECTO`.
+
 ---
 
 ## 4. Errores
@@ -158,14 +185,15 @@ Devuelve el texto legal, partes, firmas, emisor, estado, versión y flags:
 - Carga batch de partes con `FirmaContratoRepository.findConPartesPorContratos`.
 - Cálculo batch de `puedeModificar` con `MiembroProyectoRepository.findIdsProyectosDondeEsDirectorActivo`.
 - `BuscarContratoService` y `ObtenerContratoService`.
+- `ListarEventosContratoService` + `ContratoEventoRepository.findByContratoConDetalle`.
 - Ruta `/contratos/**` habilitada para rol `USUARIO` en `SecurityConfig`.
 
 ---
 
 ## 6. Pruebas
 
-- `BuscarContratoIntegrationTest`: visibilidad director/miembro/ajeno, filtros, estados por defecto, `BORRADOR`/`ELIMINADO`, firma, firma parcial, detalle, errores y proyectos visibles con histórico de parte firmante.
-- `ContratoControllerTest`: `GET /contratos/buscar` y detalle.
+- `BuscarContratoIntegrationTest`: visibilidad director/miembro/ajeno, filtros, estados por defecto, `BORRADOR`/`ELIMINADO`, firma, firma parcial, detalle, errores, proyectos visibles con histórico de parte firmante, espejo en auditoría e historial visible para partes y exmiembros.
+- `ContratoControllerTest`: `GET /contratos/buscar`, `GET /contratos/proyectos`, detalle e historial de eventos.
 - Regresión de UC-39 y de los triggers de contrato.
 
 ---

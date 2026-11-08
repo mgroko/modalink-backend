@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
+import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
 import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
 import org.mgroko.backend.contratos.dto.ParteContratoResponse;
@@ -34,6 +35,7 @@ import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.EliminarContratoService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
@@ -71,6 +73,9 @@ class ContratoControllerTest {
 
     @MockitoBean
     private BuscarContratoService buscarContratoService;
+
+    @MockitoBean
+    private ListarEventosContratoService listarEventosContratoService;
 
     @MockitoBean
     private ListarProyectosContratoService listarProyectosService;
@@ -254,6 +259,31 @@ class ContratoControllerTest {
                 .andExpect(jsonPath("$.contenido[0].idContrato").value(55L))
                 .andExpect(jsonPath("$.contenido[0].puedeFirmar").value(true))
                 .andExpect(jsonPath("$.contenido[0].totalPartes").value(1));
+    }
+
+    @Test
+    void eventosDelContrato_devuelveHistorialVisibleParaLasPartes() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(listarEventosContratoService.listar(1L, 10L, 100L, 55L))
+                .thenReturn(List.of(new ContratoEventoResponse(
+                        1L,
+                        "FIRMADO",
+                        LocalDateTime.of(2026, 11, 8, 10, 0),
+                        11L,
+                        7L,
+                        "Ana Pérez",
+                        1L,
+                        "Ana Gómez",
+                        1,
+                        null)));
+
+        mockMvc.perform(get("/proyectos/100/contratos/55/eventos")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tipoEvento").value("FIRMADO"))
+                .andExpect(jsonPath("$[0].nombreParte").value("Ana Pérez"))
+                .andExpect(jsonPath("$[0].version").value(1));
     }
 
     @Test

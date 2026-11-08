@@ -362,3 +362,58 @@ Prueba de carga (`AuditoriaPerformanceIT`):
 - Las filas históricas no tienen `tipo_evento` ni `tipo_evento_original`; se muestran sin filtro y se agrupan como `SIN_TIPO`.
 - No se backfillean los históricos: su `id_usuario` puede no representar al operador real. Se muestra “No disponible (histórico)”.
 - La exportación no está sujeta a la cota de 2 segundos del listado, pero tiene tope de registros.
+
+---
+
+## 12. Ampliación Fase 0/1 — evidencia legal
+
+> **Estado:** implementado y testeado.
+
+Se agregó la base técnica de la auditoría ampliada y la cobertura de evidencia legal:
+
+- helper genérico `fn_auditoria_registrar(...)`;
+- eventos de contrato espejados desde `contrato_evento` hacia `auditoria`;
+- eventos de versiones y aceptación de términos y condiciones;
+- eventos de alta, modificación, baja y reactivación de perfil;
+- auditoría de datos personales con valores anteriores y nuevos;
+- inmutabilidad de `contrato_evento`;
+- endpoint de historial de contrato visible para el director y las partes.
+
+### 12.1. Eventos nuevos
+
+| Código | Entidad | Origen |
+|---|---|---|
+| `CONTRATO_CREADO`, `CONTRATO_EMITIDO`, `CONTRATO_MODIFICADO`, `CONTRATO_FIRMADO`, `CONTRATO_RECHAZADO`, `CONTRATO_ACTIVADO`, `CONTRATO_CANCELADO`, `CONTRATO_ELIMINADO`, `CONTRATO_FIRMA_CANCELADA`, `CONTRATO_FIRMA_INVALIDADA`, `CONTRATO_MIEMBRO_BAJA` | `contrato` | `fn_registrar_evento_contrato` |
+| `TERMINOS_VERSION_CREADA`, `TERMINOS_VERSION_CERRADA` | `perfil` | trigger de `perfil_tyc` |
+| `TERMINOS_ACEPTADOS` | `miembro_proyecto`, `invitacion_gral`, `invitacion_actividad` | triggers de aceptación |
+| `PERFIL_CREADO`, `PERFIL_MODIFICADO`, `PERFIL_BAJA_SOLICITADA`, `PERFIL_DESHABILITADO`, `PERFIL_ELIMINADO`, `PERFIL_REACTIVADO` | `perfil` | `fn_auditar_cambio_perfil` |
+| `USUARIO_DATOS_MODIFICADOS` | `usuario` | `fn_auditar_cambio_usuario` |
+
+Los datos personales auditados son `nombre`, `apellido`, `dni`, `fecha_nacimiento`, `correo`, `id_ubicacion` e `id_genero`, con valor anterior y nuevo. No se audita `password_hash`.
+
+### 12.2. Historial de contrato para las partes
+
+```http
+GET /proyectos/{idProyecto}/contratos/{idContrato}/eventos
+```
+
+Devuelve los eventos de `contrato_evento` ordenados cronológicamente. La visibilidad reutiliza la regla de UC-68:
+
+- director activo del proyecto;
+- parte firmante, incluso si ya no tiene membresía activa.
+
+Un usuario ajeno recibe `403 ACCESO_DENEGADO_PROYECTO`.
+
+### 12.3. Implementación
+
+- migración `docs/3_diseño/migraciones/2026-11-08_uc67_auditoria_fase0_1.sql`;
+- `AuditoriaEventoService` para eventos de aplicación sin cambio de fila;
+- servicios de perfiles, T&C y datos personales anotados con `@AuditarOperacion`;
+- `ContratoEventoRepository.findByContratoConDetalle` y `ListarEventosContratoService`.
+
+### 12.4. Pruebas
+
+- `AuditoriaTriggerIntegrationTest`: datos personales, perfil, T&C y evento de aplicación.
+- `BuscarContratoIntegrationTest`: espejo de contrato en auditoría e historial visible para director, parte y exmiembro; ajeno rechazado.
+- `ContratoControllerTest`: endpoint de historial.
+- `AuditoriaMigracionIdempotenciaTest`: migración Fase 0/1 ejecutada dos veces.

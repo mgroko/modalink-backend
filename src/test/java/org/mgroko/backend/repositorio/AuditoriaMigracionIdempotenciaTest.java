@@ -35,6 +35,9 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
     private static final Path MIGRACION = Path.of(
             "docs", "3_diseño", "migraciones", "2026-11-07_uc67_fixes_export.sql");
 
+    private static final Path MIGRACION_FASE01 = Path.of(
+            "docs", "3_diseño", "migraciones", "2026-11-08_uc67_auditoria_fase0_1.sql");
+
     @Autowired
     private DataSource dataSource;
 
@@ -44,40 +47,10 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
                 .as("No se encontró la migración en %s", MIGRACION.toAbsolutePath())
                 .isTrue();
 
-        String script = Files.readString(MIGRACION, StandardCharsets.UTF_8)
-                // El archivo se guarda con BOM UTF-8; PostgreSQL no acepta ese
-                // carácter al inicio de una sentencia.
-                .replace("\uFEFF", "")
-                // El script trae BEGIN/COMMIT; acá se ejecuta en la transacción
-                // de la prueba y se revierte al final.
-                .replaceAll("(?im)^\\s*BEGIN;\\s*$", "")
-                .replaceAll("(?im)^\\s*COMMIT;\\s*$", "");
-
-        List<String> sentencias = dividirSentencias(script);
-        assertThat(sentencias)
-                .as("El divisor no encontró sentencias ejecutables")
-                .isNotEmpty();
-
         try (Connection conexion = dataSource.getConnection()) {
             conexion.setAutoCommit(false);
             try {
-                for (int repetida = 0; repetida < 2; repetida++) {
-                    try (Statement statement = conexion.createStatement()) {
-                        for (String sentencia : sentencias) {
-                            try {
-                                statement.execute(sentencia);
-                            } catch (java.sql.SQLException ex) {
-                                throw new IllegalStateException(
-                                        "Fallo en la repetición " + (repetida + 1)
-                                                + " con la sentencia: ["
-                                                + sentencia.substring(0,
-                                                        Math.min(300, sentencia.length()))
-                                                + "]",
-                                        ex);
-                            }
-                        }
-                    }
-                }
+                aplicarDosVeces(conexion, MIGRACION);
 
                 assertThat(contar(conexion,
                         "SELECT count(*) FROM tipo_evento_auditoria WHERE codigo = 'OTRO'"))
@@ -95,6 +68,72 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
                         .isEqualTo(3);
             } finally {
                 conexion.rollback();
+            }
+        }
+    }
+
+    @Test
+    void migracionFase0y1SePuedeEjecutarDosVecesSinErrores() throws Exception {
+        assertThat(Files.isRegularFile(MIGRACION_FASE01))
+                .as("No se encontró la migración en %s", MIGRACION_FASE01.toAbsolutePath())
+                .isTrue();
+
+        try (Connection conexion = dataSource.getConnection()) {
+            conexion.setAutoCommit(false);
+            try {
+                aplicarDosVeces(conexion, MIGRACION_FASE01);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM tipo_evento_auditoria
+                        WHERE codigo IN (
+                            'CONTRATO_CREADO',
+                            'CONTRATO_FIRMADO',
+                            'TERMINOS_ACEPTADOS',
+                            'USUARIO_DATOS_MODIFICADOS',
+                            'PERFIL_CREADO')
+                        """)).isEqualTo(5);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM information_schema.routines
+                        WHERE routine_name = 'fn_auditoria_registrar'
+                        """)).isEqualTo(1);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM pg_trigger
+                        WHERE tgname = 'trg_auditar_cambio_perfil'
+                        """)).isEqualTo(1);
+            } finally {
+                conexion.rollback();
+            }
+        }
+    }
+
+    private void aplicarDosVeces(Connection conexion, Path migracion) throws Exception {
+        String script = Files.readString(migracion, StandardCharsets.UTF_8)
+                .replace("\uFEFF", "")
+                .replaceAll("(?im)^\\s*BEGIN;\\s*$", "")
+                .replaceAll("(?im)^\\s*COMMIT;\\s*$", "");
+
+        List<String> sentencias = dividirSentencias(script);
+        assertThat(sentencias)
+                .as("El divisor no encontró sentencias ejecutables")
+                .isNotEmpty();
+
+        for (int repetida = 0; repetida < 2; repetida++) {
+            try (Statement statement = conexion.createStatement()) {
+                for (String sentencia : sentencias) {
+                    try {
+                        statement.execute(sentencia);
+                    } catch (java.sql.SQLException ex) {
+                        throw new IllegalStateException(
+                                "Fallo en la repetición " + (repetida + 1)
+                                        + " con la sentencia: ["
+                                        + sentencia.substring(0,
+                                                Math.min(300, sentencia.length()))
+                                        + "]",
+                                ex);
+                    }
+                }
             }
         }
     }

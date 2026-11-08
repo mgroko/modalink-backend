@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PerfilTyc;
@@ -115,6 +116,7 @@ public class GestionTerminosCondicionesService {
      * de baja o dados de baja no pueden operar en el área de usuario.
      */
     @Transactional
+    @AuditarOperacion
     public TerminosCondicionesResponse actualizar(
             Long idUsuario,
             Long idPerfil,

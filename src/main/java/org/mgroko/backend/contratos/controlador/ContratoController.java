@@ -6,6 +6,7 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
+import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
 import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
 import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
 import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
@@ -18,6 +19,7 @@ import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.EliminarContratoService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
@@ -58,6 +60,7 @@ public class ContratoController {
     private final PrevisualizarContratoService previsualizarService;
     private final GenerarContratoService generarService;
     private final BuscarContratoService buscarContratoService;
+    private final ListarEventosContratoService listarEventosContratoService;
     private final ListarProyectosContratoService listarProyectosService;
     private final ObtenerContratoService obtenerContratoService;
     private final PrevisualizarModificacionContratoService previsualizarModificacionService;
@@ -71,6 +74,7 @@ public class ContratoController {
             PrevisualizarContratoService previsualizarService,
             GenerarContratoService generarService,
             BuscarContratoService buscarContratoService,
+            ListarEventosContratoService listarEventosContratoService,
             ListarProyectosContratoService listarProyectosService,
             ObtenerContratoService obtenerContratoService,
             PrevisualizarModificacionContratoService previsualizarModificacionService,
@@ -82,6 +86,7 @@ public class ContratoController {
         this.previsualizarService = previsualizarService;
         this.generarService = generarService;
         this.buscarContratoService = buscarContratoService;
+        this.listarEventosContratoService = listarEventosContratoService;
         this.listarProyectosService = listarProyectosService;
         this.obtenerContratoService = obtenerContratoService;
         this.previsualizarModificacionService = previsualizarModificacionService;
@@ -158,6 +163,19 @@ public class ContratoController {
         return ResponseEntity.ok(listarProyectosService.listar(
                 idUsuario(authentication),
                 idPerfilActivo(authentication)));
+    }
+
+    @GetMapping("/proyectos/{idProyecto}/contratos/{idContrato}/eventos")
+    public ResponseEntity<List<ContratoEventoResponse>> eventos(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(listarEventosContratoService.listar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato));
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/{idContrato}")

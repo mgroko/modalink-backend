@@ -5,18 +5,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
+import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
 import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
 import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
 import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoFiltroInvalidoException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.modelo.Contrato;
@@ -40,6 +44,10 @@ import org.mgroko.backend.modelo.enums.Privacidad;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
@@ -59,7 +67,16 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     private BuscarContratoService buscarContratoService;
 
     @Autowired
+    private ListarEventosContratoService listarEventosContratoService;
+
+    @Autowired
     private ListarProyectosContratoService listarProyectosContratoService;
+
+    @Autowired
+    private FirmarContratoService firmarContratoService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private ObtenerContratoService obtenerContratoService;
@@ -306,6 +323,105 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato()))
                 .isInstanceOf(AccesoDenegadoProyectoException.class);
+    }
+
+    @Test
+    void historialDeContrato_seAuditaYSeVisibleParaLasPartesInclusoTrasLaBaja() {
+        Datos datos = crearProyectoConContrato();
+
+        // El perfil firmante firma con contexto de seguridad para que el
+        // trigger registre al operador real.
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        String.valueOf(datos.miembro().getIdUsuario()),
+                        null,
+                        List.of()));
+        try {
+            firmarContratoService.firmar(
+                    datos.miembro().getIdUsuario(),
+                    datos.perfilMiembro().getIdPerfil(),
+                    datos.proyecto().getIdProyecto(),
+                    datos.idContrato());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        em.flush();
+        em.clear();
+
+        List<ContratoEventoResponse> historialDirector =
+                listarEventosContratoService.listar(
+                        datos.director().getIdUsuario(),
+                        datos.perfilDirector().getIdPerfil(),
+                        datos.proyecto().getIdProyecto(),
+                        datos.idContrato());
+
+        assertThat(historialDirector)
+                .extracting(ContratoEventoResponse::tipoEvento)
+                .contains("CREADO", "EMITIDO", "FIRMADO");
+
+        Map<String, Object> eventoAuditoria = jdbcTemplate.queryForMap("""
+                SELECT id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'contrato'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'CONTRATO_FIRMADO'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, datos.idContrato());
+
+        assertThat(((Number) eventoAuditoria.get("id_usuario")).longValue())
+                .isEqualTo(datos.miembro().getIdUsuario());
+
+        // Un exmiembro que conserva su firma sigue viendo el historial.
+        em.createNativeQuery("""
+                UPDATE miembros_proyecto
+                   SET estado_participacion = 'BAJA_VOLUNTARIA',
+                       fecha_baja = fecha_alta
+                 WHERE id_miembro = :idMiembro
+                """)
+                .setParameter("idMiembro", datos.miembroProyecto().getIdMiembro())
+                .executeUpdate();
+
+        em.flush();
+        em.clear();
+
+        assertThat(listarEventosContratoService.listar(
+                datos.miembro().getIdUsuario(),
+                datos.perfilMiembro().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                datos.idContrato()))
+                .extracting(ContratoEventoResponse::tipoEvento)
+                .contains("FIRMADO");
+
+        assertThatThrownBy(() -> listarEventosContratoService.listar(
+                datos.ajeno().getIdUsuario(),
+                datos.perfilAjeno().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                datos.idContrato()))
+                .isInstanceOf(AccesoDenegadoProyectoException.class);
+    }
+
+    @Test
+    void historialDeContrato_esInmutable() {
+        Datos datos = crearProyectoConContrato();
+
+        Long idEvento = jdbcTemplate.queryForObject("""
+                SELECT id_evento
+                FROM contrato_evento
+                WHERE id_contrato = ?
+                ORDER BY id_evento
+                LIMIT 1
+                """, Long.class, datos.idContrato());
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                UPDATE contrato_evento SET motivo = 'alterado' WHERE id_evento = ?
+                """, idEvento))
+                .isInstanceOf(DataAccessException.class);
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "DELETE FROM contrato_evento WHERE id_evento = ?", idEvento))
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
