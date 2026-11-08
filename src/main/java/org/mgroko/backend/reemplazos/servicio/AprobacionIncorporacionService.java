@@ -355,6 +355,7 @@ public class AprobacionIncorporacionService {
         candidatoRepository.saveAllAndFlush(cancelados);
 
         for (ReemplazoCandidato cancelado : notificables) {
+            notificacionService.eliminarInvitacionRecibida(cancelado);
             notificacionService.notificarCandidato(
                     cancelado,
                     NotificacionService.TIPO_REEMPLAZO_CANCELADO,

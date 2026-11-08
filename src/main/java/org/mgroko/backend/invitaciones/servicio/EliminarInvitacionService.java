@@ -8,6 +8,8 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionDestinoResolver;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -36,16 +38,19 @@ public class EliminarInvitacionService {
     private final InvitacionGralRepository invitacionGralRepository;
     private final InvitacionActividadRepository invitacionActividadRepository;
     private final ProyectoSecurityService proyectoSecurityService;
+    private final NotificacionService notificacionService;
 
     public EliminarInvitacionService(
             PerfilRepository perfilRepository,
             InvitacionGralRepository invitacionGralRepository,
             InvitacionActividadRepository invitacionActividadRepository,
-            ProyectoSecurityService proyectoSecurityService) {
+            ProyectoSecurityService proyectoSecurityService,
+            NotificacionService notificacionService) {
         this.perfilRepository = perfilRepository;
         this.invitacionGralRepository = invitacionGralRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
         this.proyectoSecurityService = proyectoSecurityService;
+        this.notificacionService = notificacionService;
     }
 
     @Transactional
@@ -69,6 +74,11 @@ public class EliminarInvitacionService {
         validarPermiso(idProyecto, idPerfilActivo);
         validarRemitente(invitacion.getPerfilRemitente(), idPerfilActivo);
         validarPendiente(invitacion.getEstado());
+
+        notificacionService.eliminarPorEntidad(
+                NotificacionService.TIPO_INVITACION_RECIBIDA,
+                NotificacionDestinoResolver.ENTIDAD_INVITACION_GRAL,
+                idInvitacion);
 
         invitacionGralRepository.delete(invitacion);
         invitacionGralRepository.flush();
@@ -101,6 +111,11 @@ public class EliminarInvitacionService {
         validarPermiso(idProyecto, idPerfilActivo);
         validarRemitente(invitacion.getPerfilRemitente(), idPerfilActivo);
         validarPendiente(invitacion.getEstado());
+
+        notificacionService.eliminarPorEntidad(
+                NotificacionService.TIPO_INVITACION_RECIBIDA,
+                NotificacionDestinoResolver.ENTIDAD_INVITACION_ACTIVIDAD,
+                idInvitacion);
 
         invitacionActividadRepository.delete(invitacion);
         invitacionActividadRepository.flush();

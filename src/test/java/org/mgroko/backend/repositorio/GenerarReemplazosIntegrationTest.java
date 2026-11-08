@@ -238,6 +238,10 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                         List.of(candidato.getIdCandidato()),
                         "Invitación a actividad"));
 
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", candidato.getIdCandidato()))
+                .isEqualTo(1L);
+
         assertThat(reemplazoCandidatoRepository.findById(candidato.getIdCandidato())
                 .orElseThrow()
                 .getEstado().name())
@@ -262,6 +266,13 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                 .orElseThrow();
         assertThat(candidatoCancelado.getEstado().name()).isEqualTo("CANCELADO");
         assertThat(candidatoCancelado.getMotivoDecision()).isEqualTo("Actividad cancelada");
+
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", candidato.getIdCandidato()))
+                .isZero();
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_CANCELADO", candidato.getIdCandidato()))
+                .isEqualTo(1L);
 
         assertThat(reemplazoQueryService.listarInvitaciones(
                 escenario.idUsuarioCandidato(),
@@ -347,6 +358,13 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                         List.of(primero.getIdCandidato(), segundo.getIdCandidato()),
                         "Invitación masiva"));
 
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", primero.getIdCandidato()))
+                .isEqualTo(1L);
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", segundo.getIdCandidato()))
+                .isEqualTo(1L);
+
         invitacionReemplazoService.aceptar(
                 escenario.idUsuarioCandidato(),
                 escenario.idPerfilCandidato(),
@@ -381,6 +399,16 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(cancelado.getFechaDecision()).isNotNull();
         assertThat(cancelado.getMotivoDecision())
                 .contains("Vacante cubierta por otro candidato");
+
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", primero.getIdCandidato()))
+                .isZero();
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_CANCELADO", primero.getIdCandidato()))
+                .isEqualTo(1L);
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", segundo.getIdCandidato()))
+                .isEqualTo(1L);
 
         assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
                 .orElseThrow()
@@ -595,6 +623,15 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private ReemplazoCandidato candidato(Long idCandidato) {
         return reemplazoCandidatoRepository.findById(idCandidato).orElseThrow();
+    }
+
+    private Long contarNotificaciones(String tipo, Long idCandidato) {
+        return jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE tipo = ?
+                  AND entidad_tipo = 'REEMPLAZO_CANDIDATO'
+                  AND entidad_id = ?
+                """, Long.class, tipo, idCandidato);
     }
 
     /**

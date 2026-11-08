@@ -152,6 +152,29 @@ public class NotificacionService {
                 .build();
     }
 
+    /**
+     * Elimina las notificaciones asociadas a una entidad concreta.
+     *
+     * <p>Se usa cuando la entidad referenciada deja de existir, por ejemplo una
+     * invitación eliminada, para que el destinatario no conserve una
+     * notificación que apunta a algo inexistente.</p>
+     *
+     * @return cantidad de notificaciones eliminadas
+     */
+    @Transactional
+    public int eliminarPorEntidad(
+            String tipo,
+            String entidadTipo,
+            Long entidadId) {
+
+        if (tipo == null || entidadTipo == null || entidadId == null) {
+            return 0;
+        }
+
+        return notificacionRepository.deleteByTipoAndEntidadTipoAndEntidadId(
+                tipo, entidadTipo, entidadId);
+    }
+
     @Transactional(readOnly = true)
     public PaginaResponse<NotificacionResponse> listar(
             Long idUsuario,

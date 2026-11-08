@@ -86,4 +86,19 @@ public class ReemplazoNotificacionService {
                         candidato.getIdCandidato(),
                         candidato.getIdProyecto())));
     }
+
+    /**
+     * Elimina la notificación original de invitación de reemplazo cuando la
+     * invitación deja de estar vigente.
+     */
+    public void eliminarInvitacionRecibida(ReemplazoCandidato candidato) {
+        if (candidato == null || candidato.getIdCandidato() == null) {
+            return;
+        }
+
+        notificacionService.eliminarPorEntidad(
+                NotificacionService.TIPO_REEMPLAZO_INVITACION_RECIBIDA,
+                ENTIDAD_REEMPLAZO_CANDIDATO,
+                candidato.getIdCandidato());
+    }
 }

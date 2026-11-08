@@ -31,6 +31,18 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     long countByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfilAndLeidaFalse(
             Long idUsuario, Long idPerfilContexto);
 
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM Notificacion n
+             WHERE n.tipo = :tipo
+               AND n.entidadTipo = :entidadTipo
+               AND n.entidadId = :entidadId
+            """)
+    int deleteByTipoAndEntidadTipoAndEntidadId(
+            @Param("tipo") String tipo,
+            @Param("entidadTipo") String entidadTipo,
+            @Param("entidadId") Long entidadId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notificacion n
