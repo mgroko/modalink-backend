@@ -417,3 +417,62 @@ Un usuario ajeno recibe `403 ACCESO_DENEGADO_PROYECTO`.
 - `BuscarContratoIntegrationTest`: espejo de contrato en auditoría e historial visible para director, parte y exmiembro; ajeno rechazado.
 - `ContratoControllerTest`: endpoint de historial.
 - `AuditoriaMigracionIdempotenciaTest`: migración Fase 0/1 ejecutada dos veces.
+
+---
+
+## 13. Ampliación Fases 2, 3 y 4
+
+> **Estado:** implementado y testeado.
+
+### 13.1. Fase 2 — identidad, perfiles y roles
+
+Eventos agregados:
+
+| Grupo | Eventos |
+|---|---|
+| Identidad | `USUARIO_IDENTIDAD_VINCULADA`, `USUARIO_IDENTIDAD_DESVINCULADA` |
+| Habilidades de perfil | `PERFIL_HABILIDAD_ALTA`, `PERFIL_HABILIDAD_BAJA` |
+| Roles globales | `ROL_GLOBAL_CREADO`, `ROL_GLOBAL_MODIFICADO`, `ROL_GLOBAL_ELIMINADO`, `ROL_GLOBAL_PERMISO_ASIGNADO`, `ROL_GLOBAL_PERMISO_REVOCADO` |
+| Roles de proyecto | `ROL_PROYECTO_CREADO`, `ROL_PROYECTO_MODIFICADO`, `ROL_PROYECTO_ELIMINADO`, `ROL_PROYECTO_PERMISO_ASIGNADO`, `ROL_PROYECTO_PERMISO_REVOCADO` |
+| Membresías | `MIEMBRO_ALTA`, `MIEMBRO_BAJA_VOLUNTARIA`, `MIEMBRO_ELIMINADO`, `MIEMBRO_ROL_CAMBIADO`, `MIEMBRO_REINCORPORADO` |
+
+Se anotaron con `@AuditarOperacion` los servicios de creación/modificación de proyectos, bajas de integrantes, perfiles, habilidades, postulaciones, invitaciones y reemplazos.
+
+### 13.2. Fase 3 — estado operativo
+
+Eventos agregados:
+
+| Grupo | Eventos |
+|---|---|
+| Proyectos | `PROYECTO_CREADO`, `PROYECTO_MODIFICADO`, `PROYECTO_REPROGRAMADO` |
+| Actividades | `ACTIVIDAD_CREADA`, `ACTIVIDAD_MODIFICADA`, `ACTIVIDAD_ELIMINADA`, `ACTIVIDAD_ESTADO_CAMBIADO`, `ACTIVIDAD_REPROGRAMADA` |
+| Asignaciones | `ASIGNACION_ACTIVIDAD_ALTA`, `ASIGNACION_ACTIVIDAD_BAJA` |
+| Postulaciones e invitaciones | `POSTULACION_CREADA`, `INVITACION_CREADA` |
+| Reemplazos | `REEMPLAZO_INICIADO`, `REEMPLAZO_CUBIERTO`, `REEMPLAZO_CANDIDATO_APROBADO`, `REEMPLAZO_CANDIDATO_RECHAZADO`, `REEMPLAZO_CANDIDATO_CANCELADO`, `REEMPLAZO_CANCELADO` |
+| Calendario | `CALENDARIO_JORNADA_ACTUALIZADA`, `CALENDARIO_BLOQUEO_ALTA`, `CALENDARIO_BLOQUEO_BAJA` |
+| Calificaciones | `CALIFICACION_REGISTRADA` |
+
+El trigger de proyecto se amplió para registrar alta, modificación y reprogramación, manteniendo `PROYECTO_ESTADO_CAMBIADO` para cambios de estado/privacidad.
+
+### 13.3. Fase 4 — acciones administrativas
+
+Eventos agregados:
+
+- `CATALOGO_ALTA`, `CATALOGO_MODIFICACION`, `CATALOGO_BAJA` sobre `profesion`, `habilidad`, `caracteristica_tecnica`, `valor_caracteristica` y `unidad_medida`.
+- `CRONOGRAMA_REPARADO` desde la reparación manual.
+- `SCHEDULER_EJECUTADO` desde las ejecuciones manuales de schedulers.
+- `AUDITORIA_EXPORTADA` desde las exportaciones CSV/PDF.
+
+Se mantiene la cobertura existente de usuarios, configuración y reportes.
+
+### 13.4. Implementación
+
+- migración `docs/3_diseño/migraciones/2026-11-08_uc67_auditoria_fase2_4.sql`;
+- `AuditoriaEventoService` reutilizado para reparación de cronograma, schedulers y exportaciones;
+- servicios administrativos y operativos anotados con `@AuditarOperacion`.
+
+### 13.5. Pruebas
+
+- `AuditoriaTriggerIntegrationTest`: membresías, proyecto/actividad, catálogos y habilidades de perfil.
+- `AuditoriaMigracionIdempotenciaTest`: migración Fase 2-4 ejecutada dos veces.
+- Regresión de contratos, perfiles, catálogos, cronograma, configuración y exportación.

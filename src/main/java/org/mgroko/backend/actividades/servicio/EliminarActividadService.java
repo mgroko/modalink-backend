@@ -55,6 +55,7 @@ import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class EliminarActividadService {
@@ -114,6 +115,7 @@ public class EliminarActividadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminar(
             Long idUsuario,
             Long idPerfilActivo,

@@ -95,6 +95,11 @@ class AuditoriaConsultaIntegrationTest extends AbstractPostgresIntegrationTest {
                 .contains("id_auditoria;fecha_hora;tipo_evento")
                 .contains("USUARIO_ALTA")
                 .contains("No disponible (histórico)");
+
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM auditoria
+                WHERE tipo_evento = 'AUDITORIA_EXPORTADA'
+                """, Long.class)).isGreaterThanOrEqualTo(1);
     }
 
     @Test

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.dto.RepararCronogramaRequest;
 import org.mgroko.backend.admin.dto.ReparacionCronogramaResponse;
+import org.mgroko.backend.auditoria.servicio.AuditoriaEventoService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
@@ -45,6 +46,8 @@ class RepararCronogramaServiceTest {
     private AsignacionActividadRepository asignacionActividadRepository;
     @Mock
     private ReprogramarProyectoService reprogramarProyectoService;
+    @Mock
+    private AuditoriaEventoService auditoriaEventoService;
 
     private RepararCronogramaService service;
 
@@ -55,7 +58,8 @@ class RepararCronogramaServiceTest {
                 planificacionRepository,
                 actividadRepository,
                 asignacionActividadRepository,
-                reprogramarProyectoService);
+                reprogramarProyectoService,
+                auditoriaEventoService);
     }
 
     @Test

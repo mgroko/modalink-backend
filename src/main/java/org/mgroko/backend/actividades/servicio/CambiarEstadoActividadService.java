@@ -33,6 +33,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Cambia únicamente el estado de una actividad.
@@ -77,6 +78,7 @@ public class CambiarEstadoActividadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ActividadResponse cambiar(
             Long idUsuario,
             Long idPerfilActivo,

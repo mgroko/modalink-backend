@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Recalcula y persiste el cronograma de un proyecto confirmado.
@@ -91,6 +92,7 @@ public class ReprogramarProyectoService {
      * @return actividades movidas y conflictos de actividades fijas
      */
     @Transactional
+    @AuditarOperacion
     public ReprogramacionProyectoResponse reprogramar(
             Long idProyecto,
             MotivoReprogramacion motivo,
@@ -105,6 +107,7 @@ public class ReprogramarProyectoService {
      * fecha anterior.
      */
     @Transactional
+    @AuditarOperacion
     public ReprogramacionProyectoResponse reprogramar(
             Long idProyecto,
             MotivoReprogramacion motivo,
@@ -251,6 +254,7 @@ public class ReprogramarProyectoService {
      * {@code PENDIENTE}. Las predecesoras no se mueven.
      */
     @Transactional
+    @AuditarOperacion
     public ReprogramacionProyectoResponse reprogramarActividad(
             Long idProyecto,
             Long idActividad,

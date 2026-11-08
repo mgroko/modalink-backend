@@ -39,6 +39,7 @@ import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-31: alta de invitaciones generales y por actividad.
@@ -94,6 +95,7 @@ public class CrearInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionResponse invitarAProyecto(
             Long idUsuario,
             Long idPerfilActivo,
@@ -149,6 +151,7 @@ public class CrearInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionResponse invitarAProyectoActividad(
             Long idUsuario,
             Long idPerfilActivo,

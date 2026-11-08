@@ -38,6 +38,9 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
     private static final Path MIGRACION_FASE01 = Path.of(
             "docs", "3_diseño", "migraciones", "2026-11-08_uc67_auditoria_fase0_1.sql");
 
+    private static final Path MIGRACION_FASE24 = Path.of(
+            "docs", "3_diseño", "migraciones", "2026-11-08_uc67_auditoria_fase2_4.sql");
+
     @Autowired
     private DataSource dataSource;
 
@@ -101,6 +104,42 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
                 assertThat(contar(conexion, """
                         SELECT count(*) FROM pg_trigger
                         WHERE tgname = 'trg_auditar_cambio_perfil'
+                        """)).isEqualTo(1);
+            } finally {
+                conexion.rollback();
+            }
+        }
+    }
+
+    @Test
+    void migracionFase2a4SePuedeEjecutarDosVecesSinErrores() throws Exception {
+        assertThat(Files.isRegularFile(MIGRACION_FASE24))
+                .as("No se encontró la migración en %s", MIGRACION_FASE24.toAbsolutePath())
+                .isTrue();
+
+        try (Connection conexion = dataSource.getConnection()) {
+            conexion.setAutoCommit(false);
+            try {
+                aplicarDosVeces(conexion, MIGRACION_FASE24);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM tipo_evento_auditoria
+                        WHERE codigo IN (
+                            'MIEMBRO_ALTA',
+                            'PROYECTO_CREADO',
+                            'ACTIVIDAD_CREADA',
+                            'CATALOGO_ALTA',
+                            'REEMPLAZO_INICIADO')
+                        """)).isEqualTo(5);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM pg_trigger
+                        WHERE tgname = 'trg_auditar_cambio_miembro'
+                        """)).isEqualTo(1);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM pg_trigger
+                        WHERE tgname = 'trg_auditar_catalogo_habilidad'
                         """)).isEqualTo(1);
             } finally {
                 conexion.rollback();

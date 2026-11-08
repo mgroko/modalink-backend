@@ -58,6 +58,7 @@ import org.mgroko.backend.repositorio.JornadaAgendaRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Gestión del calendario del usuario. La disponibilidad se calcula como la
@@ -578,6 +579,7 @@ public class CalendarioService {
      * días dentro de una sola transacción.
      */
     @Transactional
+    @AuditarOperacion
     public ConfigJornadaResponse configurarJornada(Long idUsuario, ConfigJornadaRequest request) {
         usuarioActivo(idUsuario);
         validarJornada(request);
@@ -622,6 +624,7 @@ public class CalendarioService {
      * horario comprometido por una actividad de un proyecto activo.
      */
     @Transactional
+    @AuditarOperacion
     public BloqueoResponse marcarNoDisponible(Long idUsuario, MarcarNoDisponibleRequest request) {
         usuarioActivo(idUsuario);
         validarRango(request.fechaHoraInicio(), request.fechaHoraFin());
@@ -652,6 +655,7 @@ public class CalendarioService {
      * actividad de un proyecto activo.
      */
     @Transactional
+    @AuditarOperacion
     public void marcarDisponible(Long idUsuario, Long idBloqueo) {
         usuarioActivo(idUsuario);
         Agenda agenda = agendaDe(idUsuario);

@@ -577,6 +577,182 @@ class AuditoriaTriggerIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void membresia_registraAltaYBajaVoluntaria() {
+        long idAdmin = insertarUsuario("AdminMiembro");
+        long idPerfil = insertarPerfil(idAdmin, "MiembroAudit");
+        long idProyecto = insertarProyecto("ProyectoMiembro");
+        setOperador(idAdmin);
+
+        Long idMiembro = jdbcTemplate.queryForObject("""
+                INSERT INTO miembros_proyecto (
+                    estado_participacion, id_proyecto, id_perfil, id_rol_proyecto)
+                VALUES ('ACTIVO', ?, ?,
+                        (SELECT id_rol_proyecto FROM rol_proyecto WHERE codigo = 'MIEMBRO'))
+                RETURNING id_miembro
+                """, Long.class, idProyecto, idPerfil);
+
+        Map<String, Object> alta = jdbcTemplate.queryForMap("""
+                SELECT id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'miembros_proyecto'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'MIEMBRO_ALTA'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, idMiembro);
+
+        assertThat(((Number) alta.get("id_usuario")).longValue()).isEqualTo(idAdmin);
+
+        jdbcTemplate.update("""
+                UPDATE miembros_proyecto
+                   SET estado_participacion = 'BAJA_VOLUNTARIA',
+                       "motivoBaja" = 'Motivo de prueba',
+                       fecha_baja = fecha_alta
+                 WHERE id_miembro = ?
+                """, idMiembro);
+
+        Map<String, Object> baja = jdbcTemplate.queryForMap("""
+                SELECT id_usuario, tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'miembros_proyecto'
+                  AND id_afectado = ?
+                  AND tipo_evento = 'MIEMBRO_BAJA_VOLUNTARIA'
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, idMiembro);
+
+        assertThat(((Number) baja.get("id_usuario")).longValue()).isEqualTo(idAdmin);
+    }
+
+    @Test
+    void proyectoYActividad_registranCreacionModificacionYReprogramacion() {
+        long idAdmin = insertarUsuario("AdminOperativo");
+        setOperador(idAdmin);
+
+        long idProyecto = insertarProyecto("ProyectoAuditOperativo");
+
+        jdbcTemplate.update("""
+                UPDATE proyecto
+                   SET descripcion = 'Descripcion modificada'
+                 WHERE id_proyecto = ?
+                """, idProyecto);
+
+        jdbcTemplate.update("""
+                UPDATE proyecto
+                   SET fecha_inicio = CURRENT_TIMESTAMP + INTERVAL '1 day',
+                       fecha_finalizacion = CURRENT_TIMESTAMP + INTERVAL '10 days'
+                 WHERE id_proyecto = ?
+                """, idProyecto);
+
+        long idPlanificacion = jdbcTemplate.queryForObject("""
+                INSERT INTO planificacion (id_proyecto)
+                VALUES (?)
+                RETURNING id_planificacion
+                """, Long.class, idProyecto);
+
+        Long idActividad = jdbcTemplate.queryForObject("""
+                INSERT INTO actividad (
+                    estado, nombre, duracion_minutos, id_planificacion)
+                VALUES ('PENDIENTE', 'Actividad auditada', 60, ?)
+                RETURNING id_actividad
+                """, Long.class, idPlanificacion);
+
+        jdbcTemplate.update("""
+                UPDATE actividad SET estado = 'EN_CURSO' WHERE id_actividad = ?
+                """, idActividad);
+
+        List<String> eventosProyecto = jdbcTemplate.queryForList("""
+                SELECT tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'proyecto'
+                  AND id_afectado = ?
+                ORDER BY id_auditoria
+                """, String.class, idProyecto);
+
+        assertThat(eventosProyecto)
+                .contains("PROYECTO_CREADO", "PROYECTO_MODIFICADO",
+                        "PROYECTO_REPROGRAMADO");
+
+        List<String> eventosActividad = jdbcTemplate.queryForList("""
+                SELECT tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'actividad'
+                  AND id_afectado = ?
+                ORDER BY id_auditoria
+                """, String.class, idActividad);
+
+        assertThat(eventosActividad)
+                .contains("ACTIVIDAD_CREADA", "ACTIVIDAD_ESTADO_CAMBIADO");
+    }
+
+    @Test
+    void catalogo_registraAltaModificacionYBaja() {
+        long idAdmin = insertarUsuario("AdminCatalogo");
+        setOperador(idAdmin);
+
+        int n = SECUENCIA.incrementAndGet();
+        String codigo = "HAB_AUDIT_" + n;
+
+        Long idHabilidad = jdbcTemplate.queryForObject("""
+                INSERT INTO habilidad (nombre, codigo, descripcion)
+                VALUES (?, ?, 'Habilidad de prueba')
+                RETURNING id_habilidad
+                """, Long.class, "Habilidad auditada " + n, codigo);
+
+        jdbcTemplate.update("""
+                UPDATE habilidad SET nombre = ? WHERE id_habilidad = ?
+                """, "Habilidad modificada " + n, idHabilidad);
+
+        jdbcTemplate.update("DELETE FROM habilidad WHERE id_habilidad = ?", idHabilidad);
+
+        List<String> eventos = jdbcTemplate.queryForList("""
+                SELECT tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'habilidad'
+                  AND id_afectado = ?
+                ORDER BY id_auditoria
+                """, String.class, idHabilidad);
+
+        assertThat(eventos)
+                .contains("CATALOGO_ALTA", "CATALOGO_MODIFICACION", "CATALOGO_BAJA");
+    }
+
+    @Test
+    void habilidadDePerfil_registraAltaYBaja() {
+        long idAdmin = insertarUsuario("AdminHabilidadPerfil");
+        long idPerfil = insertarPerfil(idAdmin, "PerfilHabilidad");
+        setOperador(idAdmin);
+
+        int n = SECUENCIA.incrementAndGet();
+        Long idHabilidad = jdbcTemplate.queryForObject("""
+                INSERT INTO habilidad (nombre, codigo)
+                VALUES (?, ?)
+                RETURNING id_habilidad
+                """, Long.class, "Habilidad perfil " + n, "HAB_PERFIL_" + n);
+
+        jdbcTemplate.update("""
+                INSERT INTO habilidad_perfil (id_habilidad, id_perfil)
+                VALUES (?, ?)
+                """, idHabilidad, idPerfil);
+
+        jdbcTemplate.update("""
+                DELETE FROM habilidad_perfil
+                WHERE id_habilidad = ? AND id_perfil = ?
+                """, idHabilidad, idPerfil);
+
+        List<String> eventos = jdbcTemplate.queryForList("""
+                SELECT tipo_evento
+                FROM auditoria
+                WHERE entidad_afectada = 'perfil'
+                  AND id_afectado = ?
+                ORDER BY id_auditoria
+                """, String.class, idPerfil);
+
+        assertThat(eventos)
+                .contains("PERFIL_HABILIDAD_ALTA", "PERFIL_HABILIDAD_BAJA");
+    }
+
+    @Test
     void auditoria_esInmutableAnteUpdate() {
         long idUsuario = insertarUsuario("InmutableUpdate");
         Long idAuditoria = jdbcTemplate.queryForObject("""

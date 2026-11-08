@@ -43,6 +43,7 @@ import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class CrearProyectoService {
@@ -81,6 +82,7 @@ public class CrearProyectoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ProyectoResponse crear(Long idUsuario, Long idPerfilActivo, CrearProyectoRequest request) {
         if (idPerfilActivo == null) {
             throw new PerfilActivoNoSeleccionadoException();

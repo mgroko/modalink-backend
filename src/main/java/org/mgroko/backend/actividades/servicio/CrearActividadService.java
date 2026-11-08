@@ -38,6 +38,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class CrearActividadService {
@@ -76,6 +77,7 @@ public class CrearActividadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ActividadResponse crear(
             Long idUsuario,
             Long idPerfilActivo,

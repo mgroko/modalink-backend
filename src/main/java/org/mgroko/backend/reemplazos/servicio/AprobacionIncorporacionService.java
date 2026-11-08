@@ -42,6 +42,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Aprobación o rechazo de la incorporación de un candidato que aceptó.
@@ -98,6 +99,7 @@ public class AprobacionIncorporacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public CandidatoReemplazoResponse aprobar(
             Long idUsuario,
             Long idPerfilActivo,
@@ -109,6 +111,7 @@ public class AprobacionIncorporacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public CandidatoReemplazoResponse aprobar(
             Long idUsuario,
             Long idPerfilActivo,
@@ -236,6 +239,7 @@ public class AprobacionIncorporacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public CandidatoReemplazoResponse rechazar(
             Long idUsuario,
             Long idPerfilActivo,

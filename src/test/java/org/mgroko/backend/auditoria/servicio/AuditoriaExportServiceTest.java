@@ -45,6 +45,8 @@ class AuditoriaExportServiceTest {
     private AuditoriaResumenService auditoriaResumenService;
     @Mock
     private ConfiguracionSistemaService configuracionSistemaService;
+    @Mock
+    private AuditoriaEventoService auditoriaEventoService;
 
     private AuditoriaExportService service;
 
@@ -58,6 +60,7 @@ class AuditoriaExportServiceTest {
                 auditoriaResumenService,
                 new AuditoriaMapper(),
                 configuracionSistemaService,
+                auditoriaEventoService,
                 Clock.systemUTC());
 
         lenient().when(configuracionSistemaService.obtenerMaximoExportacionAuditoria())

@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import org.mgroko.backend.admin.dto.InconsistenciaCronogramaResponse;
 import org.mgroko.backend.admin.dto.RepararCronogramaRequest;
 import org.mgroko.backend.admin.dto.ReparacionCronogramaResponse;
+import org.mgroko.backend.auditoria.dto.AuditoriaDetalleRequest;
+import org.mgroko.backend.auditoria.servicio.AuditoriaEventoService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Proyecto;
@@ -27,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Detección y reparación controlada de inconsistencias en cronogramas de
@@ -62,18 +65,21 @@ public class RepararCronogramaService {
     private final ActividadRepository actividadRepository;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final ReprogramarProyectoService reprogramarProyectoService;
+    private final AuditoriaEventoService auditoriaEventoService;
 
     public RepararCronogramaService(
             ProyectoRepository proyectoRepository,
             PlanificacionRepository planificacionRepository,
             ActividadRepository actividadRepository,
             AsignacionActividadRepository asignacionActividadRepository,
-            ReprogramarProyectoService reprogramarProyectoService) {
+            ReprogramarProyectoService reprogramarProyectoService,
+            AuditoriaEventoService auditoriaEventoService) {
         this.proyectoRepository = proyectoRepository;
         this.planificacionRepository = planificacionRepository;
         this.actividadRepository = actividadRepository;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.reprogramarProyectoService = reprogramarProyectoService;
+        this.auditoriaEventoService = auditoriaEventoService;
     }
 
     @Transactional(readOnly = true)
@@ -134,6 +140,7 @@ public class RepararCronogramaService {
         return resultado;
     }
 
+    @AuditarOperacion
     public ReparacionCronogramaResponse reparar(RepararCronogramaRequest request) {
         List<InconsistenciaCronogramaResponse> detectadas = detectar(
                 request.idProyecto(),
@@ -184,6 +191,26 @@ public class RepararCronogramaService {
                             ex);
                 }
             }
+        }
+
+        if (!request.esDryRun()) {
+            auditoriaEventoService.registrar(
+                    "cronograma",
+                    0L,
+                    "CRONOGRAMA_REPARADO",
+                    "UPDATE",
+                    List.of(
+                            new AuditoriaDetalleRequest("idProyecto",
+                                    null,
+                                    request.idProyecto() != null
+                                            ? request.idProyecto().toString()
+                                            : "TODOS"),
+                            new AuditoriaDetalleRequest("detectadas", null,
+                                    String.valueOf(detectadas.size())),
+                            new AuditoriaDetalleRequest("reparadas", null,
+                                    String.valueOf(reparadas)),
+                            new AuditoriaDetalleRequest("fallidas", null,
+                                    String.valueOf(fallidas))));
         }
 
         return new ReparacionCronogramaResponse(

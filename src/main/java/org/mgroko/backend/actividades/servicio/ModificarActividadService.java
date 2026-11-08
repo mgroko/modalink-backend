@@ -64,6 +64,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class ModificarActividadService {
@@ -132,6 +133,7 @@ public class ModificarActividadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ActividadResponse modificar(
             Long idUsuario,
             Long idPerfilActivo,

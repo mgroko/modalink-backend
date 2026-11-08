@@ -41,6 +41,7 @@ import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-26: alta de postulación a un requerimiento general o de actividad.
@@ -98,6 +99,7 @@ public class CrearPostulacionService {
      * No evalúa disponibilidad: el perfil todavía no asume una actividad.
      */
     @Transactional
+    @AuditarOperacion
     public PostulacionResponse darDeAltaPostulacionGeneral(
             Long idUsuario,
             Long idPerfil,
@@ -165,6 +167,7 @@ public class CrearPostulacionService {
      * del rango factible de la actividad.
      */
     @Transactional
+    @AuditarOperacion
     public PostulacionResponse darDeAltaPostulacionActividad(
             Long idUsuario,
             Long idPerfil,

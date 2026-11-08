@@ -14,6 +14,7 @@ import org.mgroko.backend.reemplazos.repositorio.ReemplazoCandidatoRepository;
 import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Cancela un proceso de reemplazo que ya no debe continuar.
@@ -44,6 +45,7 @@ public class CancelarReemplazoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ReemplazoDetalleResponse cancelar(
             Long idUsuario,
             Long idPerfilActivo,

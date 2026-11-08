@@ -2,12 +2,15 @@ package org.mgroko.backend.admin.servicio;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerResponse;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerBajaRequest;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerRequest;
 import org.mgroko.backend.admin.dto.EjecutarSchedulerResponse;
+import org.mgroko.backend.auditoria.dto.AuditoriaDetalleRequest;
+import org.mgroko.backend.auditoria.servicio.AuditoriaEventoService;
 import org.mgroko.backend.modelo.ConfiguracionSistema;
 import org.mgroko.backend.perfiles.servicio.ExpirarPerfilService;
 import org.mgroko.backend.repositorio.ConfiguracionSistemaRepository;
@@ -85,16 +88,19 @@ Mis condiciones de trabajo
     private final ExpirarDeshabilitacionService expirarDeshabilitacionService;
     private final ExpirarCuentaService expirarCuentaService;
     private final ExpirarPerfilService expirarPerfilService;
+    private final AuditoriaEventoService auditoriaEventoService;
 
     public ConfiguracionSistemaService(
             ConfiguracionSistemaRepository configuracionSistemaRepository,
             ExpirarDeshabilitacionService expirarDeshabilitacionService,
             ExpirarCuentaService expirarCuentaService,
-            ExpirarPerfilService expirarPerfilService) {
+            ExpirarPerfilService expirarPerfilService,
+            AuditoriaEventoService auditoriaEventoService) {
         this.configuracionSistemaRepository = configuracionSistemaRepository;
         this.expirarDeshabilitacionService = expirarDeshabilitacionService;
         this.expirarCuentaService = expirarCuentaService;
         this.expirarPerfilService = expirarPerfilService;
+        this.auditoriaEventoService = auditoriaEventoService;
     }
 
     @Transactional(readOnly = true)
@@ -293,6 +299,16 @@ Mis condiciones de trabajo
     @AuditarOperacion
     public EjecutarSchedulerResponse ejecutarDeshabilitacionManual() {
         int reactivados = expirarDeshabilitacionService.reactivarVencidos();
+
+        auditoriaEventoService.registrar(
+                "scheduler",
+                0L,
+                "SCHEDULER_EJECUTADO",
+                "UPDATE",
+                List.of(
+                        new AuditoriaDetalleRequest("scheduler", null, "DESHABILITACION"),
+                        new AuditoriaDetalleRequest("reactivados", null, String.valueOf(reactivados))));
+
         return new EjecutarSchedulerResponse(
                 reactivados,
                 LocalDateTime.now(),
@@ -360,6 +376,16 @@ Mis condiciones de trabajo
         int cuentasExpiradas = expirarCuentaService.expirarVencidos(diasBaja);
         int perfilesExpirados = expirarPerfilService.expirarVencidos(diasBaja);
         int total = cuentasExpiradas + perfilesExpirados;
+
+        auditoriaEventoService.registrar(
+                "scheduler",
+                0L,
+                "SCHEDULER_EJECUTADO",
+                "UPDATE",
+                List.of(
+                        new AuditoriaDetalleRequest("scheduler", null, "BAJA"),
+                        new AuditoriaDetalleRequest("cuentasExpiradas", null, String.valueOf(cuentasExpiradas)),
+                        new AuditoriaDetalleRequest("perfilesExpirados", null, String.valueOf(perfilesExpirados))));
 
         return new EjecutarSchedulerResponse(
                 total,

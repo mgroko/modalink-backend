@@ -21,6 +21,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
+import org.mgroko.backend.auditoria.dto.AuditoriaDetalleRequest;
 import org.mgroko.backend.auditoria.dto.AuditoriaDetalleResponse;
 import org.mgroko.backend.auditoria.dto.AuditoriaEventoResponse;
 import org.mgroko.backend.auditoria.dto.AuditoriaFiltroResuelto;
@@ -94,6 +95,7 @@ public class AuditoriaExportService {
     private final AuditoriaResumenService auditoriaResumenService;
     private final AuditoriaMapper auditoriaMapper;
     private final ConfiguracionSistemaService configuracionSistemaService;
+    private final AuditoriaEventoService auditoriaEventoService;
     private final Clock reloj;
 
     public AuditoriaExportService(
@@ -104,6 +106,7 @@ public class AuditoriaExportService {
             AuditoriaResumenService auditoriaResumenService,
             AuditoriaMapper auditoriaMapper,
             ConfiguracionSistemaService configuracionSistemaService,
+            AuditoriaEventoService auditoriaEventoService,
             Clock reloj) {
         this.auditoriaRepository = auditoriaRepository;
         this.detalleAuditoriaRepository = detalleAuditoriaRepository;
@@ -112,6 +115,7 @@ public class AuditoriaExportService {
         this.auditoriaResumenService = auditoriaResumenService;
         this.auditoriaMapper = auditoriaMapper;
         this.configuracionSistemaService = configuracionSistemaService;
+        this.auditoriaEventoService = auditoriaEventoService;
         this.reloj = reloj;
     }
 
@@ -137,7 +141,7 @@ public class AuditoriaExportService {
         return filtro;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public void exportarCsv(AuditoriaFiltroResuelto filtro, OutputStream outputStream) {
         DatosExportacion datos = cargarDatos(filtro);
 
@@ -171,9 +175,11 @@ public class AuditoriaExportService {
                     filtro.fechaDesde(), filtro.fechaHasta(), ex);
             throw new IllegalStateException("No se pudo generar el CSV de auditoría.", ex);
         }
+
+        registrarExportacion("CSV", filtro, datos.eventos().size());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public void exportarPdf(
             AuditoriaFiltroResuelto filtro,
             Long idAdministrador,
@@ -235,6 +241,32 @@ public class AuditoriaExportService {
                 }
             }
         }
+
+        registrarExportacion("PDF", filtro, datos.eventos().size());
+    }
+
+    private void registrarExportacion(
+            String formato,
+            AuditoriaFiltroResuelto filtro,
+            int registros) {
+
+        auditoriaEventoService.registrar(
+                "auditoria",
+                0L,
+                "AUDITORIA_EXPORTADA",
+                "UPDATE",
+                List.of(
+                        new AuditoriaDetalleRequest("formato", null, formato),
+                        new AuditoriaDetalleRequest("fechaDesde", null,
+                                filtro.fechaDesde().toLocalDate().toString()),
+                        new AuditoriaDetalleRequest("fechaHasta", null,
+                                filtro.fechaHasta().toLocalDate().toString()),
+                        new AuditoriaDetalleRequest("tipos", null,
+                                filtro.tieneFiltroDeTipos()
+                                        ? String.join(",", filtro.tipos())
+                                        : "TODOS"),
+                        new AuditoriaDetalleRequest("registros", null,
+                                String.valueOf(registros))));
     }
 
     private DatosExportacion cargarDatos(AuditoriaFiltroResuelto filtro) {

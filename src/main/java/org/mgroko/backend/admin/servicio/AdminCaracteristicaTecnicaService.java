@@ -34,6 +34,7 @@ import org.mgroko.backend.repositorio.UnidadMedidaRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class AdminCaracteristicaTecnicaService {
@@ -71,6 +72,7 @@ public class AdminCaracteristicaTecnicaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public CaracteristicaTecnicaResponse crear(AdminCaracteristicaTecnicaRequest request) {
         String tipoDato = normalizarTipoDato(request.tipoDato());
 
@@ -110,6 +112,7 @@ public class AdminCaracteristicaTecnicaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public CaracteristicaTecnicaResponse actualizar(Long idCaracteristica,
                                                     AdminCaracteristicaTecnicaRequest request) {
         CaracteristicaTecnica caracteristica = buscarOFallar(idCaracteristica);
@@ -157,6 +160,7 @@ public class AdminCaracteristicaTecnicaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminar(Long idCaracteristica) {
         CaracteristicaTecnica caracteristica = buscarOFallar(idCaracteristica);
         if (caracteristicaTecnicaRepository.existeEnUso(idCaracteristica)) {
@@ -170,6 +174,7 @@ public class AdminCaracteristicaTecnicaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ValorCaracteristicaResponse agregarValor(Long idCaracteristica,
                                                     AdminValorCaracteristicaRequest request) {
         CaracteristicaTecnica caracteristica = buscarOFallar(idCaracteristica);
@@ -194,6 +199,7 @@ public class AdminCaracteristicaTecnicaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ValorCaracteristicaResponse actualizarValor(Long idCaracteristica,
                                                        Long idValor,
                                                        AdminValorCaracteristicaRequest request) {
@@ -215,6 +221,7 @@ public class AdminCaracteristicaTecnicaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminarValor(Long idCaracteristica, Long idValor) {
         ValorCaracteristicaId id = new ValorCaracteristicaId(idValor, idCaracteristica);
         ValorCaracteristica valor = valorCaracteristicaRepository.findById(id)

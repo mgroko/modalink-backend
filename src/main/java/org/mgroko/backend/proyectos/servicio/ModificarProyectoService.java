@@ -68,6 +68,7 @@ import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-36: Modificar proyecto. Permite editar la información básica de un proyecto
@@ -154,6 +155,7 @@ public class ModificarProyectoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ProyectoResponse modificar(
             Long idUsuario, Long idPerfilActivo, Long idProyecto, ModificarProyectoRequest request) {
 
