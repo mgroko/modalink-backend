@@ -2,6 +2,7 @@ package org.mgroko.backend.reemplazos.servicio;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +52,21 @@ import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 public class AprobacionIncorporacionService {
 
     private static final String ROL_MIEMBRO = "MIEMBRO";
+
+    private static final String MOTIVO_VACANTE_CUBIERTA =
+            "Vacante cubierta por otro candidato";
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_ACEPTADOS =
+            List.of(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITADOS =
+            List.of(EstadoCandidatoReemplazo.INVITADO);
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITACION_ACTIVA =
+            List.of(
+                    EstadoCandidatoReemplazo.PROPUESTO,
+                    EstadoCandidatoReemplazo.INVITADO,
+                    EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
 
     private final ReemplazoRepository reemplazoRepository;
     private final ReemplazoCandidatoRepository candidatoRepository;
@@ -215,10 +231,9 @@ public class AprobacionIncorporacionService {
         reemplazo.setIdAsignacionResultante(idAsignacion);
         reemplazoRepository.saveAndFlush(reemplazo);
 
-        // El primero que aceptó y fue aprobado cubre la vacante: se eliminan
-        // las demás invitaciones del proceso, salvo los rechazos del
-        // profesional, que se conservan como historial.
-        candidatoRepository.deleteOtrosCandidatos(idReemplazo, idCandidato);
+        // El candidato aprobado cubre la vacante: las demás invitaciones
+        // activas se cancelan lógicamente y sus destinatarios son notificados.
+        cancelarOtrosCandidatos(reemplazo, candidato, idUsuario, ahora);
 
         notificacionService.notificarCandidato(
                 candidato,
@@ -267,15 +282,7 @@ public class AprobacionIncorporacionService {
         candidato.setMotivoDecision(normalizarMotivo(motivo));
         candidatoRepository.saveAndFlush(candidato);
 
-        long invitacionesRestantes = candidatoRepository
-                .countByReemplazoIdReemplazoAndEstadoIn(
-                        idReemplazo,
-                        List.of(EstadoCandidatoReemplazo.INVITADO));
-
-        reemplazo.setEstado(invitacionesRestantes > 0
-                ? EstadoReemplazo.INVITACIONES_ENVIADAS
-                : EstadoReemplazo.SIN_CANDIDATOS);
-        reemplazoRepository.saveAndFlush(reemplazo);
+        actualizarEstadoTrasRechazo(reemplazo);
 
         notificacionService.notificarCandidato(
                 candidato,
@@ -291,12 +298,102 @@ public class AprobacionIncorporacionService {
             Reemplazo reemplazo,
             ReemplazoCandidato candidato) {
 
-        if (reemplazo.getEstado() != EstadoReemplazo.PENDIENTE_APROBACION
+        boolean procesoAbierto = reemplazo.getEstado() == EstadoReemplazo.PENDIENTE_APROBACION
+                || reemplazo.getEstado() == EstadoReemplazo.INVITACIONES_ENVIADAS;
+
+        if (!procesoAbierto
                 || candidato.getEstado()
                         != EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION) {
             throw new ReemplazoNoGestionableException(
                     "La incorporación no está pendiente de aprobación.",
                     "INCORPORACION_NO_PENDIENTE");
+        }
+    }
+
+    /**
+     * Cancela las invitaciones que quedaron activas al cubrirse la vacante.
+     *
+     * <p>Se conserva el historial de rechazos del profesional y del director;
+     * sólo se cancelan las propuestas e invitaciones que todavía estaban
+     * abiertas. Cada candidato cancelado recibe una notificación.</p>
+     */
+    private void cancelarOtrosCandidatos(
+            Reemplazo reemplazo,
+            ReemplazoCandidato aprobado,
+            Long idUsuario,
+            LocalDateTime ahora) {
+
+        List<ReemplazoCandidato> otros = candidatoRepository
+                .findByReemplazoIdReemplazoAndEstadoIn(
+                        reemplazo.getIdReemplazo(),
+                        ESTADOS_INVITACION_ACTIVA);
+
+        List<ReemplazoCandidato> cancelados = new ArrayList<>();
+        List<ReemplazoCandidato> notificables = new ArrayList<>();
+        for (ReemplazoCandidato otro : otros) {
+            if (otro.getIdCandidato().equals(aprobado.getIdCandidato())) {
+                continue;
+            }
+            boolean teniaInvitacion =
+                    otro.getEstado() == EstadoCandidatoReemplazo.INVITADO
+                            || otro.getEstado()
+                                    == EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION;
+            otro.setEstado(EstadoCandidatoReemplazo.CANCELADO);
+            otro.setFechaDecision(ahora);
+            otro.setIdUsuarioDecision(idUsuario);
+            otro.setMotivoDecision(MOTIVO_VACANTE_CUBIERTA);
+            cancelados.add(otro);
+            if (teniaInvitacion) {
+                notificables.add(otro);
+            }
+        }
+
+        if (cancelados.isEmpty()) {
+            return;
+        }
+
+        candidatoRepository.saveAllAndFlush(cancelados);
+
+        for (ReemplazoCandidato cancelado : notificables) {
+            notificacionService.notificarCandidato(
+                    cancelado,
+                    NotificacionService.TIPO_REEMPLAZO_CANCELADO,
+                    "La vacante de " + descripcionVacante(reemplazo)
+                            + " en el proyecto '"
+                            + reemplazo.getProyecto().getNombre()
+                            + "' fue cubierta por otro candidato. "
+                            + "Tu invitación quedó sin efecto.");
+        }
+    }
+
+    /**
+     * Recalcula el estado agregado después de que el director rechaza una
+     * incorporación.
+     *
+     * <p>Si quedan candidatos aceptados, el proceso sigue pendiente de
+     * aprobación; si sólo quedan invitaciones sin responder, vuelve a esperar
+     * respuestas. Recién cuando no queda ninguna de las dos cosas pasa a
+     * {@code SIN_CANDIDATOS}.</p>
+     */
+    private void actualizarEstadoTrasRechazo(Reemplazo reemplazo) {
+        long aceptados = candidatoRepository
+                .countByReemplazoIdReemplazoAndEstadoIn(
+                        reemplazo.getIdReemplazo(),
+                        ESTADOS_ACEPTADOS);
+        long invitados = candidatoRepository
+                .countByReemplazoIdReemplazoAndEstadoIn(
+                        reemplazo.getIdReemplazo(),
+                        ESTADOS_INVITADOS);
+
+        EstadoReemplazo nuevoEstado = aceptados > 0
+                ? EstadoReemplazo.PENDIENTE_APROBACION
+                : invitados > 0
+                        ? EstadoReemplazo.INVITACIONES_ENVIADAS
+                        : EstadoReemplazo.SIN_CANDIDATOS;
+
+        if (reemplazo.getEstado() != nuevoEstado) {
+            reemplazo.setEstado(nuevoEstado);
+            reemplazoRepository.saveAndFlush(reemplazo);
         }
     }
 
