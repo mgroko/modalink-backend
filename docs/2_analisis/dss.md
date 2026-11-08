@@ -634,3 +634,27 @@
   2. **Bloque Alternativo (`alt`)**:
      - `[no existen coincidencias]`: El sistema retorna `sinResultados()`.
      - `[existen requerimientos de actividad]`: El sistema retorna `requerimientosActividad[]`.
+
+
+### **UC-46: Buscar solicitudes de conexión**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Bloque Alternativo (`alt`)**:
+     - `[si el perfil acepta la solicitud]`:
+       - El actor envía el mensaje `aceptarSolicitud(unaSolicitud)`.
+     - `[si el perfil rechaza la solicitud]`:
+       - El actor envía el mensaje `rechazarSolicitud(unaSolicitud)`.
+
+---
+
+### **UC-16: Buscar perfil (Enviar solicitud de conexión)**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. El actor envía el mensaje `enviarSolicitud(unPerfil)`.
+  2. El sistema retorna `unaSolicitud`.
+
+---

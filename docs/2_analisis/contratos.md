@@ -487,3 +487,44 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Salida** | Archivo CSV (`text/csv`) o PDF (`application/pdf`) con `Content-Disposition: attachment`. |
 | **Precondición** | El usuario está autenticado con rol Administrador. |
 | **Postcondición** | No modifica datos. |
+
+
+Nombre	enviarSolicitud(unPerfil)
+Responsabilidades	Esta operación se encarga de enviar una solicitud de conexión a un perfil.
+Tipo	Sistema
+Referencias cruzadas	UC-43
+Notas	-
+Excepciones	Ya existe una solicitud de conexión pendiente para ese perfil. (O para el perfil emisor del perfil objetivo)
+Salida	unaSolicitud
+Precondición	El usuario inició sesión en el sistema y tiene un perfil activo
+Postcondición	Se creó una instancia de Solicitud unaSolicitud Se asignó el valor “pendiente” a unaSolicitud.estado Se creó una Notificación con destinatario unPerfil
+
+Nombre	aceptarSolicitud(unaSolicitud)
+Responsabilidades	Esta operación se encarga de aceptar una solicitud de conexión de un perfil
+Tipo	Sistema
+Referencias cruzadas	UC-45
+Notas	-
+Excepciones	Ya existe una conexión vigente entre ambos perfiles.
+Salida	-
+Precondición	La solicitud de conexión está en estado: Pendiente
+Postcondición	Se asignó el valor “aceptada” a unaSolicitud.estado Se creó una instancia de Conexión unaConexion Se agregó unaConexión a unaRedContactos Se creó una Notificación a los perfiles involucrados
+
+Nombre	rechazarSolicitud(unaSolicitud)
+Responsabilidades	Esta operación se encarga de rechazar una solicitud de conexión de un perfil
+Tipo	Sistema
+Referencias cruzadas	UC-45
+Notas	-
+Excepciones	Ya existe una conexión vigente entre ambos perfiles.
+Salida	-
+Precondición	La solicitud de conexión está en estado: Pendiente
+Postcondición	Se asignó el valor “rechazada” a unaSolicitud.estado Se creó una Notificación a los perfiles involucrados
+
+Nombre	eliminarConexion(unaConexion)
+Responsabilidades	Esta operación se encarga de eliminar una conexión de la red de contactos de un perfil.
+Tipo	Sistema
+Referencias cruzadas	UC-44
+Notas	-
+Excepciones	No se encontró la conexión
+Salida	-
+Precondición	unaConexion existe en unaRedDeContactos
+Postcondición	Se eliminó unaConexion de unaRedDeContactos Se creó una Notificación a los perfiles involucrados
