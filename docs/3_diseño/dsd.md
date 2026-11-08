@@ -1,921 +1,2727 @@
-# Diagramas de secuencia de diseño
+# Diagramas de Secuencia de Diseño (DSD) — ModaLink
 
-> **Alcance y criterio de lectura**
+> **Fase 3 — Diseño.** Este documento realiza los contratos de
+> `docs/2_analisis/contratos.md` y los flujos de `docs/2_analisis/dss.md`
+> aplicando los patrones Controlador, Creador y Experto en Información.
 >
-> Estos diagramas se elaboraron a partir de la estructura actual del backend y de
-> `docs/3_diseño/ModaLinkBD.sql`.
+> **Criterios de lectura**
 >
-> - **UC-24** refleja el flujo implementado actualmente.
-> - **UC-26, UC-28 y UC-34** reflejan el diseño de los casos de uso a partir de
->   sus DSS, contratos y entidades persistentes. Los nombres de las capas de
->   aplicación se expresan según la responsabilidad que deben cumplir en el
->   diseño, independientemente de su estado de implementación.
-> - La disponibilidad se calcula en backend mediante la agenda, bloqueos y
->   actividades existentes; no se trata como un dato persistido estático.
-
-## UC-24 — Crear proyecto
-
-**Implementación actual:** `POST /proyectos`, atendido por
-`ProyectoController.crear` y `CrearProyectoService.crear`.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Usuario
-    participant API as ProyectoController
-    participant Servicio as CrearProyectoService
-    participant PerfilRepo as PerfilRepository
-    participant RolRepo as RolProyectoRepository
-    participant ProyectoRepo as ProyectoRepository
-    participant Ubicacion as UbicacionService
-    participant Proyecto as Proyecto
-    participant MiembroRepo as MiembroProyectoRepository
-    participant PlanRepo as PlanificacionRepository
-    participant ObjetivoRepo as ObjetivoRepository
-    participant ReqGral as RequerimientoGralService
-    participant MoodRepo as MoodboardRepository
-    participant Mapper as ProyectoMapper
-
-    Usuario->>API: POST /proyectos(request)
-    API->>API: Extraer idUsuario e idPerfilActivo de Authentication
-
-    alt No hay perfil activo seleccionado
-        API-->>Usuario: Error PerfilActivoNoSeleccionado
-    else Perfil activo disponible
-        API->>Servicio: crear(idUsuario, idPerfilActivo, request)
-        Servicio->>PerfilRepo: findByIdPerfilAndUsuarioIdUsuario(...)
-        PerfilRepo-->>Servicio: Perfil
-
-        alt Perfil inexistente o no activo
-            Servicio-->>API: PerfilNoEncontrado / PerfilEnBaja
-            API-->>Usuario: Error de validación
-        else Perfil válido
-            Servicio->>Servicio: Validar fecha de entrega
-            Servicio->>RolRepo: findByNombre("Director")
-            RolRepo-->>Servicio: RolProyecto Director
-            Servicio->>ProyectoRepo: existeProyectoConNombreParaPerfil(...)
-
-            alt Nombre duplicado para el perfil
-                ProyectoRepo-->>Servicio: true
-                Servicio-->>API: NombreProyectoDuplicado
-                API-->>Usuario: Error de validación
-            else Nombre disponible
-                opt Ubicación recibida
-                    Servicio->>Ubicacion: obtenerOCrear(localidadId, provinciaId)
-                    Ubicacion-->>Servicio: Ubicacion
-                end
-
-                Servicio->>Proyecto: Construir proyecto
-                Note right of Proyecto: estado = Borrador
-                Servicio->>ProyectoRepo: save(proyecto)
-                ProyectoRepo-->>Servicio: Proyecto guardado
-
-                Servicio->>MiembroRepo: save(MiembroProyecto)
-                Note right of MiembroRepo: perfil activo + rol Director + estado Activo
-
-                Servicio->>PlanRepo: save(Planificacion 1:1)
-
-                opt Objetivos recibidos
-                    loop Por cada objetivo
-                        Servicio->>ObjetivoRepo: save(Objetivo)
-                    end
-                end
-
-                opt Requerimientos generales recibidos
-                    loop Por cada requerimiento
-                        Servicio->>ReqGral: persistir(proyecto, profesión, cantidad, datos)
-                        ReqGral-->>Servicio: RequerimientoGralResponse
-                    end
-                end
-
-                opt Moodboard recibido
-                    Servicio->>MoodRepo: save(Moodboard)
-                    MoodRepo-->>Servicio: Moodboard guardado
-                end
-
-                Servicio->>Mapper: toResponse(proyecto, director, datos, contexto)
-                Mapper-->>Servicio: ProyectoResponse
-                Servicio-->>API: ProyectoResponse
-                API-->>Usuario: 201 Created + ProyectoResponse
-            end
-        end
-    end
-```
-
-### Persistencia relevante de UC-24
-
-La transacción crea o actualiza las siguientes relaciones:
-
-1. `proyecto`, con estado `BORRADOR`.
-2. `miembros_proyecto`, asociando el perfil activo al rol `DIRECTOR`.
-3. `planificacion`, en relación 1:1 con el proyecto.
-4. `objetivo`, si se enviaron objetivos.
-5. `requerimiento_gral_proyecto` y sus características/habilidades, si se
-   enviaron requerimientos.
-6. `moodboard`, si se envió material de inspiración.
-
-Los campos obligatorios del request son `nombre`, `descripcion` y `privacidad`.
-La validación de Bean Validation ocurre antes de ingresar al servicio.
-
-## UC-26 — Dar de alta postulación a proyecto
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Usuario
-    participant API as PostulacionController
-    participant Servicio as CrearPostulacionService
-    participant PerfilRepo as PerfilRepository
-    participant ReqActividad as RequerimientoActividadService
-    participant ReqGeneral as RequerimientoGralService
-    participant Calendario as CalendarioService
-    participant PostActRepo as PostulacionActividadRepository
-    participant PostGralRepo as PostulacionGralRepository
-    participant Notif as NotificacionService
-    participant DirectorRepo as MiembroProyectoRepository
-
-    Usuario->>API: Seleccionar requerimiento y solicitar postulación
-    API->>Servicio: darDeAltaPostulación(unPerfil, unRequerimiento)
-    Servicio->>PerfilRepo: Validar perfil activo y profesión
-    PerfilRepo-->>Servicio: Perfil activo
-
-    alt Postulación a requerimiento de actividad
-        Servicio->>ReqActividad: buscarRequerimientoActividad(idRequerimiento)
-        ReqActividad-->>Servicio: Requerimiento + actividad
-        Servicio->>Calendario: verificarDisponibilidad(unUsuario, unaActividad)
-        Calendario-->>Servicio: Resultado de disponibilidad
-
-        alt Usuario sin disponibilidad
-            Servicio-->>API: excepcion()
-            API-->>Usuario: Notificar error y finalizar
-        else Usuario disponible frente al rango factible
-            Servicio->>PostActRepo: save(PostulacionActividad[PENDIENTE])
-            PostActRepo-->>Servicio: unaPostulacion
-        end
-    else Postulación a requerimiento general
-        Servicio->>ReqGeneral: buscarRequerimientoGeneral(idRequerimiento)
-        ReqGeneral-->>Servicio: Requerimiento general
-        Note right of Servicio: No se evalúa disponibilidad
-        Servicio->>PostGralRepo: save(PostulacionGral[PENDIENTE])
-        PostGralRepo-->>Servicio: unaPostulacion
-    end
-
-    Servicio->>DirectorRepo: Buscar directores activos del proyecto
-    DirectorRepo-->>Servicio: Perfiles directores
-    Servicio->>Notif: crear(notificación a cada director)
-    Notif-->>Servicio: Solicitud de notificación
-    Servicio-->>API: unaPostulacion
-    API-->>Usuario: Postulación registrada
-```
-
-La postulación debe quedar inicialmente en estado `PENDIENTE`, asociada al
-perfil y al requerimiento correspondiente. Se notifica a **todos** los
-directores activos del proyecto con el tipo `POSTULACION_RECIBIDA`; la
-notificación debe referenciar la postulación mediante `entidad_tipo` y
-`entidad_id`.
-
-Sólo los proyectos en estado `PUBLICADO` aceptan postulaciones (UC-60 los
-cierra), el perfil debe estar activo, tener la profesión solicitada y no ser
-miembro activo del proyecto. Un perfil no puede postularse dos veces al mismo
-requerimiento (garantizado además por los índices únicos
-`UQ_perfil_postulacion_act` / `UQ_perfil_postulacion_gral`). Sólo se admite
-postular a actividades `PENDIENTE`.
-
-La verificación de disponibilidad de UC-26 es **provisional**: mientras el
-proyecto no tenga fecha de inicio confirmada se evalúa el rango
-`[ahora, fecha de entrega]` en lugar del rango estricto `[ES, LF]` del CPM, y
-la respuesta lo informa. La comprobación debe repetirse al confirmar el
-proyecto (UC-60) y al asignar la actividad (UC-70).
-
-Endpoints:
-
-- `POST /proyectos/{idProyecto}/postulaciones/actividad` con
-  `{ "idRequerimientoActividad": ... }`.
-- `POST /proyectos/{idProyecto}/postulaciones/general` con
-  `{ "idRequerimientoGral": ... }`.
-
-## UC-28 — Aceptar solicitud de incorporación
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Usuario
-    participant API as InvitacionController
-    participant Servicio as AceptarInvitacionService
-    participant InvitacionRepo as InvitacionRepository
-    participant ProyectoService as ObtenerProyectoService
-    participant ReqService as RequerimientoService
-    participant Calendario as CalendarioService
-    participant MiembroRepo as MiembroProyectoRepository
-    participant RolRepo as RolProyectoRepository
-    participant AsignacionRepo as AsignacionActividadRepository
-    participant Notif as NotificacionService
-
-    Usuario->>API: Seleccionar invitación
-    API->>Servicio: obtenerInvitacion(idInvitacion)
-    Servicio->>InvitacionRepo: Buscar invitación vigente
-    InvitacionRepo-->>Servicio: Invitación
-
-    Servicio->>ProyectoService: obtenerProyecto(unaInvitacion)
-    ProyectoService-->>Servicio: Proyecto
-
-    alt Invitación no válida, requerimiento satisfecho o proyecto cancelado
-        Servicio-->>API: InvitaciónNoValida
-        API-->>Usuario: Notificar error y finalizar
-    else Invitación válida
-        Note right of Servicio: Proyecto en estado Borrador, Publicado o Confirmado
-        Servicio-->>API: solicitarConfirmacion()
-        API-->>Usuario: Información de proyecto e invitación
-
-        alt Invitación para actividad
-            Servicio->>ReqService: Buscar requerimiento de actividad
-            ReqService-->>Servicio: Requerimiento + rango factible
-            Servicio->>Calendario: Consultar disponibilidad(idUsuario, rango)
-            Calendario-->>Servicio: Disponibilidad calculada
-
-            alt Disponibilidad insuficiente
-                Servicio-->>API: Error de disponibilidad
-                API-->>Usuario: Notificar error y finalizar
-            else Disponibilidad suficiente y requerimiento vigente
-                Usuario->>API: confirmarIncorporacion(unaInvitacion)
-                API->>Servicio: aceptarIncorporacionAct(unaInvitacion, unProyecto, unRequerimientoAct)
-                Servicio->>MiembroRepo: Verificar que el usuario no sea participante
-
-                alt Usuario ya participante
-                    Servicio-->>API: excepcion()
-                    API-->>Usuario: Notificar error y finalizar
-                else Usuario no es participante
-                    Servicio->>RolRepo: Buscar rol de miembro
-                    RolRepo-->>Servicio: Rol de proyecto
-                    Servicio->>MiembroRepo: save(MiembroProyecto[ACTIVO])
-                    Servicio->>AsignacionRepo: save(AsignacionActividad)
-                    Servicio->>InvitacionRepo: Actualizar invitación a ACEPTADA
-                    Servicio->>Notif: notificarDirector(unProyecto)
-                    Notif-->>Servicio: Solicitud de notificación
-                    Servicio-->>API: Incorporación registrada
-                    API-->>Usuario: 200 OK
-                end
-            end
-        else Invitación general
-            Usuario->>API: confirmarIncorporacion(unaInvitacion)
-            API->>Servicio: aceptarIncorporacion(unaInvitacion, unProyecto)
-            Servicio->>MiembroRepo: Verificar que el usuario no sea participante
-
-            alt Usuario ya participante
-                Servicio-->>API: excepcion()
-                API-->>Usuario: Notificar error y finalizar
-            else Usuario no es participante
-                Servicio->>RolRepo: Buscar rol de miembro
-                RolRepo-->>Servicio: Rol de proyecto
-                Servicio->>MiembroRepo: save(MiembroProyecto[ACTIVO])
-                Servicio->>InvitacionRepo: Actualizar invitación a ACEPTADA
-                Servicio->>Notif: notificarDirector(unProyecto)
-                Notif-->>Servicio: Solicitud de notificación
-                Servicio-->>API: Incorporación registrada
-                API-->>Usuario: 200 OK
-            end
-        end
-    end
-```
-
-La rama de actividad agrega la validación de disponibilidad y la asignación de
-la actividad al miembro. Si el perfil ya es miembro activo, se reutiliza la
-membresía; si es Director, se rechaza. La rama general no consulta
-disponibilidad porque no asigna una actividad concreta y rechaza la operación
-si el perfil ya es miembro activo.
-
-La invitación general puede estar asociada opcionalmente a un requerimiento
-general. En ese caso se valida profesión y cupo, y la membresía se crea vinculada
-al requerimiento. Si no tiene requerimiento, la membresía queda sin vínculo y no
-consume cupo.
-
-Cuando una aceptación cubre el cupo del requerimiento, se eliminan físicamente
-todas las invitaciones pendientes de ese mismo requerimiento, de cualquier
-director, sin notificar a los afectados. La operación notifica a los directores
-con `INVITACION_ACEPTADA`.
-
-El rechazo de una invitación se expone con los endpoints:
-
-```http
-POST /invitaciones/general/{idInvitacion}/rechazar
-POST /invitaciones/actividad/{idInvitacion}/rechazar
-```
-
-Actualiza la invitación a `RECHAZADA`, no crea membresía ni asignación y notifica
-a los directores con `INVITACION_RECHAZADA`. Los endpoints de aceptación son:
-
-```http
-POST /invitaciones/general/{idInvitacion}/aceptar
-POST /invitaciones/actividad/{idInvitacion}/aceptar
-```
-
-## UC-34 — Gestionar postulaciones
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Director as Director de proyecto
-    participant API as PostulacionController
-    participant Servicio as GestionarPostulacionService
-    participant ProyectoService as ProyectoSecurityService
-    participant PostActRepo as PostulacionActividadRepository
-    participant PostGralRepo as PostulacionGralRepository
-    participant PostRepo as PostulacionRepository
-    participant MiembroRepo as MiembroProyectoRepository
-    participant AsignacionRepo as AsignacionActividadRepository
-    participant ReqRepo as RequerimientoRepository
-    participant Notif as NotificacionService
-
-    Director->>API: Seleccionar proyecto
-    API->>Servicio: obtenerProyecto(idProyecto)
-    Servicio->>ProyectoService: Validar director y proyecto PUBLICADO
-    ProyectoService-->>Servicio: Acceso autorizado
-    Director->>API: obtenerPostulaciones(unProyecto)
-    API->>Servicio: listarPostulaciones(unProyecto)
-    Servicio->>PostActRepo: findPendientesDeProyectoConPerfil(idProyecto)
-    PostActRepo-->>Servicio: Postulaciones de actividad
-    Servicio->>PostGralRepo: findPendientesDeProyectoConPerfil(idProyecto)
-    PostGralRepo-->>Servicio: Postulaciones generales
-    Servicio-->>API: Postulaciones + acciones
-    API-->>Director: Mostrar Aceptar / Rechazar
-
-    Director->>API: Seleccionar acción(postulación)
-    API->>Servicio: gestionar(idPostulacion, acción, confirmación)
-    Servicio->>ProyectoService: Revalidar permisos del director
-    ProyectoService-->>Servicio: Acceso autorizado
-
-    alt Aceptar postulación
-        Servicio-->>API: solicitarConfirmacion()
-        API-->>Director: Confirmación
-        Director->>API: confirmarAceptacion(unaPostulacion)
-        API->>Servicio: aceptarPostulacion(unaPostulacion)
-        Servicio->>PostRepo: Validar estado PENDIENTE
-        PostRepo-->>Servicio: Postulación válida
-        Servicio->>MiembroRepo: Verificar que no sea participante
-
-        alt Perfil ya es participante
-            Servicio-->>API: excepcion()
-            API-->>Director: Notificar error
-        else Perfil no es participante
-            Servicio->>MiembroRepo: save(MiembroProyecto[ACTIVO])
-            Servicio->>PostRepo: Actualizar estado a ACEPTADA
-            opt Postulación asociada a actividad
-                Servicio->>AsignacionRepo: save(AsignacionActividad)
-            end
-            Servicio->>ReqRepo: actualizarRequerimientosPersonal(unProyecto)
-            Servicio->>Notif: notificarPostulante(unaPostulacion)
-            Notif-->>Servicio: Solicitud de notificación
-            Servicio-->>API: Incorporación registrada
-            API-->>Director: 200 OK
-        end
-    else Rechazar postulación
-        Servicio-->>API: solicitarConfirmacion()
-        API-->>Director: Confirmación
-        Director->>API: confirmarRechazo(unaPostulacion)
-        API->>Servicio: rechazarPostulacion(unaPostulacion)
-        Servicio->>PostRepo: Validar estado PENDIENTE
-        PostRepo-->>Servicio: Postulación válida
-        Servicio->>PostRepo: Actualizar estado a RECHAZADA
-        Servicio->>Notif: notificarPostulanteRechazado(unaPostulacion)
-        Notif-->>Servicio: Solicitud de notificación
-        Servicio-->>API: Postulación rechazada
-        API-->>Director: 200 OK
-    end
-```
-
-### Reglas de persistencia y consistencia
-
-- La aceptación debe crear un registro `miembros_proyecto` activo y actualizar
-  el estado de la postulación en una única transacción.
-- El estado de la postulación utiliza los valores del modelo:
-  `PENDIENTE`, `ACEPTADA` o `RECHAZADA`.
-- La base de datos ya contiene triggers para controlar cupos al aceptar
-  postulaciones. El servicio debe propagar los errores de integridad y no
-  devolver una aceptación exitosa si la transacción falla.
-- El rechazo debe conservar la postulación con estado `RECHAZADA` para que
-  pueda auditarse y generar la notificación correspondiente; el contrato de
-  `rechazarPostulacion` no indica eliminarla.
-
-## UC-30 — Buscar invitaciones
-
-La búsqueda se limita a las invitaciones recibidas o enviadas por el perfil
-activo. Las invitaciones generales y de actividad se consultan por separado y
-se unifican, filtran, ordenan y paginan en el servicio.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Usuario as Usuario / Director
-    participant API as InvitacionController
-    participant Servicio as BuscarInvitacionService
-    participant InvGralRepo as InvitacionGralRepository
-    participant InvActRepo as InvitacionActividadRepository
-
-    Usuario->>API: GET /invitaciones/buscar?filtros
-    API->>Servicio: buscar(idPerfilActivo, filtros, page, size, todos)
-    Servicio->>InvGralRepo: buscarPorPerfil(idPerfilActivo)
-    InvGralRepo-->>Servicio: invitaciones generales
-    Servicio->>InvActRepo: buscarPorPerfil(idPerfilActivo)
-    InvActRepo-->>Servicio: invitaciones de actividad
-
-    alt Sin coincidencias
-        Servicio-->>API: página vacía
-    else Con coincidencias
-        Servicio->>Servicio: unificar, filtrar, ordenar y paginar
-        Servicio-->>API: invitaciones[]
-    end
-
-    API-->>Usuario: 200 OK
-```
-
-La respuesta incluye `tipo` para distinguir invitaciones generales de las de
-actividad y `direccion` para indicar si el perfil activo es remitente o
-destinatario. El filtro `nombrePerfil` se aplica al remitente en las recibidas,
-al destinatario en las enviadas y a la contraparte cuando no se informa
-dirección.
-
-## UC-31 — Invitar a proyecto
-
-El caso de uso contempla una invitación general al proyecto y una invitación
-asociada a un requerimiento de actividad. Ambas se almacenan con estado
-`PENDIENTE`. La invitación por actividad además conserva la referencia al
-requerimiento seleccionado.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Director as Director de proyecto
-    participant API as InvitacionController
-    participant Servicio as CrearInvitacionService
-    participant ProyectoService as ObtenerProyectoService
-    participant PerfilService as ObtenerPerfilService
-    participant ReqService as RequerimientoActividadService
-    participant InvGralRepo as InvitacionGralRepository
-    participant InvActRepo as InvitacionActividadRepository
-    participant Notif as NotificacionService
-
-    Director->>API: Seleccionar proyecto
-    API->>ProyectoService: obtenerProyecto(idProyecto)
-    ProyectoService-->>API: unProyecto
-    API-->>Director: Información básica y opciones de invitación
-
-    alt Invitación general
-        Director->>API: Seleccionar invitación general
-        API-->>Director: Solicitar perfil destinatario
-        Director->>API: Seleccionar perfil
-        API->>PerfilService: obtenerPerfil(idPerfil)
-        PerfilService-->>API: unPerfil
-        API-->>Director: Mostrar información del perfil
-        Director->>API: Introducir mensaje opcional y confirmar
-        API->>Servicio: invitarAProyecto(unProyecto, unPerfil, mensaje)
-        Servicio->>InvGralRepo: Buscar invitación activa para proyecto y perfil
-
-        alt El perfil ya tiene invitación activa
-            InvGralRepo-->>Servicio: Invitación existente
-            Servicio-->>API: excepcion()
-            API-->>Director: Notificar duplicación
-        else No existe invitación activa
-            Servicio->>InvGralRepo: save(InvitacionGral[PENDIENTE])
-            InvGralRepo-->>Servicio: unaInvitacion
-            Servicio->>Notif: notificarPerfil(unPerfil, unaInvitacion)
-            Notif-->>Servicio: Solicitud de notificación
-            Servicio-->>API: invitacionRegistrada(unaInvitacion)
-            API-->>Director: Invitación registrada
-        end
-    else Invitación por actividad
-        Director->>API: Seleccionar invitación por actividad
-        API-->>Director: Solicitar requerimiento de actividad
-        Director->>API: Seleccionar requerimiento
-        API->>ReqService: buscarRequerimientoActividad(idRequerimientoAct)
-        ReqService-->>API: unRequerimientoAct
-        API-->>Director: Información del requerimiento
-        Director->>API: Seleccionar perfil
-        API->>PerfilService: obtenerPerfil(idPerfil)
-        PerfilService-->>API: unPerfil
-        API-->>Director: Mostrar información del perfil
-        Director->>API: Introducir mensaje opcional y confirmar
-        API->>Servicio: invitarAProyectoActividad(unProyecto, unRequerimientoAct, unPerfil, mensaje)
-        Servicio->>Servicio: Validar profesión del perfil y estado de la actividad
-        Servicio->>InvActRepo: Buscar invitación activa para proyecto y perfil
-
-        alt El perfil ya tiene invitación activa
-            InvActRepo-->>Servicio: Invitación existente
-            Servicio-->>API: excepcion()
-            API-->>Director: Notificar duplicación
-        else Invitación válida
-            Servicio->>InvActRepo: save(InvitacionActividad[PENDIENTE])
-            InvActRepo-->>Servicio: unaInvitacion
-            Servicio->>Notif: notificarPerfil(unPerfil, unaInvitacion)
-            Notif-->>Servicio: Solicitud de notificación
-            Servicio-->>API: invitacionRegistrada(unaInvitacion)
-            API-->>Director: Invitación registrada
-        end
-    end
-```
-
-La invitación general se asocia directamente al proyecto: `InvitacionGral`
-conserva `proyecto` y deja `requerimientoGral` opcional. La invitación por
-actividad debe asociar el perfil destinatario, el perfil remitente, el
-requerimiento de actividad, el mensaje y el estado `PENDIENTE`. La notificación
-se dirige al perfil destinatario.
-
-La búsqueda previa de requerimientos de actividad corresponde a UC-73 y se
-expone mediante `GET /proyectos/{idProyecto}/requerimientos-actividad/buscar`,
-con filtros opcionales por actividad, profesión, características y habilidades.
-
-Para seleccionar varios perfiles en una sola acción se agregan:
-
-```http
-POST /proyectos/{idProyecto}/invitaciones/general/batch
-POST /proyectos/{idProyecto}/invitaciones/actividad/batch
-```
-
-El servicio valida una vez el contexto común (perfil activo, proyecto,
-permisos y, en actividad, requerimiento y estado) y luego procesa cada perfil
-en una transacción independiente. La respuesta contiene `creadas[]` y
-`errores[]`, permitiendo éxito parcial. Los IDs repetidos se deduplican.
-
-## UC-70 — Asignar actividad a miembro
-
-La asignación relaciona un `MiembroProyecto` activo con una `Actividad`.
-Primero se obtiene el perfil y su usuario para verificar la disponibilidad
-frente al rango factible de la actividad; solamente después de la confirmación
-se persiste `AsignacionActividad`.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Director as Director de proyecto
-    participant API as AsignacionActividadController
-    participant Servicio as AsignarActividadService
-    participant ActividadService as ObtenerActividadService
-    participant PerfilService as ObtenerPerfilService
-    participant MiembroRepo as MiembroProyectoRepository
-    participant Calendario as CalendarioService
-    participant AsignacionRepo as AsignacionActividadRepository
-    participant ReqService as RequerimientoActividadService
-    participant DB as Base de datos
-    participant Notificacion as Tabla notificacion
-
-    Director->>API: Seleccionar actividad
-    API->>ActividadService: obtenerActividad(idActividad)
-    ActividadService-->>API: unaActividad
-    Director->>API: Seleccionar miembro/perfil
-    API->>PerfilService: obtenerPerfil(idPerfil)
-    PerfilService-->>API: unPerfil
-    API->>MiembroRepo: Buscar miembro activo del proyecto
-    MiembroRepo-->>API: unMiembroProyecto
-    API-->>Director: Actividad y perfil seleccionados
-
-    API->>Servicio: buscarUsuario(unPerfil)
-    Servicio-->>API: unUsuario
-    API->>Calendario: verificarDisponibilidad(unUsuario, unaActividad)
-    Calendario-->>API: Resultado de disponibilidad
-
-    alt Miembro sin disponibilidad suficiente
-        API-->>Director: excepcion()
-        Note right of API: El caso de uso finaliza sin crear asignación
-    else Miembro disponible frente al rango factible
-        API-->>Director: solicitarConfirmacion()
-        Director->>API: Confirmar asignación
-        API->>Servicio: asignarActividad(unPerfil, unaActividad)
-        Servicio->>MiembroRepo: Validar miembro activo del proyecto
-        MiembroRepo-->>Servicio: unMiembroProyecto
-        Servicio->>AsignacionRepo: save(AsignacionActividad)
-        AsignacionRepo-->>Servicio: unaAsignacionActividad
-
-        opt El miembro satisface un requerimiento de actividad
-            Servicio->>ReqService: actualizarEstadoRequerimiento(unRequerimientoAct)
-            ReqService-->>Servicio: Requerimiento actualizado/cerrado
-        end
-
-        AsignacionRepo->>DB: INSERT asignacion_actividad
-        DB->>DB: Ejecutar trg_notificar_asignacion_actividad
-        DB->>Notificacion: INSERT ACTIVIDAD_ASIGNADA
-        Notificacion-->>DB: Notificación generada
-        Servicio-->>API: asignacionExitosa(unaAsignacionActividad)
-        API-->>Director: Asignación registrada
-    end
-```
-
-La operación `asignarActividad` debe ejecutarse dentro de una transacción:
-la asignación y la actualización condicional del requerimiento forman parte
-del mismo resultado de negocio. El trigger
-`trg_notificar_asignacion_actividad` crea la notificación de tipo
-`ACTIVIDAD_ASIGNADA` para el usuario y perfil del miembro insertado.
-
-## UC-32 — Eliminar invitación a proyecto
-
-El contrato de `darDeBajaInvitación` establece que la invitación debe estar en
-estado `PENDIENTE`. Una vez confirmada la acción, se elimina el registro de la
-invitación, no se lo transforma en un estado histórico alternativo.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Director as Director de proyecto
-    participant API as InvitacionController
-    participant Servicio as EliminarInvitacionService
-    participant InvitacionService as BuscarInvitacionesService
-    participant InvGralRepo as InvitacionGralRepository
-    participant InvActRepo as InvitacionActividadRepository
-    participant ProyectoService as ProyectoSecurityService
-
-    Director->>API: Seleccionar proyecto
-    API->>ProyectoService: Validar director y proyecto
-    ProyectoService-->>API: Acceso autorizado
-    Director->>API: Buscar invitaciones del proyecto
-    API->>InvitacionService: buscarInvitaciones(filtros)
-    InvitacionService-->>API: invitaciones[]
-    API-->>Director: Mostrar invitaciones
-
-    Director->>API: Seleccionar unaInvitacion
-    API-->>Director: Mostrar información y solicitar confirmación
-    Director->>API: confirmarBajaInvitacion(unaInvitacion)
-    API->>Servicio: darDeBajaInvitacion(unaInvitacion)
-    Servicio->>ProyectoService: Validar que el director administra el proyecto
-    ProyectoService-->>Servicio: Acceso autorizado
-
-    alt Invitación no está en estado PENDIENTE
-        Servicio-->>API: excepcion()
-        API-->>Director: Notificar error y finalizar
-    else Invitación PENDIENTE
-        alt Invitación general
-            Servicio->>InvGralRepo: delete(unaInvitacion)
-        else Invitación por actividad
-            Servicio->>InvActRepo: delete(unaInvitacion)
-        end
-        Servicio-->>API: invitacionEliminada()
-        API-->>Director: Operación exitosa
-    end
-```
-
-La eliminación debe ejecutarse dentro de una transacción y debe volver a
-validar el estado de la invitación al confirmar la operación, para evitar
-eliminar una invitación que haya sido aceptada o rechazada entre la consulta y
-la confirmación.
-
-La implementación expone dos endpoints `DELETE`, uno por tipo:
-
-```http
-DELETE /proyectos/{idProyecto}/invitaciones/general/{idInvitacion}
-DELETE /proyectos/{idProyecto}/invitaciones/actividad/{idInvitacion}
-```
-
-Sólo el Director que envió la invitación puede eliminarla. El backend valida
-`ELIMINAR_INVITACION`, rol Director activo, pertenencia al proyecto, remitente y
-estado `PENDIENTE`. La fila se bloquea con `PESSIMISTIC_WRITE` para evitar
-carreras con UC-28. El borrado es físico y no genera notificación. La respuesta
-exitosa es `204 No Content`.
-
-## UC-38 — Eliminar integrante
-
-El director elimina a un integrante activo del proyecto. La baja se registra
-como estado `ELIMINADO`, se guarda el motivo y la fecha de baja, y se conservan
-las asignaciones para auditoría y trazabilidad. El profesional deja de contar
-como recurso activo, por lo que cada actividad que pierde el recurso reabre la
-vacante correspondiente por cálculo de cupo.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Director as Director de proyecto
-    participant API as MiembroProyectoController
-    participant Servicio as EliminarIntegranteService
-    participant ProyectoService as ProyectoSecurityService
-    participant PerfilService as ObtenerPerfilService
-    participant MiembroRepo as MiembroProyectoRepository
-    participant AsignacionRepo as AsignacionActividadRepository
-    participant ReqService as RequerimientoActividadService
-    participant Notif as NotificacionService
-
-    Director->>API: Seleccionar proyecto
-    API->>ProyectoService: Validar director y proyecto PUBLICADO/CONFIRMADO
-    ProyectoService-->>API: Acceso autorizado
-    Director->>API: Seleccionar perfil integrante
-    API->>PerfilService: obtenerPerfil(idPerfil)
-    PerfilService-->>API: unPerfil
-    API-->>Director: Mostrar información del perfil y solicitar motivo
-    Director->>API: Introducir motivo y confirmar
-    API->>Servicio: eliminarIntegrante(unProyecto, unPerfil, motivo)
-    Servicio->>MiembroRepo: Buscar miembro activo del proyecto
-    MiembroRepo-->>Servicio: unMiembroDeProyecto
-
-    alt Motivo vacío
-        Servicio-->>API: excepcion()
-        API-->>Director: Notificar error y finalizar
-    else Miembro con estado inválido
-        Servicio-->>API: excepcion()
-        API-->>Director: Notificar error y finalizar
-    else Miembro activo y motivo válido
-        Servicio->>MiembroRepo: setEstado(ELIMINADO)
-        Servicio->>MiembroRepo: setMotivoBaja(motivo)
-        Servicio->>MiembroRepo: setFechaBaja(ahora)
-        Servicio->>MiembroRepo: save(unMiembroDeProyecto)
-        Note over Servicio,ReqService: Las asignaciones se conservan para auditoría.<br/>La vacante se reabre por cálculo de cupo.
-        Servicio->>ReqService: recalcularVacantesDeActividades(unProyecto, unPerfil)
-        ReqService-->>Servicio: Requerimientos actualizados
-        Servicio->>Notif: notificarIntegranteEliminado(unPerfil, motivo)
-        Notif-->>Servicio: Solicitud de notificación
-        Servicio-->>API: bajaIntegranteRegistrada(unProyecto, unPerfil)
-        API-->>Director: Operación exitosa
-    end
-```
-
-La implementación actual realiza una baja lógica: la membresía pasa a
-`ELIMINADO` y conserva `motivoBaja` y `fechaBaja`. No se borran físicamente las
-asignaciones; se conservan para auditoría. Las consultas operativas filtran
-miembros `ACTIVO`, por lo que el profesional deja de contar como recurso y la
-vacante se reabre por cálculo de cupo. El historial de actividad muestra a los
-profesionales eliminados cuando la actividad está `EN_CURSO`, `FINALIZADA` o
-`CANCELADA`; no los muestra en `PENDIENTE`. La notificación se dirige al perfil
-eliminado.
-
-## UC-40 — Darse de baja de proyecto
-
-La baja voluntaria sigue el mismo criterio de baja lógica que UC-38: la
-membresía pasa a `BAJA_VOLUNTARIA`, conserva `motivoBaja` y `fechaBaja`, y las
-asignaciones a actividades no se borran; quedan como historial. La vacante se
-reabre por cálculo de cupo porque las consultas operativas filtran miembros
-activos. El actor es cualquier miembro activo, incluido un Director si queda al
-menos otro Director activo. La notificación se dirige a los directores activos
-restantes.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Miembro as Miembro de proyecto
-    participant API as MiembroProyectoController
-    participant Servicio as DarseDeBajaProyectoService
-    participant MiembroRepo as MiembroProyectoRepository
-    participant DirectorRepo as MiembroProyectoRepository
-    participant Notif as NotificacionService
-
-    Miembro->>API: Seleccionar proyecto
-    API-->>Miembro: Mostrar información y solicitar motivo obligatorio
-    Miembro->>API: Introducir motivo y confirmar
-    API->>Servicio: darseDeBaja(unProyecto, motivo)
-    Servicio->>MiembroRepo: Buscar membresía activa del perfil
-    MiembroRepo-->>Servicio: unMiembroDeProyecto
-
-    alt Motivo vacío
-        Servicio-->>API: excepcion()
-        API-->>Miembro: Notificar error y finalizar
-    else Proyecto no Publicado/Confirmado
-        Servicio-->>API: excepcion()
-        API-->>Miembro: Notificar error y finalizar
-    else Membresía inactiva
-        Servicio-->>API: excepcion()
-        API-->>Miembro: Notificar error y finalizar
-    else Director único
-        Servicio-->>API: excepcion()
-        API-->>Miembro: Notificar error y finalizar
-    else Motivo válido y baja permitida
-        Servicio->>MiembroRepo: setEstado(BAJA_VOLUNTARIA)
-        Servicio->>MiembroRepo: setMotivoBaja(motivo)
-        Servicio->>MiembroRepo: setFechaBaja(ahora)
-        Servicio->>MiembroRepo: save(unMiembroDeProyecto)
-        Note over Servicio,MiembroRepo: Las asignaciones se conservan para auditoría.<br/>La vacante se reabre por cálculo de cupo.
-        Servicio->>DirectorRepo: Buscar directores activos restantes
-        DirectorRepo-->>Servicio: directores[]
-        Servicio->>Notif: notificarDirectores(unProyecto, motivo)
-        Notif-->>Servicio: Notificaciones registradas
-        Servicio-->>API: Baja voluntaria registrada
-        API-->>Miembro: Operación exitosa
-    end
-```
-
-La operación es transaccional. No se borran asignaciones ni se recalcula el
-cronograma. Si el proyecto está `CONFIRMADO`, las actividades conservan sus
-fechas. El historial de actividades muestra a los profesionales con
-`estadoParticipacion = BAJA_VOLUNTARIA` cuando la actividad está `EN_CURSO`,
-`FINALIZADA` o `CANCELADA`; no los muestra en `PENDIENTE`.
-
-## UC-09 — Autenticar mediante Google OAuth
-
-**Implementación:** `GET /auth/google`, `GET /auth/google/pendiente` y
-`POST /auth/google/completar`, atendidos por `AuthController` y
-`GoogleAuthService`, con `usuario_identidad` como fuente de proveedores.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Usuario
-    participant Front as Frontend
-    participant API as AuthController
-    participant OAuth as Spring OAuth2 Client
-    participant Google as Google OAuth
-    participant Servicio as GoogleAuthService
-    participant IdentidadRepo as UsuarioIdentidadRepository
-    participant UsuarioRepo as UsuarioRepository
-    participant Auth as AuthService
-
-    Usuario->>Front: Clic "Continuar con Google"
-    Front->>API: GET /auth/google
-    API-->>Front: 302 /oauth2/authorization/google
-    Front->>OAuth: GET /oauth2/authorization/google
-    OAuth->>OAuth: Guardar state en cookie firmada
-    OAuth-->>Usuario: 302 accounts.google.com
-    Usuario->>Google: Autoriza acceso
-    Google-->>OAuth: GET /login/oauth2/code/google?code&state
-    OAuth->>Google: Canjear code por token
-    Google-->>OAuth: userinfo (sub, email, email_verified, name)
-    OAuth->>Servicio: autenticar(GoogleUserData)
-
-    alt email_verified = false
-        Servicio-->>OAuth: CuentaGoogleNoVerificada
-        OAuth-->>Front: 302 /login?googleError=google_auth_failed
-    else Identidad GOOGLE existente
-        Servicio->>IdentidadRepo: findByProveedorAndIdExterno(GOOGLE, sub)
-        IdentidadRepo-->>Servicio: UsuarioIdentidad
-        Servicio->>Auth: reactivarSiPendienteBaja(usuario)
-        Servicio->>Auth: construirLoginResultado(usuario)
-        Auth-->>Servicio: JWT
-        Servicio-->>OAuth: LoginResultado
-        OAuth-->>Front: 302 /auth/google/callback + Set-Cookie jwt
-    else Usuario local con el mismo correo
-        Servicio->>UsuarioRepo: findByCorreo(correo)
-        UsuarioRepo-->>Servicio: Usuario
-        Servicio->>IdentidadRepo: save(UsuarioIdentidad GOOGLE)
-        Servicio->>Auth: construirLoginResultado(usuario)
-        Servicio-->>OAuth: LoginResultado
-        OAuth-->>Front: 302 /auth/google/callback + Set-Cookie jwt
-    else Usuario nuevo
-        Servicio->>Servicio: crearTicketRegistro(datosGoogle)
-        Servicio-->>OAuth: RegistroPendiente(ticket)
-        OAuth-->>Front: 302 /auth/google/completar + Set-Cookie google_registro
-        Front->>API: GET /auth/google/pendiente
-        API-->>Front: nombre, apellido, correo
-        Usuario->>Front: Completa DNI, fecha y género
-        Front->>API: POST /auth/google/completar
-        API->>Servicio: completarRegistro(ticket, request)
-        Servicio->>Servicio: Validar DNI, edad y género
-        Servicio->>UsuarioRepo: save(Usuario con password_hash NULL)
-        Servicio->>IdentidadRepo: save(UsuarioIdentidad GOOGLE)
-        Servicio->>Auth: construirLoginResultado(usuario)
-        Auth-->>Servicio: JWT
-        API-->>Front: AuthResponse + Set-Cookie jwt
-    end
-```
-
-La cuenta canónica sigue siendo `usuario`; `usuario_identidad` solo resuelve
-con qué proveedor se autenticó. El onboarding es obligatorio antes de crear la
-cuenta para no relajar las restricciones de DNI, edad y género.
-
-## UC-23 — Configurar términos y condiciones
-
-**Implementación actual:** `GET/PUT /perfiles/{idPerfil}/terminos-condiciones`,
-atendido por `PerfilTerminosCondicionesController` y
-`GestionTerminosCondicionesService`.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Usuario
-    participant API as PerfilTerminosCondicionesController
-    participant Servicio as GestionTerminosCondicionesService
-    participant PerfilRepo as PerfilRepository
-    participant TycRepo as PerfilTycRepository
-    participant Config as ConfiguracionSistemaService
-    participant DB as PostgreSQL
-
-    Usuario->>API: GET /perfiles/{idPerfil}/terminos-condiciones
-    API->>Servicio: obtener(idUsuario, idPerfil)
-    Servicio->>PerfilRepo: findById(idPerfil)
-    PerfilRepo-->>Servicio: Perfil
-    Servicio->>TycRepo: findFirstBy...FechaFinIsNull(idPerfil)
-    alt Existe versión vigente
-        TycRepo-->>Servicio: PerfilTyc
-        Servicio-->>API: TerminosCondicionesResponse (esPlantilla=false)
-    else No existe versión
-        Servicio->>Config: obtenerPlantillaTerminosCondiciones()
-        Config-->>Servicio: texto de plantilla
-        Servicio-->>API: TerminosCondicionesResponse (esPlantilla=true)
-    end
-    API-->>Usuario: 200 OK
-
-    Usuario->>API: PUT /perfiles/{idPerfil}/terminos-condiciones {descripcion}
-    API->>Servicio: actualizar(idUsuario, idPerfil, request)
-    Servicio->>PerfilRepo: findByIdPerfilAndUsuarioIdUsuarioForUpdate(...)
-    PerfilRepo-->>Servicio: Perfil (lock pesimista)
-    alt Perfil no Activo
-        Servicio-->>API: PerfilEnBajaException (409)
-    else Perfil Activo
-        Servicio->>TycRepo: buscar versión vigente
-        alt Mismo texto
-            Servicio-->>API: versión vigente sin cambios
-        else Texto distinto
-            Servicio->>TycRepo: cerrar versión vigente (fecha_fin)
-            Servicio->>TycRepo: nextIdTyc()
-            Servicio->>DB: persist nueva versión
-            Servicio-->>API: TerminosCondicionesResponse
-        end
-    end
-    API-->>Usuario: 200 OK
-```
-
-La versión vigente se incluye en `GET /perfiles/{idPerfil}`. Cuando un proyecto
-incorpora al perfil, el director debe aceptar esa versión; el id aceptado se
-guarda en `invitacion_gral.id_tyc_aceptado`,
-`invitacion_actividad.id_tyc_aceptado` o
-`miembros_proyecto.id_tyc_aceptado` según el flujo.
+> - Cada DSD corresponde a **una operación** y se identifica con
+>   `DSD nombreOperacion(params) | UC-xx: Nombre`.
+> - `:ModaLink` es el controlador/sistema. Las colecciones representan la
+>   persistencia (tablas del modelo SQL) y las instancias representan filas.
+> - Se usan bloques `loop`, `alt` y `opt` para el flujo, y variables locales
+>   explícitas.
+> - Cuando una operación existe en `contratos.md`, se adopta su firma. Para
+>   operaciones que sólo aparecen en el DSS, se usa la firma del DSS.
+> - No se modelan endpoints, transacciones, triggers ni detalles de
+>   implementación: esos aspectos pertenecen a Fase 2 y Fase 3.5.
+> - Los DSD auxiliares de búsqueda/selección (`buscarX`, `seleccionarX`)
+>   completan los flujos de los UC que los referencian.
+> - `perfilActivo` y `usuarioActivo` representan el contexto de sesión del
+>   actor; no se declaran como variables locales.
+> - Quedan fuera de este alcance los UC que no tienen DSS ni contrato en la
+>   Fase 2 (por ejemplo, UC-39, UC-53, UC-54, UC-55 y UC-68).
+
+## Correspondencia con el modelo de datos
+
+| Colección | Tabla canónica |
+| :--- | :--- |
+| `usuarios` | `usuario` |
+| `identidades` | `usuario_identidad` |
+| `rolesGlobales` | `rol_global` |
+| `perfiles` | `perfil` |
+| `perfilesTyc` | `perfil_tyc` |
+| `profesiones` | `profesion` |
+| `caracteristicasTecnicas` | `caracteristica_tecnica` |
+| `habilidades` | `habilidad` |
+| `proyectos` | `proyecto` |
+| `planificaciones` | `planificacion` |
+| `rolesProyecto` | `rol_proyecto` |
+| `ubicaciones` | `ubicacion` |
+| `objetivos` | `objetivo` |
+| `moodboards` | `moodboard` |
+| `miembros` | `miembros_proyecto` |
+| `invitacionesGenerales` | `invitacion_gral` |
+| `invitacionesActividad` | `invitacion_actividad` |
+| `postulacionesGenerales` | `postulacion_gral` |
+| `postulacionesActividad` | `postulacion_actividad` |
+| `requerimientosGenerales` | `requerimiento_gral_proyecto` |
+| `requerimientosActividad` | `requerimiento_actividad` |
+| `actividades` | `actividad` |
+| `dependencias` | `dependencia_actividades` |
+| `asignaciones` | `asignacion_actividad` |
+| `agendas` | `agenda` |
+| `jornadas` | `jornada_agenda` |
+| `bloqueos` | `bloqueo_agenda` |
+| `calificaciones` | `calificacion_perfil` |
+| `reportes` | `reporte` |
+| `auditorias` | `auditoria` |
+| `tiposEvento` | `tipo_evento_auditoria` |
+| `notificaciones` | `notificacion` |
+
+## Mapa de cobertura
+
+| UC | DSD |
+| :--- | :--- |
+| UC-01 | `ingresarCredenciales` |
+| UC-03 | `registrarse` |
+| UC-04 | `deshabilitarUsuario` |
+| UC-05 | `habilitarUsuario` |
+| UC-07 | `solicitarBaja` |
+| UC-08 | `modificarDatosPersonales` |
+| UC-09 | `autenticarConGoogle`, `completarRegistroGoogle` |
+| UC-10 | `crearPerfil` |
+| UC-11 | `editarPerfil` |
+| UC-12 | `solicitarBajaPerfil`, `confirmarBajaPerfil` |
+| UC-13 | `activarPerfil` |
+| UC-15 | `reportarPerfil` |
+| UC-17 | `marcarComoDisponible` |
+| UC-18 | `marcarComoNoDisponible` |
+| UC-23 | `configurarTerminosCondiciones`, `aceptarTerminosDePerfil` |
+| UC-24 | `crearProyecto` |
+| UC-25 | `publicarProyecto` |
+| UC-26 | `darDeAltaPostulacionGeneral`, `darDeAltaPostulacionActividad` |
+| UC-27 | `darDeBajaPostulacion` |
+| UC-28 | `aceptarIncorporacion`, `aceptarIncorporacionAct`, `rechazarInvitacion` |
+| UC-29 | `buscarProyectos`, `seleccionarProyecto` |
+| UC-30 | `buscarInvitaciones`, `seleccionarInvitacion` |
+| UC-31 | `invitarAProyecto`, `invitarAProyectoActividad`, `invitarAProyectoMultiple`, `invitarAProyectoActividadMultiple` |
+| UC-32 | `darDeBajaInvitacion` |
+| UC-33 | `solicitarCronograma` |
+| UC-34 | `aceptarPostulacion`, `rechazarPostulacion` |
+| UC-35 | `cancelarProyecto` |
+| UC-36 | `modificarProyecto` |
+| UC-37 | `finalizarProyecto`, `calificarMiembro` |
+| UC-38 | `eliminarIntegrante` |
+| UC-40 | `darseDeBaja` |
+| UC-49 | `crearActividad`, `agregarPredecesora`, `buscarUbicacion`, `agregarUbicacion`, `agregarRequerimiento` |
+| UC-50 | `modificarActividad` |
+| UC-51 | `eliminarActividad`, `guardarMiembro` |
+| UC-52 | `buscarActividades`, `seleccionarActividad` |
+| UC-60 | `confirmarProyecto` |
+| UC-67 | `listarAuditoria`, `listarTiposEventoAuditoria`, `obtenerResumenAuditoria`, `exportarAuditoria` |
+| UC-70 | `buscarUsuario`, `verificarDisponibilidad`, `asignarActividad` |
+| UC-71 | `configurarDiaCompleto`, `configurarDiaPartida`, `confirmarJornadaLaboral` |
+| UC-72 | `buscarRequerimientosGenerales`, `seleccionarRequerimientoGeneral` |
+| UC-73 | `buscarRequerimientosActividad`, `seleccionarRequerimientoActividad` |
+
+**DSD auxiliares referenciados por los flujos**
+
+| UC auxiliar | DSD |
+| :--- | :--- |
+| UC-06 | `buscarUsuarios`, `seleccionarUsuario` |
+| UC-16 | `buscarPerfiles`, `seleccionarPerfil` |
+| UC-48 | `buscarHabilidades` |
+| UC-58 | `buscarCaracteristicasTecnicas` |
+| UC-59 | `buscarProfesiones`, `seleccionarProfesion` |
+| UC-74 | `buscarPostulaciones`, `seleccionarPostulacion` |
+
+### Correspondencias con el DSS
+
+Cuando el DSS y los Contratos usan nombres distintos, el DSD adopta la firma
+del Contrato y conserva la referencia al UC:
+
+| Mensaje del DSS | Operación del DSD |
+| :--- | :--- |
+| `enviarInvitacion(...)` | `invitarAProyecto(...)` |
+| `crearNuevoPerfil(...)` / `registrarPerfil(...)` | `crearPerfil(...)` |
+| `obtenerPostulaciones(...)` | `buscarPostulaciones(...)` |
+| `obtenerProyecto(...)` | `seleccionarProyecto(...)` |
+| `obtenerPerfil(...)` | `seleccionarPerfil(...)` |
+| `obtenerActividades(...)` | `buscarActividades(...)` |
+| `darDeAltaPostulación(...)` | `darDeAltaPostulacionGeneral(...)` / `darDeAltaPostulacionActividad(...)` |
+
+---
+
+## 1. Usuarios y administración
+
+### DSD ingresarCredenciales(correo, contrasenia) | UC-01: Iniciar sesión
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+- **Variables locales / Notas:**
+  - `boolean encontrado = false`
+  - `boolean credencialesValidas`
+  - `boolean cuentaActiva`
+- **Flujo de interacción:**
+  1. El actor envía `sesion = ingresarCredenciales(correo, contrasenia)` a `:ModaLink`.
+  2. Se inicializan las variables locales `encontrado`, `credencialesValidas` y `cuentaActiva`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya usuarios && `encontrado == false`]:
+     - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unUsuario`: `encontrado = tieneCorreo(correo)`.
+  4. **Bloque Alternativo (`alt`)** [!encontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Credenciales inválidas")`.
+  5. **Bloque Alternativo (`alt`)** [encontrado]:
+     - `:ModaLink` consulta a `unUsuario`: `credencialesValidas = verificarContrasenia(contrasenia)`.
+     - **Bloque Alternativo (`alt`)** [!credencialesValidas]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Credenciales inválidas")`.
+     - **Bloque Alternativo (`alt`)** [credencialesValidas]:
+       - `:ModaLink` consulta a `unUsuario`: `cuentaActiva = estaActivo()`.
+       - **Bloque Alternativo (`alt`)** [!cuentaActiva]:
+         - `:ModaLink` retorna al actor: `informarCuentaDeshabilitada()`.
+       - **Bloque Alternativo (`alt`)** [cuentaActiva]:
+         - `:ModaLink` solicita a `unUsuario`: `sesion = iniciarSesion()`.
+         - `:ModaLink` retorna `sesion` al actor: `otorgarAcceso(sesion)`.
+
+---
+
+### DSD registrarse(correo, contrasenia, nombre, apellido, fechaNac, genero) | UC-03: Registrarse
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `rolesGlobales` (Colección de roles globales)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unRol : RolGlobal` (Instancia de la entidad RolGlobal)
+- **Variables locales / Notas:**
+  - `boolean correoDuplicado = false`
+  - `boolean datosValidos`
+  - `boolean edadValida`
+- **Flujo de interacción:**
+  1. El actor envía `unUsuario = registrarse(correo, contrasenia, nombre, apellido, fechaNac, genero)` a `:ModaLink`.
+  2. Se inicializan las variables locales `correoDuplicado`, `datosValidos` y `edadValida`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya usuarios && `correoDuplicado == false`]:
+     - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unUsuario`: `correoDuplicado = tieneCorreo(correo)`.
+  4. `:ModaLink` valida los datos: `datosValidos = validarCampos(nombre, apellido, correo, contrasenia)`.
+  5. `:ModaLink` valida la edad: `edadValida = esMayorDeEdad(fechaNac)`.
+  6. **Bloque Alternativo (`alt`)** [correoDuplicado || !datosValidos || !edadValida]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Correo, datos o edad inválidos")`.
+  7. **Bloque Alternativo (`alt`)** [!correoDuplicado && datosValidos && edadValida]:
+     - `:ModaLink` solicita a `rolesGlobales`: `unRol = buscarPorCodigo("USUARIO")`.
+     - `:ModaLink` crea la instancia: `unUsuario = registrar(correo, contrasenia, nombre, apellido, fechaNac, genero, unRol)`.
+     - `:ModaLink` agrega la instancia: `usuarios.agregar(unUsuario)`.
+     - `:ModaLink` retorna al actor: `registroExitoso(unUsuario)`.
+
+---
+
+### DSD deshabilitarUsuario(unUsuario, motivo, duracion) | UC-04: Deshabilitar usuario
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `perfiles` (Colección de perfiles)
+  - `notificaciones` (Colección de notificaciones)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+- **Variables locales / Notas:**
+  - `boolean estaActivo`
+  - `boolean perteneceAlUsuario`
+- **Flujo de interacción:**
+  1. El actor envía `deshabilitarUsuario(unUsuario, motivo, duracion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estaActivo` y `perteneceAlUsuario`.
+  3. `:ModaLink` consulta a `unUsuario`: `estaActivo = estaActivo()`.
+  4. **Bloque Alternativo (`alt`)** [!estaActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El usuario no se encuentra activo")`.
+  5. **Bloque Alternativo (`alt`)** [estaActivo]:
+     - `:ModaLink` envía a `unUsuario`: `setEstado(DESHABILITADO)`.
+     - `:ModaLink` envía a `unUsuario`: `setMotivoDeshabilitacion(motivo)`.
+     - **Bloque Opcional (`opt`)** [duracion != null]:
+       - `:ModaLink` envía a `unUsuario`: `setFechaHastaDeshabilitacion(ahora + duracion)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya perfiles del usuario]:
+       - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unPerfil`: `perteneceAlUsuario = perteneceA(unUsuario)`.
+       - **Bloque Alternativo (`alt`)** [perteneceAlUsuario]:
+         - `:ModaLink` envía a `unPerfil`: `setEstado(DESHABILITADO)`.
+         - `:ModaLink` envía a `unPerfil`: `ocultar()`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarDeshabilitacion(unUsuario, motivo, duracion)`.
+     - `:ModaLink` retorna al actor: `operacionExitosa()`.
+
+---
+
+### DSD habilitarUsuario(unUsuario) | UC-05: Habilitar usuario
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfiles` (Colección de perfiles)
+  - `notificaciones` (Colección de notificaciones)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+- **Variables locales / Notas:**
+  - `boolean estaDeshabilitado`
+  - `boolean perteneceAlUsuario`
+- **Flujo de interacción:**
+  1. El actor envía `habilitarUsuario(unUsuario)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estaDeshabilitado` y `perteneceAlUsuario`.
+  3. `:ModaLink` consulta a `unUsuario`: `estaDeshabilitado = estaDeshabilitado()`.
+  4. **Bloque Alternativo (`alt`)** [!estaDeshabilitado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El usuario no se encuentra deshabilitado")`.
+  5. **Bloque Alternativo (`alt`)** [estaDeshabilitado]:
+     - `:ModaLink` envía a `unUsuario`: `setEstado(ACTIVO)`.
+     - `:ModaLink` envía a `unUsuario`: `limpiarMotivoDeshabilitacion()`.
+     - `:ModaLink` envía a `unUsuario`: `limpiarFechaHastaDeshabilitacion()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya perfiles del usuario]:
+       - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unPerfil`: `perteneceAlUsuario = perteneceA(unUsuario)`.
+       - **Bloque Alternativo (`alt`)** [perteneceAlUsuario]:
+         - `:ModaLink` envía a `unPerfil`: `setEstado(ACTIVO)`.
+         - `:ModaLink` envía a `unPerfil`: `mostrar()`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarHabilitacion(unUsuario)`.
+     - `:ModaLink` retorna al actor: `operacionExitosa()`.
+
+---
+
+### DSD buscarUsuarios(nombre, correo, estado) | UC-06: Buscar usuario
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+- **Variables locales / Notas:**
+  - `Lista usuariosFiltrados = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `usuarios = buscarUsuarios(nombre, correo, estado)` a `:ModaLink`.
+  2. Se inicializan las variables locales `usuariosFiltrados` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya usuarios]:
+     - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unUsuario`: `sePuedeAgregar = cumpleFiltros(nombre, correo, estado)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `usuariosFiltrados.agregar(unUsuario)`.
+  4. `:ModaLink` retorna `usuariosFiltrados` al actor.
+
+---
+
+### DSD seleccionarUsuario(idUsuario, usuarios) | UC-06: Buscar usuario
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unUsuario = seleccionarUsuario(idUsuario, usuarios)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya usuarios && `retorno == false`]:
+     - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unUsuario`: `retorno = tieneId(idUsuario)`.
+  4. `:ModaLink` retorna la instancia encontrada `unUsuario` al actor.
+
+---
+
+### DSD solicitarBaja(idUsuario) | UC-07: Solicitar baja en el sistema
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `perfiles` (Colección de perfiles)
+  - `notificaciones` (Colección de notificaciones)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+- **Variables locales / Notas:**
+  - `boolean encontrado = false`
+  - `boolean perteneceAlUsuario`
+- **Flujo de interacción:**
+  1. El actor envía `solicitarBaja(idUsuario)` a `:ModaLink`.
+  2. Se inicializan las variables locales `encontrado` y `perteneceAlUsuario`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya usuarios && `encontrado == false`]:
+     - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unUsuario`: `encontrado = tieneId(idUsuario)`.
+  4. **Bloque Alternativo (`alt`)** [!encontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Usuario no encontrado")`.
+  5. **Bloque Alternativo (`alt`)** [encontrado]:
+     - `:ModaLink` solicita al actor: `solicitarConfirmacion()`.
+     - **Bloque Opcional (`opt`)** [el actor confirma]:
+       - `:ModaLink` envía a `unUsuario`: `setEstado(PENDIENTE_BAJA)`.
+       - `:ModaLink` envía a `unUsuario`: `setFechaSolicitudBaja(ahora)`.
+       - **Bloque Bucle (`loop`)** [Mientras haya perfiles del usuario]:
+         - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unPerfil`: `perteneceAlUsuario = perteneceA(unUsuario)`.
+         - **Bloque Alternativo (`alt`)** [perteneceAlUsuario]:
+           - `:ModaLink` envía a `unPerfil`: `setEstado(PENDIENTE_BAJA)`.
+           - `:ModaLink` envía a `unPerfil`: `setFechaSolicitudBaja(ahora)`.
+           - `:ModaLink` envía a `unPerfil`: `ocultar()`.
+       - `:ModaLink` agrega a `notificaciones`: `notificarBaja(unUsuario, 30)`.
+       - `:ModaLink` retorna al actor: `cuentaRegresivaIniciada(unUsuario, 30)`.
+       - `:ModaLink` retorna al actor: `cerrarSesion()`.
+
+---
+
+### DSD modificarDatosPersonales(nombre, apellido, genero, fechaNac, idUbicacion) | UC-08: Modificar datos personales
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `ubicaciones` (Colección de ubicaciones)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unaUbicacion : Ubicacion` (Instancia de la entidad Ubicacion)
+- **Variables locales / Notas:**
+  - `boolean datosValidos`
+  - `boolean ubicacionEncontrada = false`
+- **Flujo de interacción:**
+  1. El actor envía `unUsuario = modificarDatosPersonales(nombre, apellido, genero, fechaNac, idUbicacion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `datosValidos` y `ubicacionEncontrada`.
+  3. `:ModaLink` valida los datos: `datosValidos = validarCampos(nombre, apellido, genero, fechaNac)`.
+  4. **Bloque Alternativo (`alt`)** [!datosValidos]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Datos personales inválidos")`.
+  5. **Bloque Alternativo (`alt`)** [datosValidos]:
+     - `:ModaLink` envía a `unUsuario`: `setNombre(nombre)`.
+     - `:ModaLink` envía a `unUsuario`: `setApellido(apellido)`.
+     - `:ModaLink` envía a `unUsuario`: `setGenero(genero)`.
+     - `:ModaLink` envía a `unUsuario`: `setFechaNacimiento(fechaNac)`.
+     - **Bloque Opcional (`opt`)** [idUbicacion != null]:
+       - **Bloque Bucle (`loop`)** [Mientras haya ubicaciones && `ubicacionEncontrada == false`]:
+         - `:ModaLink` solicita a `ubicaciones`: `unaUbicacion = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unaUbicacion`: `ubicacionEncontrada = tieneId(idUbicacion)`.
+       - **Bloque Alternativo (`alt`)** [ubicacionEncontrada]:
+         - `:ModaLink` envía a `unUsuario`: `setUbicacion(unaUbicacion)`.
+     - `:ModaLink` retorna al actor: `operacionExitosa()`.
+
+---
+
+### DSD autenticarConGoogle(sub, correo, emailVerificado, nombre, apellido) | UC-09: Autenticar mediante Google OAuth
+
+- **Actores:** Usuario, Google OAuth
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `identidades` (Colección de identidades)
+  - `usuarios` (Colección de usuarios)
+  - `unaIdentidad : UsuarioIdentidad` (Instancia de la entidad UsuarioIdentidad)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+- **Variables locales / Notas:**
+  - `boolean existeIdentidad = false`
+  - `boolean existeUsuario = false`
+  - `String ticket`
+- **Flujo de interacción:**
+  1. El actor Google OAuth envía `resultado = autenticarConGoogle(sub, correo, emailVerificado, nombre, apellido)` a `:ModaLink`.
+  2. Se inicializan las variables locales `existeIdentidad`, `existeUsuario` y `ticket`.
+  3. **Bloque Alternativo (`alt`)** [!emailVerificado]:
+     - `:ModaLink` retorna al actor: `Excepcion("Cuenta de Google no verificada")`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya identidades && `existeIdentidad == false`]:
+     - `:ModaLink` solicita a `identidades`: `unaIdentidad = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaIdentidad`: `existeIdentidad = coincideCon(GOOGLE, sub)`.
+  5. **Bloque Alternativo (`alt`)** [existeIdentidad]:
+     - `:ModaLink` solicita a `unaIdentidad`: `unUsuario = obtenerUsuario()`.
+     - `:ModaLink` envía a `unUsuario`: `reactivarSiPendienteBaja()`.
+     - `:ModaLink` solicita a `unUsuario`: `resultado = iniciarSesion()`.
+  6. **Bloque Alternativo (`alt`)** [!existeIdentidad]:
+     - **Bloque Bucle (`loop`)** [Mientras haya usuarios && `existeUsuario == false`]:
+       - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unUsuario`: `existeUsuario = tieneCorreo(correo)`.
+     - **Bloque Alternativo (`alt`)** [existeUsuario]:
+       - `:ModaLink` solicita a `unUsuario`: `unaIdentidad = vincularIdentidad(GOOGLE, sub, correo)`.
+       - `identidades.agregar(unaIdentidad)`.
+       - `:ModaLink` solicita a `unUsuario`: `resultado = iniciarSesion()`.
+     - **Bloque Alternativo (`alt`)** [!existeUsuario]:
+       - `:ModaLink` crea el ticket: `ticket = crearTicketRegistro(sub, correo, nombre, apellido)`.
+       - `:ModaLink` retorna al actor: `RegistroPendiente(ticket)`.
+  7. `:ModaLink` retorna `resultado` al actor.
+
+---
+
+### DSD completarRegistroGoogle(ticket, nombre, apellido, dni, fechaNacimiento, genero) | UC-09: Autenticar mediante Google OAuth
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `identidades` (Colección de identidades)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unaIdentidad : UsuarioIdentidad` (Instancia de la entidad UsuarioIdentidad)
+- **Variables locales / Notas:**
+  - `boolean ticketValido`
+  - `boolean dniDuplicado = false`
+  - `boolean datosValidos`
+- **Flujo de interacción:**
+  1. El actor envía `resultado = completarRegistroGoogle(ticket, nombre, apellido, dni, fechaNacimiento, genero)` a `:ModaLink`.
+  2. Se inicializan las variables locales `ticketValido`, `dniDuplicado` y `datosValidos`.
+  3. `:ModaLink` valida el ticket: `ticketValido = validarTicket(ticket)`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya usuarios && `dniDuplicado == false`]:
+     - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unUsuario`: `dniDuplicado = tieneDni(dni)`.
+  5. `:ModaLink` valida los datos: `datosValidos = validarCampos(nombre, apellido, dni, fechaNacimiento, genero)`.
+  6. **Bloque Alternativo (`alt`)** [!ticketValido || dniDuplicado || !datosValidos]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Ticket, DNI o datos inválidos")`.
+  7. **Bloque Alternativo (`alt`)** [ticketValido && !dniDuplicado && datosValidos]:
+     - `:ModaLink` crea la instancia: `unUsuario = registrar(nombre, apellido, dni, fechaNacimiento, genero, ticket.correo)`.
+     - `usuarios.agregar(unUsuario)`.
+     - `:ModaLink` crea la identidad: `unaIdentidad = registrar(GOOGLE, ticket.sub, ticket.correo)`.
+     - `identidades.agregar(unaIdentidad)`.
+     - `:ModaLink` solicita a `unUsuario`: `resultado = iniciarSesion()`.
+     - `:ModaLink` retorna `resultado` al actor.
+
+---
+
+### DSD configurarTerminosCondiciones(unPerfil, texto) | UC-23: Configurar términos y condiciones
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfilesTyc` (Colección de versiones de términos y condiciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unaVersion : PerfilTyc` (Instancia de la entidad PerfilTyc)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean textoValido`
+  - `boolean mismaVersion`
+- **Flujo de interacción:**
+  1. El actor envía `resultado = configurarTerminosCondiciones(unPerfil, texto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `textoValido` y `mismaVersion`.
+  3. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  4. `:ModaLink` valida el texto: `textoValido = texto != null && longitud(texto) >= 1 && longitud(texto) <= 5000`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo || !textoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Perfil inactivo o texto inválido")`.
+  6. **Bloque Alternativo (`alt`)** [perfilActivo && textoValido]:
+     - `:ModaLink` solicita a `perfilesTyc`: `unaVersion = buscarVersionVigente(unPerfil)`.
+     - **Bloque Alternativo (`alt`)** [unaVersion != null]:
+       - `:ModaLink` consulta a `unaVersion`: `mismaVersion = tieneTexto(texto)`.
+     - **Bloque Alternativo (`alt`)** [unaVersion == null || !mismaVersion]:
+       - **Bloque Opcional (`opt`)** [unaVersion != null]:
+         - `:ModaLink` envía a `unaVersion`: `cerrar(ahora)`.
+       - `:ModaLink` crea la versión: `unaVersion = registrar(unPerfil, texto, ahora, null)`.
+       - `perfilesTyc.agregar(unaVersion)`.
+     - `:ModaLink` retorna a `unPerfil`: `TerminosCondicionesResponse(unaVersion)`.
+
+---
+
+### DSD aceptarTerminosDePerfil(unPerfil, idTyc, aceptaTerminos) | UC-23: Configurar términos y condiciones
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfilesTyc` (Colección de versiones de términos y condiciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unaVersion : PerfilTyc` (Instancia de la entidad PerfilTyc)
+- **Variables locales / Notas:**
+  - `boolean tieneVersionVigente`
+  - `boolean versionVigente`
+- **Flujo de interacción:**
+  1. El actor envía `idTycAceptado = aceptarTerminosDePerfil(unPerfil, idTyc, aceptaTerminos)` a `:ModaLink`.
+  2. Se inicializan las variables locales `tieneVersionVigente` y `versionVigente`.
+  3. `:ModaLink` solicita a `perfilesTyc`: `unaVersion = buscarVersionVigente(unPerfil)`.
+  4. `:ModaLink` evalúa: `tieneVersionVigente = unaVersion != null`.
+  5. **Bloque Alternativo (`alt`)** [!tieneVersionVigente]:
+     - `:ModaLink` retorna `idTycAceptado = null` al actor.
+  6. **Bloque Alternativo (`alt`)** [tieneVersionVigente]:
+     - **Bloque Alternativo (`alt`)** [!aceptaTerminos]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Debe aceptar la versión vigente de los términos y condiciones")`.
+     - **Bloque Alternativo (`alt`)** [aceptaTerminos]:
+       - `:ModaLink` consulta a `unaVersion`: `versionVigente = tieneId(idTyc)`.
+       - **Bloque Alternativo (`alt`)** [!versionVigente]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("La versión enviada no es la vigente")`.
+       - **Bloque Alternativo (`alt`)** [versionVigente]:
+         - `:ModaLink` retorna `idTycAceptado = idTyc` al actor.
+
+---
+
+### DSD listarAuditoria(fechaDesde, fechaHasta, tipos, page, size) | UC-67: Generar informe de auditoría
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `auditorias` (Colección de eventos de auditoría)
+  - `tiposEvento` (Colección de tipos de evento)
+  - `unEvento : Auditoria` (Instancia de la entidad Auditoria)
+  - `unTipo : TipoEventoAuditoria` (Instancia de la entidad TipoEventoAuditoria)
+- **Variables locales / Notas:**
+  - `Lista eventosFiltrados = nueva Lista()`
+  - `boolean fechasValidas`
+  - `boolean sePuedeAgregar`
+  - `boolean tipoValido = true`
+- **Flujo de interacción:**
+  1. El actor envía `pagina = listarAuditoria(fechaDesde, fechaHasta, tipos, page, size)` a `:ModaLink`.
+  2. Se inicializan las variables locales `eventosFiltrados`, `fechasValidas`, `sePuedeAgregar` y `tipoValido`.
+  3. `:ModaLink` valida las fechas: `fechasValidas = fechaDesde != null && fechaHasta != null && fechaDesde <= fechaHasta`.
+  4. **Bloque Alternativo (`alt`)** [!fechasValidas]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Fechas obligatorias o rango inválido")`.
+  5. **Bloque Opcional (`opt`)** [tipos != null && tipos no vacío]:
+     - **Bloque Bucle (`loop`)** [Mientras haya tipos && `tipoValido`]:
+       - `:ModaLink` solicita a `tiposEvento`: `unTipo = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unTipo`: `tipoValido = tieneCodigo(tipos)`.
+  6. **Bloque Alternativo (`alt`)** [!tipoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Tipo de evento inválido")`.
+  7. **Bloque Bucle (`loop`)** [Mientras haya auditorías]:
+     - `:ModaLink` solicita a `auditorias`: `unEvento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unEvento`: `sePuedeAgregar = cumpleFiltros(fechaDesde, fechaHasta, tipos)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `eventosFiltrados.agregar(unEvento)`.
+  8. `:ModaLink` ordena `eventosFiltrados` por `fechaHora DESC, idAuditoria DESC`.
+  9. `:ModaLink` pagina `eventosFiltrados` según `page` y `size`.
+  10. `:ModaLink` retorna la página al actor.
+
+---
+
+### DSD listarTiposEventoAuditoria() | UC-67: Generar informe de auditoría
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `tiposEvento` (Colección de tipos de evento)
+  - `unTipo : TipoEventoAuditoria` (Instancia de la entidad TipoEventoAuditoria)
+- **Variables locales / Notas:**
+  - `Lista tiposActivos = nueva Lista()`
+  - `boolean estaActivo`
+- **Flujo de interacción:**
+  1. El actor envía `tiposActivos = listarTiposEventoAuditoria()` a `:ModaLink`.
+  2. Se inicializan las variables locales `tiposActivos` y `estaActivo`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya tipos de evento]:
+     - `:ModaLink` solicita a `tiposEvento`: `unTipo = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unTipo`: `estaActivo = estaActivo()`.
+     - **Bloque Alternativo (`alt`)** [estaActivo]:
+       - `tiposActivos.agregar(unTipo)`.
+  4. `:ModaLink` retorna `tiposActivos` al actor.
+
+---
+
+### DSD obtenerResumenAuditoria(fechaDesde, fechaHasta, tipos) | UC-67: Generar informe de auditoría
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `auditorias` (Colección de eventos de auditoría)
+  - `unEvento : Auditoria` (Instancia de la entidad Auditoria)
+- **Variables locales / Notas:**
+  - `int totalRegistros = 0`
+  - `Map porTipoEvento = nuevo Map()`
+  - `Map porEntidad = nuevo Map()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `resumen = obtenerResumenAuditoria(fechaDesde, fechaHasta, tipos)` a `:ModaLink`.
+  2. Se inicializan las variables locales `totalRegistros`, `porTipoEvento` y `porEntidad`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya auditorías]:
+     - `:ModaLink` solicita a `auditorias`: `unEvento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unEvento`: `sePuedeAgregar = cumpleFiltros(fechaDesde, fechaHasta, tipos)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `totalRegistros = totalRegistros + 1`.
+       - `porTipoEvento.acumular(unEvento.obtenerTipoEvento())`.
+       - `porEntidad.acumular(unEvento.obtenerEntidadAfectada())`.
+  4. `:ModaLink` retorna al actor: `AuditoriaResumenResponse(totalRegistros, porTipoEvento, porEntidad)`.
+
+---
+
+### DSD exportarAuditoria(formato, fechaDesde, fechaHasta, tipos) | UC-67: Generar informe de auditoría
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `auditorias` (Colección de eventos de auditoría)
+  - `unEvento : Auditoria` (Instancia de la entidad Auditoria)
+- **Variables locales / Notas:**
+  - `boolean formatoValido`
+  - `Lista eventos`
+  - `boolean exportacionExcedida`
+- **Flujo de interacción:**
+  1. El actor envía `archivo = exportarAuditoria(formato, fechaDesde, fechaHasta, tipos)` a `:ModaLink`.
+  2. Se inicializan las variables locales `formatoValido` y `eventos`.
+  3. `:ModaLink` valida el formato: `formatoValido = formato == "CSV" || formato == "PDF"`.
+  4. **Bloque Alternativo (`alt`)** [!formatoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Formato de exportación inválido")`.
+  5. **Bloque Alternativo (`alt`)** [formatoValido]:
+     - `:ModaLink` invoca la búsqueda: `eventos = buscarEventosAuditoria(fechaDesde, fechaHasta, tipos)`.
+     - `:ModaLink` evalúa: `exportacionExcedida = eventos.cantidad() > limiteExportacion`.
+     - **Bloque Alternativo (`alt`)** [exportacionExcedida]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("La exportación supera el máximo permitido")`.
+     - **Bloque Alternativo (`alt`)** [!exportacionExcedida]:
+       - `:ModaLink` genera el archivo: `archivo = generarArchivo(formato, eventos)`.
+       - `:ModaLink` retorna `archivo` al actor.
+
+---
+
+---
+
+## 2. Perfiles y disponibilidad
+
+### DSD crearPerfil(nombreArtistico, idProfesion, caracteristicas[], biografia) | UC-10: Crear perfil
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfiles` (Colección de perfiles)
+  - `profesiones` (Colección de profesiones)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unaProfesion : Profesion` (Instancia de la entidad Profesion)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+- **Variables locales / Notas:**
+  - `boolean perfilDuplicado = false`
+  - `boolean profesionValida = false`
+  - `boolean datosValidos`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `unPerfil = crearPerfil(nombreArtistico, idProfesion, caracteristicas[], biografia)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilDuplicado`, `profesionValida`, `datosValidos` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya perfiles && `perfilDuplicado == false`]:
+     - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unPerfil`: `perfilDuplicado = tieneProfesionParaUsuario(idProfesion, usuarioActivo)`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya profesiones && `profesionValida == false`]:
+     - `:ModaLink` solicita a `profesiones`: `unaProfesion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaProfesion`: `profesionValida = tieneId(idProfesion)`.
+  5. `:ModaLink` valida los datos: `datosValidos = validarCampos(nombreArtistico, biografia)`.
+  6. **Bloque Alternativo (`alt`)** [perfilDuplicado || !profesionValida || !datosValidos]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Perfil duplicado, profesión inexistente o datos inválidos")`.
+  7. **Bloque Alternativo (`alt`)** [!perfilDuplicado && profesionValida && datosValidos]:
+     - `:ModaLink` crea la instancia: `unPerfil = registrar(nombreArtistico, unaProfesion, biografia, ACTIVO)`.
+     - `:ModaLink` agrega la instancia: `perfiles.agregar(unPerfil)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya características por cargar]:
+       - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaCaracteristica`: `sePuedeAgregar = perteneceAProfesion(unaProfesion)`.
+       - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+         - `:ModaLink` crea la característica del perfil: `unPerfil.agregarCaracteristica(unaCaracteristica, valor)`.
+     - `:ModaLink` retorna `unPerfil` al actor.
+
+---
+
+### DSD editarPerfil(unPerfil, nombreArtistico, biografia, caracteristicas[], fotoPerfil) | UC-11: Modificar perfil
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean datosValidos`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `unPerfil = editarPerfil(unPerfil, nombreArtistico, biografia, caracteristicas[], fotoPerfil)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `datosValidos` y `sePuedeAgregar`.
+  3. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  4. `:ModaLink` valida los datos: `datosValidos = validarCampos(nombreArtistico, biografia)`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo || !datosValidos]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Perfil inactivo o datos inválidos")`.
+  6. **Bloque Alternativo (`alt`)** [perfilActivo && datosValidos]:
+     - `:ModaLink` envía a `unPerfil`: `setNombreArtistico(nombreArtistico)`.
+     - `:ModaLink` envía a `unPerfil`: `setBiografia(biografia)`.
+     - `:ModaLink` envía a `unPerfil`: `setFotoPerfil(fotoPerfil)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya características por cargar]:
+       - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaCaracteristica`: `sePuedeAgregar = perteneceA(unPerfil.obtenerProfesion())`.
+       - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+         - `:ModaLink` envía a `unPerfil`: `actualizarCaracteristica(unaCaracteristica, valor)`.
+     - `:ModaLink` retorna `unPerfil` al actor.
+
+---
+
+### DSD solicitarBajaPerfil(unPerfil) | UC-12: Eliminar perfil
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+- **Flujo de interacción:**
+  1. El actor envía `solicitarBajaPerfil(unPerfil)` a `:ModaLink`.
+  2. Se inicializa la variable local `perfilActivo`.
+  3. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  4. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no se encuentra activo")`.
+  5. **Bloque Alternativo (`alt`)** [perfilActivo]:
+     - `:ModaLink` retorna al actor: `solicitarConfirmacion()`.
+     - **Bloque Opcional (`opt`)** [el actor confirma]:
+       - `:ModaLink` envía a `unPerfil`: `setEstado(PENDIENTE_BAJA)`.
+       - `:ModaLink` envía a `unPerfil`: `setFechaSolicitudBaja(ahora)`.
+       - `:ModaLink` retorna al actor: `notificarCuentaRegresiva(diasEstablecidos)`.
+
+---
+
+### DSD confirmarBajaPerfil(unPerfil) | UC-12: Eliminar perfil
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `notificaciones` (Colección de notificaciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+- **Variables locales / Notas:**
+  - `boolean pendienteBaja`
+- **Flujo de interacción:**
+  1. El actor envía `confirmarBajaPerfil(unPerfil)` a `:ModaLink`.
+  2. Se inicializa la variable local `pendienteBaja`.
+  3. `:ModaLink` consulta a `unPerfil`: `pendienteBaja = estaPendienteBaja()`.
+  4. **Bloque Alternativo (`alt`)** [!pendienteBaja]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no está pendiente de baja")`.
+  5. **Bloque Alternativo (`alt`)** [pendienteBaja]:
+     - `:ModaLink` envía a `unPerfil`: `setEstado(BAJA)`.
+     - `:ModaLink` envía a `unPerfil`: `setFechaBaja(ahora)`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarBajaPerfil(unPerfil)`.
+     - `:ModaLink` retorna al actor: `bajaPerfilRegistrada(unPerfil)`.
+
+---
+
+### DSD activarPerfil(unPerfil) | UC-13: Cambiar perfil activo
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+- **Flujo de interacción:**
+  1. El actor envía `activarPerfil(unPerfil)` a `:ModaLink`.
+  2. Se inicializa la variable local `perfilActivo`.
+  3. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  4. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no se encuentra activo")`.
+  5. **Bloque Alternativo (`alt`)** [perfilActivo]:
+     - `:ModaLink` solicita a `unPerfil`: `unUsuario = obtenerUsuario()`.
+     - `:ModaLink` envía a `unUsuario`: `setPerfilActivo(unPerfil)`.
+     - `:ModaLink` retorna al actor: `perfilActivado(unPerfil)`.
+
+---
+
+### DSD reportarPerfil(unPerfil, motivo, descripcionDetallada) | UC-15: Reportar perfil
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `reportes` (Colección de reportes)
+  - `notificaciones` (Colección de notificaciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unReporte : Reporte` (Instancia de la entidad Reporte)
+- **Variables locales / Notas:**
+  - `boolean motivoValido`
+  - `boolean reporteDuplicado = false`
+  - `boolean descripcionValida`
+- **Flujo de interacción:**
+  1. El actor envía `unReporte = reportarPerfil(unPerfil, motivo, descripcionDetallada)` a `:ModaLink`.
+  2. Se inicializan las variables locales `motivoValido`, `reporteDuplicado` y `descripcionValida`.
+  3. `:ModaLink` valida el motivo: `motivoValido = motivo != null`.
+  4. `:ModaLink` valida la descripción: `descripcionValida = motivo != "OTRO" || (descripcionDetallada != null && descripcionDetallada != "")`.
+  5. **Bloque Bucle (`loop`)** [Mientras haya reportes && `reporteDuplicado == false`]:
+     - `:ModaLink` solicita a `reportes`: `unReporte = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unReporte`: `reporteDuplicado = estaPendientePara(perfilActivo, unPerfil)`.
+  6. **Bloque Alternativo (`alt`)** [!motivoValido || !descripcionValida || reporteDuplicado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Motivo, descripción o reporte duplicado")`.
+  7. **Bloque Alternativo (`alt`)** [motivoValido && descripcionValida && !reporteDuplicado]:
+     - `:ModaLink` crea la instancia: `unReporte = registrar(PERFIL, unPerfil, perfilActivo, motivo, descripcionDetallada, PENDIENTE)`.
+     - `reportes.agregar(unReporte)`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarAdministradores(unReporte)`.
+     - `:ModaLink` retorna `unReporte` al actor.
+
+---
+
+### DSD buscarPerfiles(nombreArtistico, profesion, caracteristicas[], habilidades[]) | UC-16: Buscar perfil
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfiles` (Colección de perfiles)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+- **Variables locales / Notas:**
+  - `Lista perfilesFiltrados = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `perfiles = buscarPerfiles(nombreArtistico, profesion, caracteristicas[], habilidades[])` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilesFiltrados` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya perfiles activos]:
+     - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unPerfil`: `sePuedeAgregar = cumpleFiltros(nombreArtistico, profesion, caracteristicas, habilidades)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `perfilesFiltrados.agregar(unPerfil)`.
+  4. `:ModaLink` retorna `perfilesFiltrados` al actor.
+
+---
+
+### DSD seleccionarPerfil(idPerfil, perfiles) | UC-16: Buscar perfil
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfiles` (Colección de perfiles)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unPerfil = seleccionarPerfil(idPerfil, perfiles)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya perfiles && `retorno == false`]:
+     - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unPerfil`: `retorno = tieneId(idPerfil)`.
+  4. `:ModaLink` retorna `unPerfil` al actor.
+
+---
+
+### DSD marcarComoDisponible(fechaHoraInicio, fechaHoraFin) | UC-17: Asignar en calendario día disponible
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `agendas` (Colección de agendas)
+  - `bloqueos` (Colección de bloqueos de agenda)
+  - `unaAgenda : Agenda` (Instancia de la entidad Agenda)
+  - `unBloqueo : BloqueoAgenda` (Instancia de la entidad BloqueoAgenda)
+- **Variables locales / Notas:**
+  - `boolean tieneActividad`
+  - `boolean bloqueoEncontrado = false`
+  - La disponibilidad se representa por ausencia de bloqueos; la operación elimina el bloqueo que ocupa el rango indicado.
+- **Flujo de interacción:**
+  1. El actor envía `unBloqueo = marcarComoDisponible(fechaHoraInicio, fechaHoraFin)` a `:ModaLink`.
+  2. Se inicializan las variables locales `tieneActividad` y `bloqueoEncontrado`.
+  3. `:ModaLink` solicita a `agendas`: `unaAgenda = buscarPorUsuario(usuarioActivo)`.
+  4. `:ModaLink` consulta a `unaAgenda`: `tieneActividad = tieneActividadEn(fechaHoraInicio, fechaHoraFin)`.
+  5. **Bloque Alternativo (`alt`)** [tieneActividad]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El rango se superpone con una actividad asignada")`.
+  6. **Bloque Alternativo (`alt`)** [!tieneActividad]:
+     - **Bloque Bucle (`loop`)** [Mientras haya bloqueos de la agenda && `bloqueoEncontrado == false`]:
+       - `:ModaLink` solicita a `bloqueos`: `unBloqueo = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unBloqueo`: `bloqueoEncontrado = coincideCon(fechaHoraInicio, fechaHoraFin)`.
+     - **Bloque Alternativo (`alt`)** [bloqueoEncontrado]:
+       - `:ModaLink` solicita a `bloqueos`: `eliminar(unBloqueo)`.
+       - `:ModaLink` retorna al actor: `bloqueDisponible(unBloqueo)`.
+     - **Bloque Alternativo (`alt`)** [!bloqueoEncontrado]:
+       - `:ModaLink` retorna al actor: `bloqueDisponible(null)`.
+
+---
+
+### DSD marcarComoNoDisponible(fechaHoraInicio, fechaHoraFin, motivo) | UC-18: Asignar en calendario día no disponible
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `agendas` (Colección de agendas)
+  - `bloqueos` (Colección de bloqueos de agenda)
+  - `unaAgenda : Agenda` (Instancia de la entidad Agenda)
+  - `unBloqueo : BloqueoAgenda` (Instancia de la entidad BloqueoAgenda)
+- **Variables locales / Notas:**
+  - `boolean rangoValido`
+  - `boolean seSuperpone = false`
+  - `boolean motivoValido`
+- **Flujo de interacción:**
+  1. El actor envía `unBloqueo = marcarComoNoDisponible(fechaHoraInicio, fechaHoraFin, motivo)` a `:ModaLink`.
+  2. Se inicializan las variables locales `rangoValido`, `seSuperpone` y `motivoValido`.
+  3. `:ModaLink` valida el rango: `rangoValido = fechaHoraFin > fechaHoraInicio`.
+  4. `:ModaLink` valida el motivo: `motivoValido = motivo != null && motivo != ""`.
+  5. `:ModaLink` solicita a `agendas`: `unaAgenda = buscarPorUsuario(usuarioActivo)`.
+  6. **Bloque Bucle (`loop`)** [Mientras haya bloqueos de la agenda && `seSuperpone == false`]:
+     - `:ModaLink` solicita a `bloqueos`: `unBloqueo = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unBloqueo`: `seSuperpone = seSuperponeCon(fechaHoraInicio, fechaHoraFin)`.
+  7. **Bloque Alternativo (`alt`)** [!rangoValido || !motivoValido || seSuperpone]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Rango, motivo o superposición inválidos")`.
+  8. **Bloque Alternativo (`alt`)** [rangoValido && motivoValido && !seSuperpone]:
+     - `:ModaLink` crea la instancia: `unBloqueo = registrar(unaAgenda, fechaHoraInicio, fechaHoraFin, motivo)`.
+     - `:ModaLink` agrega la instancia: `bloqueos.agregar(unBloqueo)`.
+     - `:ModaLink` retorna al actor: `bloqueoRegistrado(unBloqueo)`.
+
+---
+
+### DSD buscarHabilidades(nombre) | UC-48: Buscar habilidades
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `habilidades` (Colección de habilidades)
+  - `unaHabilidad : Habilidad` (Instancia de la entidad Habilidad)
+- **Variables locales / Notas:**
+  - `Lista habilidadesFiltradas = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `habilidades = buscarHabilidades(nombre)` a `:ModaLink`.
+  2. Se inicializan las variables locales `habilidadesFiltradas` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya habilidades]:
+     - `:ModaLink` solicita a `habilidades`: `unaHabilidad = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaHabilidad`: `sePuedeAgregar = cumpleFiltro(nombre)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `habilidadesFiltradas.agregar(unaHabilidad)`.
+  4. `:ModaLink` retorna `habilidadesFiltradas` al actor.
+
+---
+
+### DSD buscarCaracteristicasTecnicas(idProfesion) | UC-58: Buscar características técnicas
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+- **Variables locales / Notas:**
+  - `Lista caracteristicasFiltradas = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `caracteristicas = buscarCaracteristicasTecnicas(idProfesion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `caracteristicasFiltradas` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya características técnicas]:
+     - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCaracteristica`: `sePuedeAgregar = perteneceAProfesion(idProfesion)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `caracteristicasFiltradas.agregar(unaCaracteristica)`.
+  4. `:ModaLink` retorna `caracteristicasFiltradas` al actor.
+
+---
+
+### DSD buscarProfesiones() | UC-59: Buscar profesiones
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `profesiones` (Colección de profesiones)
+  - `unaProfesion : Profesion` (Instancia de la entidad Profesion)
+- **Variables locales / Notas:**
+  - `Lista profesionesActivas = nueva Lista()`
+  - `boolean estaActiva`
+- **Flujo de interacción:**
+  1. El actor envía `profesiones = buscarProfesiones()` a `:ModaLink`.
+  2. Se inicializan las variables locales `profesionesActivas` y `estaActiva`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya profesiones]:
+     - `:ModaLink` solicita a `profesiones`: `unaProfesion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaProfesion`: `estaActiva = estaActiva()`.
+     - **Bloque Alternativo (`alt`)** [estaActiva]:
+       - `profesionesActivas.agregar(unaProfesion)`.
+  4. `:ModaLink` retorna `profesionesActivas` al actor.
+
+---
+
+### DSD seleccionarProfesion(idProfesion, profesiones) | UC-59: Buscar profesiones
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `profesiones` (Colección de profesiones)
+  - `unaProfesion : Profesion` (Instancia de la entidad Profesion)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unaProfesion = seleccionarProfesion(idProfesion, profesiones)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya profesiones && `retorno == false`]:
+     - `:ModaLink` solicita a `profesiones`: `unaProfesion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaProfesion`: `retorno = tieneId(idProfesion)`.
+  4. `:ModaLink` retorna `unaProfesion` al actor.
+
+---
+
+### DSD configurarDiaCompleto(diaSemana, horaInicio, horaFin) | UC-71: Configurar jornada laboral
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `agendas` (Colección de agendas)
+  - `jornadas` (Colección de jornadas de agenda)
+  - `unaAgenda : Agenda` (Instancia de la entidad Agenda)
+  - `unaJornada : JornadaAgenda` (Instancia de la entidad JornadaAgenda)
+- **Variables locales / Notas:**
+  - `boolean rangoValido`
+  - `boolean existeJornada = false`
+- **Flujo de interacción:**
+  1. El actor envía `configurarDiaCompleto(diaSemana, horaInicio, horaFin)` a `:ModaLink`.
+  2. Se inicializan las variables locales `rangoValido` y `existeJornada`.
+  3. `:ModaLink` valida el rango: `rangoValido = horaFin > horaInicio`.
+  4. **Bloque Alternativo (`alt`)** [!rangoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Horario inválido")`.
+  5. **Bloque Alternativo (`alt`)** [rangoValido]:
+     - `:ModaLink` solicita a `agendas`: `unaAgenda = buscarPorUsuario(usuarioActivo)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya jornadas de la agenda && `existeJornada == false`]:
+       - `:ModaLink` solicita a `jornadas`: `unaJornada = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaJornada`: `existeJornada = correspondeADia(diaSemana)`.
+     - **Bloque Alternativo (`alt`)** [existeJornada]:
+       - `:ModaLink` envía a `unaJornada`: `configurarCompleto(horaInicio, horaFin)`.
+     - **Bloque Alternativo (`alt`)** [!existeJornada]:
+       - `:ModaLink` crea la jornada: `unaJornada = registrar(unaAgenda, diaSemana, horaInicio, horaFin)`.
+       - `jornadas.agregar(unaJornada)`.
+     - `:ModaLink` retorna al actor: `jornadaConfigurada(unaJornada)`.
+
+---
+
+### DSD configurarDiaPartida(diaSemana, horaInicioManana, horaFinManana, horaInicioTarde, horaFinTarde) | UC-71: Configurar jornada laboral
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `agendas` (Colección de agendas)
+  - `jornadas` (Colección de jornadas de agenda)
+  - `unaAgenda : Agenda` (Instancia de la entidad Agenda)
+  - `unaJornada : JornadaAgenda` (Instancia de la entidad JornadaAgenda)
+- **Variables locales / Notas:**
+  - `boolean rangoValido`
+  - `boolean existeJornada = false`
+- **Flujo de interacción:**
+  1. El actor envía `configurarDiaPartida(diaSemana, horaInicioManana, horaFinManana, horaInicioTarde, horaFinTarde)` a `:ModaLink`.
+  2. Se inicializan las variables locales `rangoValido` y `existeJornada`.
+  3. `:ModaLink` valida el rango: `rangoValido = horaFinManana > horaInicioManana && horaFinTarde > horaInicioTarde && horaInicioTarde > horaFinManana`.
+  4. **Bloque Alternativo (`alt`)** [!rangoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Horario partido inválido")`.
+  5. **Bloque Alternativo (`alt`)** [rangoValido]:
+     - `:ModaLink` solicita a `agendas`: `unaAgenda = buscarPorUsuario(usuarioActivo)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya jornadas de la agenda && `existeJornada == false`]:
+       - `:ModaLink` solicita a `jornadas`: `unaJornada = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaJornada`: `existeJornada = correspondeADia(diaSemana)`.
+     - **Bloque Alternativo (`alt`)** [existeJornada]:
+       - `:ModaLink` envía a `unaJornada`: `configurarPartido(horaInicioManana, horaFinManana, horaInicioTarde, horaFinTarde)`.
+     - **Bloque Alternativo (`alt`)** [!existeJornada]:
+       - `:ModaLink` crea la jornada: `unaJornada = registrar(unaAgenda, diaSemana, horaInicioManana, horaFinManana, horaInicioTarde, horaFinTarde)`.
+       - `jornadas.agregar(unaJornada)`.
+     - `:ModaLink` retorna al actor: `jornadaConfigurada(unaJornada)`.
+
+---
+
+### DSD confirmarJornadaLaboral() | UC-71: Configurar jornada laboral
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `agendas` (Colección de agendas)
+  - `jornadas` (Colección de jornadas de agenda)
+  - `actividades` (Colección de actividades)
+  - `notificaciones` (Colección de notificaciones)
+  - `unaAgenda : Agenda` (Instancia de la entidad Agenda)
+  - `unaJornada : JornadaAgenda` (Instancia de la entidad JornadaAgenda)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+- **Variables locales / Notas:**
+  - `boolean existeConflicto = false`
+  - `boolean jornadaValida`
+- **Flujo de interacción:**
+  1. El actor envía `confirmarJornadaLaboral()` a `:ModaLink`.
+  2. Se inicializan las variables locales `existeConflicto` y `jornadaValida`.
+  3. `:ModaLink` solicita a `agendas`: `unaAgenda = buscarPorUsuario(usuarioActivo)`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya actividades asignadas al usuario && `existeConflicto == false`]:
+     - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaActividad`: `existeConflicto = seSuperponeConJornada(unaAgenda)`.
+  5. **Bloque Alternativo (`alt`)** [existeConflicto]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La jornada se superpone con actividades ya asignadas")`.
+  6. **Bloque Alternativo (`alt`)** [!existeConflicto]:
+     - `:ModaLink` envía a `unaAgenda`: `guardarJornada()`.
+     - `:ModaLink` retorna al actor: `jornadaLaboralRegistrada()`.
+     - `:ModaLink` retorna al actor: `vincularCalendarioUsuario()`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarCambioJornada()`.
+
+---
+
+---
+
+## 3. Proyectos
+
+### DSD crearProyecto(nombre, descripcion, privacidad, ubicacion, requerimientosGral[], moodboard, objetivos[], fechaEntregaEstipulada) | UC-24: Crear proyecto
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `perfiles` (Colección de perfiles)
+  - `rolesProyecto` (Colección de roles de proyecto)
+  - `planificaciones` (Colección de planificaciones)
+  - `objetivos` (Colección de objetivos)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `moodboards` (Colección de moodboards)
+  - `ubicaciones` (Colección de ubicaciones)
+  - `miembros` (Colección de miembros de proyecto)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unRol : RolProyecto` (Instancia de la entidad RolProyecto)
+  - `unaPlanificacion : Planificacion` (Instancia de la entidad Planificacion)
+  - `unObjetivo : Objetivo` (Instancia de la entidad Objetivo)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+  - `unMoodboard : Moodboard` (Instancia de la entidad Moodboard)
+  - `unaUbicacion : Ubicacion` (Instancia de la entidad Ubicacion)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean fechaValida`
+  - `boolean nombreDuplicado = false`
+  - `boolean rolEncontrado = false`
+  - `boolean ubicacionEncontrada = false`
+- **Flujo de interacción:**
+  1. El actor envía `unProyecto = crearProyecto(nombre, descripcion, privacidad, ubicacion, requerimientosGral[], moodboard, objetivos[], fechaEntregaEstipulada)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `fechaValida`, `nombreDuplicado`, `rolEncontrado` y `ubicacionEncontrada`.
+  3. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  4. `:ModaLink` valida la fecha: `fechaValida = fechaEntregaEstipulada > ahora`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo || !fechaValida]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Perfil inactivo o fecha de entrega inválida")`.
+  6. **Bloque Bucle (`loop`)** [Mientras haya roles de proyecto && `rolEncontrado == false`]:
+     - `:ModaLink` solicita a `rolesProyecto`: `unRol = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unRol`: `rolEncontrado = tieneCodigo("DIRECTOR")`.
+  7. **Bloque Bucle (`loop`)** [Mientras haya proyectos && `nombreDuplicado == false`]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `nombreDuplicado = tieneNombreParaPerfil(nombre, unPerfil)`.
+  8. **Bloque Alternativo (`alt`)** [nombreDuplicado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil ya tiene un proyecto con ese nombre")`.
+  9. **Bloque Alternativo (`alt`)** [!nombreDuplicado]:
+     - **Bloque Opcional (`opt`)** [ubicacion != null]:
+       - **Bloque Bucle (`loop`)** [Mientras haya ubicaciones && `ubicacionEncontrada == false`]:
+         - `:ModaLink` solicita a `ubicaciones`: `unaUbicacion = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unaUbicacion`: `ubicacionEncontrada = coincideCon(ubicacion)`.
+       - **Bloque Alternativo (`alt`)** [!ubicacionEncontrada]:
+         - `:ModaLink` crea la ubicación: `unaUbicacion = registrar(ubicacion)`.
+         - `ubicaciones.agregar(unaUbicacion)`.
+     - `:ModaLink` crea el proyecto: `unProyecto = registrar(nombre, descripcion, privacidad, BORRADOR, fechaEntregaEstipulada, unaUbicacion)`.
+     - `proyectos.agregar(unProyecto)`.
+     - `:ModaLink` crea el miembro director: `unMiembro = registrar(unPerfil, unRol, ACTIVO)`.
+     - `miembros.agregar(unMiembro)`.
+     - `:ModaLink` crea la planificación: `unaPlanificacion = registrar(unProyecto, fechaEntregaEstipulada)`.
+     - `planificaciones.agregar(unaPlanificacion)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya objetivos por cargar]:
+       - `:ModaLink` crea el objetivo: `unObjetivo = registrar(descripcion, unProyecto)`.
+       - `objetivos.agregar(unObjetivo)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya requerimientos generales por cargar]:
+       - `:ModaLink` crea el requerimiento: `unRequerimiento = registrar(profesion, cantidad, caracteristicas[], habilidades[], unProyecto)`.
+       - `requerimientosGenerales.agregar(unRequerimiento)`.
+     - **Bloque Opcional (`opt`)** [moodboard != null]:
+       - `:ModaLink` crea el moodboard: `unMoodboard = registrar(moodboard, unProyecto)`.
+       - `moodboards.agregar(unMoodboard)`.
+     - `:ModaLink` retorna `unProyecto` al actor.
+
+---
+
+### DSD publicarProyecto(unProyecto) | UC-25: Publicar proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+- **Variables locales / Notas:**
+  - `boolean estaEnBorrador`
+  - `boolean informacionCompleta`
+- **Flujo de interacción:**
+  1. El actor envía `unProyecto = publicarProyecto(unProyecto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estaEnBorrador` e `informacionCompleta`.
+  3. `:ModaLink` consulta a `unProyecto`: `estaEnBorrador = estaEnEstado(BORRADOR)`.
+  4. **Bloque Alternativo (`alt`)** [!estaEnBorrador]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El proyecto no está en estado Borrador")`.
+  5. **Bloque Alternativo (`alt`)** [estaEnBorrador]:
+     - `:ModaLink` consulta a `unProyecto`: `informacionCompleta = tieneInformacionBasicaCompleta()`.
+     - **Bloque Alternativo (`alt`)** [!informacionCompleta]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El proyecto tiene información básica incompleta")`.
+     - **Bloque Alternativo (`alt`)** [informacionCompleta]:
+       - `:ModaLink` envía a `unProyecto`: `setEstado(PUBLICADO)`.
+       - `:ModaLink` retorna `unProyecto` al actor.
+
+---
+
+### DSD buscarProyectos(nombre, estado, director) | UC-29: Buscar proyecto
+
+- **Actores:** Usuario / Director de proyecto / Miembro de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+- **Variables locales / Notas:**
+  - `Lista proyectosFiltrados = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `proyectos = buscarProyectos(nombre, estado, director)` a `:ModaLink`.
+  2. Se inicializan las variables locales `proyectosFiltrados` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya proyectos visibles]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `sePuedeAgregar = cumpleFiltros(nombre, estado, director)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `proyectosFiltrados.agregar(unProyecto)`.
+  4. `:ModaLink` retorna `proyectosFiltrados` al actor.
+
+---
+
+### DSD seleccionarProyecto(idProyecto, proyectos) | UC-29: Buscar proyecto
+
+- **Actores:** Usuario / Director de proyecto / Miembro de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unProyecto = seleccionarProyecto(idProyecto, proyectos)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya proyectos && `retorno == false`]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `retorno = tieneId(idProyecto)`.
+  4. `:ModaLink` retorna `unProyecto` al actor.
+
+---
+
+### DSD solicitarCronograma(unProyecto) | UC-33: Visualizar cronograma de proyecto
+
+- **Actores:** Director de proyecto / Miembro de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `actividades` (Colección de actividades)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+- **Variables locales / Notas:**
+  - `Lista actividadesProyecto = nueva Lista()`
+  - `boolean perteneceAlProyecto`
+  - `Cronograma cronograma`
+- **Flujo de interacción:**
+  1. El actor envía `cronograma = solicitarCronograma(unProyecto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `actividadesProyecto` y `perteneceAlProyecto`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya actividades]:
+     - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaActividad`: `perteneceAlProyecto = perteneceA(unProyecto)`.
+     - **Bloque Alternativo (`alt`)** [perteneceAlProyecto]:
+       - `actividadesProyecto.agregar(unaActividad)`.
+  4. `:ModaLink` calcula la ruta crítica: `cronograma = calcularCPM(actividadesProyecto)`.
+  5. `:ModaLink` retorna al actor: `desplegarCronograma(unProyecto, cronograma)`.
+
+---
+
+### DSD cancelarProyecto(unProyecto, motivoCancelacion) | UC-35: Cancelar proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `actividades` (Colección de actividades)
+  - `postulacionesGenerales` (Colección de postulaciones generales)
+  - `postulacionesActividad` (Colección de postulaciones de actividad)
+  - `invitacionesGenerales` (Colección de invitaciones generales)
+  - `invitacionesActividad` (Colección de invitaciones de actividad)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaPostulacion : PostulacionGeneral` (Instancia de la entidad PostulacionGeneral)
+  - `unaPostulacionAct : PostulacionActividad` (Instancia de la entidad PostulacionActividad)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+  - `unaInvitacionAct : InvitacionActividad` (Instancia de la entidad InvitacionActividad)
+- **Variables locales / Notas:**
+  - `boolean estadoValido`
+  - `boolean motivoValido`
+  - `boolean perteneceAlProyecto`
+- **Flujo de interacción:**
+  1. El actor envía `cancelarProyecto(unProyecto, motivoCancelacion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estadoValido` y `motivoValido`.
+  3. `:ModaLink` consulta a `unProyecto`: `estadoValido = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  4. `:ModaLink` valida el motivo: `motivoValido = motivoCancelacion != null && motivoCancelacion != ""`.
+  5. **Bloque Alternativo (`alt`)** [!estadoValido || !motivoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Estado o motivo de cancelación inválido")`.
+  6. **Bloque Alternativo (`alt`)** [estadoValido && motivoValido]:
+     - `:ModaLink` envía a `unProyecto`: `setEstado(CANCELADO)`.
+     - `:ModaLink` envía a `unProyecto`: `setMotivoCancelacion(motivoCancelacion)`.
+     - `:ModaLink` envía a `unProyecto`: `setFechaCancelacion(ahora)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya actividades del proyecto]:
+       - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaActividad`: `perteneceAlProyecto = perteneceA(unProyecto)`.
+       - **Bloque Alternativo (`alt`)** [perteneceAlProyecto && (unaActividad.estaPendiente() || unaActividad.estaEnCurso())]:
+         - `:ModaLink` envía a `unaActividad`: `setEstado(CANCELADA)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya postulaciones generales del proyecto]:
+       - `:ModaLink` solicita a `postulacionesGenerales`: `unaPostulacion = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unaPostulacion.perteneceA(unProyecto) && unaPostulacion.estaPendiente()]:
+         - `:ModaLink` envía a `unaPostulacion`: `setEstado(RECHAZADA)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya postulaciones de actividad del proyecto]:
+       - `:ModaLink` solicita a `postulacionesActividad`: `unaPostulacionAct = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unaPostulacionAct.perteneceA(unProyecto) && unaPostulacionAct.estaPendiente()]:
+         - `:ModaLink` envía a `unaPostulacionAct`: `setEstado(RECHAZADA)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya invitaciones generales del proyecto]:
+       - `:ModaLink` solicita a `invitacionesGenerales`: `unaInvitacion = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unaInvitacion.perteneceA(unProyecto) && unaInvitacion.estaPendiente()]:
+         - `:ModaLink` envía a `unaInvitacion`: `setEstado(RECHAZADA)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya invitaciones de actividad del proyecto]:
+       - `:ModaLink` solicita a `invitacionesActividad`: `unaInvitacionAct = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unaInvitacionAct.perteneceA(unProyecto) && unaInvitacionAct.estaPendiente()]:
+         - `:ModaLink` envía a `unaInvitacionAct`: `setEstado(RECHAZADA)`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarCancelacionIntegrantes(unProyecto, motivoCancelacion)`.
+     - `:ModaLink` retorna al actor: `proyectoCancelado(unProyecto)`.
+
+---
+
+### DSD modificarProyecto(unProyecto, descripcion, privacidad, ubicacion, requerimientosPersonal[], moodboard, objetivos, fechaEntregaEstipulada) | UC-36: Modificar proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+- **Variables locales / Notas:**
+  - `boolean estadoValido`
+  - `boolean datosValidos`
+  - `boolean requerimientoProtegido`
+- **Flujo de interacción:**
+  1. El actor envía `unProyecto = modificarProyecto(unProyecto, descripcion, privacidad, ubicacion, requerimientosPersonal[], moodboard, objetivos, fechaEntregaEstipulada)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estadoValido`, `datosValidos` y `requerimientoProtegido`.
+  3. `:ModaLink` consulta a `unProyecto`: `estadoValido = estaEnEstado(BORRADOR) || estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  4. `:ModaLink` valida los datos: `datosValidos = validarCampos(descripcion, privacidad, fechaEntregaEstipulada)`.
+  5. **Bloque Alternativo (`alt`)** [!estadoValido || !datosValidos]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Estado o datos inválidos")`.
+  6. **Bloque Alternativo (`alt`)** [estadoValido && datosValidos]:
+     - `:ModaLink` envía a `unProyecto`: `setDescripcion(descripcion)`.
+     - `:ModaLink` envía a `unProyecto`: `setPrivacidad(privacidad)`.
+     - `:ModaLink` envía a `unProyecto`: `setUbicacion(ubicacion)`.
+     - `:ModaLink` envía a `unProyecto`: `setMoodboard(moodboard)`.
+     - `:ModaLink` envía a `unProyecto`: `setObjetivos(objetivos)`.
+     - `:ModaLink` envía a `unProyecto`: `setFechaEntregaEstipulada(fechaEntregaEstipulada)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya requerimientos personales por actualizar]:
+       - `:ModaLink` solicita a `requerimientosGenerales`: `unRequerimiento = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unRequerimiento`: `requerimientoProtegido = estaProtegido()`.
+       - **Bloque Alternativo (`alt`)** [requerimientoProtegido]:
+         - `:ModaLink` conserva `unRequerimiento` sin cambios.
+       - **Bloque Alternativo (`alt`)** [!requerimientoProtegido]:
+         - `:ModaLink` envía a `unRequerimiento`: `actualizar(datos)`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarParticipantes(unProyecto)`.
+     - `:ModaLink` retorna `unProyecto` al actor.
+
+---
+
+### DSD finalizarProyecto(unProyecto) | UC-37: Finalizar proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `actividades` (Colección de actividades)
+  - `miembros` (Colección de miembros de proyecto)
+  - `calificaciones` (Colección de calificaciones)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaCalificacion : CalificacionPerfil` (Instancia de la entidad CalificacionPerfil)
+- **Variables locales / Notas:**
+  - `boolean estadoValido`
+  - `boolean actividadesFinalizadas = true`
+  - `boolean equipoCalificado = true`
+  - `boolean tieneCalificacion`
+- **Flujo de interacción:**
+  1. El actor envía `unProyecto = finalizarProyecto(unProyecto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estadoValido`, `actividadesFinalizadas` y `equipoCalificado`.
+  3. `:ModaLink` consulta a `unProyecto`: `estadoValido = estaEnEstado(CONFIRMADO)`.
+  4. **Bloque Alternativo (`alt`)** [!estadoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El proyecto no está confirmado")`.
+  5. **Bloque Alternativo (`alt`)** [estadoValido]:
+     - **Bloque Bucle (`loop`)** [Mientras haya actividades del proyecto && `actividadesFinalizadas`]:
+       - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unaActividad.perteneceA(unProyecto) && (unaActividad.estaPendiente() || unaActividad.estaEnCurso())]:
+         - `actividadesFinalizadas = false`.
+     - **Bloque Alternativo (`alt`)** [!actividadesFinalizadas]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Existen actividades pendientes o en curso")`.
+     - **Bloque Alternativo (`alt`)** [actividadesFinalizadas]:
+       - **Bloque Bucle (`loop`)** [Mientras haya miembros activos && `equipoCalificado`]:
+         - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `calificaciones`: `tieneCalificacion = existeCalificacion(unProyecto, unMiembro)`.
+         - **Bloque Alternativo (`alt`)** [!tieneCalificacion]:
+           - `equipoCalificado = false`.
+       - **Bloque Alternativo (`alt`)** [!equipoCalificado]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El equipo no fue calificado completo")`.
+       - **Bloque Alternativo (`alt`)** [equipoCalificado]:
+         - `:ModaLink` envía a `unProyecto`: `setEstado(FINALIZADO)`.
+         - `:ModaLink` envía a `unProyecto`: `setFechaFinalizacion(ahora)`.
+         - `:ModaLink` indexa el proyecto en el historial de cada miembro: `indexarHistorial(unProyecto, miembros)`.
+         - `:ModaLink` agrega a `notificaciones`: `notificarCalificacionesEquipo(unProyecto)`.
+         - `:ModaLink` retorna `unProyecto` al actor.
+
+---
+
+### DSD calificarMiembro(unPerfil, calificacion, resenia) | UC-37: Finalizar proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `calificaciones` (Colección de calificaciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaCalificacion : CalificacionPerfil` (Instancia de la entidad CalificacionPerfil)
+- **Variables locales / Notas:**
+  - `boolean calificacionValida`
+  - `boolean participo = false`
+  - `boolean yaCalificado = false`
+- **Flujo de interacción:**
+  1. El actor envía `unaCalificacion = calificarMiembro(unPerfil, calificacion, resenia)` a `:ModaLink`.
+  2. Se inicializan las variables locales `calificacionValida`, `participo` y `yaCalificado`.
+  3. `:ModaLink` valida la calificación: `calificacionValida = calificacion >= 1 && calificacion <= 5 && resenia != null && resenia != ""`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya miembros && `participo == false`]:
+     - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unMiembro`: `participo = correspondeAPerfil(unPerfil)`.
+  5. **Bloque Bucle (`loop`)** [Mientras haya calificaciones && `yaCalificado == false`]:
+     - `:ModaLink` solicita a `calificaciones`: `unaCalificacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCalificacion`: `yaCalificado = correspondeA(unPerfil, unProyecto)`.
+  6. **Bloque Alternativo (`alt`)** [!calificacionValida || !participo || yaCalificado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Calificación, participación o duplicado inválido")`.
+  7. **Bloque Alternativo (`alt`)** [calificacionValida && participo && !yaCalificado]:
+     - `:ModaLink` crea la calificación: `unaCalificacion = registrar(unPerfil, perfilActivo, calificacion, resenia, unProyecto)`.
+     - `calificaciones.agregar(unaCalificacion)`.
+     - `:ModaLink` retorna `unaCalificacion` al actor.
+
+---
+
+### DSD eliminarIntegrante(unProyecto, unPerfil, motivo) | UC-38: Eliminar integrante
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `asignaciones` (Colección de asignaciones de actividad)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaAsignacion : AsignacionActividad` (Instancia de la entidad AsignacionActividad)
+- **Variables locales / Notas:**
+  - `boolean estadoValido`
+  - `boolean motivoValido`
+  - `boolean miembroEncontrado = false`
+  - `boolean esUltimoDirector`
+- **Flujo de interacción:**
+  1. El actor envía `eliminarIntegrante(unProyecto, unPerfil, motivo)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estadoValido`, `motivoValido`, `miembroEncontrado` y `esUltimoDirector`.
+  3. `:ModaLink` consulta a `unProyecto`: `estadoValido = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  4. `:ModaLink` valida el motivo: `motivoValido = motivo != null && motivo != ""`.
+  5. **Bloque Bucle (`loop`)** [Mientras haya miembros && `miembroEncontrado == false`]:
+     - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unMiembro`: `miembroEncontrado = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+  6. **Bloque Alternativo (`alt`)** [!estadoValido || !motivoValido || !miembroEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Estado, motivo o integrante inválido")`.
+  7. **Bloque Alternativo (`alt`)** [estadoValido && motivoValido && miembroEncontrado]:
+     - `:ModaLink` consulta a `unProyecto`: `esUltimoDirector = unMiembro.esUltimoDirectorActivo(unProyecto)`.
+     - **Bloque Alternativo (`alt`)** [esUltimoDirector]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("No se puede eliminar al último director activo")`.
+     - **Bloque Alternativo (`alt`)** [!esUltimoDirector]:
+       - `:ModaLink` envía a `unMiembro`: `setEstado(ELIMINADO)`.
+       - `:ModaLink` envía a `unMiembro`: `setMotivoBaja(motivo)`.
+       - `:ModaLink` envía a `unMiembro`: `setFechaBaja(ahora)`.
+       - `:ModaLink` envía a `unMiembro`: `setPerfilAutorBaja(perfilActivo)`.
+       - **Bloque Bucle (`loop`)** [Mientras haya asignaciones del integrante]:
+         - `:ModaLink` solicita a `asignaciones`: `unaAsignacion = obtenerSiguiente()`.
+         - **Bloque Alternativo (`alt`)** [unaAsignacion.perteneceA(unMiembro)]:
+           - `:ModaLink` conserva `unaAsignacion` para auditoría.
+       - `:ModaLink` agrega a `notificaciones`: `notificarIntegranteEliminado(unPerfil, motivo)`.
+       - `:ModaLink` retorna al actor: `bajaIntegranteRegistrada(unProyecto, unPerfil)`.
+
+---
+
+### DSD darseDeBaja(unProyecto, motivo) | UC-40: Darse de baja de proyecto
+
+- **Actores:** Miembro de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+- **Variables locales / Notas:**
+  - `boolean estadoValido`
+  - `boolean motivoValido`
+  - `boolean miembroEncontrado = false`
+  - `boolean esUltimoDirector`
+- **Flujo de interacción:**
+  1. El actor envía `darseDeBaja(unProyecto, motivo)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estadoValido`, `motivoValido`, `miembroEncontrado` y `esUltimoDirector`.
+  3. `:ModaLink` consulta a `unProyecto`: `estadoValido = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  4. `:ModaLink` valida el motivo: `motivoValido = motivo != null && motivo != ""`.
+  5. **Bloque Bucle (`loop`)** [Mientras haya miembros && `miembroEncontrado == false`]:
+     - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unMiembro`: `miembroEncontrado = correspondeA(unProyecto, perfilActivo) && estaActivo()`.
+  6. **Bloque Alternativo (`alt`)** [!estadoValido || !motivoValido || !miembroEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Estado, motivo o membresía inválida")`.
+  7. **Bloque Alternativo (`alt`)** [estadoValido && motivoValido && miembroEncontrado]:
+     - `:ModaLink` consulta a `unProyecto`: `esUltimoDirector = unMiembro.esUltimoDirectorActivo(unProyecto)`.
+     - **Bloque Alternativo (`alt`)** [esUltimoDirector]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Debe quedar al menos otro director activo")`.
+     - **Bloque Alternativo (`alt`)** [!esUltimoDirector]:
+       - `:ModaLink` envía a `unMiembro`: `setEstado(BAJA_VOLUNTARIA)`.
+       - `:ModaLink` envía a `unMiembro`: `setMotivoBaja(motivo)`.
+       - `:ModaLink` envía a `unMiembro`: `setFechaBaja(ahora)`.
+       - `:ModaLink` agrega a `notificaciones`: `notificarDirectores(unProyecto, motivo)`.
+       - `:ModaLink` retorna al actor: `bajaVoluntariaRegistrada(unProyecto)`.
+
+---
+
+### DSD confirmarProyecto(unProyecto) | UC-60: Confirmar proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `actividades` (Colección de actividades)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `miembros` (Colección de miembros de proyecto)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+  - `unRequerimientoAct : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+- **Variables locales / Notas:**
+  - `boolean estaPublicado`
+  - `boolean tieneActividades = false`
+  - `boolean requerimientosCompletos = true`
+  - `boolean disponibilidadValida = true`
+- **Flujo de interacción:**
+  1. El actor envía `unProyecto = confirmarProyecto(unProyecto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estaPublicado`, `tieneActividades`, `requerimientosCompletos` y `disponibilidadValida`.
+  3. `:ModaLink` consulta a `unProyecto`: `estaPublicado = estaEnEstado(PUBLICADO)`.
+  4. **Bloque Alternativo (`alt`)** [!estaPublicado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El proyecto no está publicado")`.
+  5. **Bloque Alternativo (`alt`)** [estaPublicado]:
+     - **Bloque Bucle (`loop`)** [Mientras haya actividades del proyecto]:
+       - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unaActividad.perteneceA(unProyecto)]:
+         - `tieneActividades = true`.
+     - **Bloque Alternativo (`alt`)** [!tieneActividades]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El proyecto no tiene actividades planificadas")`.
+     - **Bloque Alternativo (`alt`)** [tieneActividades]:
+       - **Bloque Bucle (`loop`)** [Mientras haya requerimientos generales && `requerimientosCompletos`]:
+         - `:ModaLink` solicita a `requerimientosGenerales`: `unRequerimiento = obtenerSiguiente()`.
+         - **Bloque Alternativo (`alt`)** [unRequerimiento.perteneceA(unProyecto) && !unRequerimiento.estaSatisfecho()]:
+           - `requerimientosCompletos = false`.
+       - **Bloque Bucle (`loop`)** [Mientras haya requerimientos de actividad && `requerimientosCompletos`]:
+         - `:ModaLink` solicita a `requerimientosActividad`: `unRequerimientoAct = obtenerSiguiente()`.
+         - **Bloque Alternativo (`alt`)** [unRequerimientoAct.perteneceA(unProyecto) && !unRequerimientoAct.estaSatisfecho()]:
+           - `requerimientosCompletos = false`.
+       - **Bloque Bucle (`loop`)** [Mientras haya miembros activos && `disponibilidadValida`]:
+         - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unMiembro`: `disponibilidadValida = verificarDisponibilidadMiembro(unMiembro, unProyecto)`.
+       - **Bloque Alternativo (`alt`)** [!requerimientosCompletos || !disponibilidadValida]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("Requerimientos incompletos o indisponibilidad de recursos")`.
+       - **Bloque Alternativo (`alt`)** [requerimientosCompletos && disponibilidadValida]:
+         - `:ModaLink` envía a `unProyecto`: `setEstado(CONFIRMADO)`.
+         - `:ModaLink` envía a `unProyecto`: `setFechaInicio(ahora)`.
+         - **Bloque Bucle (`loop`)** [Mientras haya requerimientos generales]:
+           - `:ModaLink` solicita a `requerimientosGenerales`: `unRequerimiento = obtenerSiguiente()`.
+           - `:ModaLink` envía a `unRequerimiento`: `cerrarPostulaciones()`.
+         - `:ModaLink` agrega a `notificaciones`: `notificarParticipantes(unProyecto)`.
+         - `:ModaLink` retorna `unProyecto` al actor.
+
+---
+
+---
+
+## 4. Postulaciones
+
+### DSD darDeAltaPostulacionGeneral(unPerfil, unRequerimientoGeneral) | UC-26: Dar de alta postulación a proyecto
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `postulacionesGenerales` (Colección de postulaciones generales)
+  - `miembros` (Colección de miembros de proyecto)
+  - `notificaciones` (Colección de notificaciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaPostulacion : PostulacionGeneral` (Instancia de la entidad PostulacionGeneral)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean requerimientoEncontrado = false`
+  - `boolean proyectoAcepta`
+  - `boolean profesionCompatible`
+  - `boolean esMiembro = false`
+  - `boolean yaPostulado = false`
+  - `boolean requerimientoSatisfecho`
+- **Flujo de interacción:**
+  1. El actor envía `unaPostulacion = darDeAltaPostulacionGeneral(unPerfil, unRequerimientoGeneral)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `requerimientoEncontrado`, `proyectoAcepta`, `profesionCompatible`, `esMiembro`, `yaPostulado` y `requerimientoSatisfecho`.
+  3. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  4. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no se encuentra activo")`.
+  5. **Bloque Bucle (`loop`)** [Mientras haya requerimientos generales && `requerimientoEncontrado == false`]:
+     - `:ModaLink` solicita a `requerimientosGenerales`: `unRequerimiento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unRequerimiento`: `requerimientoEncontrado = tieneId(unRequerimientoGeneral)`.
+  6. **Bloque Alternativo (`alt`)** [!requerimientoEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Requerimiento general inexistente")`.
+  7. **Bloque Alternativo (`alt`)** [requerimientoEncontrado]:
+     - `:ModaLink` solicita a `unRequerimiento`: `unProyecto = obtenerProyecto()`.
+     - `:ModaLink` consulta a `unProyecto`: `proyectoAcepta = aceptaPostulaciones()`.
+     - `:ModaLink` consulta a `unPerfil`: `profesionCompatible = tieneProfesion(unRequerimiento.obtenerProfesion())`.
+     - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto && `esMiembro == false`]:
+       - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unMiembro`: `esMiembro = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya postulaciones generales && `yaPostulado == false`]:
+       - `:ModaLink` solicita a `postulacionesGenerales`: `unaPostulacion = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaPostulacion`: `yaPostulado = correspondeA(unRequerimiento, unPerfil)`.
+     - `:ModaLink` consulta a `unRequerimiento`: `requerimientoSatisfecho = estaSatisfecho()`.
+     - **Bloque Alternativo (`alt`)** [!proyectoAcepta || !profesionCompatible || esMiembro || yaPostulado || requerimientoSatisfecho]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no es elegible para postularse")`.
+     - **Bloque Alternativo (`alt`)** [proyectoAcepta && profesionCompatible && !esMiembro && !yaPostulado && !requerimientoSatisfecho]:
+       - `:ModaLink` crea la postulación: `unaPostulacion = registrar(unPerfil, unRequerimiento, PENDIENTE, ahora)`.
+       - `postulacionesGenerales.agregar(unaPostulacion)`.
+       - `:ModaLink` agrega a `notificaciones`: `notificarDirectores(unProyecto, unaPostulacion)`.
+       - `:ModaLink` retorna `unaPostulacion` al actor.
+
+---
+
+### DSD darDeAltaPostulacionActividad(unPerfil, unRequerimientoActividad) | UC-26: Dar de alta postulación a proyecto
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `postulacionesActividad` (Colección de postulaciones de actividad)
+  - `miembros` (Colección de miembros de proyecto)
+  - `notificaciones` (Colección de notificaciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaPostulacion : PostulacionActividad` (Instancia de la entidad PostulacionActividad)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean requerimientoEncontrado = false`
+  - `boolean proyectoAcepta`
+  - `boolean actividadPendiente`
+  - `boolean profesionCompatible`
+  - `boolean esMiembro = false`
+  - `boolean yaPostulado = false`
+  - `boolean disponible`
+- **Flujo de interacción:**
+  1. El actor envía `unaPostulacion = darDeAltaPostulacionActividad(unPerfil, unRequerimientoActividad)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `requerimientoEncontrado`, `proyectoAcepta`, `actividadPendiente`, `profesionCompatible`, `esMiembro`, `yaPostulado` y `disponible`.
+  3. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  4. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no se encuentra activo")`.
+  5. **Bloque Bucle (`loop`)** [Mientras haya requerimientos de actividad && `requerimientoEncontrado == false`]:
+     - `:ModaLink` solicita a `requerimientosActividad`: `unRequerimiento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unRequerimiento`: `requerimientoEncontrado = tieneId(unRequerimientoActividad)`.
+  6. **Bloque Alternativo (`alt`)** [!requerimientoEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Requerimiento de actividad inexistente")`.
+  7. **Bloque Alternativo (`alt`)** [requerimientoEncontrado]:
+     - `:ModaLink` solicita a `unRequerimiento`: `unaActividad = obtenerActividad()`.
+     - `:ModaLink` solicita a `unaActividad`: `unProyecto = obtenerProyecto()`.
+     - `:ModaLink` consulta a `unProyecto`: `proyectoAcepta = aceptaPostulaciones()`.
+     - `:ModaLink` consulta a `unaActividad`: `actividadPendiente = estaPendiente()`.
+     - `:ModaLink` consulta a `unPerfil`: `profesionCompatible = tieneProfesion(unRequerimiento.obtenerProfesion())`.
+     - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto && `esMiembro == false`]:
+       - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unMiembro`: `esMiembro = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya postulaciones de actividad && `yaPostulado == false`]:
+       - `:ModaLink` solicita a `postulacionesActividad`: `unaPostulacion = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaPostulacion`: `yaPostulado = correspondeA(unRequerimiento, unPerfil)`.
+     - `:ModaLink` solicita a `unPerfil`: `unUsuario = obtenerUsuario()`.
+     - `:ModaLink` consulta a `unUsuario`: `disponible = verificarDisponibilidad(unaActividad)`.
+     - **Bloque Alternativo (`alt`)** [!proyectoAcepta || !actividadPendiente || !profesionCompatible || esMiembro || yaPostulado || !disponible]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no es elegible para postularse a la actividad")`.
+     - **Bloque Alternativo (`alt`)** [proyectoAcepta && actividadPendiente && profesionCompatible && !esMiembro && !yaPostulado && disponible]:
+       - `:ModaLink` crea la postulación: `unaPostulacion = registrar(unPerfil, unRequerimiento, PENDIENTE, ahora)`.
+       - `postulacionesActividad.agregar(unaPostulacion)`.
+       - `:ModaLink` agrega a `notificaciones`: `notificarDirectores(unProyecto, unaPostulacion)`.
+       - `:ModaLink` retorna `unaPostulacion` al actor.
+
+---
+
+### DSD darDeBajaPostulacion(unaPostulacion) | UC-27: Dar de baja postulación a proyecto
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `postulacionesGenerales` (Colección de postulaciones generales)
+  - `postulacionesActividad` (Colección de postulaciones de actividad)
+  - `unaPostulacion : PostulacionGeneral` (Instancia de la entidad PostulacionGeneral)
+- **Variables locales / Notas:**
+  - `boolean estaPendiente`
+  - `boolean perteneceAlPerfil`
+  - `boolean esDeActividad`
+- **Flujo de interacción:**
+  1. El actor envía `darDeBajaPostulacion(unaPostulacion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estaPendiente`, `perteneceAlPerfil` y `esDeActividad`.
+  3. `:ModaLink` consulta a `unaPostulacion`: `estaPendiente = estaEnEstado(PENDIENTE)`.
+  4. `:ModaLink` consulta a `unaPostulacion`: `perteneceAlPerfil = correspondeA(perfilActivo)`.
+  5. `:ModaLink` consulta a `unaPostulacion`: `esDeActividad = esPostulacionDeActividad()`.
+  6. **Bloque Alternativo (`alt`)** [!estaPendiente || !perteneceAlPerfil]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La postulación no está pendiente o no pertenece al perfil")`.
+  7. **Bloque Alternativo (`alt`)** [estaPendiente && perteneceAlPerfil]:
+     - **Bloque Alternativo (`alt`)** [esDeActividad]:
+       - `:ModaLink` solicita a `postulacionesActividad`: `eliminar(unaPostulacion)`.
+     - **Bloque Alternativo (`alt`)** [!esDeActividad]:
+       - `:ModaLink` solicita a `postulacionesGenerales`: `eliminar(unaPostulacion)`.
+     - `:ModaLink` retorna al actor: `postulacionEliminada()`.
+
+---
+
+### DSD buscarPostulaciones(unProyecto, estado, tipo, nombrePerfil, profesion, fechaDesde, fechaHasta) | UC-74: Buscar postulaciones
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `postulacionesGenerales` (Colección de postulaciones generales)
+  - `postulacionesActividad` (Colección de postulaciones de actividad)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unaPostulacion : PostulacionGeneral` (Instancia de la entidad PostulacionGeneral)
+- **Variables locales / Notas:**
+  - `Lista postulacionesFiltradas = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `postulaciones = buscarPostulaciones(unProyecto, estado, tipo, nombrePerfil, profesion, fechaDesde, fechaHasta)` a `:ModaLink`.
+  2. Se inicializan las variables locales `postulacionesFiltradas` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya postulaciones generales del proyecto]:
+     - `:ModaLink` solicita a `postulacionesGenerales`: `unaPostulacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaPostulacion`: `sePuedeAgregar = cumpleFiltros(unProyecto, estado, tipo, nombrePerfil, profesion, fechaDesde, fechaHasta)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `postulacionesFiltradas.agregar(unaPostulacion)`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya postulaciones de actividad del proyecto]:
+     - `:ModaLink` solicita a `postulacionesActividad`: `unaPostulacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaPostulacion`: `sePuedeAgregar = cumpleFiltros(unProyecto, estado, tipo, nombrePerfil, profesion, fechaDesde, fechaHasta)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `postulacionesFiltradas.agregar(unaPostulacion)`.
+  5. `:ModaLink` ordena `postulacionesFiltradas` por estado y fecha.
+  6. `:ModaLink` retorna `postulacionesFiltradas` al actor.
+
+---
+
+### DSD seleccionarPostulacion(idPostulacion, postulaciones) | UC-74: Buscar postulaciones
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `postulacionesGenerales` (Colección de postulaciones generales)
+  - `postulacionesActividad` (Colección de postulaciones de actividad)
+  - `unaPostulacion : PostulacionGeneral` (Instancia de la entidad PostulacionGeneral)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unaPostulacion = seleccionarPostulacion(idPostulacion, postulaciones)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya postulaciones generales && `retorno == false`]:
+     - `:ModaLink` solicita a `postulacionesGenerales`: `unaPostulacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaPostulacion`: `retorno = tieneId(idPostulacion)`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya postulaciones de actividad && `retorno == false`]:
+     - `:ModaLink` solicita a `postulacionesActividad`: `unaPostulacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaPostulacion`: `retorno = tieneId(idPostulacion)`.
+  5. `:ModaLink` retorna `unaPostulacion` al actor.
+
+---
+
+### DSD aceptarPostulacion(unaPostulacion) | UC-34: Gestionar postulaciones
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `asignaciones` (Colección de asignaciones de actividad)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `notificaciones` (Colección de notificaciones)
+  - `unaPostulacion : PostulacionGeneral` (Instancia de la entidad PostulacionGeneral)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaAsignacion : AsignacionActividad` (Instancia de la entidad AsignacionActividad)
+  - `unRequerimientoGral : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+- **Variables locales / Notas:**
+  - `boolean estaPendiente`
+  - `boolean esMiembro = false`
+  - `boolean esDeActividad`
+- **Flujo de interacción:**
+  1. El actor envía `aceptarPostulacion(unaPostulacion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estaPendiente`, `esMiembro` y `esDeActividad`.
+  3. `:ModaLink` consulta a `unaPostulacion`: `estaPendiente = estaEnEstado(PENDIENTE)`.
+  4. **Bloque Alternativo (`alt`)** [!estaPendiente]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La postulación no está pendiente")`.
+  5. **Bloque Alternativo (`alt`)** [estaPendiente]:
+     - `:ModaLink` solicita a `unaPostulacion`: `unPerfil = obtenerPerfil()`.
+     - `:ModaLink` solicita a `unaPostulacion`: `unProyecto = obtenerProyecto()`.
+     - `:ModaLink` consulta a `unaPostulacion`: `esDeActividad = esPostulacionDeActividad()`.
+     - **Bloque Alternativo (`alt`)** [esDeActividad]:
+       - `:ModaLink` solicita a `unaPostulacion`: `unaActividad = obtenerActividad()`.
+       - `:ModaLink` solicita a `unaPostulacion`: `unRequerimiento = obtenerRequerimientoActividad()`.
+     - **Bloque Alternativo (`alt`)** [!esDeActividad]:
+       - `:ModaLink` solicita a `unaPostulacion`: `unRequerimientoGral = obtenerRequerimientoGeneral()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto && `esMiembro == false`]:
+       - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unMiembro`: `esMiembro = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+     - **Bloque Alternativo (`alt`)** [esMiembro]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil ya es participante del proyecto")`.
+     - **Bloque Alternativo (`alt`)** [!esMiembro]:
+       - `:ModaLink` crea o reutiliza el miembro: `unMiembro = registrar(unProyecto, unPerfil, ACTIVO, unRequerimientoGral)`.
+       - `miembros.agregar(unMiembro)`.
+       - `:ModaLink` envía a `unaPostulacion`: `setEstado(ACEPTADA)`.
+       - **Bloque Opcional (`opt`)** [esDeActividad]:
+         - `:ModaLink` crea la asignación: `unaAsignacion = registrar(unMiembro, unaActividad, unRequerimiento)`.
+         - `asignaciones.agregar(unaAsignacion)`.
+       - `:ModaLink` actualiza el requerimiento: `actualizarEstadoRequerimiento(unProyecto)`.
+       - `:ModaLink` agrega a `notificaciones`: `notificarPostulante(unaPostulacion)`.
+       - `:ModaLink` retorna al actor: `postulacionAceptada(unaPostulacion)`.
+
+---
+
+### DSD rechazarPostulacion(unaPostulacion) | UC-34: Gestionar postulaciones
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `notificaciones` (Colección de notificaciones)
+  - `unaPostulacion : PostulacionGeneral` (Instancia de la entidad PostulacionGeneral)
+- **Variables locales / Notas:**
+  - `boolean estaPendiente`
+- **Flujo de interacción:**
+  1. El actor envía `rechazarPostulacion(unaPostulacion)` a `:ModaLink`.
+  2. Se inicializa la variable local `estaPendiente`.
+  3. `:ModaLink` consulta a `unaPostulacion`: `estaPendiente = estaEnEstado(PENDIENTE)`.
+  4. **Bloque Alternativo (`alt`)** [!estaPendiente]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La postulación no está pendiente")`.
+  5. **Bloque Alternativo (`alt`)** [estaPendiente]:
+     - `:ModaLink` envía a `unaPostulacion`: `setEstado(RECHAZADA)`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarPostulanteRechazado(unaPostulacion)`.
+     - `:ModaLink` retorna al actor: `postulacionRechazada(unaPostulacion)`.
+
+---
+
+---
+
+## 5. Invitaciones
+
+### DSD buscarInvitaciones(idProyecto, nombreProyecto, fechaDesde, fechaHasta, perfil, direccion, estado, tipo) | UC-30: Buscar invitaciones
+
+- **Actores:** Usuario / Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `invitacionesGenerales` (Colección de invitaciones generales)
+  - `invitacionesActividad` (Colección de invitaciones de actividad)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+- **Variables locales / Notas:**
+  - `Lista invitacionesFiltradas = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `invitaciones = buscarInvitaciones(idProyecto, nombreProyecto, fechaDesde, fechaHasta, perfil, direccion, estado, tipo)` a `:ModaLink`.
+  2. Se inicializan las variables locales `invitacionesFiltradas` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya invitaciones generales del perfil activo]:
+     - `:ModaLink` solicita a `invitacionesGenerales`: `unaInvitacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaInvitacion`: `sePuedeAgregar = cumpleFiltros(perfilActivo, idProyecto, nombreProyecto, fechaDesde, fechaHasta, perfil, direccion, estado, "GENERAL")`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `invitacionesFiltradas.agregar(unaInvitacion)`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya invitaciones de actividad del perfil activo]:
+     - `:ModaLink` solicita a `invitacionesActividad`: `unaInvitacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaInvitacion`: `sePuedeAgregar = cumpleFiltros(perfilActivo, idProyecto, nombreProyecto, fechaDesde, fechaHasta, perfil, direccion, estado, "ACTIVIDAD")`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `invitacionesFiltradas.agregar(unaInvitacion)`.
+  5. `:ModaLink` unifica, ordena y pagina `invitacionesFiltradas`.
+  6. `:ModaLink` retorna `invitacionesFiltradas` al actor.
+
+---
+
+### DSD seleccionarInvitacion(idInvitacion, invitaciones) | UC-30: Buscar invitaciones
+
+- **Actores:** Usuario / Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `invitacionesGenerales` (Colección de invitaciones generales)
+  - `invitacionesActividad` (Colección de invitaciones de actividad)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unaInvitacion = seleccionarInvitacion(idInvitacion, invitaciones)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya invitaciones generales && `retorno == false`]:
+     - `:ModaLink` solicita a `invitacionesGenerales`: `unaInvitacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaInvitacion`: `retorno = tieneId(idInvitacion)`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya invitaciones de actividad && `retorno == false`]:
+     - `:ModaLink` solicita a `invitacionesActividad`: `unaInvitacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaInvitacion`: `retorno = tieneId(idInvitacion)`.
+  5. `:ModaLink` retorna `unaInvitacion` al actor.
+
+---
+
+### DSD invitarAProyecto(unProyecto, unPerfil, unRequerimientoGralOpcional, mensaje) | UC-31: Invitar a proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `invitacionesGenerales` (Colección de invitaciones generales)
+  - `invitacionesActividad` (Colección de invitaciones de actividad)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+- **Variables locales / Notas:**
+  - `boolean proyectoValido`
+  - `boolean perfilActivo`
+  - `boolean esAutoinvitacion`
+  - `boolean esMiembro = false`
+  - `boolean invitacionDuplicada = false`
+  - `boolean requerimientoEncontrado = false`
+  - `boolean requerimientoValido`
+  - `boolean profesionCompatible`
+  - `boolean cupoDisponible`
+- **Flujo de interacción:**
+  1. El actor envía `unaInvitacion = invitarAProyecto(unProyecto, unPerfil, unRequerimientoGralOpcional, mensaje)` a `:ModaLink`.
+  2. Se inicializan las variables locales `proyectoValido`, `perfilActivo`, `esAutoinvitacion`, `esMiembro`, `invitacionDuplicada`, `requerimientoEncontrado`, `requerimientoValido`, `profesionCompatible` y `cupoDisponible`.
+  3. `:ModaLink` consulta a `unProyecto`: `proyectoValido = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  4. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  5. `:ModaLink` evalúa: `esAutoinvitacion = unPerfil == perfilActivo`.
+  6. **Bloque Alternativo (`alt`)** [!proyectoValido || !perfilActivo || esAutoinvitacion]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Proyecto, perfil o autoinvitación inválida")`.
+  7. **Bloque Alternativo (`alt`)** [proyectoValido && perfilActivo && !esAutoinvitacion]:
+     - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto && `esMiembro == false`]:
+       - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unMiembro`: `esMiembro = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya invitaciones generales && `invitacionDuplicada == false`]:
+       - `:ModaLink` solicita a `invitacionesGenerales`: `unaInvitacion = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaInvitacion`: `invitacionDuplicada = correspondeA(unProyecto, unPerfil) && estaPendiente()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya invitaciones de actividad && `invitacionDuplicada == false`]:
+       - `:ModaLink` solicita a `invitacionesActividad`: `unaInvitacion = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaInvitacion`: `invitacionDuplicada = correspondeA(unProyecto, unPerfil) && estaPendiente()`.
+     - **Bloque Alternativo (`alt`)** [esMiembro || invitacionDuplicada]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil ya es miembro o tiene una invitación pendiente")`.
+     - **Bloque Alternativo (`alt`)** [!esMiembro && !invitacionDuplicada]:
+       - **Bloque Opcional (`opt`)** [unRequerimientoGralOpcional != null]:
+         - **Bloque Bucle (`loop`)** [Mientras haya requerimientos generales && `requerimientoEncontrado == false`]:
+           - `:ModaLink` solicita a `requerimientosGenerales`: `unRequerimiento = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unRequerimiento`: `requerimientoEncontrado = tieneId(unRequerimientoGralOpcional)`.
+         - `:ModaLink` consulta a `unRequerimiento`: `requerimientoValido = requerimientoEncontrado && perteneceA(unProyecto) && !estaSatisfecho()`.
+         - `:ModaLink` consulta a `unPerfil`: `profesionCompatible = tieneProfesion(unRequerimiento.obtenerProfesion())`.
+         - `:ModaLink` consulta a `unRequerimiento`: `cupoDisponible = tieneCupoDisponible()`.
+         - **Bloque Alternativo (`alt`)** [!requerimientoValido || !profesionCompatible || !cupoDisponible]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("Requerimiento, profesión o cupo inválido")`.
+       - **Bloque Alternativo (`alt`)** [unRequerimientoGralOpcional == null || (requerimientoValido && profesionCompatible && cupoDisponible)]:
+         - `:ModaLink` crea la invitación: `unaInvitacion = registrar(unProyecto, unPerfil, perfilActivo, unRequerimientoGralOpcional, mensaje, PENDIENTE, ahora)`.
+         - `invitacionesGenerales.agregar(unaInvitacion)`.
+         - `:ModaLink` agrega a `notificaciones`: `notificarPerfil(unPerfil, unaInvitacion)`.
+         - `:ModaLink` retorna `unaInvitacion` al actor.
+
+---
+
+### DSD invitarAProyectoActividad(unProyecto, unRequerimientoAct, unPerfil, mensaje) | UC-31: Invitar a proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `invitacionesGenerales` (Colección de invitaciones generales)
+  - `invitacionesActividad` (Colección de invitaciones de actividad)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaInvitacion : InvitacionActividad` (Instancia de la entidad InvitacionActividad)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+- **Variables locales / Notas:**
+  - `boolean proyectoValido`
+  - `boolean perfilActivo`
+  - `boolean esAutoinvitacion`
+  - `boolean esMiembro = false`
+  - `boolean invitacionDuplicada = false`
+  - `boolean requerimientoEncontrado = false`
+  - `boolean requerimientoValido`
+  - `boolean actividadValida`
+  - `boolean profesionCompatible`
+  - `boolean cupoDisponible`
+- **Flujo de interacción:**
+  1. El actor envía `unaInvitacion = invitarAProyectoActividad(unProyecto, unRequerimientoAct, unPerfil, mensaje)` a `:ModaLink`.
+  2. Se inicializan las variables locales `proyectoValido`, `perfilActivo`, `esAutoinvitacion`, `esMiembro`, `invitacionDuplicada`, `requerimientoEncontrado`, `requerimientoValido`, `actividadValida`, `profesionCompatible` y `cupoDisponible`.
+  3. `:ModaLink` consulta a `unProyecto`: `proyectoValido = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  4. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  5. `:ModaLink` evalúa: `esAutoinvitacion = unPerfil == perfilActivo`.
+  6. **Bloque Alternativo (`alt`)** [!proyectoValido || !perfilActivo || esAutoinvitacion]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Proyecto, perfil o autoinvitación inválida")`.
+  7. **Bloque Alternativo (`alt`)** [proyectoValido && perfilActivo && !esAutoinvitacion]:
+     - **Bloque Bucle (`loop`)** [Mientras haya requerimientos de actividad && `requerimientoEncontrado == false`]:
+       - `:ModaLink` solicita a `requerimientosActividad`: `unRequerimiento = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unRequerimiento`: `requerimientoEncontrado = tieneId(unRequerimientoAct)`.
+     - `:ModaLink` consulta a `unRequerimiento`: `requerimientoValido = requerimientoEncontrado && perteneceA(unProyecto) && !estaSatisfecho()`.
+     - `:ModaLink` solicita a `unRequerimiento`: `unaActividad = obtenerActividad()`.
+     - `:ModaLink` consulta a `unaActividad`: `actividadValida = estaPendiente() || estaEnCurso()`.
+     - `:ModaLink` consulta a `unPerfil`: `profesionCompatible = tieneProfesion(unRequerimiento.obtenerProfesion())`.
+     - `:ModaLink` consulta a `unRequerimiento`: `cupoDisponible = tieneCupoDisponible()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto && `esMiembro == false`]:
+       - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unMiembro`: `esMiembro = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya invitaciones generales && `invitacionDuplicada == false`]:
+       - `:ModaLink` solicita a `invitacionesGenerales`: `unaInvitacion = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaInvitacion`: `invitacionDuplicada = correspondeA(unProyecto, unPerfil) && estaPendiente()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya invitaciones de actividad && `invitacionDuplicada == false`]:
+       - `:ModaLink` solicita a `invitacionesActividad`: `unaInvitacion = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaInvitacion`: `invitacionDuplicada = correspondeA(unProyecto, unPerfil) && estaPendiente()`.
+     - **Bloque Alternativo (`alt`)** [!requerimientoValido || !actividadValida || !profesionCompatible || !cupoDisponible || esMiembro || invitacionDuplicada]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Requerimiento, actividad, profesión, cupo o duplicado inválido")`.
+     - **Bloque Alternativo (`alt`)** [requerimientoValido && actividadValida && profesionCompatible && cupoDisponible && !esMiembro && !invitacionDuplicada]:
+       - `:ModaLink` crea la invitación: `unaInvitacion = registrar(unRequerimiento, unPerfil, perfilActivo, mensaje, PENDIENTE, ahora)`.
+       - `invitacionesActividad.agregar(unaInvitacion)`.
+       - `:ModaLink` agrega a `notificaciones`: `notificarPerfil(unPerfil, unaInvitacion)`.
+       - `:ModaLink` retorna `unaInvitacion` al actor.
+
+---
+
+### DSD invitarAProyectoMultiple(unProyecto, unRequerimientoGralOpcional, perfiles[], mensaje) | UC-31: Invitar a proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfiles` (Colección de perfiles)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+- **Variables locales / Notas:**
+  - `Lista creadas = nueva Lista()`
+  - `Lista errores = nueva Lista()`
+- **Flujo de interacción:**
+  1. El actor envía `resultado = invitarAProyectoMultiple(unProyecto, unRequerimientoGralOpcional, perfiles[], mensaje)` a `:ModaLink`.
+  2. Se inicializan las variables locales `creadas` y `errores`.
+  3. `:ModaLink` deduplica `perfiles[]`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya perfiles por procesar]:
+     - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+     - `:ModaLink` ejecuta de forma independiente: `unaInvitacion = invitarAProyecto(unProyecto, unPerfil, unRequerimientoGralOpcional, mensaje)`.
+     - **Bloque Alternativo (`alt`)** [la operación finaliza correctamente]:
+       - `creadas.agregar(unaInvitacion)`.
+     - **Bloque Alternativo (`alt`)** [la operación lanza una excepción]:
+       - `errores.agregar(unPerfil, excepcion)`.
+  5. `:ModaLink` retorna al actor: `ResultadoMultiple(creadas, errores)`.
+
+---
+
+### DSD invitarAProyectoActividadMultiple(unProyecto, unRequerimientoAct, perfiles[], mensaje) | UC-31: Invitar a proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `perfiles` (Colección de perfiles)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+  - `unaInvitacion : InvitacionActividad` (Instancia de la entidad InvitacionActividad)
+- **Variables locales / Notas:**
+  - `Lista creadas = nueva Lista()`
+  - `Lista errores = nueva Lista()`
+- **Flujo de interacción:**
+  1. El actor envía `resultado = invitarAProyectoActividadMultiple(unProyecto, unRequerimientoAct, perfiles[], mensaje)` a `:ModaLink`.
+  2. Se inicializan las variables locales `creadas` y `errores`.
+  3. `:ModaLink` deduplica `perfiles[]`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya perfiles por procesar]:
+     - `:ModaLink` solicita a `perfiles`: `unPerfil = obtenerSiguiente()`.
+     - `:ModaLink` ejecuta de forma independiente: `unaInvitacion = invitarAProyectoActividad(unProyecto, unRequerimientoAct, unPerfil, mensaje)`.
+     - **Bloque Alternativo (`alt`)** [la operación finaliza correctamente]:
+       - `creadas.agregar(unaInvitacion)`.
+     - **Bloque Alternativo (`alt`)** [la operación lanza una excepción]:
+       - `errores.agregar(unPerfil, excepcion)`.
+  5. `:ModaLink` retorna al actor: `ResultadoMultiple(creadas, errores)`.
+
+---
+
+### DSD aceptarIncorporacion(unaInvitacion, unProyecto) | UC-28: Aceptar solicitud de incorporación
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `invitacionesGenerales` (Colección de invitaciones generales)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `notificaciones` (Colección de notificaciones)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+- **Variables locales / Notas:**
+  - `boolean invitacionValida`
+  - `boolean proyectoValido`
+  - `boolean esMiembro = false`
+  - `boolean requerimientoValido`
+  - `boolean profesionCompatible`
+  - `boolean cupoCubierto`
+- **Flujo de interacción:**
+  1. El actor envía `aceptarIncorporacion(unaInvitacion, unProyecto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `invitacionValida`, `proyectoValido`, `esMiembro`, `requerimientoValido`, `profesionCompatible` y `cupoCubierto`.
+  3. `:ModaLink` consulta a `unaInvitacion`: `invitacionValida = estaPendiente() && correspondeA(perfilActivo)`.
+  4. `:ModaLink` consulta a `unProyecto`: `proyectoValido = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  5. **Bloque Alternativo (`alt`)** [!invitacionValida || !proyectoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Invitación o proyecto inválido")`.
+  6. **Bloque Alternativo (`alt`)** [invitacionValida && proyectoValido]:
+     - `:ModaLink` solicita a `unaInvitacion`: `unPerfil = obtenerPerfil()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto && `esMiembro == false`]:
+       - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unMiembro`: `esMiembro = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+     - **Bloque Alternativo (`alt`)** [esMiembro]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El usuario ya es participante del proyecto")`.
+     - **Bloque Alternativo (`alt`)** [!esMiembro]:
+       - **Bloque Opcional (`opt`)** [unaInvitacion.tieneRequerimientoGeneral()]:
+         - `:ModaLink` solicita a `unaInvitacion`: `unRequerimiento = obtenerRequerimientoGeneral()`.
+         - `:ModaLink` consulta a `unRequerimiento`: `requerimientoValido = !estaSatisfecho()`.
+         - `:ModaLink` consulta a `unPerfil`: `profesionCompatible = tieneProfesion(unRequerimiento.obtenerProfesion())`.
+         - **Bloque Alternativo (`alt`)** [!requerimientoValido || !profesionCompatible]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("Requerimiento satisfecho o profesión incompatible")`.
+       - **Bloque Alternativo (`alt`)** [!unaInvitacion.tieneRequerimientoGeneral() || (requerimientoValido && profesionCompatible)]:
+         - `:ModaLink` crea el miembro: `unMiembro = registrar(unProyecto, unPerfil, ACTIVO, unRequerimiento)`.
+         - `miembros.agregar(unMiembro)`.
+         - `:ModaLink` envía a `unaInvitacion`: `setEstado(ACEPTADA)`.
+         - **Bloque Opcional (`opt`)** [unaInvitacion.tieneRequerimientoGeneral()]:
+           - `:ModaLink` consulta a `unRequerimiento`: `cupoCubierto = estaSatisfecho()`.
+           - **Bloque Alternativo (`alt`)** [cupoCubierto]:
+             - `:ModaLink` solicita a `invitacionesGenerales`: `eliminarPendientesDe(unRequerimiento)`.
+         - `:ModaLink` agrega a `notificaciones`: `notificarDirectores(unProyecto)`.
+         - `:ModaLink` retorna al actor: `incorporacionRegistrada(unProyecto)`.
+
+---
+
+### DSD aceptarIncorporacionAct(unaInvitacion, unProyecto, unRequerimientoAct) | UC-28: Aceptar solicitud de incorporación
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `asignaciones` (Colección de asignaciones de actividad)
+  - `invitacionesActividad` (Colección de invitaciones de actividad)
+  - `notificaciones` (Colección de notificaciones)
+  - `unaInvitacion : InvitacionActividad` (Instancia de la entidad InvitacionActividad)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaAsignacion : AsignacionActividad` (Instancia de la entidad AsignacionActividad)
+- **Variables locales / Notas:**
+  - `boolean invitacionValida`
+  - `boolean proyectoValido`
+  - `boolean actividadValida`
+  - `boolean esDirector = false`
+  - `boolean esMiembro = false`
+  - `boolean disponible`
+  - `boolean cupoCubierto`
+- **Flujo de interacción:**
+  1. El actor envía `aceptarIncorporacionAct(unaInvitacion, unProyecto, unRequerimientoAct)` a `:ModaLink`.
+  2. Se inicializan las variables locales `invitacionValida`, `proyectoValido`, `actividadValida`, `esDirector`, `esMiembro`, `disponible` y `cupoCubierto`.
+  3. `:ModaLink` consulta a `unaInvitacion`: `invitacionValida = estaPendiente() && correspondeA(perfilActivo)`.
+  4. `:ModaLink` consulta a `unProyecto`: `proyectoValido = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+  5. `:ModaLink` solicita a `unRequerimiento`: `unaActividad = obtenerActividad()`.
+  6. `:ModaLink` consulta a `unaActividad`: `actividadValida = estaPendiente() || estaEnCurso()`.
+  7. **Bloque Alternativo (`alt`)** [!invitacionValida || !proyectoValido || !actividadValida]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Invitación, proyecto o actividad inválida")`.
+  8. **Bloque Alternativo (`alt`)** [invitacionValida && proyectoValido && actividadValida]:
+     - `:ModaLink` solicita a `unaInvitacion`: `unPerfil = obtenerPerfil()`.
+     - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto]:
+       - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unMiembro.correspondeA(unProyecto, unPerfil) && unMiembro.esDirector()]:
+         - `esDirector = true`.
+       - **Bloque Alternativo (`alt`)** [unMiembro.correspondeA(unProyecto, unPerfil) && unMiembro.estaActivo()]:
+         - `esMiembro = true`.
+     - **Bloque Alternativo (`alt`)** [esDirector]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El director no puede aceptar esta invitación")`.
+     - **Bloque Alternativo (`alt`)** [!esDirector]:
+       - `:ModaLink` solicita a `unPerfil`: `unUsuario = obtenerUsuario()`.
+       - `:ModaLink` consulta a `unUsuario`: `disponible = verificarDisponibilidad(unaActividad)`.
+       - **Bloque Alternativo (`alt`)** [!disponible]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("Disponibilidad insuficiente para la actividad")`.
+       - **Bloque Alternativo (`alt`)** [disponible]:
+         - **Bloque Alternativo (`alt`)** [!esMiembro]:
+           - `:ModaLink` crea el miembro: `unMiembro = registrar(unProyecto, unPerfil, ACTIVO, unRequerimiento)`.
+           - `miembros.agregar(unMiembro)`.
+         - `:ModaLink` crea la asignación: `unaAsignacion = registrar(unMiembro, unaActividad, unRequerimiento)`.
+         - `asignaciones.agregar(unaAsignacion)`.
+         - `:ModaLink` envía a `unaInvitacion`: `setEstado(ACEPTADA)`.
+         - `:ModaLink` consulta a `unRequerimiento`: `cupoCubierto = estaSatisfecho()`.
+         - **Bloque Alternativo (`alt`)** [cupoCubierto]:
+           - `:ModaLink` solicita a `invitacionesActividad`: `eliminarPendientesDe(unRequerimiento)`.
+         - `:ModaLink` agrega a `notificaciones`: `notificarDirectores(unProyecto)`.
+         - `:ModaLink` retorna al actor: `incorporacionRegistrada(unProyecto)`.
+
+---
+
+### DSD rechazarInvitacion(unaInvitacion) | UC-28: Aceptar solicitud de incorporación
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `notificaciones` (Colección de notificaciones)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+- **Variables locales / Notas:**
+  - `boolean invitacionValida`
+- **Flujo de interacción:**
+  1. El actor envía `rechazarInvitacion(unaInvitacion)` a `:ModaLink`.
+  2. Se inicializa la variable local `invitacionValida`.
+  3. `:ModaLink` consulta a `unaInvitacion`: `invitacionValida = estaPendiente() && correspondeA(perfilActivo)`.
+  4. **Bloque Alternativo (`alt`)** [!invitacionValida]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La invitación no está pendiente o no pertenece al perfil")`.
+  5. **Bloque Alternativo (`alt`)** [invitacionValida]:
+     - `:ModaLink` envía a `unaInvitacion`: `setEstado(RECHAZADA)`.
+     - `:ModaLink` envía a `unaInvitacion`: `setFechaRechazo(ahora)`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarDirectores(unaInvitacion.obtenerProyecto())`.
+     - `:ModaLink` retorna al actor: `invitacionRechazada(unaInvitacion)`.
+
+---
+
+### DSD darDeBajaInvitacion(unaInvitacion) | UC-32: Eliminar invitación a proyecto
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `invitacionesGenerales` (Colección de invitaciones generales)
+  - `invitacionesActividad` (Colección de invitaciones de actividad)
+  - `unaInvitacion : InvitacionGeneral` (Instancia de la entidad InvitacionGeneral)
+- **Variables locales / Notas:**
+  - `boolean estaPendiente`
+  - `boolean esRemitente`
+  - `boolean esDeActividad`
+- **Flujo de interacción:**
+  1. El actor envía `darDeBajaInvitacion(unaInvitacion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estaPendiente`, `esRemitente` y `esDeActividad`.
+  3. `:ModaLink` consulta a `unaInvitacion`: `estaPendiente = estaPendiente()`.
+  4. `:ModaLink` consulta a `unaInvitacion`: `esRemitente = fueEnviadaPor(perfilActivo)`.
+  5. `:ModaLink` consulta a `unaInvitacion`: `esDeActividad = esInvitacionDeActividad()`.
+  6. **Bloque Alternativo (`alt`)** [!estaPendiente || !esRemitente]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La invitación no está pendiente o el actor no es el remitente")`.
+  7. **Bloque Alternativo (`alt`)** [estaPendiente && esRemitente]:
+     - **Bloque Alternativo (`alt`)** [esDeActividad]:
+       - `:ModaLink` solicita a `invitacionesActividad`: `eliminar(unaInvitacion)`.
+     - **Bloque Alternativo (`alt`)** [!esDeActividad]:
+       - `:ModaLink` solicita a `invitacionesGenerales`: `eliminar(unaInvitacion)`.
+     - `:ModaLink` retorna al actor: `invitacionEliminada()`.
+
+---
+
+---
+
+## 6. Requerimientos
+
+### DSD buscarRequerimientosGenerales(profesion, caracteristicas[], unProyecto) | UC-72: Buscar requerimiento general
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+- **Variables locales / Notas:**
+  - `Lista requerimientosFiltrados = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `requerimientos = buscarRequerimientosGenerales(profesion, caracteristicas[], unProyecto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `requerimientosFiltrados` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya requerimientos generales abiertos]:
+     - `:ModaLink` solicita a `requerimientosGenerales`: `unRequerimiento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unRequerimiento`: `sePuedeAgregar = cumpleFiltros(profesion, caracteristicas, unProyecto) && !estaSatisfecho()`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `requerimientosFiltrados.agregar(unRequerimiento)`.
+  4. `:ModaLink` retorna `requerimientosFiltrados` al actor.
+
+---
+
+### DSD seleccionarRequerimientoGeneral(idRequerimientoGeneral, requerimientos) | UC-72: Buscar requerimiento general
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `unRequerimiento : RequerimientoGeneral` (Instancia de la entidad RequerimientoGeneral)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unRequerimiento = seleccionarRequerimientoGeneral(idRequerimientoGeneral, requerimientos)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya requerimientos generales && `retorno == false`]:
+     - `:ModaLink` solicita a `requerimientosGenerales`: `unRequerimiento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unRequerimiento`: `retorno = tieneId(idRequerimientoGeneral)`.
+  4. `:ModaLink` retorna `unRequerimiento` al actor.
+
+---
+
+### DSD buscarRequerimientosActividad(idProyecto, profesion, caracteristicas[], unaActividad) | UC-73: Buscar requerimiento actividad
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+- **Variables locales / Notas:**
+  - `Lista requerimientosFiltrados = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `requerimientos = buscarRequerimientosActividad(idProyecto, profesion, caracteristicas[], unaActividad)` a `:ModaLink`.
+  2. Se inicializan las variables locales `requerimientosFiltrados` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya requerimientos de actividad abiertos]:
+     - `:ModaLink` solicita a `requerimientosActividad`: `unRequerimiento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unRequerimiento`: `sePuedeAgregar = cumpleFiltros(idProyecto, profesion, caracteristicas, unaActividad) && !estaSatisfecho()`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `requerimientosFiltrados.agregar(unRequerimiento)`.
+  4. `:ModaLink` retorna `requerimientosFiltrados` al actor.
+
+---
+
+### DSD seleccionarRequerimientoActividad(idRequerimientoActividad, requerimientos) | UC-73: Buscar requerimiento actividad
+
+- **Actores:** Usuario
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unRequerimiento = seleccionarRequerimientoActividad(idRequerimientoActividad, requerimientos)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya requerimientos de actividad && `retorno == false`]:
+     - `:ModaLink` solicita a `requerimientosActividad`: `unRequerimiento = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unRequerimiento`: `retorno = tieneId(idRequerimientoActividad)`.
+  4. `:ModaLink` retorna `unRequerimiento` al actor.
+
+---
+
+## 7. Actividades
+
+### DSD crearActividad(unProyecto, nombre, descripcion, duracion) | UC-49: Crear actividad a planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `planificaciones` (Colección de planificaciones)
+  - `actividades` (Colección de actividades)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unaPlanificacion : Planificacion` (Instancia de la entidad Planificacion)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+- **Variables locales / Notas:**
+  - `boolean planificacionEncontrada = false`
+  - `boolean nombreDuplicado = false`
+  - `boolean datosValidos`
+- **Flujo de interacción:**
+  1. El actor envía `unaActividad = crearActividad(unProyecto, nombre, descripcion, duracion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `planificacionEncontrada`, `nombreDuplicado` y `datosValidos`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya planificaciones && `planificacionEncontrada == false`]:
+     - `:ModaLink` solicita a `planificaciones`: `unaPlanificacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaPlanificacion`: `planificacionEncontrada = perteneceA(unProyecto)`.
+  4. `:ModaLink` valida los datos: `datosValidos = nombre != null && nombre != "" && duracion > 0`.
+  5. **Bloque Bucle (`loop`)** [Mientras haya actividades de la planificación && `nombreDuplicado == false`]:
+     - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaActividad`: `nombreDuplicado = perteneceA(unaPlanificacion) && tieneNombre(nombre)`.
+  6. **Bloque Alternativo (`alt`)** [!planificacionEncontrada || !datosValidos || nombreDuplicado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Planificación, datos o nombre duplicado inválido")`.
+  7. **Bloque Alternativo (`alt`)** [planificacionEncontrada && datosValidos && !nombreDuplicado]:
+     - `:ModaLink` crea la actividad: `unaActividad = registrar(unaPlanificacion, nombre, descripcion, duracion, PENDIENTE)`.
+     - `actividades.agregar(unaActividad)`.
+     - `:ModaLink` retorna `unaActividad` al actor.
+
+---
+
+### DSD agregarPredecesora(unaActividad, unaPredecesora) | UC-49: Crear actividad a planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `dependencias` (Colección de dependencias entre actividades)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaPredecesora : Actividad` (Instancia de la entidad Actividad)
+  - `unaDependencia : DependenciaActividades` (Instancia de la entidad DependenciaActividades)
+- **Variables locales / Notas:**
+  - `boolean esMismaActividad`
+  - `boolean generaCiclo`
+- **Flujo de interacción:**
+  1. El actor envía `predecesoras = agregarPredecesora(unaActividad, unaPredecesora)` a `:ModaLink`.
+  2. Se inicializan las variables locales `esMismaActividad` y `generaCiclo`.
+  3. `:ModaLink` evalúa: `esMismaActividad = unaActividad == unaPredecesora`.
+  4. `:ModaLink` consulta a `unaActividad`: `generaCiclo = generaCicloCon(unaPredecesora)`.
+  5. **Bloque Alternativo (`alt`)** [esMismaActividad || generaCiclo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La predecesora es inválida o genera un ciclo")`.
+  6. **Bloque Alternativo (`alt`)** [!esMismaActividad && !generaCiclo]:
+     - `:ModaLink` crea la dependencia: `unaDependencia = registrar(unaActividad, unaPredecesora)`.
+     - `dependencias.agregar(unaDependencia)`.
+     - `:ModaLink` retorna a `unaActividad`: `predecesoras[]`.
+
+---
+
+### DSD buscarUbicacion(idUbicacion) | UC-49: Crear actividad a planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `ubicaciones` (Colección de ubicaciones)
+  - `unaUbicacion : Ubicacion` (Instancia de la entidad Ubicacion)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unaUbicacion = buscarUbicacion(idUbicacion)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya ubicaciones && `retorno == false`]:
+     - `:ModaLink` solicita a `ubicaciones`: `unaUbicacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaUbicacion`: `retorno = tieneId(idUbicacion)`.
+  4. **Bloque Alternativo (`alt`)** [!retorno]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Ubicación inexistente")`.
+  5. **Bloque Alternativo (`alt`)** [retorno]:
+     - `:ModaLink` retorna `unaUbicacion` al actor.
+
+---
+
+### DSD agregarUbicacion(unaActividad, unaUbicacion) | UC-49: Crear actividad a planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaUbicacion : Ubicacion` (Instancia de la entidad Ubicacion)
+- **Flujo de interacción:**
+  1. El actor envía `agregarUbicacion(unaActividad, unaUbicacion)` a `:ModaLink`.
+  2. `:ModaLink` envía a `unaActividad`: `setUbicacion(unaUbicacion)`.
+  3. `:ModaLink` retorna al actor: `ubicacionAgregada(unaActividad)`.
+
+---
+
+### DSD agregarRequerimiento(unaActividad, unaProfesion, caracteristicas[], habilidades[]) | UC-49: Crear actividad a planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaProfesion : Profesion` (Instancia de la entidad Profesion)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+- **Variables locales / Notas:**
+  - `boolean profesionValida`
+- **Flujo de interacción:**
+  1. El actor envía `agregarRequerimiento(unaActividad, unaProfesion, caracteristicas[], habilidades[])` a `:ModaLink`.
+  2. Se inicializa la variable local `profesionValida`.
+  3. `:ModaLink` consulta a `unaProfesion`: `profesionValida = estaActiva()`.
+  4. **Bloque Alternativo (`alt`)** [!profesionValida]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("La profesión no se encuentra activa")`.
+  5. **Bloque Alternativo (`alt`)** [profesionValida]:
+     - `:ModaLink` crea el requerimiento: `unRequerimiento = registrar(unaActividad, unaProfesion, caracteristicas[], habilidades[])`.
+     - `requerimientosActividad.agregar(unRequerimiento)`.
+     - `:ModaLink` retorna al actor: `requerimientoAgregado(unRequerimiento)`.
+
+---
+
+### DSD modificarActividad(unaActividad, nombre, descripcion, duracionEstimada, requerimiento[], predecesoras[], ubicacion, estado) | UC-50: Modificar actividad de planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `dependencias` (Colección de dependencias entre actividades)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+- **Variables locales / Notas:**
+  - `boolean datosValidos`
+  - `boolean requerimientoProtegido`
+- **Flujo de interacción:**
+  1. El actor envía `unaActividad = modificarActividad(unaActividad, nombre, descripcion, duracionEstimada, requerimiento[], predecesoras[], ubicacion, estado)` a `:ModaLink`.
+  2. Se inicializan las variables locales `datosValidos` y `requerimientoProtegido`.
+  3. `:ModaLink` valida los datos: `datosValidos = nombre != null && nombre != "" && duracionEstimada > 0`.
+  4. **Bloque Alternativo (`alt`)** [!datosValidos]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Datos de actividad inválidos")`.
+  5. **Bloque Alternativo (`alt`)** [datosValidos]:
+     - `:ModaLink` envía a `unaActividad`: `setNombre(nombre)`.
+     - `:ModaLink` envía a `unaActividad`: `setDescripcion(descripcion)`.
+     - `:ModaLink` envía a `unaActividad`: `setDuracion(duracionEstimada)`.
+     - `:ModaLink` envía a `unaActividad`: `setUbicacion(ubicacion)`.
+     - `:ModaLink` envía a `unaActividad`: `setEstado(estado)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya requerimientos por actualizar]:
+       - `:ModaLink` solicita a `requerimientosActividad`: `unRequerimiento = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unRequerimiento`: `requerimientoProtegido = estaProtegido()`.
+       - **Bloque Alternativo (`alt`)** [requerimientoProtegido]:
+         - `:ModaLink` conserva `unRequerimiento` sin cambios.
+       - **Bloque Alternativo (`alt`)** [!requerimientoProtegido]:
+         - `:ModaLink` envía a `unRequerimiento`: `actualizar(datos)`.
+     - `:ModaLink` envía a `unaActividad`: `setPredecesoras(predecesoras[])`.
+     - `:ModaLink` retorna `unaActividad` al actor.
+
+---
+
+### DSD eliminarActividad(unaActividad, motivo) | UC-51: Eliminar actividad de planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `actividades` (Colección de actividades)
+  - `asignaciones` (Colección de asignaciones de actividad)
+  - `dependencias` (Colección de dependencias entre actividades)
+  - `notificaciones` (Colección de notificaciones)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaAsignacion : AsignacionActividad` (Instancia de la entidad AsignacionActividad)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+- **Variables locales / Notas:**
+  - `boolean estadoValido`
+  - `boolean motivoValido`
+  - `boolean tieneMiembrosAsignados = false`
+  - `String decision`
+- **Flujo de interacción:**
+  1. El actor envía `eliminarActividad(unaActividad, motivo)` a `:ModaLink`.
+  2. Se inicializan las variables locales `estadoValido`, `motivoValido`, `tieneMiembrosAsignados` y `decision`.
+  3. `:ModaLink` consulta a `unaActividad`: `estadoValido = !estaEnEstado(FINALIZADA)`.
+  4. `:ModaLink` valida el motivo: `motivoValido = motivo != null && motivo != ""`.
+  5. **Bloque Alternativo (`alt`)** [!estadoValido || !motivoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Estado o motivo inválido")`.
+  6. **Bloque Alternativo (`alt`)** [estadoValido && motivoValido]:
+     - **Bloque Bucle (`loop`)** [Mientras haya asignaciones de la actividad]:
+       - `:ModaLink` solicita a `asignaciones`: `unaAsignacion = obtenerSiguiente()`.
+       - **Bloque Alternativo (`alt`)** [unaAsignacion.perteneceA(unaActividad)]:
+         - `tieneMiembrosAsignados = true`.
+         - `:ModaLink` solicita al actor: `decision = elegirDecisionIntegrante()`.
+         - **Bloque Alternativo (`alt`)** [decision == "ELIMINAR"]:
+           - `:ModaLink` ejecuta la baja del integrante: `eliminarIntegrante(unaActividad.obtenerProyecto(), unaAsignacion.obtenerPerfil(), "Eliminación de actividad")`.
+         - **Bloque Alternativo (`alt`)** [decision == "GUARDAR"]:
+           - `:ModaLink` ejecuta: `guardarMiembro(unaAsignacion.obtenerPerfil(), unaActividad)`.
+     - `:ModaLink` reconecta predecesoras y sucesoras: `reconectarDependencias(unaActividad)`.
+     - `:ModaLink` solicita a `actividades`: `eliminar(unaActividad)`.
+     - `:ModaLink` agrega a `notificaciones`: `notificarActividadEliminada(unaActividad, motivo)`.
+     - `:ModaLink` retorna al actor: `operacionExitosa()`.
+
+---
+
+### DSD guardarMiembro(unPerfil, unaActividad) | UC-51: Eliminar actividad de planificación
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `asignaciones` (Colección de asignaciones de actividad)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaAsignacion : AsignacionActividad` (Instancia de la entidad AsignacionActividad)
+- **Variables locales / Notas:**
+  - `boolean asignacionEncontrada = false`
+- **Flujo de interacción:**
+  1. El actor envía `guardarMiembro(unPerfil, unaActividad)` a `:ModaLink`.
+  2. Se inicializa la variable local `asignacionEncontrada`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya asignaciones && `asignacionEncontrada == false`]:
+     - `:ModaLink` solicita a `asignaciones`: `unaAsignacion = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaAsignacion`: `asignacionEncontrada = correspondeA(unPerfil, unaActividad)`.
+  4. **Bloque Alternativo (`alt`)** [!asignacionEncontrada]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El miembro no está asignado a la actividad")`.
+  5. **Bloque Alternativo (`alt`)** [asignacionEncontrada]:
+     - `:ModaLink` solicita a `asignaciones`: `eliminar(unaAsignacion)`.
+     - `:ModaLink` retorna al actor: `miembroGuardadoEnProyecto(unPerfil)`.
+
+---
+
+### DSD buscarActividades(nombre, descripcion, requerimiento, duracion, estado) | UC-52: Buscar actividades
+
+- **Actores:** Director de proyecto / Miembro de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `actividades` (Colección de actividades)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+- **Variables locales / Notas:**
+  - `Lista actividadesFiltradas = nueva Lista()`
+  - `boolean sePuedeAgregar`
+- **Flujo de interacción:**
+  1. El actor envía `actividades = buscarActividades(nombre, descripcion, requerimiento, duracion, estado)` a `:ModaLink`.
+  2. Se inicializan las variables locales `actividadesFiltradas` y `sePuedeAgregar`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya actividades]:
+     - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaActividad`: `sePuedeAgregar = cumpleFiltros(nombre, descripcion, requerimiento, duracion, estado)`.
+     - **Bloque Alternativo (`alt`)** [sePuedeAgregar]:
+       - `actividadesFiltradas.agregar(unaActividad)`.
+  4. `:ModaLink` retorna `actividadesFiltradas` al actor.
+
+---
+
+### DSD seleccionarActividad(idActividad, actividades) | UC-52: Buscar actividades
+
+- **Actores:** Director de proyecto / Miembro de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `actividades` (Colección de actividades)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unaActividad = seleccionarActividad(idActividad, actividades)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya actividades && `retorno == false`]:
+     - `:ModaLink` solicita a `actividades`: `unaActividad = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaActividad`: `retorno = tieneId(idActividad)`.
+  4. `:ModaLink` retorna `unaActividad` al actor.
+
+---
+
+### DSD buscarUsuario(unPerfil) | UC-70: Asignar actividad a miembro
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `usuarios` (Colección de usuarios)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+- **Variables locales / Notas:**
+  - `boolean retorno = false`
+- **Flujo de interacción:**
+  1. El actor envía `unUsuario = buscarUsuario(unPerfil)` a `:ModaLink`.
+  2. Se inicializa la variable local `retorno = false`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya usuarios && `retorno == false`]:
+     - `:ModaLink` solicita a `usuarios`: `unUsuario = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unUsuario`: `retorno = tienePerfil(unPerfil)`.
+  4. `:ModaLink` retorna `unUsuario` al actor.
+
+---
+
+### DSD verificarDisponibilidad(unUsuario, unaActividad) | UC-70: Asignar actividad a miembro
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `agendas` (Colección de agendas)
+  - `jornadas` (Colección de jornadas de agenda)
+  - `bloqueos` (Colección de bloqueos de agenda)
+  - `asignaciones` (Colección de asignaciones de actividad)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unaAgenda : Agenda` (Instancia de la entidad Agenda)
+  - `unaJornada : JornadaAgenda` (Instancia de la entidad JornadaAgenda)
+  - `unBloqueo : BloqueoAgenda` (Instancia de la entidad BloqueoAgenda)
+  - `unaAsignacion : AsignacionActividad` (Instancia de la entidad AsignacionActividad)
+- **Variables locales / Notas:**
+  - `Rango rangoFactible`
+  - `boolean disponible`
+  - `boolean provisional`
+  - `boolean seSuperpone`
+- **Flujo de interacción:**
+  1. El actor envía `resultado = verificarDisponibilidad(unUsuario, unaActividad)` a `:ModaLink`.
+  2. Se inicializan las variables locales `rangoFactible`, `disponible`, `provisional` y `seSuperpone`.
+  3. `:ModaLink` solicita a `agendas`: `unaAgenda = buscarPorUsuario(unUsuario)`.
+  4. `:ModaLink` solicita a `unaActividad`: `rangoFactible = obtenerRangoFactible()`.
+  5. `:ModaLink` solicita a `unaActividad`: `provisional = !tieneFechaInicioConfirmada()`.
+  6. `:ModaLink` solicita a `unaAgenda`: `disponible = tieneHuecoContinuo(rangoFactible, unaActividad.obtenerDuracion())`.
+  7. **Bloque Opcional (`opt`)** [disponible]:
+     - **Bloque Bucle (`loop`)** [Mientras haya bloqueos de la agenda && `seSuperpone == false`]:
+       - `:ModaLink` solicita a `bloqueos`: `unBloqueo = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unBloqueo`: `seSuperpone = seSuperponeCon(rangoFactible)`.
+     - **Bloque Bucle (`loop`)** [Mientras haya asignaciones del usuario && `seSuperpone == false`]:
+       - `:ModaLink` solicita a `asignaciones`: `unaAsignacion = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaAsignacion`: `seSuperpone = seSuperponeCon(rangoFactible)`.
+     - **Bloque Alternativo (`alt`)** [seSuperpone]:
+       - `disponible = false`.
+  8. `:ModaLink` retorna al actor: `ResultadoDisponibilidad(disponible, provisional, rangoFactible)`.
+
+---
+
+### DSD asignarActividad(unPerfil, unaActividad) | UC-70: Asignar actividad a miembro
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `miembros` (Colección de miembros de proyecto)
+  - `asignaciones` (Colección de asignaciones de actividad)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `notificaciones` (Colección de notificaciones)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unUsuario : Usuario` (Instancia de la entidad Usuario)
+  - `unaActividad : Actividad` (Instancia de la entidad Actividad)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unaAsignacion : AsignacionActividad` (Instancia de la entidad AsignacionActividad)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+- **Variables locales / Notas:**
+  - `boolean miembroEncontrado = false`
+  - `boolean disponible`
+  - `boolean yaAsignado = false`
+  - `boolean requerimientoEncontrado = false`
+- **Flujo de interacción:**
+  1. El actor envía `unaAsignacion = asignarActividad(unPerfil, unaActividad)` a `:ModaLink`.
+  2. Se inicializan las variables locales `miembroEncontrado`, `disponible`, `yaAsignado` y `requerimientoEncontrado`.
+  3. `:ModaLink` solicita a `unaActividad`: `unProyecto = obtenerProyecto()`.
+  4. **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto && `miembroEncontrado == false`]:
+     - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unMiembro`: `miembroEncontrado = correspondeA(unProyecto, unPerfil) && estaActivo()`.
+  5. **Bloque Alternativo (`alt`)** [!miembroEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil no es miembro activo del proyecto")`.
+  6. **Bloque Alternativo (`alt`)** [miembroEncontrado]:
+     - `:ModaLink` solicita a `unPerfil`: `unUsuario = obtenerUsuario()`.
+     - `:ModaLink` consulta a `unUsuario`: `disponible = verificarDisponibilidad(unaActividad)`.
+     - **Bloque Alternativo (`alt`)** [!disponible]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("El miembro no tiene disponibilidad suficiente")`.
+     - **Bloque Alternativo (`alt`)** [disponible]:
+       - **Bloque Bucle (`loop`)** [Mientras haya asignaciones de la actividad && `yaAsignado == false`]:
+         - `:ModaLink` solicita a `asignaciones`: `unaAsignacion = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unaAsignacion`: `yaAsignado = correspondeA(unMiembro, unaActividad)`.
+       - **Bloque Alternativo (`alt`)** [yaAsignado]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El miembro ya está asignado a la actividad")`.
+       - **Bloque Alternativo (`alt`)** [!yaAsignado]:
+         - **Bloque Bucle (`loop`)** [Mientras haya requerimientos de la actividad && `requerimientoEncontrado == false`]:
+           - `:ModaLink` solicita a `requerimientosActividad`: `unRequerimiento = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unRequerimiento`: `requerimientoEncontrado = correspondeA(unaActividad) && tieneProfesion(unPerfil) && tieneCupoDisponible()`.
+         - **Bloque Alternativo (`alt`)** [requerimientoEncontrado]:
+           - `:ModaLink` crea la asignación: `unaAsignacion = registrar(unMiembro, unaActividad, unRequerimiento)`.
+           - `asignaciones.agregar(unaAsignacion)`.
+           - `:ModaLink` actualiza el requerimiento: `unRequerimiento.actualizarEstado()`.
+         - **Bloque Alternativo (`alt`)** [!requerimientoEncontrado]:
+           - `:ModaLink` crea la asignación sin requerimiento: `unaAsignacion = registrar(unMiembro, unaActividad, null)`.
+           - `asignaciones.agregar(unaAsignacion)`.
+         - `:ModaLink` agrega a `notificaciones`: `notificarAsignacion(unMiembro, unaActividad)`.
+         - `:ModaLink` retorna `unaAsignacion` al actor.
+
