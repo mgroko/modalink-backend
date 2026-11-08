@@ -133,6 +133,25 @@ public class ObtenerContratoService {
 
         boolean puedeRechazar = puedeFirmar;
 
+        boolean proyectoEliminable =
+                contrato.getProyecto().getEstado() != EstadoProyecto.FINALIZADO
+                        && contrato.getProyecto().getEstado() != EstadoProyecto.CANCELADO;
+        boolean contratoEliminado =
+                contrato.getEstado() == EstadoContrato.ELIMINADO;
+
+        boolean puedeEliminar = esDirector
+                && proyectoEliminable
+                && !contratoEliminado;
+
+        String motivoNoEliminable = null;
+        if (!esDirector) {
+            motivoNoEliminable = "SIN_PERMISO";
+        } else if (contratoEliminado) {
+            motivoNoEliminable = "CONTRATO_YA_ELIMINADO";
+        } else if (!proyectoEliminable) {
+            motivoNoEliminable = "PROYECTO_NO_APTO_PARA_ELIMINACION";
+        }
+
         String motivoNoModificable = null;
         if (!esDirector) {
             motivoNoModificable = "SIN_PERMISO";
@@ -152,6 +171,8 @@ public class ObtenerContratoService {
                 puedeModificarse,
                 motivoNoModificable,
                 puedeFirmar,
-                puedeRechazar);
+                puedeRechazar,
+                puedeEliminar,
+                motivoNoEliminable);
     }
 }

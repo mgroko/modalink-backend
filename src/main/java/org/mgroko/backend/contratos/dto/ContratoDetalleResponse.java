@@ -28,6 +28,8 @@ public record ContratoDetalleResponse(
         boolean puedeFirmar,
         boolean puedeRechazar,
         int firmados,
-        int totalPartes
+        int totalPartes,
+        boolean puedeEliminar,
+        String motivoNoEliminable
 ) {
 }

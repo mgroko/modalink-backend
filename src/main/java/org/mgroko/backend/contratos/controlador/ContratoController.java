@@ -15,6 +15,7 @@ import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
 import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.dto.RechazarContratoRequest;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.EliminarContratoService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
@@ -30,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,6 +64,7 @@ public class ContratoController {
     private final ModificarContratoService modificarContratoService;
     private final FirmarContratoService firmarContratoService;
     private final RechazarContratoService rechazarContratoService;
+    private final EliminarContratoService eliminarContratoService;
 
     public ContratoController(
             ObtenerOpcionesContratoService opcionesService,
@@ -73,7 +76,8 @@ public class ContratoController {
             PrevisualizarModificacionContratoService previsualizarModificacionService,
             ModificarContratoService modificarContratoService,
             FirmarContratoService firmarContratoService,
-            RechazarContratoService rechazarContratoService) {
+            RechazarContratoService rechazarContratoService,
+            EliminarContratoService eliminarContratoService) {
         this.opcionesService = opcionesService;
         this.previsualizarService = previsualizarService;
         this.generarService = generarService;
@@ -84,6 +88,7 @@ public class ContratoController {
         this.modificarContratoService = modificarContratoService;
         this.firmarContratoService = firmarContratoService;
         this.rechazarContratoService = rechazarContratoService;
+        this.eliminarContratoService = eliminarContratoService;
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/opciones")
@@ -196,6 +201,21 @@ public class ContratoController {
                 idProyecto,
                 idContrato,
                 request));
+    }
+
+    @DeleteMapping("/proyectos/{idProyecto}/contratos/{idContrato}")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        eliminarContratoService.eliminar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato);
+
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/proyectos/{idProyecto}/contratos/{idContrato}/firmar")

@@ -435,6 +435,7 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         ContratoBusquedaResponse filaDirector = comoDirector.contenido().get(0);
         assertThat(filaDirector.puedeFirmar()).isTrue();
         assertThat(filaDirector.puedeRechazar()).isTrue();
+        assertThat(filaDirector.puedeEliminar()).isTrue();
         assertThat(filaDirector.firmados()).isZero();
         assertThat(filaDirector.totalPartes()).isEqualTo(2);
 
@@ -444,6 +445,7 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
 
         assertThat(comoMiembro.totalElementos()).isEqualTo(1);
         assertThat(comoMiembro.contenido().get(0).puedeFirmar()).isTrue();
+        assertThat(comoMiembro.contenido().get(0).puedeEliminar()).isFalse();
 
         assertThat(buscar(datos.segundoDirector(),
                 datos.perfilSegundoDirector(), filtroVacio(), true)
@@ -478,6 +480,8 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
 
         assertThat(comoDirector.puedeFirmar()).isTrue();
         assertThat(comoDirector.puedeRechazar()).isTrue();
+        assertThat(comoDirector.puedeEliminar()).isTrue();
+        assertThat(comoDirector.motivoNoEliminable()).isNull();
         assertThat(comoDirector.firmados()).isZero();
         assertThat(comoDirector.totalPartes()).isEqualTo(2);
 
@@ -493,6 +497,39 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(comoMiembro.puedeRechazar()).isFalse();
         assertThat(comoMiembro.firmados()).isEqualTo(1);
         assertThat(comoMiembro.totalPartes()).isEqualTo(2);
+    }
+
+    @Test
+    void proyectoFinalizadoNoPermiteEliminarContrato() {
+        Datos datos = crearProyectoConContrato();
+
+        em.createNativeQuery("""
+                UPDATE proyecto
+                   SET estado = 'FINALIZADO'
+                 WHERE id_proyecto = :idProyecto
+                """)
+                .setParameter("idProyecto", datos.proyecto().getIdProyecto())
+                .executeUpdate();
+
+        em.flush();
+        em.clear();
+
+        ContratoDetalleResponse detalle = obtenerContratoService.obtener(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                datos.idContrato());
+
+        assertThat(detalle.puedeEliminar()).isFalse();
+        assertThat(detalle.motivoNoEliminable())
+                .isEqualTo("PROYECTO_NO_APTO_PARA_ELIMINACION");
+
+        PaginaResponse<ContratoBusquedaResponse> pagina = buscar(
+                datos.director(),
+                datos.perfilDirector(),
+                filtroVacio());
+
+        assertThat(pagina.contenido().get(0).puedeEliminar()).isFalse();
     }
 
     private void firmarDestinatario(Datos datos) {

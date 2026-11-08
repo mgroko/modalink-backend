@@ -5300,9 +5300,10 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    IF NOT (
-        (OLD.estado = 'BORRADOR' AND NEW.estado IN ('PENDIENTE_FIRMA', 'ELIMINADO'))
-        OR (OLD.estado = 'PENDIENTE_FIRMA' AND NEW.estado IN ('ACTIVO', 'RECHAZADO_POR_PARTES', 'CANCELADO', 'ELIMINADO'))
+    -- UC-54: la baja logica se permite desde cualquier estado de contrato.
+    IF NEW.estado <> 'ELIMINADO' AND NOT (
+        (OLD.estado = 'BORRADOR' AND NEW.estado = 'PENDIENTE_FIRMA')
+        OR (OLD.estado = 'PENDIENTE_FIRMA' AND NEW.estado IN ('ACTIVO', 'RECHAZADO_POR_PARTES', 'CANCELADO'))
         OR (OLD.estado = 'ACTIVO' AND NEW.estado = 'CANCELADO')
     ) THEN
         RAISE EXCEPTION 'Transicion de contrato no permitida: % -> %.', OLD.estado, NEW.estado;
@@ -5408,17 +5409,18 @@ BEGIN
     END IF;
 
     IF NEW.estado = 'ELIMINADO' THEN
-        IF OLD.estado NOT IN ('BORRADOR', 'PENDIENTE_FIRMA') THEN
-            RAISE EXCEPTION 'Solo se puede eliminar un contrato en BORRADOR o PENDIENTE_FIRMA.';
-        END IF;
-
         IF EXISTS (
-            SELECT 1 FROM firma_contrato
-            WHERE id_contrato = NEW.id_contrato AND estado_firma IN ('FIRMADO', 'INVALIDADA')
+            SELECT 1 FROM proyecto
+            WHERE id_proyecto = NEW.id_proyecto
+              AND estado IN ('FINALIZADO', 'CANCELADO')
         ) THEN
-            RAISE EXCEPTION 'No se puede eliminar un contrato con firmas registradas.';
+            RAISE EXCEPTION 'No se puede eliminar un contrato de un proyecto finalizado o cancelado.';
         END IF;
 
+        -- La baja logica es equivalente a una cancelacion: el motivo original
+        -- queda registrado en los eventos del contrato.
+        NEW.fecha_cancelacion := NULL;
+        NEW.motivo_cancelacion := NULL;
         NEW.fecha_baja := COALESCE(NEW.fecha_baja, clock_timestamp());
     END IF;
 

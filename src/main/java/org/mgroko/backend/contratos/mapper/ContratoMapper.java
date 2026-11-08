@@ -155,7 +155,8 @@ public final class ContratoMapper {
             Long idMiembroActivo,
             boolean puedeModificar,
             boolean puedeFirmar,
-            boolean puedeRechazar) {
+            boolean puedeRechazar,
+            boolean puedeEliminar) {
 
         List<FirmaContrato> partes = firmas == null ? List.of() : firmas;
         FirmaContrato emisor = partes.stream()
@@ -188,7 +189,8 @@ public final class ContratoMapper {
                 puedeFirmar,
                 puedeRechazar,
                 contarFirmados(partes),
-                contarTotalPartes(partes));
+                contarTotalPartes(partes),
+                puedeEliminar);
     }
 
     public static ContratoDetalleResponse toDetalleResponse(
@@ -199,7 +201,9 @@ public final class ContratoMapper {
             boolean puedeModificarse,
             String motivoNoModificable,
             boolean puedeFirmar,
-            boolean puedeRechazar) {
+            boolean puedeRechazar,
+            boolean puedeEliminar,
+            String motivoNoEliminable) {
 
         List<FirmaContrato> partes = firmas == null ? List.of() : firmas;
         FirmaContrato miFirma = miFirma(partes, idPerfilActivo, idMiembroActivo);
@@ -235,7 +239,9 @@ public final class ContratoMapper {
                 puedeFirmar,
                 puedeRechazar,
                 contarFirmados(partes),
-                contarTotalPartes(partes));
+                contarTotalPartes(partes),
+                puedeEliminar,
+                motivoNoEliminable);
     }
 
     private static FirmaContrato miFirma(

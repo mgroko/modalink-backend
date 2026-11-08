@@ -24,6 +24,7 @@ public record ContratoBusquedaResponse(
         boolean puedeFirmar,
         boolean puedeRechazar,
         int firmados,
-        int totalPartes
+        int totalPartes,
+        boolean puedeEliminar
 ) {
 }

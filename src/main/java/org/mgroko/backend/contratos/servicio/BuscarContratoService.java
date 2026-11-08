@@ -189,6 +189,14 @@ public class BuscarContratoService {
                             && proyectoApto
                             && !firmasRegistradas;
 
+                    boolean proyectoEliminable =
+                            resumen.getEstadoProyecto() != EstadoProyecto.FINALIZADO
+                                    && resumen.getEstadoProyecto() != EstadoProyecto.CANCELADO;
+
+                    boolean puedeEliminar = proyectosDirector.contains(resumen.getIdProyecto())
+                            && proyectoEliminable
+                            && resumen.getEstado() != EstadoContrato.ELIMINADO;
+
                     return ContratoMapper.toBusquedaResponse(
                             resumen,
                             firmas,
@@ -196,7 +204,8 @@ public class BuscarContratoService {
                             idMiembroActivo,
                             puedeModificar,
                             puedeFirmar,
-                            puedeRechazar);
+                            puedeRechazar,
+                            puedeEliminar);
                 })
                 .toList();
 

@@ -2,7 +2,10 @@ package org.mgroko.backend.contratos.controlador;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -26,7 +29,9 @@ import org.mgroko.backend.contratos.dto.ProyectoContratoResponse;
 import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.dto.TipoAcuerdoContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
+import org.mgroko.backend.contratos.exception.ContratoNoModificableException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.EliminarContratoService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
@@ -84,6 +89,9 @@ class ContratoControllerTest {
 
     @MockitoBean
     private RechazarContratoService rechazarContratoService;
+
+    @MockitoBean
+    private EliminarContratoService eliminarContratoService;
 
     @Test
     void opciones_devuelve200ConDatosDelProyecto() throws Exception {
@@ -234,7 +242,7 @@ class ContratoControllerTest {
                 55L, "Contrato", 100L, "Proyecto", 1L, "CESION",
                 "Cesion", "PENDIENTE_FIRMA", null, null, null, 1,
                 null, List.of(), "PENDIENTE", null, true,
-                true, true, 0, 1);
+                true, true, 0, 1, true);
 
         when(buscarContratoService.buscar(
                 eq(1L), eq(10L), any(), eq(0), eq(20), eq(false)))
@@ -383,6 +391,33 @@ class ContratoControllerTest {
                 .andExpect(jsonPath("$.idContrato").value(55L));
     }
 
+    @Test
+    void eliminar_devuelve204() throws Exception {
+        var auth = autenticacion(10L);
+
+        mockMvc.perform(delete("/proyectos/100/contratos/55")
+                        .principal(auth))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarContratoService).eliminar(1L, 10L, 100L, 55L);
+    }
+
+    @Test
+    void eliminar_conProyectoNoApto_devuelve409ConCodigo() throws Exception {
+        var auth = autenticacion(10L);
+
+        doThrow(new ContratoNoModificableException(
+                        "PROYECTO_NO_APTO_PARA_ELIMINACION",
+                        "No se puede eliminar un contrato de un proyecto finalizado o cancelado."))
+                .when(eliminarContratoService).eliminar(1L, 10L, 100L, 55L);
+
+        mockMvc.perform(delete("/proyectos/100/contratos/55")
+                        .principal(auth))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo")
+                        .value("PROYECTO_NO_APTO_PARA_ELIMINACION"));
+    }
+
     private ContratoDetalleResponse detalle() {
         return new ContratoDetalleResponse(
                 55L, 100L, "Proyecto", "PUBLICADO", 1L, "CESION", "Cesion",
@@ -393,7 +428,7 @@ class ContratoControllerTest {
                 List.of(new ParteContratoResumenResponse(
                         11L, 3L, "Ana Pérez", "DIRECTOR", "PENDIENTE", null)),
                 "PENDIENTE", null, true, null,
-                true, true, 0, 1);
+                true, true, 0, 1, true, null);
     }
 
     private UsernamePasswordAuthenticationToken autenticacion(Long idPerfilActivo) {
