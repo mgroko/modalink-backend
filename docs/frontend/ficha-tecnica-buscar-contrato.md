@@ -99,7 +99,31 @@ Respuesta `200`:
 
 Sin resultados: `200` con página vacía. El frontend muestra el estado vacío.
 
-### 3.2. Detalle
+### 3.2. Proyectos con contratos visibles (filtro)
+
+```text
+GET /contratos/proyectos
+```
+
+Devuelve las opciones del filtro "Proyecto" para el perfil activo, ordenadas por nombre:
+
+```json
+[
+  {
+    "idProyecto": 10,
+    "nombre": "Editorial Primavera"
+  }
+]
+```
+
+Reglas:
+
+- Solo incluye proyectos con al menos un contrato visible para el perfil activo: como director activo o como parte firmante.
+- Incluye proyectos históricos donde el perfil ya no tiene membresía activa pero conserva una firma de contrato.
+- No incluye proyectos sin contratos visibles, aunque el perfil sea miembro activo no firmante.
+- Requiere perfil activo; si no hay, responde `404 PERFIL_ACTIVO_NO_SELECCIONADO`.
+
+### 3.3. Detalle
 
 ```text
 GET /proyectos/{idProyecto}/contratos/{idContrato}
@@ -129,6 +153,7 @@ Devuelve el texto legal, partes, firmas, emisor, estado, versión y flags:
 
 - `ContratoBusquedaRepository` + `ContratoBusquedaRepositoryImpl` con Criteria API.
 - `ContratoSpecifications` con visibilidad y filtros mediante `EXISTS`.
+- `ContratoSpecifications.conVisibilidad` se reutiliza para `GET /contratos/proyectos`, de modo que el combo del filtro y la búsqueda no diverjan.
 - Proyección `ContratoResumenProyeccion` sin `texto`.
 - Carga batch de partes con `FirmaContratoRepository.findConPartesPorContratos`.
 - Cálculo batch de `puedeModificar` con `MiembroProyectoRepository.findIdsProyectosDondeEsDirectorActivo`.
@@ -139,7 +164,7 @@ Devuelve el texto legal, partes, firmas, emisor, estado, versión y flags:
 
 ## 6. Pruebas
 
-- `BuscarContratoIntegrationTest`: visibilidad director/miembro/ajeno, filtros, estados por defecto, `BORRADOR`/`ELIMINADO`, firma, firma parcial, detalle y errores.
+- `BuscarContratoIntegrationTest`: visibilidad director/miembro/ajeno, filtros, estados por defecto, `BORRADOR`/`ELIMINADO`, firma, firma parcial, detalle, errores y proyectos visibles con histórico de parte firmante.
 - `ContratoControllerTest`: `GET /contratos/buscar` y detalle.
 - Regresión de UC-39 y de los triggers de contrato.
 

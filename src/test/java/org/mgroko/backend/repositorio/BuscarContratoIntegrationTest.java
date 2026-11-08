@@ -13,9 +13,11 @@ import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
 import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
+import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoFiltroInvalidoException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.ContratoVersion;
@@ -55,6 +57,9 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private BuscarContratoService buscarContratoService;
+
+    @Autowired
+    private ListarProyectosContratoService listarProyectosContratoService;
 
     @Autowired
     private ObtenerContratoService obtenerContratoService;
@@ -146,6 +151,50 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                         20);
 
         assertThat(comoAjeno.totalElementos()).isZero();
+    }
+
+    @Test
+    void proyectosDelFiltroIncluyenHistoricosDondeElPerfilFueParte() {
+        Datos datos = crearProyectoConContrato();
+
+        // Simula la baja del miembro firmante: el proyecto pasa a ser
+        // histórico para él, pero la firma del contrato persiste.
+        em.createNativeQuery("""
+                UPDATE miembros_proyecto
+                   SET estado_participacion = 'BAJA_VOLUNTARIA',
+                       fecha_baja = fecha_alta
+                 WHERE id_miembro = :idMiembro
+                """)
+                .setParameter("idMiembro", datos.miembroProyecto().getIdMiembro())
+                .executeUpdate();
+
+        em.flush();
+        em.clear();
+
+        List<ProyectoFiltroContratoResponse> comoMiembro =
+                listarProyectosContratoService.listar(
+                        datos.miembro().getIdUsuario(),
+                        datos.perfilMiembro().getIdPerfil());
+
+        assertThat(comoMiembro)
+                .extracting(ProyectoFiltroContratoResponse::idProyecto)
+                .containsExactly(datos.proyecto().getIdProyecto());
+
+        assertThat(listarProyectosContratoService.listar(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil()))
+                .extracting(ProyectoFiltroContratoResponse::idProyecto)
+                .containsExactly(datos.proyecto().getIdProyecto());
+
+        assertThat(listarProyectosContratoService.listar(
+                datos.miembroNoParte().getIdUsuario(),
+                datos.perfilMiembroNoParte().getIdPerfil()))
+                .isEmpty();
+
+        assertThat(listarProyectosContratoService.listar(
+                datos.ajeno().getIdUsuario(),
+                datos.perfilAjeno().getIdPerfil()))
+                .isEmpty();
     }
 
     @Test

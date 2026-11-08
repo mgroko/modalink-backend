@@ -23,11 +23,13 @@ import org.mgroko.backend.contratos.dto.ParteContratoResumenResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
 import org.mgroko.backend.contratos.dto.ProyectoContratoResponse;
+import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.dto.TipoAcuerdoContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerOpcionesContratoService;
@@ -64,6 +66,9 @@ class ContratoControllerTest {
 
     @MockitoBean
     private BuscarContratoService buscarContratoService;
+
+    @MockitoBean
+    private ListarProyectosContratoService listarProyectosService;
 
     @MockitoBean
     private ObtenerContratoService obtenerContratoService;
@@ -257,6 +262,22 @@ class ContratoControllerTest {
                         .principal(auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido").isEmpty());
+    }
+
+    @Test
+    void proyectos_devuelveSoloLosVisiblesParaElPerfil() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(listarProyectosService.listar(1L, 10L))
+                .thenReturn(List.of(
+                        new ProyectoFiltroContratoResponse(100L, "Proyecto histórico"),
+                        new ProyectoFiltroContratoResponse(101L, "Proyecto actual")));
+
+        mockMvc.perform(get("/contratos/proyectos").principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idProyecto").value(100L))
+                .andExpect(jsonPath("$[0].nombre").value("Proyecto histórico"))
+                .andExpect(jsonPath("$[1].idProyecto").value(101L));
     }
 
     @Test

@@ -1,5 +1,7 @@
 package org.mgroko.backend.contratos.controlador;
 
+import java.util.List;
+
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
@@ -10,10 +12,12 @@ import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
+import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.dto.RechazarContratoRequest;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerOpcionesContratoService;
@@ -52,6 +56,7 @@ public class ContratoController {
     private final PrevisualizarContratoService previsualizarService;
     private final GenerarContratoService generarService;
     private final BuscarContratoService buscarContratoService;
+    private final ListarProyectosContratoService listarProyectosService;
     private final ObtenerContratoService obtenerContratoService;
     private final PrevisualizarModificacionContratoService previsualizarModificacionService;
     private final ModificarContratoService modificarContratoService;
@@ -63,6 +68,7 @@ public class ContratoController {
             PrevisualizarContratoService previsualizarService,
             GenerarContratoService generarService,
             BuscarContratoService buscarContratoService,
+            ListarProyectosContratoService listarProyectosService,
             ObtenerContratoService obtenerContratoService,
             PrevisualizarModificacionContratoService previsualizarModificacionService,
             ModificarContratoService modificarContratoService,
@@ -72,6 +78,7 @@ public class ContratoController {
         this.previsualizarService = previsualizarService;
         this.generarService = generarService;
         this.buscarContratoService = buscarContratoService;
+        this.listarProyectosService = listarProyectosService;
         this.obtenerContratoService = obtenerContratoService;
         this.previsualizarModificacionService = previsualizarModificacionService;
         this.modificarContratoService = modificarContratoService;
@@ -133,6 +140,19 @@ public class ContratoController {
                 page,
                 size,
                 miFirmaPendiente));
+    }
+
+    /**
+     * Opciones del filtro "Proyecto": solo proyectos con contratos visibles
+     * para el perfil activo, incluidos los históricos donde fue parte firmante.
+     */
+    @GetMapping("/contratos/proyectos")
+    public ResponseEntity<List<ProyectoFiltroContratoResponse>> proyectos(
+            Authentication authentication) {
+
+        return ResponseEntity.ok(listarProyectosService.listar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication)));
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/{idContrato}")

@@ -3,6 +3,7 @@ package org.mgroko.backend.repositorio;
 import java.util.List;
 
 import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
+import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.especificacion.ContratoSpecifications;
 import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.repositorio.proyeccion.ContratoResumenProyeccion;
@@ -80,5 +81,27 @@ public class ContratoBusquedaRepositoryImpl implements ContratoBusquedaRepositor
         Long total = entityManager.createQuery(countQuery).getSingleResult();
 
         return new PageImpl<>(contenido, pageable, total);
+    }
+
+    @Override
+    public List<ProyectoFiltroContratoResponse> listarProyectosVisibles(
+            Long idPerfilActivo) {
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+
+        CriteriaQuery<ProyectoFiltroContratoResponse> query =
+                cb.createQuery(ProyectoFiltroContratoResponse.class);
+        Root<Contrato> root = query.from(Contrato.class);
+
+        query.select(cb.construct(
+                ProyectoFiltroContratoResponse.class,
+                root.get("proyecto").get("idProyecto"),
+                root.get("proyecto").get("nombre")));
+        query.where(ContratoSpecifications.conVisibilidad(
+                query, cb, root, idPerfilActivo));
+        query.distinct(true);
+        query.orderBy(cb.asc(root.get("proyecto").get("nombre")));
+
+        return entityManager.createQuery(query).getResultList();
     }
 }

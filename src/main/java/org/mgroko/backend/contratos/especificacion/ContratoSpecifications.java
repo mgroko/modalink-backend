@@ -118,7 +118,12 @@ public final class ContratoSpecifications {
         return valor != null && !valor.isBlank();
     }
 
-    private static Predicate conVisibilidad(
+    /**
+     * Visibilidad de UC-68: director activo del proyecto o parte firmante del
+     * contrato. Se expone para reutilizarla en la lista de proyectos del
+     * filtro, de modo que el combo y la búsqueda no diverjan.
+     */
+    public static Predicate conVisibilidad(
             CriteriaQuery<?> query,
             CriteriaBuilder cb,
             Path<Contrato> root,
