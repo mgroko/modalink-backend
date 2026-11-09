@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
-import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
 import org.mgroko.backend.conexiones.exception.ConexionYaExistenteException;
@@ -14,19 +13,15 @@ import org.mgroko.backend.conexiones.exception.SolicitudConexionInvalidaExceptio
 import org.mgroko.backend.conexiones.mapper.SolicitudConexionMapper;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.SolicitudConexion;
-import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
-import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
-import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.perfiles.servicio.PerfilActivoService;
 import org.mgroko.backend.repositorio.ConexionRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.SolicitudConexionRepository;
-import org.mgroko.backend.repositorio.UsuarioRepository;
-import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EnviarSolicitudConexionService {
 
-    private final UsuarioRepository usuarioRepository;
+    private final PerfilActivoService perfilActivoService;
     private final PerfilRepository perfilRepository;
     private final SolicitudConexionRepository solicitudConexionRepository;
     private final ConexionRepository conexionRepository;
@@ -45,13 +40,13 @@ public class EnviarSolicitudConexionService {
     private final Clock reloj;
 
     public EnviarSolicitudConexionService(
-            UsuarioRepository usuarioRepository,
+            PerfilActivoService perfilActivoService,
             PerfilRepository perfilRepository,
             SolicitudConexionRepository solicitudConexionRepository,
             ConexionRepository conexionRepository,
             NotificacionService notificacionService,
             Clock reloj) {
-        this.usuarioRepository = usuarioRepository;
+        this.perfilActivoService = perfilActivoService;
         this.perfilRepository = perfilRepository;
         this.solicitudConexionRepository = solicitudConexionRepository;
         this.conexionRepository = conexionRepository;
@@ -65,7 +60,7 @@ public class EnviarSolicitudConexionService {
             Long idPerfilActivo,
             EnviarSolicitudConexionRequest request) {
 
-        Perfil remitente = resolverPerfilActivo(idUsuario, idPerfilActivo);
+        Perfil remitente = perfilActivoService.resolver(idUsuario, idPerfilActivo);
         Perfil destinatario = resolverDestinatario(request.idPerfilDestinatario());
 
         validarPerfilesDistintos(remitente, destinatario);
@@ -106,37 +101,6 @@ public class EnviarSolicitudConexionService {
 
         notificarSolicitud(destinatario, remitente, solicitud);
         return SolicitudConexionMapper.toResponse(solicitud);
-    }
-
-    private Perfil resolverPerfilActivo(Long idUsuario, Long idPerfilActivo) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
-
-        if (!usuario.getEstado().permiteAcceso()) {
-            throw new UsuarioNoEncontradoException("Usuario no encontrado.");
-        }
-
-        PerfilAccessPolicy.validarNoAdministrador(usuario);
-
-        if (idPerfilActivo == null) {
-            throw new PerfilActivoNoSeleccionadoException();
-        }
-
-        Perfil perfil = perfilRepository
-                .findByIdPerfilAndUsuarioIdUsuario(idPerfilActivo, idUsuario)
-                .orElseThrow(PerfilNoEncontradoException::new);
-
-        if (perfil.getEstado() != EstadoPerfil.ACTIVO) {
-            throw new PerfilEnBajaException("El perfil no se encuentra activo.");
-        }
-
-        if (perfil.getUsuario() == null
-                || perfil.getUsuario().getEstado() != EstadoUsuario.ACTIVO) {
-            throw new PerfilEnBajaException(
-                    "El usuario del perfil no se encuentra activo.");
-        }
-
-        return perfil;
     }
 
     private Perfil resolverDestinatario(Long idPerfilDestinatario) {

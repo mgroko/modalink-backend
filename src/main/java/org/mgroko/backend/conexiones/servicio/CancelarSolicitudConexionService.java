@@ -1,23 +1,14 @@
 package org.mgroko.backend.conexiones.servicio;
 
-import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionNoEncontradaException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionNoPendienteException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionNoPermitidaException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.SolicitudConexion;
-import org.mgroko.backend.modelo.Usuario;
-import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
-import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
-import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
-import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
-import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
-import org.mgroko.backend.repositorio.PerfilRepository;
+import org.mgroko.backend.perfiles.servicio.PerfilActivoService;
 import org.mgroko.backend.repositorio.SolicitudConexionRepository;
-import org.mgroko.backend.repositorio.UsuarioRepository;
-import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,18 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CancelarSolicitudConexionService {
 
-    private final UsuarioRepository usuarioRepository;
-    private final PerfilRepository perfilRepository;
+    private final PerfilActivoService perfilActivoService;
     private final SolicitudConexionRepository solicitudConexionRepository;
     private final NotificacionService notificacionService;
 
     public CancelarSolicitudConexionService(
-            UsuarioRepository usuarioRepository,
-            PerfilRepository perfilRepository,
+            PerfilActivoService perfilActivoService,
             SolicitudConexionRepository solicitudConexionRepository,
             NotificacionService notificacionService) {
-        this.usuarioRepository = usuarioRepository;
-        this.perfilRepository = perfilRepository;
+        this.perfilActivoService = perfilActivoService;
         this.solicitudConexionRepository = solicitudConexionRepository;
         this.notificacionService = notificacionService;
     }
@@ -54,7 +42,7 @@ public class CancelarSolicitudConexionService {
             Long idPerfilActivo,
             Long idSolicitudConexion) {
 
-        Perfil perfilActivo = resolverPerfilActivo(idUsuario, idPerfilActivo);
+        Perfil perfilActivo = perfilActivoService.resolver(idUsuario, idPerfilActivo);
 
         SolicitudConexion solicitud = solicitudConexionRepository
                 .findByIdForUpdate(idSolicitudConexion)
@@ -78,36 +66,5 @@ public class CancelarSolicitudConexionService {
 
         solicitudConexionRepository.delete(solicitud);
         solicitudConexionRepository.flush();
-    }
-
-    private Perfil resolverPerfilActivo(Long idUsuario, Long idPerfilActivo) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
-
-        if (!usuario.getEstado().permiteAcceso()) {
-            throw new UsuarioNoEncontradoException("Usuario no encontrado.");
-        }
-
-        PerfilAccessPolicy.validarNoAdministrador(usuario);
-
-        if (idPerfilActivo == null) {
-            throw new PerfilActivoNoSeleccionadoException();
-        }
-
-        Perfil perfil = perfilRepository
-                .findByIdPerfilAndUsuarioIdUsuario(idPerfilActivo, idUsuario)
-                .orElseThrow(PerfilNoEncontradoException::new);
-
-        if (perfil.getEstado() != EstadoPerfil.ACTIVO) {
-            throw new PerfilEnBajaException("El perfil no se encuentra activo.");
-        }
-
-        if (perfil.getUsuario() == null
-                || perfil.getUsuario().getEstado() != EstadoUsuario.ACTIVO) {
-            throw new PerfilEnBajaException(
-                    "El usuario del perfil no se encuentra activo.");
-        }
-
-        return perfil;
     }
 }

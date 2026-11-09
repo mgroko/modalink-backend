@@ -23,7 +23,9 @@ import org.mgroko.backend.conexiones.dto.DireccionSolicitudConexion;
 import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
 import org.mgroko.backend.conexiones.dto.PerfilConexionResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionBusquedaResponse;
+import org.mgroko.backend.conexiones.dto.SolicitudConexionGestionadaResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
+import org.mgroko.backend.conexiones.exception.ConexionYaExistenteException;
 import org.mgroko.backend.conexiones.exception.RangoFechasSolicitudConexionInvalidoException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionDuplicadaException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionNoEncontradaException;
@@ -32,7 +34,9 @@ import org.mgroko.backend.conexiones.exception.SolicitudConexionNoPermitidaExcep
 import org.mgroko.backend.conexiones.servicio.BuscarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.CancelarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.EnviarSolicitudConexionService;
+import org.mgroko.backend.conexiones.servicio.GestionarSolicitudConexionService;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +70,9 @@ class SolicitudConexionControllerTest {
 
     @MockitoBean
     private BuscarSolicitudConexionService buscarSolicitudConexionService;
+
+    @MockitoBean
+    private GestionarSolicitudConexionService gestionarSolicitudConexionService;
 
     @Test
     void enviar_solicitudValida_devuelve201() throws Exception {
@@ -223,6 +230,88 @@ class SolicitudConexionControllerTest {
                 .andExpect(status().isNotFound());
 
         verifyNoInteractions(buscarSolicitudConexionService);
+    }
+
+    @Test
+    void aceptar_solicitudValida_devuelve200ConConexion() throws Exception {
+        when(gestionarSolicitudConexionService.aceptar(1L, 10L, 100L))
+                .thenReturn(new SolicitudConexionGestionadaResponse(
+                        100L,
+                        EstadoSolicitud.ACEPTADA,
+                        LocalDateTime.of(2026, 11, 9, 10, 30),
+                        55L));
+
+        mockMvc.perform(post("/solicitudes-conexion/100/aceptar")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idSolicitudConexion").value(100))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"))
+                .andExpect(jsonPath("$.idConexion").value(55));
+    }
+
+    @Test
+    void rechazar_solicitudValida_devuelve200SinConexion() throws Exception {
+        when(gestionarSolicitudConexionService.rechazar(1L, 10L, 100L))
+                .thenReturn(new SolicitudConexionGestionadaResponse(
+                        100L,
+                        EstadoSolicitud.RECHAZADA,
+                        LocalDateTime.of(2026, 11, 9, 10, 30),
+                        null));
+
+        mockMvc.perform(post("/solicitudes-conexion/100/rechazar")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idSolicitudConexion").value(100))
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"))
+                .andExpect(jsonPath("$.idConexion")
+                        .value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void aceptar_solicitudAjena_devuelve403() throws Exception {
+        when(gestionarSolicitudConexionService.aceptar(1L, 10L, 100L))
+                .thenThrow(new SolicitudConexionNoPermitidaException(
+                        "La solicitud no pertenece al perfil activo."));
+
+        mockMvc.perform(post("/solicitudes-conexion/100/aceptar")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_CONEXION_NO_PERMITIDA"));
+    }
+
+    @Test
+    void aceptar_solicitudYaGestionada_devuelve409() throws Exception {
+        when(gestionarSolicitudConexionService.aceptar(1L, 10L, 100L))
+                .thenThrow(new SolicitudConexionNoPendienteException(
+                        "Sólo se pueden gestionar solicitudes de conexión pendientes."));
+
+        mockMvc.perform(post("/solicitudes-conexion/100/aceptar")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_CONEXION_NO_PENDIENTE"));
+    }
+
+    @Test
+    void aceptar_conexionExistente_devuelve409() throws Exception {
+        when(gestionarSolicitudConexionService.aceptar(1L, 10L, 100L))
+                .thenThrow(new ConexionYaExistenteException(
+                        "Ya existe una conexión vigente con ese perfil."));
+
+        mockMvc.perform(post("/solicitudes-conexion/100/aceptar")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CONEXION_YA_EXISTENTE"));
+    }
+
+    @Test
+    void aceptar_perfilInactivo_devuelve409() throws Exception {
+        when(gestionarSolicitudConexionService.aceptar(1L, 10L, 100L))
+                .thenThrow(new PerfilEnBajaException(
+                        "El perfil remitente no se encuentra activo."));
+
+        mockMvc.perform(post("/solicitudes-conexion/100/aceptar")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isConflict());
     }
 
     private UsernamePasswordAuthenticationToken autenticacion(Long idPerfilActivo) {

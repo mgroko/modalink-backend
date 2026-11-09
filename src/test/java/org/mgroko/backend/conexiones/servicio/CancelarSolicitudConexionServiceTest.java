@@ -63,9 +63,11 @@ class CancelarSolicitudConexionServiceTest {
 
     @BeforeEach
     void setUp() {
+        var perfilActivoService = new org.mgroko.backend.perfiles.servicio.PerfilActivoService(
+                usuarioRepository, perfilRepository);
+
         service = new CancelarSolicitudConexionService(
-                usuarioRepository,
-                perfilRepository,
+                perfilActivoService,
                 solicitudConexionRepository,
                 notificacionService);
 

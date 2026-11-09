@@ -20,6 +20,7 @@ El MVP cubre:
 - Estado y baja física de postulaciones e invitaciones.
 - Configuración del sistema.
 - Reportes de perfil.
+- Alta y baja de conexiones de la red de contactos.
 - Inmutabilidad del log (`UPDATE`, `DELETE` y `TRUNCATE`).
 - Consulta paginada con filtros para el administrador (UC-67).
 - Resumen agregado por tipo de evento y por entidad afectada.
@@ -114,6 +115,8 @@ ALTER TABLE detalle_auditoria
 | `TIPO_CONTRATO_ESTADO_CAMBIADO` | `tipo_acuerdo_contrato` UPDATE solo `activo` | `activo` |
 | `TIPO_CONTRATO_ELIMINADO` | `tipo_acuerdo_contrato` DELETE | `nombre`, `descripcion`, `plantilla` (resumen), `activo` |
 | `REPORTE_ESTADO_CAMBIADO` | `reporte` INSERT/UPDATE | `estado`, `motivo`, `id_admin_revisor` |
+| `CONEXION_CREADA` | `conexion` INSERT | perfiles, solicitud, estado, fecha de inicio |
+| `CONEXION_ELIMINADA` | `conexion` UPDATE/DELETE | estado y fecha de fin |
 | `OTRO` | Cualquier código no catalogado | Se preserva en `tipo_evento_original` |
 
 ---

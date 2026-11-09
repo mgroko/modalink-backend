@@ -133,6 +133,48 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void solicitudConexionRecibida_incluyeLinkASolicitudesRecibidas() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_CONEXION_RECIBIDA",
+                        "SOLICITUD_CONEXION", 100L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/solicitudes-conexion?direccion=RECIBIDA");
+    }
+
+    @Test
+    void solicitudConexionAceptada_incluyeLinkARedContactosConId() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_CONEXION_ACEPTADA",
+                        "CONEXION", 55L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/red-contactos?idConexion=55");
+    }
+
+    @Test
+    void solicitudConexionRechazada_incluyeLinkASolicitudesEnviadas() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_CONEXION_RECHAZADA",
+                        "SOLICITUD_CONEXION", 100L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/solicitudes-conexion?direccion=ENVIADA&estado=RECHAZADA");
+    }
+
+    @Test
+    void conexionEliminada_incluyeLinkARedContactos() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("CONEXION_ELIMINADA", "CONEXION", 55L, null),
+                null);
+
+        assertThat(response.link()).isEqualTo("/red-contactos");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");

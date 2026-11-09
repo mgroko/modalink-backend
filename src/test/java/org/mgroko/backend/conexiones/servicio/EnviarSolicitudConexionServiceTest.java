@@ -85,8 +85,11 @@ class EnviarSolicitudConexionServiceTest {
         Clock reloj = Clock.fixed(
                 Instant.parse("2026-11-08T12:00:00Z"), ZoneOffset.UTC);
 
+        var perfilActivoService = new org.mgroko.backend.perfiles.servicio.PerfilActivoService(
+                usuarioRepository, perfilRepository);
+
         service = new EnviarSolicitudConexionService(
-                usuarioRepository,
+                perfilActivoService,
                 perfilRepository,
                 solicitudConexionRepository,
                 conexionRepository,

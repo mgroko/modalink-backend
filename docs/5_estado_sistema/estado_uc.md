@@ -123,7 +123,7 @@ el historial de git sirva de bitácora adicional.
 | UC-42 | Enviar mensaje privado            | No iniciado |                  |       | Segunda iteracion |
 | UC-43 | Enviar solicitud de conexión      | Implementado y testeado | `POST /solicitudes-conexion` y `DELETE /solicitudes-conexion/{idSolicitudConexion}` | Sí (unitario + MVC + integración) | Envía desde el perfil activo a un perfil `ACTIVO` de otro usuario. Bloquea autorequest, perfiles del mismo usuario, conexión activa y solicitud pendiente en cualquier dirección. Crea notificación `SOLICITUD_CONEXION_RECIBIDA`. Extensión: el remitente puede cancelar su solicitud `PENDIENTE`; se elimina físicamente junto con la notificación del destinatario y el par queda libre para reenviar. `GET /perfiles/{idPerfil}` expone `estadoConexion`. Esquema base creado para UC-44..UC-46 (`solicitud_conexion`, `conexion`). |
 | UC-44 | Eliminar conexión                 | No iniciado |                  |       | Segunda iteracion |
-| UC-45 | Gestionar solicitudes de conexión | No iniciado |                  |       | Segunda iteracion |
+| UC-45 | Gestionar solicitudes de conexión | Implementado y testeado | `POST /solicitudes-conexion/{id}/aceptar` y `POST /solicitudes-conexion/{id}/rechazar` | Sí (unitario + MVC + integración + concurrencia) | Solo el destinatario gestiona solicitudes `PENDIENTE`. Aceptar crea `conexion` `ACTIVA` con par canónico, notifica a ambas partes y audita `CONEXION_CREADA`. Rechazar actualiza a `RECHAZADA`, notifica solo al remitente y no audita. Valida perfiles/usuarios activos, conexión vigente y lock pesimista. Notificaciones con `link` navegable. |
 | UC-46 | Buscar solicitudes de conexión    | Implementado y testeado | `GET /solicitudes-conexion` | Sí (unitario + MVC + integración) | Búsqueda paginada de solicitudes recibidas/enviadas por el perfil activo. Por defecto `PENDIENTE`; filtros opcionales `direccion`, `estado`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`, `fechaDesde`/`fechaHasta`. Texto case-insensitive e insensible a acentos (`unaccent`). Flags `puedeAceptar`, `puedeRechazar` y `puedeCancelar`. Sin resultados devuelve página vacía. |
 
 ---
@@ -137,8 +137,8 @@ el historial de git sirva de bitácora adicional.
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
 | Gestión de proyectos               | 26       | 25                      | 0            | 0           | 1           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
-| Gestión de conexiones y mensajería | 5        | 2                       | 0            | 0           | 3           |
-| **Total**                          | **76**   | **60**                  | **0**        | **0**       | **16**      |
+| Gestión de conexiones y mensajería | 5        | 3                       | 0            | 0           | 2           |
+| **Total**                          | **76**   | **61**                  | **0**        | **0**       | **15**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -151,4 +151,4 @@ el historial de git sirva de bitácora adicional.
 > son casos derivados del desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan
 > sus filas en el módulo de proyectos solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 60 de 76 casos de uso implementados y testeados = **78,9 %** del catálogo de requisitos.
+**Avance global:** 61 de 76 casos de uso implementados y testeados = **80,3 %** del catálogo de requisitos.

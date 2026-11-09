@@ -4,10 +4,12 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.conexiones.dto.BuscarSolicitudesConexionFiltro;
 import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionBusquedaResponse;
+import org.mgroko.backend.conexiones.dto.SolicitudConexionGestionadaResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
 import org.mgroko.backend.conexiones.servicio.BuscarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.CancelarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.EnviarSolicitudConexionService;
+import org.mgroko.backend.conexiones.servicio.GestionarSolicitudConexionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -35,14 +37,17 @@ public class SolicitudConexionController {
     private final EnviarSolicitudConexionService enviarSolicitudConexionService;
     private final CancelarSolicitudConexionService cancelarSolicitudConexionService;
     private final BuscarSolicitudConexionService buscarSolicitudConexionService;
+    private final GestionarSolicitudConexionService gestionarSolicitudConexionService;
 
     public SolicitudConexionController(
             EnviarSolicitudConexionService enviarSolicitudConexionService,
             CancelarSolicitudConexionService cancelarSolicitudConexionService,
-            BuscarSolicitudConexionService buscarSolicitudConexionService) {
+            BuscarSolicitudConexionService buscarSolicitudConexionService,
+            GestionarSolicitudConexionService gestionarSolicitudConexionService) {
         this.enviarSolicitudConexionService = enviarSolicitudConexionService;
         this.cancelarSolicitudConexionService = cancelarSolicitudConexionService;
         this.buscarSolicitudConexionService = buscarSolicitudConexionService;
+        this.gestionarSolicitudConexionService = gestionarSolicitudConexionService;
     }
 
     /**
@@ -89,6 +94,34 @@ public class SolicitudConexionController {
                 idSolicitudConexion);
 
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * UC-45 - Acepta una solicitud de conexión recibida por el perfil activo.
+     */
+    @PostMapping("/solicitudes-conexion/{idSolicitudConexion}/aceptar")
+    public ResponseEntity<SolicitudConexionGestionadaResponse> aceptar(
+            @PathVariable Long idSolicitudConexion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(gestionarSolicitudConexionService.aceptar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idSolicitudConexion));
+    }
+
+    /**
+     * UC-45 - Rechaza una solicitud de conexión recibida por el perfil activo.
+     */
+    @PostMapping("/solicitudes-conexion/{idSolicitudConexion}/rechazar")
+    public ResponseEntity<SolicitudConexionGestionadaResponse> rechazar(
+            @PathVariable Long idSolicitudConexion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(gestionarSolicitudConexionService.rechazar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idSolicitudConexion));
     }
 
     private Long idUsuario(Authentication authentication) {

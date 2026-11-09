@@ -180,6 +180,8 @@ Los T&C se versionan: cada cambio real cierra la versión vigente y crea una nue
 |--------|----------|-------------|
 | POST   | `/solicitudes-conexion` | Envía una solicitud de conexión desde el perfil activo al perfil indicado en el body (`idPerfilDestinatario`). Crea la solicitud en estado `PENDIENTE` y una notificación `SOLICITUD_CONEXION_RECIBIDA` al perfil destinatario. Devuelve `201 Created`. |
 | GET    | `/solicitudes-conexion` | Busca solicitudes recibidas o enviadas por el perfil activo. Filtros opcionales: `direccion`, `estado` (por defecto `PENDIENTE`), `nombre`, `apellido`, `nombreArtistico`, `idProfesion`, `fechaDesde`, `fechaHasta`. Devuelve una página de resultados. |
+| POST   | `/solicitudes-conexion/{idSolicitudConexion}/aceptar` | Acepta una solicitud `PENDIENTE` recibida por el perfil activo. Crea la conexión y notifica a ambas partes. Devuelve `200` con `idConexion`. |
+| POST   | `/solicitudes-conexion/{idSolicitudConexion}/rechazar` | Rechaza una solicitud `PENDIENTE` recibida por el perfil activo. Notifica solo al remitente. Devuelve `200` con `idConexion = null`. |
 | DELETE | `/solicitudes-conexion/{idSolicitudConexion}` | Cancela una solicitud `PENDIENTE` enviada por el perfil activo. Elimina físicamente la solicitud y la notificación `SOLICITUD_CONEXION_RECIBIDA` del destinatario. Devuelve `204 No Content`. |
 
 `GET /perfiles/{idPerfil}` incorpora los campos `estadoConexion` (`NINGUNA`, `SOLICITUD_ENVIADA`, `SOLICITUD_RECIBIDA`, `CONECTADO`), `idSolicitudConexion` e `idConexion` para que el frontend muestre la acción disponible.
@@ -196,6 +198,10 @@ Reglas de UC-43:
 - La búsqueda de UC-46 se limita al perfil activo. Por defecto devuelve `PENDIENTE` y ordena por `fechaEnvio DESC`.
 - Los filtros de nombre, apellido, nombre artístico y profesión se aplican a la contraparte y son case-insensitive e insensibles a acentos.
 - La búsqueda sin resultados devuelve `200` con una página vacía.
+- Sólo el perfil destinatario puede aceptar o rechazar una solicitud.
+- Aceptar crea una conexión `ACTIVA` y notifica a ambas partes; rechazar notifica sólo al remitente.
+- Las notificaciones de conexiones incluyen `link` para navegar a solicitudes o a la red de contactos.
+- El alta y la baja de conexiones se auditan (`CONEXION_CREADA` / `CONEXION_ELIMINADA`); las solicitudes no se auditan.
 - La base de datos refuerza las reglas con un índice único parcial, checks y triggers.
 
 Antes de levantar esta versión sobre una base existente, ejecutar con la aplicación detenida
@@ -206,6 +212,10 @@ queda preparada para UC-44, UC-45 y UC-46.
 Para UC-46 ejecutar además
 `docs/3_diseño/migraciones/2026-11-09_uc46_buscar_solicitudes_conexion.sql`, que habilita
 la extensión `unaccent` usada por la búsqueda insensible a acentos.
+
+Para UC-45 ejecutar
+`docs/3_diseño/migraciones/2026-11-09_uc45_auditoria_conexiones.sql`, que agrega los
+eventos `CONEXION_CREADA` y `CONEXION_ELIMINADA` y el trigger de auditoría sobre `conexion`.
 
 ### Catálogos (requiere autenticación)
 

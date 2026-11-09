@@ -8271,3 +8271,63 @@ ON CONFLICT (codigo) DO UPDATE
         categoria = EXCLUDED.categoria,
         prioridad = EXCLUDED.prioridad,
         activo = true;
+
+-- ============================================================================
+-- UC-45 - Auditoria de conexiones
+-- Solo se audita el alta y la baja de conexiones, no las solicitudes.
+-- ============================================================================
+
+INSERT INTO tipo_evento_auditoria (codigo, nombre, descripcion, modulo) VALUES
+    ('CONEXION_CREADA', 'Alta de conexión', 'Creación de una conexión entre dos perfiles', 'CONEXIONES'),
+    ('CONEXION_ELIMINADA', 'Baja de conexión', 'Eliminación lógica o física de una conexión', 'CONEXIONES')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        descripcion = EXCLUDED.descripcion,
+        modulo = EXCLUDED.modulo,
+        activo = true;
+
+CREATE OR REPLACE FUNCTION fn_auditar_conexion() RETURNS trigger AS $$
+DECLARE
+    v_detalle jsonb;
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        v_detalle := jsonb_build_array(
+            jsonb_build_object('campo', 'id_perfil_1', 'nuevo', NEW.id_perfil_1::text),
+            jsonb_build_object('campo', 'id_perfil_2', 'nuevo', NEW.id_perfil_2::text),
+            jsonb_build_object('campo', 'id_solicitud_conexion', 'nuevo', NEW.id_solicitud_conexion::text),
+            jsonb_build_object('campo', 'estado', 'nuevo', NEW.estado),
+            jsonb_build_object('campo', 'fecha_inicio_conexion', 'nuevo', NEW.fecha_inicio_conexion::text)
+        );
+        PERFORM fn_auditoria_registrar(
+            'conexion', NEW.id_conexion, 'CONEXION_CREADA', 'INSERT', v_detalle);
+        RETURN NEW;
+    ELSIF TG_OP = 'UPDATE' THEN
+        IF OLD.estado = 'ACTIVA' AND NEW.estado = 'ELIMINADA' THEN
+            v_detalle := jsonb_build_array(
+                jsonb_build_object('campo', 'estado', 'anterior', OLD.estado, 'nuevo', NEW.estado),
+                jsonb_build_object('campo', 'fecha_fin_conexion', 'anterior', OLD.fecha_fin_conexion::text, 'nuevo', NEW.fecha_fin_conexion::text)
+            );
+            PERFORM fn_auditoria_registrar(
+                'conexion', NEW.id_conexion, 'CONEXION_ELIMINADA', 'UPDATE', v_detalle);
+        END IF;
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        v_detalle := jsonb_build_array(
+            jsonb_build_object('campo', 'id_perfil_1', 'anterior', OLD.id_perfil_1::text),
+            jsonb_build_object('campo', 'id_perfil_2', 'anterior', OLD.id_perfil_2::text),
+            jsonb_build_object('campo', 'id_solicitud_conexion', 'anterior', OLD.id_solicitud_conexion::text),
+            jsonb_build_object('campo', 'estado', 'anterior', OLD.estado)
+        );
+        PERFORM fn_auditoria_registrar(
+            'conexion', OLD.id_conexion, 'CONEXION_ELIMINADA', 'DELETE', v_detalle);
+        RETURN OLD;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_auditar_conexion ON conexion;
+CREATE TRIGGER trg_auditar_conexion
+    AFTER INSERT OR UPDATE OF estado OR DELETE ON conexion
+    FOR EACH ROW EXECUTE FUNCTION fn_auditar_conexion();

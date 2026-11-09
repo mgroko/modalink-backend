@@ -115,3 +115,39 @@ La cancelación de una solicitud enviada se resuelve con **borrado físico**:
   la página con `@EntityGraph` para evitar N+1.
 - Sin resultados se devuelve `200` con página vacía.
 - El tamaño máximo de página es 100.
+
+## 8. Gestión de solicitudes (UC-45)
+
+- Solo el perfil destinatario puede aceptar o rechazar.
+- La solicitud se bloquea con `PESSIMISTIC_WRITE` para serializar aceptar,
+  rechazar y cancelar.
+- Aceptar:
+  - actualiza la solicitud a `ACEPTADA` y `fecha_respuesta`;
+  - hace `saveAndFlush` de la solicitud antes de insertar la conexión, porque
+    `trg_validar_conexion` exige que la solicitud ya esté `ACEPTADA`;
+  - inserta `conexion` con par canónico y `fecha_inicio_conexion`;
+  - crea dos notificaciones `SOLICITUD_CONEXION_ACEPTADA`;
+  - el trigger `trg_auditar_conexion` registra `CONEXION_CREADA`.
+- Rechazar:
+  - actualiza la solicitud a `RECHAZADA` y `fecha_respuesta`;
+  - no crea conexión;
+  - crea una sola notificación `SOLICITUD_CONEXION_RECHAZADA` para el remitente;
+  - no registra auditoría.
+- Si ya existe una conexión activa, aceptar y rechazar devuelven `409`.
+- Si el remitente, destinatario o usuario no está activo, devuelve `409`.
+
+## 9. Auditoría de conexiones
+
+El trigger `trg_auditar_conexion` registra:
+
+| Operación | Evento | Acción |
+|---|---|---|
+| `INSERT` en `conexion` | `CONEXION_CREADA` | `INSERT` |
+| `UPDATE` de `ACTIVA` a `ELIMINADA` | `CONEXION_ELIMINADA` | `UPDATE` |
+| `DELETE` físico de `conexion` | `CONEXION_ELIMINADA` | `DELETE` |
+
+No se audita `solicitud_conexion`: ni el envío, ni la cancelación, ni el
+rechazo generan eventos de auditoría.
+
+La migración asociada es
+`docs/3_diseño/migraciones/2026-11-09_uc45_auditoria_conexiones.sql`.

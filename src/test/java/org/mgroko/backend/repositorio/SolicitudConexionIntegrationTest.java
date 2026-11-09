@@ -3,6 +3,7 @@ package org.mgroko.backend.repositorio;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
+import org.mgroko.backend.conexiones.dto.SolicitudConexionGestionadaResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
 import org.mgroko.backend.conexiones.exception.ConexionYaExistenteException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionDuplicadaException;
@@ -24,6 +26,7 @@ import org.mgroko.backend.conexiones.modelo.EstadoRelacionPerfil;
 import org.mgroko.backend.conexiones.modelo.RelacionPerfil;
 import org.mgroko.backend.conexiones.servicio.CancelarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.EnviarSolicitudConexionService;
+import org.mgroko.backend.conexiones.servicio.GestionarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.RelacionPerfilService;
 import org.mgroko.backend.modelo.Conexion;
 import org.mgroko.backend.modelo.Genero;
@@ -85,6 +88,9 @@ class SolicitudConexionIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private CancelarSolicitudConexionService cancelarSolicitudConexionService;
+
+    @Autowired
+    private GestionarSolicitudConexionService gestionarSolicitudConexionService;
 
     @Autowired
     private RelacionPerfilService relacionPerfilService;
@@ -290,6 +296,146 @@ class SolicitudConexionIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void aceptarSolicitud_creaConexionNotificaYAudita() {
+        SolicitudConexionResponse creada = enviarSolicitudConexionService.enviar(
+                usuarioA.getIdUsuario(), perfilA.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(perfilB.getIdPerfil()));
+
+        SolicitudConexionGestionadaResponse respuesta =
+                gestionarSolicitudConexionService.aceptar(
+                        usuarioB.getIdUsuario(),
+                        perfilB.getIdPerfil(),
+                        creada.idSolicitudConexion());
+
+        assertEquals(EstadoSolicitud.ACEPTADA, respuesta.estado());
+        assertNotNull(respuesta.idConexion());
+
+        Conexion conexion = conexionRepository
+                .findActivaEntre(perfilA.getIdPerfil(), perfilB.getIdPerfil())
+                .orElseThrow();
+        assertEquals(respuesta.idConexion(), conexion.getIdConexion());
+        assertEquals(creada.idSolicitudConexion(),
+                conexion.getSolicitudOrigen().getIdSolicitudConexion());
+        assertNotNull(conexion.getFechaInicioConexion());
+
+        assertEquals(1, contarNotificaciones(
+                usuarioA.getIdUsuario(),
+                NotificacionService.TIPO_SOLICITUD_CONEXION_ACEPTADA,
+                conexion.getIdConexion()));
+        assertEquals(1, contarNotificaciones(
+                usuarioB.getIdUsuario(),
+                NotificacionService.TIPO_SOLICITUD_CONEXION_ACEPTADA,
+                conexion.getIdConexion()));
+        assertEquals(1, contarNotificaciones(
+                usuarioB.getIdUsuario(),
+                NotificacionService.TIPO_SOLICITUD_CONEXION_RECIBIDA,
+                creada.idSolicitudConexion()));
+        assertEquals(1, contarAuditoria("CONEXION_CREADA", conexion.getIdConexion()));
+    }
+
+    @Test
+    void rechazarSolicitud_soloNotificaAlRemitenteYNoAudita() {
+        SolicitudConexionResponse creada = enviarSolicitudConexionService.enviar(
+                usuarioA.getIdUsuario(), perfilA.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(perfilB.getIdPerfil()));
+
+        SolicitudConexionGestionadaResponse respuesta =
+                gestionarSolicitudConexionService.rechazar(
+                        usuarioB.getIdUsuario(),
+                        perfilB.getIdPerfil(),
+                        creada.idSolicitudConexion());
+
+        assertEquals(EstadoSolicitud.RECHAZADA, respuesta.estado());
+        assertNull(respuesta.idConexion());
+        assertTrue(conexionRepository
+                .findActivaEntre(perfilA.getIdPerfil(), perfilB.getIdPerfil())
+                .isEmpty());
+
+        assertEquals(1, contarNotificaciones(
+                usuarioA.getIdUsuario(),
+                NotificacionService.TIPO_SOLICITUD_CONEXION_RECHAZADA,
+                creada.idSolicitudConexion()));
+        assertEquals(0, contarNotificaciones(
+                usuarioB.getIdUsuario(),
+                NotificacionService.TIPO_SOLICITUD_CONEXION_RECHAZADA,
+                creada.idSolicitudConexion()));
+        assertEquals(1, contarNotificaciones(
+                usuarioB.getIdUsuario(),
+                NotificacionService.TIPO_SOLICITUD_CONEXION_RECIBIDA,
+                creada.idSolicitudConexion()));
+        assertEquals(0, contarAuditoriaConexiones());
+    }
+
+    @Test
+    void aceptarSolicitud_porElRemitente_lanzaNoPermitida() {
+        SolicitudConexionResponse creada = enviarSolicitudConexionService.enviar(
+                usuarioA.getIdUsuario(), perfilA.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(perfilB.getIdPerfil()));
+
+        assertThrows(SolicitudConexionNoPermitidaException.class, () ->
+                gestionarSolicitudConexionService.aceptar(
+                        usuarioA.getIdUsuario(),
+                        perfilA.getIdPerfil(),
+                        creada.idSolicitudConexion()));
+    }
+
+    @Test
+    void aceptarSolicitud_yaAceptada_lanzaNoPendiente() {
+        SolicitudConexionResponse creada = enviarSolicitudConexionService.enviar(
+                usuarioA.getIdUsuario(), perfilA.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(perfilB.getIdPerfil()));
+
+        gestionarSolicitudConexionService.aceptar(
+                usuarioB.getIdUsuario(), perfilB.getIdPerfil(),
+                creada.idSolicitudConexion());
+
+        assertThrows(SolicitudConexionNoPendienteException.class, () ->
+                gestionarSolicitudConexionService.aceptar(
+                        usuarioB.getIdUsuario(),
+                        perfilB.getIdPerfil(),
+                        creada.idSolicitudConexion()));
+    }
+
+    @Test
+    void aceptarSolicitud_remitenteInactivo_lanzaPerfilEnBaja() {
+        SolicitudConexionResponse creada = enviarSolicitudConexionService.enviar(
+                usuarioA.getIdUsuario(), perfilA.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(perfilB.getIdPerfil()));
+
+        perfilA.setEstado(EstadoPerfil.PendienteBaja);
+        perfilRepository.saveAndFlush(perfilA);
+
+        assertThrows(PerfilEnBajaException.class, () ->
+                gestionarSolicitudConexionService.aceptar(
+                        usuarioB.getIdUsuario(),
+                        perfilB.getIdPerfil(),
+                        creada.idSolicitudConexion()));
+    }
+
+    @Test
+    void eliminarLogicamenteConexion_auditaBaja() {
+        SolicitudConexionResponse creada = enviarSolicitudConexionService.enviar(
+                usuarioA.getIdUsuario(), perfilA.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(perfilB.getIdPerfil()));
+
+        SolicitudConexionGestionadaResponse aceptada =
+                gestionarSolicitudConexionService.aceptar(
+                        usuarioB.getIdUsuario(),
+                        perfilB.getIdPerfil(),
+                        creada.idSolicitudConexion());
+
+        Conexion conexion = conexionRepository
+                .findById(aceptada.idConexion())
+                .orElseThrow();
+        conexion.setEstado(EstadoConexion.ELIMINADA);
+        conexion.setFechaFinConexion(LocalDateTime.now());
+        conexionRepository.saveAndFlush(conexion);
+
+        assertEquals(1, contarAuditoria(
+                "CONEXION_ELIMINADA", conexion.getIdConexion()));
+    }
+
+    @Test
     void baseDeDatos_rechazaSolicitudEntrePerfilesDelMismoUsuario() {
         Perfil segundoPerfilA = perfilRepository.saveAndFlush(
                 crearPerfil(usuarioA, "Perfil A3", SECUENCIA.incrementAndGet(), "A3"));
@@ -333,6 +479,48 @@ class SolicitudConexionIntegrationTest extends AbstractPostgresIntegrationTest {
                         (id_perfil_remitente, id_perfil_destinatario, estado)
                     VALUES (?, ?, 'PENDIENTE')
                     """, perfilB.getIdPerfil(), perfilA.getIdPerfil()));
+    }
+
+    private int contarNotificaciones(
+            Long idUsuarioDestino,
+            String tipo,
+            Long entidadId) {
+
+        Integer cantidad = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM notificacion
+                WHERE id_usuario_destino = ?
+                  AND tipo = ?
+                  AND entidad_id = ?
+                """,
+                Integer.class,
+                idUsuarioDestino,
+                tipo,
+                entidadId);
+        return cantidad != null ? cantidad : 0;
+    }
+
+    private int contarAuditoria(String tipoEvento, Long idAfectado) {
+        Integer cantidad = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM auditoria
+                WHERE tipo_evento = ?
+                  AND id_afectado = ?
+                """,
+                Integer.class,
+                tipoEvento,
+                idAfectado);
+        return cantidad != null ? cantidad : 0;
+    }
+
+    private int contarAuditoriaConexiones() {
+        Integer cantidad = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM auditoria
+                WHERE tipo_evento IN ('CONEXION_CREADA', 'CONEXION_ELIMINADA')
+                """,
+                Integer.class);
+        return cantidad != null ? cantidad : 0;
     }
 
     private int contarSolicitudes(Long idSolicitudConexion) {
