@@ -1,6 +1,7 @@
 package org.mgroko.backend.conexiones.controlador;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -19,7 +20,10 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.conexiones.dto.BuscarConexionesFiltro;
 import org.mgroko.backend.conexiones.dto.ConexionResponse;
+import org.mgroko.backend.conexiones.dto.EstadoPresenciaConexion;
 import org.mgroko.backend.conexiones.dto.PerfilConexionResponse;
+import org.mgroko.backend.conexiones.dto.ProfesionConexionResponse;
+import org.mgroko.backend.conexiones.dto.ResumenConexionesResponse;
 import org.mgroko.backend.conexiones.exception.ConexionNoActivaException;
 import org.mgroko.backend.conexiones.exception.ConexionNoEncontradaException;
 import org.mgroko.backend.conexiones.servicio.BuscarConexionService;
@@ -59,7 +63,45 @@ class ConexionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido[0].idConexion").value(55))
                 .andExpect(jsonPath("$.contenido[0].perfil.idPerfil").value(42))
+                .andExpect(jsonPath("$.contenido[0].enLinea").value(false))
                 .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void buscar_conFiltroDePresencia_loPasaAlServicio() throws Exception {
+        when(buscarConexionService.buscar(
+                eq(1L), eq(10L), any(BuscarConexionesFiltro.class), eq(0), eq(20)))
+                .thenReturn(pagina());
+
+        mockMvc.perform(get("/conexiones")
+                        .param("estadoPresencia", "EN_LINEA")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk());
+
+        verify(buscarConexionService).buscar(
+                eq(1L),
+                eq(10L),
+                argThat(filtro -> filtro.estadoPresencia()
+                        == EstadoPresenciaConexion.EN_LINEA),
+                eq(0),
+                eq(20));
+    }
+
+    @Test
+    void resumen_devuelveTotalesYProfesiones() throws Exception {
+        when(buscarConexionService.resumen(1L, 10L))
+                .thenReturn(new ResumenConexionesResponse(
+                        6,
+                        4,
+                        List.of(new ProfesionConexionResponse(2L, "Fotógrafo", 3))));
+
+        mockMvc.perform(get("/conexiones/resumen")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalConexiones").value(6))
+                .andExpect(jsonPath("$.totalEnLinea").value(4))
+                .andExpect(jsonPath("$.profesiones[0].nombre").value("Fotógrafo"))
+                .andExpect(jsonPath("$.profesiones[0].cantidad").value(3));
     }
 
     @Test

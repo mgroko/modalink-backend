@@ -126,6 +126,7 @@ el historial de git sirva de bitácora adicional.
 | UC-44 bis | Listar red de contactos        | Implementado y testeado | `GET /conexiones` | Sí (unitario + MVC + integración) | Caso derivado del mockup “Mi red” (no computado en el total). Lista sólo conexiones `ACTIVA` del perfil activo y devuelve la contraparte con profesión, foto y ciudad. Filtros opcionales `texto`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`; orden `fechaInicioConexion DESC`; página máxima 100. |
 | UC-45 | Gestionar solicitudes de conexión | Implementado y testeado | `POST /solicitudes-conexion/{id}/aceptar` y `POST /solicitudes-conexion/{id}/rechazar` | Sí (unitario + MVC + integración + concurrencia) | Solo el destinatario gestiona solicitudes `PENDIENTE`. Aceptar crea `conexion` `ACTIVA` con par canónico, notifica a ambas partes y audita `CONEXION_CREADA`. Rechazar actualiza a `RECHAZADA`, notifica solo al remitente y no audita. Valida perfiles/usuarios activos, conexión vigente y lock pesimista. Notificaciones con `link` navegable. |
 | UC-46 | Buscar solicitudes de conexión    | Implementado y testeado | `GET /solicitudes-conexion` | Sí (unitario + MVC + integración) | Búsqueda paginada de solicitudes recibidas/enviadas por el perfil activo. Por defecto `PENDIENTE`; `todosLosEstados=true` devuelve cualquier estado y no se combina con `estado` (`400 FILTRO_INVALIDO`). Filtros opcionales `direccion`, `estado`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`, `fechaDesde`/`fechaHasta`. Texto case-insensitive e insensible a acentos (`unaccent`). Flags `puedeAceptar`, `puedeRechazar` y `puedeCancelar`. Sin resultados devuelve página vacía. |
+| Extensión — Presencia de perfiles | Presencia por perfil en Mi red | Implementado y testeado | `POST /presencia/heartbeat`, `GET /presencia`, `GET /presencia/stream`, `GET /conexiones/resumen` | Sí (unitario + MVC + integración) | Extensión del mockup de Mi red, no computada en el total. Fuente de verdad `perfil.ultima_actividad`; heartbeat cada 30 s con throttle y umbral de 120 s. `enLinea` en detalle, búsqueda, conexiones y solicitudes; no se expone la última actividad. Filtro `estadoPresencia` en `GET /conexiones` y resumen para el hero/chips. SSE con snapshot inicial, ping y expiración cada 5 s. Logout no marca offline; los perfiles de usuarios no activos se muestran desconectados. Bus en memoria para una instancia. |
 
 ---
 
@@ -148,9 +149,9 @@ el historial de git sirva de bitácora adicional.
 > Se agrega además **`UC-76` *Gestionar tipos de contrato*** como extensión administrativa del módulo de contratos,
 > llevando el seguimiento a 76 casos de uso.
 >
-> Los escenarios **`UC-29 bis` *Buscar proyectos propios***, **`UC-38 bis / UC-40 bis` *Reemplazo automático de integrantes***
-> y **`UC-44 bis` *Listar red de contactos*** son casos derivados del desarrollo (con ficha técnica propia)
-> que no forman parte del catálogo numerado; se listan sus filas en el módulo correspondiente solo a efectos
-> de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
+> Los escenarios **`UC-29 bis` *Buscar proyectos propios***, **`UC-38 bis / UC-40 bis` *Reemplazo automático de integrantes***,
+> **`UC-44 bis` *Listar red de contactos*** y la **extensión de presencia por perfil** son casos derivados del
+> desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan sus filas en el
+> módulo correspondiente solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
 **Avance global:** 62 de 76 casos de uso implementados y testeados = **81,6 %** del catálogo de requisitos.

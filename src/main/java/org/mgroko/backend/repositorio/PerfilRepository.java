@@ -1,6 +1,7 @@
 package org.mgroko.backend.repositorio;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -207,4 +209,41 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
     List<Perfil> buscarCandidatosReemplazoGeneral(
             @Param("idProfesion") Long idProfesion,
             @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Actualiza la última actividad solo si el perfil pertenece al usuario,
+     * está activo y pasó el throttle. Devuelve 0 cuando el heartbeat llega
+     * dentro de la ventana de throttle.
+     *
+     * <p>Se usa una actualización bulk para que Hibernate no incluya todas las
+     * columnas en el UPDATE. El trigger de auditoría de perfil está acotado a
+     * otras columnas, por lo que este heartbeat no genera auditoría.</p>
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE Perfil p
+        SET p.ultimaActividad = :ahora
+        WHERE p.idPerfil = :idPerfil
+          AND p.usuario.idUsuario = :idUsuario
+          AND p.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+          AND (p.ultimaActividad IS NULL OR p.ultimaActividad < :limite)
+    """)
+    int actualizarUltimaActividad(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idUsuario") Long idUsuario,
+            @Param("ahora") LocalDateTime ahora,
+            @Param("limite") LocalDateTime limite);
+
+    /**
+     * Datos mínimos para calcular presencia sin cargar entidades completas ni
+     * provocar N+1 al consultar varios perfiles.
+     */
+    @Query("""
+        SELECT new org.mgroko.backend.presencia.dto.PresenciaPerfilRow(
+            p.idPerfil, p.estado, p.usuario.estado, p.ultimaActividad)
+        FROM Perfil p
+        WHERE p.idPerfil IN :ids
+    """)
+    List<org.mgroko.backend.presencia.dto.PresenciaPerfilRow> buscarPresenciaPorIds(
+            @Param("ids") Collection<Long> ids);
 }

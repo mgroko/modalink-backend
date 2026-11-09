@@ -8,6 +8,19 @@ public record BuscarConexionesFiltro(
         String nombre,
         String apellido,
         String nombreArtistico,
-        Long idProfesion
+        Long idProfesion,
+        EstadoPresenciaConexion estadoPresencia
 ) {
+
+    /**
+     * Constructor histórico sin filtro de presencia.
+     */
+    public BuscarConexionesFiltro(
+            String texto,
+            String nombre,
+            String apellido,
+            String nombreArtistico,
+            Long idProfesion) {
+        this(texto, nombre, apellido, nombreArtistico, idProfesion, null);
+    }
 }

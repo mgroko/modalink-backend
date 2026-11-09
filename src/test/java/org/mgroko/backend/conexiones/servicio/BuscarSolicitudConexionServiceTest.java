@@ -30,10 +30,13 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.presencia.servicio.PresenciaService;
 import org.mgroko.backend.repositorio.SolicitudConexionRepository;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -41,12 +44,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class BuscarSolicitudConexionServiceTest {
 
     private static final Long ID_PERFIL_ACTIVO = 10L;
 
     @Mock
     private SolicitudConexionRepository solicitudConexionRepository;
+
+    @Mock
+    private PresenciaService presenciaService;
 
     private BuscarSolicitudConexionService service;
 
@@ -55,7 +62,13 @@ class BuscarSolicitudConexionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BuscarSolicitudConexionService(solicitudConexionRepository);
+        service = new BuscarSolicitudConexionService(
+                solicitudConexionRepository, presenciaService);
+
+        when(presenciaService.ahora())
+                .thenReturn(LocalDateTime.of(2026, 11, 9, 12, 0));
+        when(presenciaService.estaEnLinea(any(Perfil.class), any(LocalDateTime.class)))
+                .thenReturn(true);
 
         Usuario usuarioActivo = Usuario.builder()
                 .idUsuario(1L)

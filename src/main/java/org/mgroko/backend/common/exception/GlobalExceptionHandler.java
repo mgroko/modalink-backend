@@ -69,6 +69,7 @@ import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.presencia.exception.PresenciaSolicitudInvalidaException;
 import org.mgroko.backend.actividades.exception.AsignacionActividadNoEncontradaException;
 import org.mgroko.backend.actividades.exception.AsignacionActividadNoPermitidaException;
 import org.mgroko.backend.actividades.exception.AsignacionNoDisponibleException;
@@ -336,6 +337,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePerfilActivoNoSeleccionado(
             org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(PresenciaSolicitudInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePresenciaSolicitudInvalida(
+            PresenciaSolicitudInvalidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(org.mgroko.backend.perfiles.exception.ResenaNoEncontradaException.class)

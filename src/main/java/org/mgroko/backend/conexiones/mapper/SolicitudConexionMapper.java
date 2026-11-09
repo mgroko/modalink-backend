@@ -49,6 +49,13 @@ public final class SolicitudConexionMapper {
     public static SolicitudConexionBusquedaResponse toBusquedaResponse(
             SolicitudConexion solicitud,
             Long idPerfilActivo) {
+        return toBusquedaResponse(solicitud, idPerfilActivo, false);
+    }
+
+    public static SolicitudConexionBusquedaResponse toBusquedaResponse(
+            SolicitudConexion solicitud,
+            Long idPerfilActivo,
+            boolean enLinea) {
 
         boolean enviada = solicitud.getPerfilRemitente().getIdPerfil()
                 .equals(idPerfilActivo);
@@ -71,6 +78,7 @@ public final class SolicitudConexionMapper {
                 toPerfilResponse(contraparte),
                 pendiente && !enviada,
                 pendiente && !enviada,
-                pendiente && enviada);
+                pendiente && enviada,
+                enLinea);
     }
 }

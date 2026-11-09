@@ -12,9 +12,11 @@ import org.mgroko.backend.conexiones.especificacion.SolicitudConexionSpecificati
 import org.mgroko.backend.conexiones.exception.FiltroSolicitudConexionInvalidoException;
 import org.mgroko.backend.conexiones.exception.RangoFechasSolicitudConexionInvalidoException;
 import org.mgroko.backend.conexiones.mapper.SolicitudConexionMapper;
+import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.SolicitudConexion;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.presencia.servicio.PresenciaService;
 import org.mgroko.backend.repositorio.SolicitudConexionRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -34,10 +36,13 @@ public class BuscarSolicitudConexionService {
     private static final int TAMANO_PAGINA_MAXIMO = 100;
 
     private final SolicitudConexionRepository solicitudConexionRepository;
+    private final PresenciaService presenciaService;
 
     public BuscarSolicitudConexionService(
-            SolicitudConexionRepository solicitudConexionRepository) {
+            SolicitudConexionRepository solicitudConexionRepository,
+            PresenciaService presenciaService) {
         this.solicitudConexionRepository = solicitudConexionRepository;
+        this.presenciaService = presenciaService;
     }
 
     @Transactional(readOnly = true)
@@ -53,6 +58,7 @@ public class BuscarSolicitudConexionService {
 
         validarFechas(filtro);
         BuscarSolicitudesConexionFiltro filtroNormalizado = normalizar(filtro);
+        java.time.LocalDateTime ahora = presenciaService.ahora();
 
         Pageable pageable = PageRequest.of(
                 Math.max(0, page),
@@ -85,8 +91,16 @@ public class BuscarSolicitudConexionService {
         List<SolicitudConexionBusquedaResponse> contenido = ids.stream()
                 .map(porId::get)
                 .filter(Objects::nonNull)
-                .map(solicitud -> SolicitudConexionMapper.toBusquedaResponse(
-                        solicitud, idPerfilActivo))
+                .map(solicitud -> {
+                    Perfil contraparte = solicitud.getPerfilRemitente()
+                            .getIdPerfil().equals(idPerfilActivo)
+                                    ? solicitud.getPerfilDestinatario()
+                                    : solicitud.getPerfilRemitente();
+                    return SolicitudConexionMapper.toBusquedaResponse(
+                            solicitud,
+                            idPerfilActivo,
+                            presenciaService.estaEnLinea(contraparte, ahora));
+                })
                 .toList();
 
         return PaginaResponse.fromPage(

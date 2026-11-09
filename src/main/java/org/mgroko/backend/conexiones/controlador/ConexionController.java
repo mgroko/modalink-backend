@@ -3,6 +3,7 @@ package org.mgroko.backend.conexiones.controlador;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.conexiones.dto.BuscarConexionesFiltro;
 import org.mgroko.backend.conexiones.dto.ConexionResponse;
+import org.mgroko.backend.conexiones.dto.ResumenConexionesResponse;
 import org.mgroko.backend.conexiones.servicio.BuscarConexionService;
 import org.mgroko.backend.conexiones.servicio.EliminarConexionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -50,6 +51,18 @@ public class ConexionController {
                 filtro,
                 page,
                 size));
+    }
+
+    /**
+     * Resumen de la red: total, en línea y conexiones por profesión.
+     */
+    @GetMapping("/conexiones/resumen")
+    public ResponseEntity<ResumenConexionesResponse> resumen(
+            Authentication authentication) {
+
+        return ResponseEntity.ok(buscarConexionService.resumen(
+                idUsuario(authentication),
+                idPerfilActivo(authentication)));
     }
 
     /**

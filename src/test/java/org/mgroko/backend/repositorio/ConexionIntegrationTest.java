@@ -13,16 +13,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.conexiones.dto.BuscarConexionesFiltro;
+import org.mgroko.backend.conexiones.dto.BuscarSolicitudesConexionFiltro;
 import org.mgroko.backend.conexiones.dto.ConexionResponse;
+import org.mgroko.backend.conexiones.dto.DireccionSolicitudConexion;
 import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
+import org.mgroko.backend.conexiones.dto.EstadoPresenciaConexion;
+import org.mgroko.backend.conexiones.dto.ResumenConexionesResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionGestionadaResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
 import org.mgroko.backend.conexiones.exception.ConexionNoActivaException;
 import org.mgroko.backend.conexiones.exception.ConexionNoEncontradaException;
 import org.mgroko.backend.conexiones.servicio.BuscarConexionService;
+import org.mgroko.backend.conexiones.servicio.BuscarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.EliminarConexionService;
 import org.mgroko.backend.conexiones.servicio.EnviarSolicitudConexionService;
 import org.mgroko.backend.conexiones.servicio.GestionarSolicitudConexionService;
+import org.mgroko.backend.presencia.servicio.PresenciaService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -64,6 +70,10 @@ class ConexionIntegrationTest extends AbstractPostgresIntegrationTest {
     private EliminarConexionService eliminarConexionService;
     @Autowired
     private BuscarConexionService buscarConexionService;
+    @Autowired
+    private BuscarSolicitudConexionService buscarSolicitudConexionService;
+    @Autowired
+    private PresenciaService presenciaService;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -172,6 +182,7 @@ class ConexionIntegrationTest extends AbstractPostgresIntegrationTest {
         assertEquals(1, respuesta.totalElementos());
         assertEquals(idConexionAB, respuesta.contenido().get(0).idConexion());
         assertEquals(perfilB.idPerfil(), respuesta.contenido().get(0).perfil().idPerfil());
+        assertTrue(!respuesta.contenido().get(0).enLinea());
 
         eliminarConexionService.eliminar(
                 perfilA.idUsuario(), perfilA.idPerfil(), idConexionAB);
@@ -179,6 +190,106 @@ class ConexionIntegrationTest extends AbstractPostgresIntegrationTest {
         PaginaResponse<ConexionResponse> despues = buscarConexionService.buscar(
                 perfilA.idUsuario(), perfilA.idPerfil(), null, 0, 20);
         assertTrue(despues.contenido().isEmpty());
+    }
+
+    @Test
+    void listarRed_incluyePresenciaYFiltraPorEstado() {
+        crearConexion(perfilA, perfilC);
+        presenciaService.registrarActividad(
+                perfilB.idUsuario(), perfilB.idPerfil());
+
+        PaginaResponse<ConexionResponse> enLinea = buscarConexionService.buscar(
+                perfilA.idUsuario(),
+                perfilA.idPerfil(),
+                new BuscarConexionesFiltro(
+                        null, null, null, null, null,
+                        EstadoPresenciaConexion.EN_LINEA),
+                0,
+                20);
+
+        assertEquals(1, enLinea.totalElementos());
+        assertEquals(perfilB.idPerfil(), enLinea.contenido().get(0).perfil().idPerfil());
+        assertTrue(enLinea.contenido().get(0).enLinea());
+
+        PaginaResponse<ConexionResponse> desconectados = buscarConexionService.buscar(
+                perfilA.idUsuario(),
+                perfilA.idPerfil(),
+                new BuscarConexionesFiltro(
+                        null, null, null, null, null,
+                        EstadoPresenciaConexion.DESCONECTADO),
+                0,
+                20);
+
+        assertEquals(1, desconectados.totalElementos());
+        assertEquals(perfilC.idPerfil(),
+                desconectados.contenido().get(0).perfil().idPerfil());
+        assertTrue(!desconectados.contenido().get(0).enLinea());
+
+        ResumenConexionesResponse resumen = buscarConexionService.resumen(
+                perfilA.idUsuario(), perfilA.idPerfil());
+
+        assertEquals(2, resumen.totalConexiones());
+        assertEquals(1, resumen.totalEnLinea());
+        assertEquals(2, resumen.profesiones().size());
+    }
+
+    @Test
+    void listarRed_filtroPresencia_excluyeUsuarioInactivoAunqueTengaHeartbeat() {
+        presenciaService.registrarActividad(
+                perfilB.idUsuario(), perfilB.idPerfil());
+
+        Usuario usuarioB = usuarioRepository.findById(perfilB.idUsuario()).orElseThrow();
+        usuarioB.setEstado(EstadoUsuario.PendienteBaja);
+        usuarioRepository.saveAndFlush(usuarioB);
+
+        PaginaResponse<ConexionResponse> enLinea = buscarConexionService.buscar(
+                perfilA.idUsuario(),
+                perfilA.idPerfil(),
+                new BuscarConexionesFiltro(
+                        null, null, null, null, null,
+                        EstadoPresenciaConexion.EN_LINEA),
+                0,
+                20);
+
+        assertTrue(enLinea.contenido().isEmpty());
+
+        PaginaResponse<ConexionResponse> desconectados = buscarConexionService.buscar(
+                perfilA.idUsuario(),
+                perfilA.idPerfil(),
+                new BuscarConexionesFiltro(
+                        null, null, null, null, null,
+                        EstadoPresenciaConexion.DESCONECTADO),
+                0,
+                20);
+
+        assertEquals(1, desconectados.totalElementos());
+        assertEquals(perfilB.idPerfil(),
+                desconectados.contenido().get(0).perfil().idPerfil());
+    }
+
+    @Test
+    void buscarSolicitudes_incluyePresenciaDeLaContraparte() {
+        SolicitudConexionResponse solicitud = enviarSolicitudConexionService.enviar(
+                perfilC.idUsuario(),
+                perfilC.idPerfil(),
+                new EnviarSolicitudConexionRequest(perfilA.idPerfil()));
+
+        presenciaService.registrarActividad(
+                perfilC.idUsuario(), perfilC.idPerfil());
+
+        var pagina = buscarSolicitudConexionService.buscar(
+                perfilA.idPerfil(),
+                new BuscarSolicitudesConexionFiltro(
+                        DireccionSolicitudConexion.RECIBIDA,
+                        EstadoSolicitud.PENDIENTE,
+                        null, null, null, null, null, null, false),
+                0,
+                20);
+
+        assertTrue(pagina.contenido().stream()
+                .anyMatch(item -> item.idSolicitudConexion()
+                        .equals(solicitud.idSolicitudConexion())
+                        && item.enLinea()));
     }
 
     @Test

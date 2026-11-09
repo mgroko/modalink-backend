@@ -1379,6 +1379,7 @@ CREATE TABLE perfil(
     biografia               varchar(200)    NOT NULL,
     id_profesion            int8            NOT NULL,
     foto_perfil             int8,
+    ultima_actividad        timestamp,
     CONSTRAINT chk_perfil_nombre_artistico_len CHECK (char_length(trim(nombre_artistico)) >= 2),
     CONSTRAINT chk_perfil_biografia_len CHECK (char_length(trim(biografia)) >= 2),
     CONSTRAINT chk_perfil_estado CHECK (estado IN ('ACTIVO', 'DESHABILITADO', 'PENDIENTE_BAJA', 'BAJA')),

@@ -100,4 +100,34 @@ public interface ConexionRepository
     """)
     List<Conexion> findAllByIdInWithPerfiles(
             @Param("ids") Collection<Long> ids);
+
+    /**
+     * Conteo de conexiones activas por profesión de la contraparte. Se usa en
+     * el resumen de Mi red para los chips de profesión.
+     */
+    @Query(value = """
+        SELECT p.id_profesion AS "idProfesion",
+               pr.nombre AS "nombre",
+               COUNT(*) AS "cantidad"
+        FROM conexion c
+        JOIN perfil p ON p.id_perfil = CASE
+            WHEN c.id_perfil_1 = :idPerfil THEN c.id_perfil_2
+            ELSE c.id_perfil_1
+        END
+        JOIN profesion pr ON pr.id_profesion = p.id_profesion
+        WHERE c.estado = 'ACTIVA'
+          AND (c.id_perfil_1 = :idPerfil OR c.id_perfil_2 = :idPerfil)
+        GROUP BY p.id_profesion, pr.nombre
+        ORDER BY pr.nombre
+    """, nativeQuery = true)
+    List<ConteoProfesionProjection> contarConexionesPorProfesion(
+            @Param("idPerfil") Long idPerfil);
+
+    interface ConteoProfesionProjection {
+        Long getIdProfesion();
+
+        String getNombre();
+
+        Long getCantidad();
+    }
 }

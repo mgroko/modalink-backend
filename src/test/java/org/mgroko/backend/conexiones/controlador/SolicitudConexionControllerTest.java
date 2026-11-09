@@ -206,6 +206,7 @@ class SolicitudConexionControllerTest {
                 .andExpect(jsonPath("$.contenido[0].direccion").value("RECIBIDA"))
                 .andExpect(jsonPath("$.contenido[0].puedeAceptar").value(true))
                 .andExpect(jsonPath("$.contenido[0].puedeCancelar").value(false))
+                .andExpect(jsonPath("$.contenido[0].enLinea").value(false))
                 .andExpect(jsonPath("$.totalElementos").value(1));
     }
 

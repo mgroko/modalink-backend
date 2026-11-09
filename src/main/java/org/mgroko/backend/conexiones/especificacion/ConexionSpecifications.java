@@ -1,11 +1,16 @@
 package org.mgroko.backend.conexiones.especificacion;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.conexiones.dto.BuscarConexionesFiltro;
+import org.mgroko.backend.conexiones.dto.EstadoPresenciaConexion;
 import org.mgroko.backend.modelo.Conexion;
+import org.mgroko.backend.modelo.enums.EstadoConexion;
+import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.springframework.data.jpa.domain.Specification;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -27,21 +32,26 @@ public final class ConexionSpecifications {
     public static Specification<Conexion> conFiltros(
             Long idPerfilActivo,
             BuscarConexionesFiltro filtro) {
+        return conFiltros(idPerfilActivo, filtro, null);
+    }
+
+    public static Specification<Conexion> conFiltros(
+            Long idPerfilActivo,
+            BuscarConexionesFiltro filtro,
+            LocalDateTime limite) {
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             Predicate activoEsPerfil1 = cb.and(
-                    cb.equal(root.get("estado"),
-                            org.mgroko.backend.modelo.enums.EstadoConexion.ACTIVA),
+                    cb.equal(root.get("estado"), EstadoConexion.ACTIVA),
                     cb.equal(root.get("perfil1").get("idPerfil"), idPerfilActivo),
-                    filtrosContraparte(root, cb, "perfil2", filtro));
+                    filtrosContraparte(root, cb, "perfil2", filtro, limite));
 
             Predicate activoEsPerfil2 = cb.and(
-                    cb.equal(root.get("estado"),
-                            org.mgroko.backend.modelo.enums.EstadoConexion.ACTIVA),
+                    cb.equal(root.get("estado"), EstadoConexion.ACTIVA),
                     cb.equal(root.get("perfil2").get("idPerfil"), idPerfilActivo),
-                    filtrosContraparte(root, cb, "perfil1", filtro));
+                    filtrosContraparte(root, cb, "perfil1", filtro, limite));
 
             predicates.add(cb.or(activoEsPerfil1, activoEsPerfil2));
 
@@ -53,7 +63,8 @@ public final class ConexionSpecifications {
             Root<Conexion> root,
             CriteriaBuilder cb,
             String atributoPerfil,
-            BuscarConexionesFiltro filtro) {
+            BuscarConexionesFiltro filtro,
+            LocalDateTime limite) {
 
         if (filtro == null || !tieneFiltros(filtro)) {
             return cb.conjunction();
@@ -92,6 +103,18 @@ public final class ConexionSpecifications {
                     profesion.get("idProfesion"), filtro.idProfesion()));
         }
 
+        if (filtro.estadoPresencia() != null && limite != null) {
+            Predicate enLinea = cb.and(
+                    cb.equal(perfil.get("estado"), EstadoPerfil.ACTIVO),
+                    cb.equal(usuario.get("estado"), EstadoUsuario.ACTIVO),
+                    cb.isNotNull(perfil.get("ultimaActividad")),
+                    cb.greaterThanOrEqualTo(perfil.get("ultimaActividad"), limite));
+
+            predicates.add(filtro.estadoPresencia() == EstadoPresenciaConexion.EN_LINEA
+                    ? enLinea
+                    : cb.not(enLinea));
+        }
+
         return cb.and(predicates.toArray(new Predicate[0]));
     }
 
@@ -112,7 +135,8 @@ public final class ConexionSpecifications {
                 || noEsBlanco(filtro.nombre())
                 || noEsBlanco(filtro.apellido())
                 || noEsBlanco(filtro.nombreArtistico())
-                || filtro.idProfesion() != null;
+                || filtro.idProfesion() != null
+                || filtro.estadoPresencia() != null;
     }
 
     private static boolean noEsBlanco(String valor) {

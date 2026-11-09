@@ -196,3 +196,17 @@ La migración asociada es
 - No se crean tablas, columnas ni índices nuevos: se reutilizan
   `UQ_conexion_activa` y los índices de `perfil`, `usuario` y `profesion`.
 - El tamaño máximo de página es 100.
+
+## 12. Presencia en la red
+
+- La presencia se calcula por perfil con `perfil.ultima_actividad` y el estado
+  del perfil y de su usuario (ver `docs/calidad/controles_presencia.md`).
+- `GET /conexiones` acepta `estadoPresencia=EN_LINEA|DESCONECTADO`; el predicado
+  se aplica a la contraparte.
+- `GET /conexiones` agrega `enLinea` a cada ítem.
+- `GET /conexiones/resumen` devuelve `totalConexiones`, `totalEnLinea` y el
+  conteo por profesión de la contraparte.
+- `GET /solicitudes-conexion` agrega `enLinea` a la contraparte de cada fila.
+- No se expone `ultima_actividad` en el JSON.
+- El filtro de presencia no crea índices nuevos; un índice sobre
+  `ultima_actividad` rompería las actualizaciones HOT del heartbeat.

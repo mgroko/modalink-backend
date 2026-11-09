@@ -301,7 +301,8 @@ class PerfilControllerTest {
                 .andExpect(jsonPath("$.profesion").value("modelo"))
                 .andExpect(jsonPath("$.ciudad.nombre").value("Rosario"))
                 .andExpect(jsonPath("$.ciudad.provincia.nombre").value("Santa Fe"))
-                .andExpect(jsonPath("$.esPropietario").value(true));
+                .andExpect(jsonPath("$.esPropietario").value(true))
+                .andExpect(jsonPath("$.enLinea").value(false));
     }
 
     @Test

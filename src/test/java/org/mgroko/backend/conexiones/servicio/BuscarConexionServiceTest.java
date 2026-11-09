@@ -25,6 +25,7 @@ import org.mgroko.backend.modelo.enums.EstadoConexion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.servicio.PerfilActivoService;
+import org.mgroko.backend.presencia.servicio.PresenciaService;
 import org.mgroko.backend.repositorio.ConexionRepository;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -51,6 +52,9 @@ class BuscarConexionServiceTest {
     @Mock
     private ConexionRepository conexionRepository;
 
+    @Mock
+    private PresenciaService presenciaService;
+
     private BuscarConexionService service;
 
     private Perfil perfilActivo;
@@ -58,13 +62,21 @@ class BuscarConexionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BuscarConexionService(perfilActivoService, conexionRepository);
+        service = new BuscarConexionService(
+                perfilActivoService, conexionRepository, presenciaService);
 
         perfilActivo = perfil(ID_PERFIL_ACTIVO, "Ana Moda", 1L, "Ana", "Modelo");
         contraparte = perfil(ID_CONTRAPARTE, "Bruno Estilo", 2L, "Bruno", "Fotógrafo");
 
         when(perfilActivoService.resolver(ID_USUARIO, ID_PERFIL_ACTIVO))
                 .thenReturn(perfilActivo);
+        when(presenciaService.ahora())
+                .thenReturn(LocalDateTime.of(2026, 11, 9, 12, 0));
+        when(presenciaService.limite(any(LocalDateTime.class)))
+                .thenAnswer(invocacion -> ((LocalDateTime) invocacion.getArgument(0))
+                        .minusSeconds(120));
+        when(presenciaService.estaEnLinea(any(Perfil.class), any(LocalDateTime.class)))
+                .thenReturn(true);
     }
 
     @Test

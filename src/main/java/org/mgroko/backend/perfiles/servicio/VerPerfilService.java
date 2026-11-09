@@ -11,6 +11,7 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.dto.PerfilDetalleResponse;
 import org.mgroko.backend.perfiles.mapper.PerfilMapper;
+import org.mgroko.backend.presencia.servicio.PresenciaService;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.PerfilAccessPolicy;
@@ -25,16 +26,19 @@ public class VerPerfilService {
     private final ConfiguracionSistemaService configuracionSistemaService;
     private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
     private final RelacionPerfilService relacionPerfilService;
+    private final PresenciaService presenciaService;
 
     public VerPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository,
             ConfiguracionSistemaService configuracionSistemaService,
             GestionTerminosCondicionesService gestionTerminosCondicionesService,
-            RelacionPerfilService relacionPerfilService) {
+            RelacionPerfilService relacionPerfilService,
+            PresenciaService presenciaService) {
         this.perfilRepository = perfilRepository;
         this.usuarioRepository = usuarioRepository;
         this.configuracionSistemaService = configuracionSistemaService;
         this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
         this.relacionPerfilService = relacionPerfilService;
+        this.presenciaService = presenciaService;
     }
 
     @Transactional(readOnly = true)
@@ -60,7 +64,9 @@ public class VerPerfilService {
                 visible.esPropietario(),
                 diasBaja,
                 gestionTerminosCondicionesService.obtenerParaPerfil(visible.perfil()),
-                relacion);
+                relacion,
+                presenciaService.estaEnLinea(
+                        visible.perfil(), presenciaService.ahora()));
     }
 
     /**

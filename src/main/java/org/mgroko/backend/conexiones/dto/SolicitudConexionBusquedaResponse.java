@@ -19,6 +19,37 @@ public record SolicitudConexionBusquedaResponse(
         PerfilConexionResponse perfil,
         boolean puedeAceptar,
         boolean puedeRechazar,
-        boolean puedeCancelar
+        boolean puedeCancelar,
+        boolean enLinea
 ) {
+
+    /**
+     * Constructor histórico para consumidores que todavía no leen presencia.
+     */
+    public SolicitudConexionBusquedaResponse(
+            Long idSolicitudConexion,
+            EstadoSolicitud estado,
+            LocalDateTime fechaEnvio,
+            LocalDateTime fechaRespuesta,
+            DireccionSolicitudConexion direccion,
+            Long idPerfilRemitente,
+            Long idPerfilDestinatario,
+            PerfilConexionResponse perfil,
+            boolean puedeAceptar,
+            boolean puedeRechazar,
+            boolean puedeCancelar) {
+        this(
+                idSolicitudConexion,
+                estado,
+                fechaEnvio,
+                fechaRespuesta,
+                direccion,
+                idPerfilRemitente,
+                idPerfilDestinatario,
+                perfil,
+                puedeAceptar,
+                puedeRechazar,
+                puedeCancelar,
+                false);
+    }
 }

@@ -27,7 +27,8 @@ public record PerfilDetalleResponse(
         TerminosCondicionesResponse terminosCondiciones,
         String estadoConexion,
         Long idSolicitudConexion,
-        Long idConexion
+        Long idConexion,
+        boolean enLinea
 ) {
 
     /**
@@ -75,6 +76,7 @@ public record PerfilDetalleResponse(
                 null,
                 null,
                 null,
-                null);
+                null,
+                false);
     }
 }

@@ -19,6 +19,7 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.dto.BuscarPerfilesFiltro;
 import org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse;
+import org.mgroko.backend.presencia.servicio.PresenciaService;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.ArgumentCaptor;
@@ -26,22 +27,33 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class BuscarPerfilServiceTest {
 
     @Mock
     private PerfilRepository perfilRepository;
 
+    @Mock
+    private PresenciaService presenciaService;
+
     private BuscarPerfilService buscarPerfilService;
 
     @BeforeEach
     void setUp() {
-        buscarPerfilService = new BuscarPerfilService(perfilRepository);
+        buscarPerfilService = new BuscarPerfilService(perfilRepository, presenciaService);
+
+        when(presenciaService.ahora())
+                .thenReturn(java.time.LocalDateTime.of(2026, 11, 9, 12, 0));
+        when(presenciaService.estaEnLinea(any(Perfil.class), any()))
+                .thenReturn(true);
     }
 
     private Perfil crearPerfilMock(Long id, String nombreArtistico) {
@@ -92,6 +104,7 @@ class BuscarPerfilServiceTest {
         assertThat(resultado.tamanoPagina()).isEqualTo(20);
         assertThat(resultado.paginaActual()).isEqualTo(0);
         assertThat(resultado.contenido().get(0).nombreArtistico()).isEqualTo("Arte1");
+        assertThat(resultado.contenido().get(0).enLinea()).isTrue();
     }
 
     @Test

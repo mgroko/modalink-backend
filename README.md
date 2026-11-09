@@ -183,10 +183,33 @@ Los T&C se versionan: cada cambio real cierra la versión vigente y crea una nue
 | POST   | `/solicitudes-conexion/{idSolicitudConexion}/aceptar` | Acepta una solicitud `PENDIENTE` recibida por el perfil activo. Crea la conexión y notifica a ambas partes. Devuelve `200` con `idConexion`. |
 | POST   | `/solicitudes-conexion/{idSolicitudConexion}/rechazar` | Rechaza una solicitud `PENDIENTE` recibida por el perfil activo. Notifica solo al remitente. Devuelve `200` con `idConexion = null`. |
 | DELETE | `/solicitudes-conexion/{idSolicitudConexion}` | Cancela una solicitud `PENDIENTE` enviada por el perfil activo. Elimina físicamente la solicitud y la notificación `SOLICITUD_CONEXION_RECIBIDA` del destinatario. Devuelve `204 No Content`. |
-| GET    | `/conexiones` | Lista la red activa del perfil activo (UC-44 bis). Filtros opcionales sobre la contraparte: `texto`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`. Ordena por `fechaInicioConexion DESC`. Devuelve una página con la contraparte de cada conexión. |
+| GET    | `/conexiones` | Lista la red activa del perfil activo (UC-44 bis). Filtros opcionales sobre la contraparte: `texto`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`, `estadoPresencia` (`EN_LINEA`/`DESCONECTADO`). Ordena por `fechaInicioConexion DESC`. Devuelve una página con la contraparte de cada conexión y `enLinea`. |
+| GET    | `/conexiones/resumen` | Devuelve el resumen de la red para el hero y los chips del mockup: `totalConexiones`, `totalEnLinea` y `profesiones` con su cantidad de conexiones. |
 | DELETE | `/conexiones/{idConexion}` | Elimina lógicamente una conexión activa del perfil activo (UC-44). Pasa a `ELIMINADA`, registra `fechaFinConexion`, audita `CONEXION_ELIMINADA` y notifica a ambas partes. Devuelve `204 No Content`; `409 CONEXION_NO_ACTIVA` si ya estaba eliminada. |
 
 `GET /perfiles/{idPerfil}` incorpora los campos `estadoConexion` (`NINGUNA`, `SOLICITUD_ENVIADA`, `SOLICITUD_RECIBIDA`, `CONECTADO`), `idSolicitudConexion` e `idConexion` para que el frontend muestre la acción disponible.
+
+#### Presencia por perfil
+
+La presencia se calcula por **perfil**, no por usuario. Sólo el perfil activo del JWT recibe heartbeats; los demás perfiles del mismo usuario quedan desconectados.
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST   | `/presencia/heartbeat` | Registra actividad del perfil activo. No recibe body. Devuelve `204`. |
+| GET    | `/presencia?idsPerfil=1,2` | Snapshot de presencia para hasta 200 perfiles. Devuelve `[{ "idPerfil": 1, "enLinea": true }]`. |
+| GET    | `/presencia/stream?idsPerfil=1,2` | Stream SSE (`text/event-stream`). Envía un evento `snapshot` al conectar y eventos `presencia` con los cambios. |
+
+`enLinea` se agrega a `GET /perfiles/{idPerfil}`, `GET /perfiles/buscar`, `GET /conexiones` y `GET /solicitudes-conexion`. **No se expone la última actividad**: el frontend sólo muestra “En línea” o “Desconectado”.
+
+Reglas de presencia:
+
+- Un perfil está en línea si está `ACTIVO`, su usuario está `ACTIVO` y su último heartbeat tiene menos de `app.presencia.umbral-en-linea` (120 s por defecto).
+- El heartbeat se envía cada 30 s; el backend aplica throttle de escritura para no actualizar más de una vez por ventana.
+- El logout no marca offline: el perfil vence por el umbral. Igual criterio para cierre de pestaña y cambio de perfil activo.
+- Los perfiles de usuarios `PENDIENTE_BAJA`, `BAJA` o `DESHABILITADO` se muestran desconectados.
+- La lectura no exige conexión entre perfiles: cualquier usuario autenticado puede consultar presencia.
+- El stream SSE se reconecta y recibe un snapshot nuevo; el backend envía un ping periódico.
+- La implementación del bus es en memoria y asume una única instancia. Para escalar horizontalmente hace falta Redis Pub/Sub o PostgreSQL `LISTEN/NOTIFY`.
 
 Reglas de UC-43:
 
@@ -226,6 +249,12 @@ Para UC-44 y UC-44 bis ejecutar
 `docs/3_diseño/migraciones/2026-11-09_uc44_eliminar_conexion.sql`, que ajusta
 `fn_validar_conexion` para permitir la baja lógica aunque la contraparte esté inactiva
 y deja idempotentes el catálogo y el trigger de auditoría de conexiones.
+
+Para la presencia por perfil ejecutar
+`docs/3_diseño/migraciones/2026-11-09_presencia_perfiles.sql`, que agrega
+`perfil.ultima_actividad`. No se agregan triggers ni auditoría: el heartbeat usa una
+actualización bulk de esa única columna y el trigger existente de perfil está acotado
+a otras columnas.
 
 ### Catálogos (requiere autenticación)
 
