@@ -3,8 +3,6 @@ package org.mgroko.backend.repositorio;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -16,6 +14,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
 
 /**
  * Ejecuta la migración de UC-67 dos veces dentro de una transacción que se
@@ -32,24 +31,20 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest {
 
-    private static final Path MIGRACION = Path.of(
-            "resources", "migraciones-test", "migraciones", "2026-11-07_uc67_fixes_export.sql");
+    private static final String MIGRACION =
+            "migraciones-test/2026-11-07_uc67_fixes_export.sql";
 
-    private static final Path MIGRACION_FASE01 = Path.of(
-            "resources", "migraciones-test", "migraciones", "2026-11-08_uc67_auditoria_fase0_1.sql");
+    private static final String MIGRACION_FASE01 =
+            "migraciones-test/2026-11-08_uc67_auditoria_fase0_1.sql";
 
-    private static final Path MIGRACION_FASE24 = Path.of(
-            "resources", "migraciones-test", "migraciones", "2026-11-08_uc67_auditoria_fase2_4.sql");
+    private static final String MIGRACION_FASE24 =
+            "migraciones-test/2026-11-08_uc67_auditoria_fase2_4.sql";
 
     @Autowired
     private DataSource dataSource;
 
     @Test
     void migracionSePuedeEjecutarDosVecesSinErrores() throws Exception {
-        assertThat(Files.isRegularFile(MIGRACION))
-                .as("No se encontró la migración en %s", MIGRACION.toAbsolutePath())
-                .isTrue();
-
         try (Connection conexion = dataSource.getConnection()) {
             conexion.setAutoCommit(false);
             try {
@@ -77,10 +72,6 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
 
     @Test
     void migracionFase0y1SePuedeEjecutarDosVecesSinErrores() throws Exception {
-        assertThat(Files.isRegularFile(MIGRACION_FASE01))
-                .as("No se encontró la migración en %s", MIGRACION_FASE01.toAbsolutePath())
-                .isTrue();
-
         try (Connection conexion = dataSource.getConnection()) {
             conexion.setAutoCommit(false);
             try {
@@ -113,10 +104,6 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
 
     @Test
     void migracionFase2a4SePuedeEjecutarDosVecesSinErrores() throws Exception {
-        assertThat(Files.isRegularFile(MIGRACION_FASE24))
-                .as("No se encontró la migración en %s", MIGRACION_FASE24.toAbsolutePath())
-                .isTrue();
-
         try (Connection conexion = dataSource.getConnection()) {
             conexion.setAutoCommit(false);
             try {
@@ -147,8 +134,8 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
         }
     }
 
-    private void aplicarDosVeces(Connection conexion, Path migracion) throws Exception {
-        String script = Files.readString(migracion, StandardCharsets.UTF_8)
+    private void aplicarDosVeces(Connection conexion, String recurso) throws Exception {
+        String script = leerMigracion(recurso)
                 .replace("\uFEFF", "")
                 .replaceAll("(?im)^\\s*BEGIN;\\s*$", "")
                 .replaceAll("(?im)^\\s*COMMIT;\\s*$", "");
@@ -175,6 +162,14 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
                 }
             }
         }
+    }
+
+    private static String leerMigracion(String recurso) throws Exception {
+        ClassPathResource migracion = new ClassPathResource(recurso);
+        assertThat(migracion.exists())
+                .as("No se encontró la migración en el classpath: %s", recurso)
+                .isTrue();
+        return migracion.getContentAsString(StandardCharsets.UTF_8);
     }
 
     private long contar(Connection conexion, String sql) throws Exception {
