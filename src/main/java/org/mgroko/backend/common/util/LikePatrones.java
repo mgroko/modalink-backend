@@ -1,5 +1,6 @@
 package org.mgroko.backend.common.util;
 
+import java.text.Normalizer;
 import java.util.Locale;
 
 /**
@@ -59,5 +60,23 @@ public final class LikePatrones {
             return "%";
         }
         return "%" + escapar(texto).toLowerCase(Locale.ROOT) + "%";
+    }
+
+    /**
+     * Arma un patrón "contiene" case-insensitive y sin acentos. El valor se
+     * normaliza con {@link Normalizer} antes de escaparlo; la columna debe
+     * compararse con {@code unaccent(lower(columna))} en PostgreSQL.
+     *
+     * @param valor valor crudo de usuario (o {@code null})
+     * @return patrón {@code LIKE} listo para bindear
+     */
+    public static String contieneSinAcentos(String valor) {
+        String texto = (valor == null) ? "" : valor.trim();
+        if (texto.isEmpty()) {
+            return "%";
+        }
+        String sinAcentos = Normalizer.normalize(texto, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return "%" + escapar(sinAcentos).toLowerCase(Locale.ROOT) + "%";
     }
 }

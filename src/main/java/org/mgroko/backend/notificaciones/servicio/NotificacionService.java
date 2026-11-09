@@ -79,6 +79,17 @@ public class NotificacionService {
             "REEMPLAZO_INCORPORACION_RECHAZADA";
     public static final String TIPO_REEMPLAZO_CANCELADO =
             "REEMPLAZO_CANCELADO";
+    public static final String TIPO_SOLICITUD_CONEXION_RECIBIDA =
+            "SOLICITUD_CONEXION_RECIBIDA";
+    public static final String TIPO_SOLICITUD_CONEXION_ACEPTADA =
+            "SOLICITUD_CONEXION_ACEPTADA";
+    public static final String TIPO_SOLICITUD_CONEXION_RECHAZADA =
+            "SOLICITUD_CONEXION_RECHAZADA";
+    public static final String TIPO_CONEXION_ELIMINADA =
+            "CONEXION_ELIMINADA";
+    public static final String ENTIDAD_SOLICITUD_CONEXION =
+            "SOLICITUD_CONEXION";
+    public static final String ENTIDAD_CONEXION = "CONEXION";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;

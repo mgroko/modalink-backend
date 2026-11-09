@@ -47,6 +47,9 @@ class VerPerfilServiceTest {
     @Mock
     private GestionTerminosCondicionesService gestionTerminosCondicionesService;
 
+    @Mock
+    private org.mgroko.backend.conexiones.servicio.RelacionPerfilService relacionPerfilService;
+
     @InjectMocks
     private VerPerfilService verPerfilService;
 

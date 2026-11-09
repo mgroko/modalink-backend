@@ -174,6 +174,39 @@ archivo se conserva localmente.
 
 Los T&C se versionan: cada cambio real cierra la versión vigente y crea una nueva. La versión vigente se incluye en `GET /perfiles/{idPerfil}` y en las invitaciones; cuando el proyecto incorpora a un integrante con T&C configurados, el director debe aceptar esa versión y queda registrada en `id_tyc_aceptado`. La plantilla base se configura en `configuracion_sistema` con la clave `PERFIL_TYC_PLANTILLA`.
 
+### Red de contactos (UC-43, requiere autenticación)
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST   | `/solicitudes-conexion` | Envía una solicitud de conexión desde el perfil activo al perfil indicado en el body (`idPerfilDestinatario`). Crea la solicitud en estado `PENDIENTE` y una notificación `SOLICITUD_CONEXION_RECIBIDA` al perfil destinatario. Devuelve `201 Created`. |
+| GET    | `/solicitudes-conexion` | Busca solicitudes recibidas o enviadas por el perfil activo. Filtros opcionales: `direccion`, `estado` (por defecto `PENDIENTE`), `nombre`, `apellido`, `nombreArtistico`, `idProfesion`, `fechaDesde`, `fechaHasta`. Devuelve una página de resultados. |
+| DELETE | `/solicitudes-conexion/{idSolicitudConexion}` | Cancela una solicitud `PENDIENTE` enviada por el perfil activo. Elimina físicamente la solicitud y la notificación `SOLICITUD_CONEXION_RECIBIDA` del destinatario. Devuelve `204 No Content`. |
+
+`GET /perfiles/{idPerfil}` incorpora los campos `estadoConexion` (`NINGUNA`, `SOLICITUD_ENVIADA`, `SOLICITUD_RECIBIDA`, `CONECTADO`), `idSolicitudConexion` e `idConexion` para que el frontend muestre la acción disponible.
+
+Reglas de UC-43:
+
+- El remitente es el perfil activo de la sesión; el destinatario se indica en el body.
+- Ambos perfiles y sus usuarios deben estar `ACTIVO`; el destinatario debe ser visible según UC-14.
+- No se permite conectar el mismo perfil ni dos perfiles del mismo usuario.
+- No se permite si ya existe una conexión `ACTIVA` o una solicitud `PENDIENTE` en cualquier dirección.
+- Una solicitud rechazada no bloquea un nuevo envío; sólo bloquea una solicitud pendiente.
+- Sólo el perfil remitente puede cancelar su propia solicitud y sólo mientras esté `PENDIENTE`.
+- La cancelación es física: el par queda libre y se puede volver a enviar la solicitud.
+- La búsqueda de UC-46 se limita al perfil activo. Por defecto devuelve `PENDIENTE` y ordena por `fechaEnvio DESC`.
+- Los filtros de nombre, apellido, nombre artístico y profesión se aplican a la contraparte y son case-insensitive e insensibles a acentos.
+- La búsqueda sin resultados devuelve `200` con una página vacía.
+- La base de datos refuerza las reglas con un índice único parcial, checks y triggers.
+
+Antes de levantar esta versión sobre una base existente, ejecutar con la aplicación detenida
+`docs/3_diseño/migraciones/2026-11-08_uc43_solicitud_conexion.sql`. La migración crea
+`solicitud_conexion`, `conexion` y los tipos de notificación sociales. La tabla `conexion`
+queda preparada para UC-44, UC-45 y UC-46.
+
+Para UC-46 ejecutar además
+`docs/3_diseño/migraciones/2026-11-09_uc46_buscar_solicitudes_conexion.sql`, que habilita
+la extensión `unaccent` usada por la búsqueda insensible a acentos.
+
 ### Catálogos (requiere autenticación)
 
 | Método | Endpoint    | Descripción                                                                 |

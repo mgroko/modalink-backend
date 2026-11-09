@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
+import org.mgroko.backend.conexiones.modelo.RelacionPerfil;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.ValorCaracteristica;
@@ -92,6 +93,14 @@ public class PerfilMapper {
     public static org.mgroko.backend.perfiles.dto.PerfilDetalleResponse toDetalleResponse(Perfil perfil,
             boolean esPropietario, Integer diasBaja,
             org.mgroko.backend.perfiles.dto.TerminosCondicionesResponse terminosCondiciones) {
+        return toDetalleResponse(
+                perfil, esPropietario, diasBaja, terminosCondiciones, RelacionPerfil.ninguna());
+    }
+
+    public static org.mgroko.backend.perfiles.dto.PerfilDetalleResponse toDetalleResponse(Perfil perfil,
+            boolean esPropietario, Integer diasBaja,
+            org.mgroko.backend.perfiles.dto.TerminosCondicionesResponse terminosCondiciones,
+            RelacionPerfil relacion) {
         List<CaracteristicaResponse> caracteristicas = perfil.getCaracteristicas().stream()
                 .sorted(Comparator.comparing(c -> c.getCaracteristicaTecnica().getCodigo()))
                 .map(PerfilMapper::toCaracteristicaResponse)
@@ -128,7 +137,10 @@ public class PerfilMapper {
                 caracteristicas,
                 esPropietario,
                 fechaLimite(perfil, diasBaja),
-                terminosCondiciones
+                terminosCondiciones,
+                relacion != null ? relacion.estado().name() : null,
+                relacion != null ? relacion.idSolicitudConexion() : null,
+                relacion != null ? relacion.idConexion() : null
         );
     }
 

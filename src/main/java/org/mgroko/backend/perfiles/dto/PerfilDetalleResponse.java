@@ -24,12 +24,15 @@ public record PerfilDetalleResponse(
         List<CaracteristicaResponse> caracteristicas,
         boolean esPropietario,
         LocalDateTime fechaLimite,
-        TerminosCondicionesResponse terminosCondiciones
+        TerminosCondicionesResponse terminosCondiciones,
+        String estadoConexion,
+        Long idSolicitudConexion,
+        Long idConexion
 ) {
 
     /**
      * Constructor histórico para consumidores que aún no leen los términos y
-     * condiciones del perfil.
+     * condiciones ni el estado de la relación con el perfil.
      */
     public PerfilDetalleResponse(
             Long idPerfil,
@@ -69,6 +72,9 @@ public record PerfilDetalleResponse(
                 caracteristicas,
                 esPropietario,
                 fechaLimite,
+                null,
+                null,
+                null,
                 null);
     }
 }

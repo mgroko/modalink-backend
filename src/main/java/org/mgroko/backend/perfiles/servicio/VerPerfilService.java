@@ -3,6 +3,8 @@ package org.mgroko.backend.perfiles.servicio;
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.conexiones.modelo.RelacionPerfil;
+import org.mgroko.backend.conexiones.servicio.RelacionPerfilService;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -22,26 +24,43 @@ public class VerPerfilService {
     private final UsuarioRepository usuarioRepository;
     private final ConfiguracionSistemaService configuracionSistemaService;
     private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
+    private final RelacionPerfilService relacionPerfilService;
 
     public VerPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository,
             ConfiguracionSistemaService configuracionSistemaService,
-            GestionTerminosCondicionesService gestionTerminosCondicionesService) {
+            GestionTerminosCondicionesService gestionTerminosCondicionesService,
+            RelacionPerfilService relacionPerfilService) {
         this.perfilRepository = perfilRepository;
         this.usuarioRepository = usuarioRepository;
         this.configuracionSistemaService = configuracionSistemaService;
         this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
+        this.relacionPerfilService = relacionPerfilService;
     }
 
     @Transactional(readOnly = true)
     public PerfilDetalleResponse obtenerDetalle(Long idPerfil, Long idUsuarioAutenticado) {
+        return obtenerDetalle(idPerfil, idUsuarioAutenticado, null);
+    }
+
+    @Transactional(readOnly = true)
+    public PerfilDetalleResponse obtenerDetalle(
+            Long idPerfil,
+            Long idUsuarioAutenticado,
+            Long idPerfilActivo) {
+
         PerfilVisible visible = obtenerPerfilVisible(idPerfil, idUsuarioAutenticado);
         int diasBaja = configuracionSistemaService.obtenerDiasBaja();
+
+        RelacionPerfil relacion = visible.esPropietario()
+                ? RelacionPerfil.ninguna()
+                : relacionPerfilService.obtener(idPerfilActivo, visible.perfil().getIdPerfil());
 
         return PerfilMapper.toDetalleResponse(
                 visible.perfil(),
                 visible.esPropietario(),
                 diasBaja,
-                gestionTerminosCondicionesService.obtenerParaPerfil(visible.perfil()));
+                gestionTerminosCondicionesService.obtenerParaPerfil(visible.perfil()),
+                relacion);
     }
 
     /**

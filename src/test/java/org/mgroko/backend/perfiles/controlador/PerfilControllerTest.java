@@ -291,7 +291,7 @@ class PerfilControllerTest {
                                 new org.mgroko.backend.ubicacion.dto.PaisResponse(1L, "AR", "Argentina"))),
                 List.of("Pasarela", "Fotogenia"), List.of(), true, null);
 
-        when(verPerfilService.obtenerDetalle(10L, 1L)).thenReturn(perfil);
+        when(verPerfilService.obtenerDetalle(10L, 1L, null)).thenReturn(perfil);
 
         mockMvc.perform(get("/perfiles/10")
                         .principal(authentication))
@@ -308,7 +308,7 @@ class PerfilControllerTest {
     void obtener_perfilInexistente_devuelve404() throws Exception {
         var authentication = autenticacion();
 
-        when(verPerfilService.obtenerDetalle(999L, 1L))
+        when(verPerfilService.obtenerDetalle(999L, 1L, null))
                 .thenThrow(new org.mgroko.backend.admin.exception.PerfilNoEncontradoException("Perfil no encontrado."));
 
         mockMvc.perform(get("/perfiles/999")

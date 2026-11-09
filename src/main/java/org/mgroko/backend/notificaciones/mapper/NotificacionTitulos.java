@@ -44,7 +44,11 @@ public final class NotificacionTitulos {
             Map.entry("REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION", "Incorporación pendiente de aprobación"),
             Map.entry("REEMPLAZO_INCORPORACION_APROBADA", "Incorporación aprobada"),
             Map.entry("REEMPLAZO_INCORPORACION_RECHAZADA", "Incorporación rechazada"),
-            Map.entry("REEMPLAZO_CANCELADO", "Reemplazo cancelado"));
+            Map.entry("REEMPLAZO_CANCELADO", "Reemplazo cancelado"),
+            Map.entry("SOLICITUD_CONEXION_RECIBIDA", "Solicitud de conexión recibida"),
+            Map.entry("SOLICITUD_CONEXION_ACEPTADA", "Solicitud de conexión aceptada"),
+            Map.entry("SOLICITUD_CONEXION_RECHAZADA", "Solicitud de conexión rechazada"),
+            Map.entry("CONEXION_ELIMINADA", "Conexión eliminada"));
 
     private NotificacionTitulos() {
     }
