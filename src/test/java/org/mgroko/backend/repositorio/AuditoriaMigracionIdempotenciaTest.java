@@ -33,13 +33,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest {
 
     private static final Path MIGRACION = Path.of(
-            "docs", "3_diseño", "migraciones", "2026-11-07_uc67_fixes_export.sql");
+            "resources", "migraciones-test", "migraciones", "2026-11-07_uc67_fixes_export.sql");
 
     private static final Path MIGRACION_FASE01 = Path.of(
-            "docs", "3_diseño", "migraciones", "2026-11-08_uc67_auditoria_fase0_1.sql");
+            "resources", "migraciones-test", "migraciones", "2026-11-08_uc67_auditoria_fase0_1.sql");
 
     private static final Path MIGRACION_FASE24 = Path.of(
-            "docs", "3_diseño", "migraciones", "2026-11-08_uc67_auditoria_fase2_4.sql");
+            "resources", "migraciones-test", "migraciones", "2026-11-08_uc67_auditoria_fase2_4.sql");
 
     @Autowired
     private DataSource dataSource;
