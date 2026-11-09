@@ -174,6 +174,35 @@ archivo se conserva localmente.
 
 Los T&C se versionan: cada cambio real cierra la versión vigente y crea una nueva. La versión vigente se incluye en `GET /perfiles/{idPerfil}` y en las invitaciones; cuando el proyecto incorpora a un integrante con T&C configurados, el director debe aceptar esa versión y queda registrada en `id_tyc_aceptado`. La plantilla base se configura en `configuracion_sistema` con la clave `PERFIL_TYC_PLANTILLA`.
 
+### Mensajería privada (UC-42, requiere autenticación)
+
+Chat 1 a 1 entre el perfil activo y un perfil con **conexión activa**. El historial
+queda en solo lectura si la conexión se elimina.
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET    | `/conversaciones` | Lista las conversaciones del perfil activo. Incluye `tieneNoLeidos` y `puedeEnviar`. |
+| GET    | `/conversaciones/resumen` | Devuelve `totalConversaciones` y `conversacionesNoLeidas` para el badge. |
+| POST   | `/conversaciones` | Obtiene o crea la conversación con `idPerfilDestinatario`. Devuelve `200` si existía y `201` si se creó. |
+| GET    | `/conversaciones/{idConversacion}/mensajes` | Historial paginado, ordenado del más nuevo al más viejo. |
+| POST   | `/conversaciones/{idConversacion}/mensajes` | Envía un texto de hasta 1000 caracteres. Devuelve `201`. |
+| PATCH  | `/conversaciones/{idConversacion}/leido` | Marca mensajes como leídos y marca la notificación de la conversación. |
+| GET    | `/mensajes/stream` | Stream SSE del perfil activo con eventos `mensaje` y `conversacion_leida`. |
+
+Reglas:
+
+- Solo se puede iniciar una conversación con un perfil `ACTIVO` de otro usuario y con conexión `ACTIVA`.
+- No se permiten conversaciones entre perfiles del mismo usuario.
+- El contenido se recorta y no puede quedar vacío; máximo 1000 caracteres.
+- `leido` significa leído por la contraparte; el emisor ve la confirmación de lectura.
+- El badge `conversacionesNoLeidas` cuenta conversaciones con al menos un mensaje no leído, no mensajes.
+- Se crea como máximo una notificación no leída por conversación (`MENSAJE_PRIVADO_RECIBIDO`), cuando la conversación pasa de leída a no leída.
+- Al marcar toda la conversación como leída se marca también esa notificación; si queda algún mensaje no leído, la notificación sigue pendiente.
+- La notificación incluye `link` a `/mensajes?conversacion={idConversacion}`.
+- Si la conexión se elimina, el historial sigue visible, pero `puedeEnviar` es `false` y el envío responde `409 MENSAJE_NO_PERMITIDO`.
+- Las conexiones eliminadas y el historial no generan auditoría de mensajes.
+- El bus SSE es en memoria y asume una única instancia; para escalar horizontalmente hace falta Redis Pub/Sub o `LISTEN/NOTIFY`.
+
 ### Red de contactos (UC-43 a UC-46, requiere autenticación)
 
 | Método | Endpoint | Descripción |
@@ -255,6 +284,11 @@ Para la presencia por perfil ejecutar
 `perfil.ultima_actividad`. No se agregan triggers ni auditoría: el heartbeat usa una
 actualización bulk de esa única columna y el trigger existente de perfil está acotado
 a otras columnas.
+
+Para la mensajería privada ejecutar
+`docs/3_diseño/migraciones/2026-11-09_uc42_mensajes_privados.sql`, que crea
+`conversacion`, `mensaje`, sus triggers, índices y el tipo de notificación
+`MENSAJE_PRIVADO_RECIBIDO`.
 
 ### Catálogos (requiere autenticación)
 

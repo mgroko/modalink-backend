@@ -68,6 +68,10 @@ import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
+import org.mgroko.backend.mensajeria.exception.ConversacionNoEncontradaException;
+import org.mgroko.backend.mensajeria.exception.ConversacionNoPermitidaException;
+import org.mgroko.backend.mensajeria.exception.MensajeInvalidoException;
+import org.mgroko.backend.mensajeria.exception.MensajeNoPermitidoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
 import org.mgroko.backend.presencia.exception.PresenciaSolicitudInvalidaException;
 import org.mgroko.backend.actividades.exception.AsignacionActividadNoEncontradaException;
@@ -344,6 +348,33 @@ public class GlobalExceptionHandler {
             PresenciaSolicitudInvalidaException ex) {
         return buildErrorResponseConCodigo(
                 ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConversacionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleConversacionNoEncontrada(
+            ConversacionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ConversacionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleConversacionNoPermitida(
+            ConversacionNoPermitidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(MensajeInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleMensajeInvalido(
+            MensajeInvalidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MensajeNoPermitidoException.class)
+    public ResponseEntity<Map<String, Object>> handleMensajeNoPermitido(
+            MensajeNoPermitidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.mgroko.backend.perfiles.exception.ResenaNoEncontradaException.class)

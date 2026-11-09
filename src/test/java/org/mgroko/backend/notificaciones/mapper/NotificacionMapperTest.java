@@ -175,6 +175,17 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void mensajePrivado_incluyeLinkAConversacion() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("MENSAJE_PRIVADO_RECIBIDO",
+                        "CONVERSACION", 30L, null),
+                null);
+
+        assertThat(response.link()).isEqualTo("/mensajes?conversacion=30");
+        assertThat(response.titulo()).isEqualTo("Mensaje privado recibido");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");

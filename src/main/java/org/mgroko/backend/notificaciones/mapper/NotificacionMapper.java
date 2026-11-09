@@ -10,6 +10,7 @@ public final class NotificacionMapper {
     private static final String ENTIDAD_INVITACION_GRAL = "INVITACION_GRAL";
     private static final String ENTIDAD_INVITACION_ACTIVIDAD = "INVITACION_ACTIVIDAD";
     private static final String ENTIDAD_CONEXION = "CONEXION";
+    private static final String ENTIDAD_CONVERSACION = "CONVERSACION";
     private static final String TIPO_CALIFICACION_SOLICITADA =
             "CALIFICACION_SOLICITADA";
     private static final String TIPO_SOLICITUD_CONEXION_RECIBIDA =
@@ -20,6 +21,8 @@ public final class NotificacionMapper {
             "SOLICITUD_CONEXION_RECHAZADA";
     private static final String TIPO_CONEXION_ELIMINADA =
             "CONEXION_ELIMINADA";
+    private static final String TIPO_MENSAJE_PRIVADO_RECIBIDO =
+            "MENSAJE_PRIVADO_RECIBIDO";
 
     private NotificacionMapper() {
     }
@@ -77,6 +80,11 @@ public final class NotificacionMapper {
             case TIPO_SOLICITUD_CONEXION_RECHAZADA ->
                     "/mi-red?tab=enviadas&estado=RECHAZADA";
             case TIPO_CONEXION_ELIMINADA -> "/mi-red?tab=conexiones";
+            case TIPO_MENSAJE_PRIVADO_RECIBIDO ->
+                    ENTIDAD_CONVERSACION.equals(notificacion.getEntidadTipo())
+                            && notificacion.getEntidadId() != null
+                            ? "/mensajes?conversacion=" + notificacion.getEntidadId()
+                            : "/mensajes";
             default -> null;
         };
     }

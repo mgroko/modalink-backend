@@ -48,7 +48,8 @@ public final class NotificacionTitulos {
             Map.entry("SOLICITUD_CONEXION_RECIBIDA", "Solicitud de conexión recibida"),
             Map.entry("SOLICITUD_CONEXION_ACEPTADA", "Solicitud de conexión aceptada"),
             Map.entry("SOLICITUD_CONEXION_RECHAZADA", "Solicitud de conexión rechazada"),
-            Map.entry("CONEXION_ELIMINADA", "Conexión eliminada"));
+            Map.entry("CONEXION_ELIMINADA", "Conexión eliminada"),
+            Map.entry("MENSAJE_PRIVADO_RECIBIDO", "Mensaje privado recibido"));
 
     private NotificacionTitulos() {
     }

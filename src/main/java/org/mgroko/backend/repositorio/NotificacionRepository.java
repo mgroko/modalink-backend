@@ -31,6 +31,12 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     long countByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfilAndLeidaFalse(
             Long idUsuario, Long idPerfilContexto);
 
+    boolean existsByUsuarioDestino_IdUsuarioAndTipoAndEntidadTipoAndEntidadIdAndLeidaFalse(
+            Long idUsuario,
+            String tipo,
+            String entidadTipo,
+            Long entidadId);
+
     @Modifying(flushAutomatically = true)
     @Query("""
             DELETE FROM Notificacion n
@@ -67,5 +73,20 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     int marcarTodasLeidasDePerfil(
             @Param("idUsuario") Long idUsuario,
             @Param("idPerfilContexto") Long idPerfilContexto,
+            @Param("fechaLeida") LocalDateTime fechaLeida);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Notificacion n
+               SET n.leida = true,
+                   n.fechaLeida = :fechaLeida
+             WHERE n.usuarioDestino.idUsuario = :idUsuario
+               AND n.entidadTipo = 'CONVERSACION'
+               AND n.entidadId = :idConversacion
+               AND n.leida = false
+            """)
+    int marcarLeidasDeConversacion(
+            @Param("idUsuario") Long idUsuario,
+            @Param("idConversacion") Long idConversacion,
             @Param("fechaLeida") LocalDateTime fechaLeida);
 }

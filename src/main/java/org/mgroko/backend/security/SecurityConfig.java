@@ -154,6 +154,10 @@ public class SecurityConfig {
                         "/conexiones/**",
                         "/presencia",
                         "/presencia/**",
+                        "/conversaciones",
+                        "/conversaciones/**",
+                        "/mensajes",
+                        "/mensajes/**",
                         "/calendario/**",
                         "/usuario/**",
                         "/habilidades/**")

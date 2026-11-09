@@ -102,6 +102,21 @@ public interface ConexionRepository
             @Param("ids") Collection<Long> ids);
 
     /**
+     * IDs de las contrapartes con conexión activa de un perfil. Se usa para
+     * calcular {@code puedeEnviar} en la lista de conversaciones sin N+1.
+     */
+    @Query("""
+        SELECT CASE
+            WHEN c.perfil1.idPerfil = :idPerfil THEN c.perfil2.idPerfil
+            ELSE c.perfil1.idPerfil
+        END
+        FROM Conexion c
+        WHERE c.estado = org.mgroko.backend.modelo.enums.EstadoConexion.ACTIVA
+          AND (c.perfil1.idPerfil = :idPerfil OR c.perfil2.idPerfil = :idPerfil)
+    """)
+    List<Long> buscarIdsContrapartesActivas(@Param("idPerfil") Long idPerfil);
+
+    /**
      * Conteo de conexiones activas por profesión de la contraparte. Se usa en
      * el resumen de Mi red para los chips de profesión.
      */

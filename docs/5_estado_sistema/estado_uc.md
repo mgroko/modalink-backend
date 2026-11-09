@@ -120,7 +120,7 @@ el historial de git sirva de bitácora adicional.
 
 | UC    | Nombre                            | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | --------------------------------- | ----------- | ---------------- | ----- | ----------------- |
-| UC-42 | Enviar mensaje privado            | No iniciado |                  |       | Segunda iteracion |
+| UC-42 | Enviar mensaje privado            | Implementado y testeado | `GET/POST /conversaciones`, `GET/POST /conversaciones/{id}/mensajes`, `PATCH /conversaciones/{id}/leido`, `GET /mensajes/stream` | Sí (unitario + MVC + integración) | Chat 1 a 1 solo entre perfiles con conexión `ACTIVA`. Texto máximo 1000 caracteres. Historial en solo lectura si se elimina la conexión. `leido`/`fecha_lectura` por mensaje y confirmación de lectura por SSE; el badge cuenta conversaciones con no leídos, no mensajes. Una notificación no leída por conversación (`MENSAJE_PRIVADO_RECIBIDO`) que se marca leída al abrir el chat. Tiempo real por SSE (`/mensajes/stream`); sin adjuntos, edición, borrado ni búsqueda. No se audita el contenido. |
 | UC-43 | Enviar solicitud de conexión      | Implementado y testeado | `POST /solicitudes-conexion` y `DELETE /solicitudes-conexion/{idSolicitudConexion}` | Sí (unitario + MVC + integración) | Envía desde el perfil activo a un perfil `ACTIVO` de otro usuario. Bloquea autorequest, perfiles del mismo usuario, conexión activa y solicitud pendiente en cualquier dirección. Crea notificación `SOLICITUD_CONEXION_RECIBIDA`. Extensión: el remitente puede cancelar su solicitud `PENDIENTE`; se elimina físicamente junto con la notificación del destinatario y el par queda libre para reenviar. `GET /perfiles/{idPerfil}` expone `estadoConexion`. El esquema de `solicitud_conexion` y `conexion` se comparte con UC-44, UC-45 y UC-46. |
 | UC-44 | Eliminar conexión                 | Implementado y testeado | `DELETE /conexiones/{idConexion}` | Sí (unitario + MVC + integración + concurrencia) | Baja lógica: la conexión pasa a `ELIMINADA` y registra `fechaFinConexion`; desaparece de `GET /conexiones`. Sólo participa el perfil activo; `404` si la conexión no existe o es ajena y `409 CONEXION_NO_ACTIVA` si ya estaba eliminada. Notifica `CONEXION_ELIMINADA` a ambas partes (sólo usuarios `ACTIVO`), audita por trigger y bloquea la fila con `PESSIMISTIC_WRITE`. |
 | UC-44 bis | Listar red de contactos        | Implementado y testeado | `GET /conexiones` | Sí (unitario + MVC + integración) | Caso derivado del mockup “Mi red” (no computado en el total). Lista sólo conexiones `ACTIVA` del perfil activo y devuelve la contraparte con profesión, foto y ciudad. Filtros opcionales `texto`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`; orden `fechaInicioConexion DESC`; página máxima 100. |
@@ -139,8 +139,8 @@ el historial de git sirva de bitácora adicional.
 | Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
 | Gestión de proyectos               | 26       | 25                      | 0            | 0           | 1           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
-| Gestión de conexiones y mensajería | 5        | 4                       | 0            | 0           | 1           |
-| **Total**                          | **76**   | **62**                  | **0**        | **0**       | **14**      |
+| Gestión de conexiones y mensajería | 5        | 5                       | 0            | 0           | 0           |
+| **Total**                          | **76**   | **63**                  | **0**        | **0**       | **13**      |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -154,4 +154,4 @@ el historial de git sirva de bitácora adicional.
 > desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan sus filas en el
 > módulo correspondiente solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 62 de 76 casos de uso implementados y testeados = **81,6 %** del catálogo de requisitos.
+**Avance global:** 63 de 76 casos de uso implementados y testeados = **82,9 %** del catálogo de requisitos.
