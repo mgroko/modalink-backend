@@ -227,6 +227,9 @@ eventos, lo oculta.
 El mismo evento `mensaje` se envía al emisor y al receptor. El frontend decide si el
 mensaje es propio comparando `idPerfilEmisor` con el perfil activo.
 
+> El stream `/mensajes/stream` es compartido con el chat grupal de UC-41. Ese módulo
+> emite además el evento `mensaje_grupal`; ver `ficha-tecnica-chat-grupal.md`.
+
 - Timeout del stream: 30 minutos.
 - Ping cada 20 segundos.
 - Si se corta, reconectar y volver a consultar el historial/lista.

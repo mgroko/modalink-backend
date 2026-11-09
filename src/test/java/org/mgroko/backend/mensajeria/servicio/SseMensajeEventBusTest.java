@@ -7,11 +7,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
 import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
+import org.mgroko.backend.mensajeria.dto.MensajeGrupalEvento;
+import org.mgroko.backend.mensajeria.dto.MensajeGrupalStreamResponse;
 import org.mgroko.backend.mensajeria.dto.MensajeStreamResponse;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -33,6 +36,36 @@ class SseMensajeEventBusTest {
 
         verify(emisor).send(any(SseEmitter.SseEventBuilder.class));
         verify(receptor).send(any(SseEmitter.SseEventBuilder.class));
+        verify(ajeno, never()).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void publicarMensajeGrupal_enviaAEmisorYATodosLosParticipantesSinDuplicar() throws Exception {
+        SseEmitter emisor = mock(SseEmitter.class);
+        SseEmitter participante = mock(SseEmitter.class);
+        SseEmitter otroParticipante = mock(SseEmitter.class);
+        SseEmitter ajeno = mock(SseEmitter.class);
+
+        bus.registrarSuscriptor(10L, emisor);
+        bus.registrarSuscriptor(20L, participante);
+        bus.registrarSuscriptor(30L, otroParticipante);
+        bus.registrarSuscriptor(40L, ajeno);
+
+        bus.publicarMensajeGrupal(new MensajeGrupalEvento(
+                50L,
+                10L,
+                List.of(10L, 20L, 30L, 20L),
+                new MensajeGrupalStreamResponse(
+                        99L,
+                        50L,
+                        "Hola",
+                        LocalDateTime.of(2026, 11, 9, 15, 0),
+                        10L,
+                        null)));
+
+        verify(emisor, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+        verify(participante, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+        verify(otroParticipante, times(1)).send(any(SseEmitter.SseEventBuilder.class));
         verify(ajeno, never()).send(any(SseEmitter.SseEventBuilder.class));
     }
 

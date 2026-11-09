@@ -186,6 +186,17 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void mensajeGrupal_incluyeLinkAlChatDelProyecto() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("MENSAJE_GRUPAL_RECIBIDO",
+                        "PROYECTO", 50L, 50L),
+                50L);
+
+        assertThat(response.link()).isEqualTo("/proyectos/50/chat");
+        assertThat(response.titulo()).isEqualTo("Mensaje grupal recibido");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");

@@ -2,6 +2,7 @@ package org.mgroko.backend.mensajeria.servicio;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
 import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
+import org.mgroko.backend.mensajeria.dto.MensajeGrupalEvento;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -56,6 +58,21 @@ public class SseMensajeEventBus implements MensajeEventBus {
         enviar(evento.idPerfilEmisor(), "mensaje", evento);
         if (!evento.idPerfilEmisor().equals(evento.idPerfilDestinatario())) {
             enviar(evento.idPerfilDestinatario(), "mensaje", evento);
+        }
+    }
+
+    @Override
+    public void publicarMensajeGrupal(MensajeGrupalEvento evento) {
+        Set<Long> destinatarios = new LinkedHashSet<>();
+        if (evento.idPerfilEmisor() != null) {
+            destinatarios.add(evento.idPerfilEmisor());
+        }
+        if (evento.idPerfilesDestinatarios() != null) {
+            destinatarios.addAll(evento.idPerfilesDestinatarios());
+        }
+
+        for (Long idPerfil : destinatarios) {
+            enviar(idPerfil, "mensaje_grupal", evento);
         }
     }
 

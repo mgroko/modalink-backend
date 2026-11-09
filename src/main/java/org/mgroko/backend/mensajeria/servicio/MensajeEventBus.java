@@ -3,6 +3,7 @@ package org.mgroko.backend.mensajeria.servicio;
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
 import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
+import org.mgroko.backend.mensajeria.dto.MensajeGrupalEvento;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
@@ -15,6 +16,8 @@ public interface MensajeEventBus {
     void eliminarSuscriptor(SseEmitter emitter);
 
     void publicarMensaje(MensajeEvento evento);
+
+    void publicarMensajeGrupal(MensajeGrupalEvento evento);
 
     void publicarLeido(ConversacionLeidaEvento evento);
 

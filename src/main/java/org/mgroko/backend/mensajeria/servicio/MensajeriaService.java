@@ -55,7 +55,6 @@ public class MensajeriaService {
     private static final int TAMANO_CONVERSACIONES_POR_DEFECTO = 20;
     private static final int TAMANO_MENSAJES_POR_DEFECTO = 50;
     private static final int TAMANO_MAXIMO = 100;
-    private static final int MAX_CONTENIDO = 1000;
 
     private final PerfilActivoService perfilActivoService;
     private final PerfilRepository perfilRepository;
@@ -269,7 +268,7 @@ public class MensajeriaService {
             String contenido) {
 
         Perfil activo = perfilActivoService.resolver(idUsuario, idPerfilActivo);
-        String texto = normalizarContenido(contenido);
+        String texto = MensajeContenidoValidator.normalizar(contenido);
 
         Conversacion conversacion = conversacionRepository
                 .findByIdForUpdate(idConversacion)
@@ -550,21 +549,6 @@ public class MensajeriaService {
                 conversacion.getIdConversacion());
 
         notificacionService.registrarTodas(List.of(notificacion));
-    }
-
-    private String normalizarContenido(String contenido) {
-        String texto = contenido == null ? "" : contenido.trim();
-
-        if (texto.isEmpty()) {
-            throw new MensajeInvalidoException("El mensaje no puede estar vacío.");
-        }
-
-        if (texto.length() > MAX_CONTENIDO) {
-            throw new MensajeInvalidoException(
-                    "El mensaje no puede superar los 1000 caracteres.");
-        }
-
-        return texto;
     }
 
     private int normalizarTamano(int size, int porDefecto) {

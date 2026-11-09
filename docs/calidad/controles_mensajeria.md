@@ -3,6 +3,7 @@
 > **Alcance:** chat 1 a 1 entre perfiles con conexión activa.
 > **Esquema canónico:** `docs/3_diseño/ModaLinkBD.sql`.
 > **Migración:** `docs/3_diseño/migraciones/2026-11-09_uc42_mensajes_privados.sql`.
+> **Chat grupal (UC-41):** ver `docs/calidad/controles_chat_grupal.md`.
 
 ## 1. Tablas
 

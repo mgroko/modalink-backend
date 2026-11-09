@@ -89,10 +89,13 @@ public class NotificacionService {
             "CONEXION_ELIMINADA";
     public static final String TIPO_MENSAJE_PRIVADO_RECIBIDO =
             "MENSAJE_PRIVADO_RECIBIDO";
+    public static final String TIPO_MENSAJE_GRUPAL_RECIBIDO =
+            "MENSAJE_GRUPAL_RECIBIDO";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";
     public static final String ENTIDAD_CONVERSACION = "CONVERSACION";
+    public static final String ENTIDAD_PROYECTO = "PROYECTO";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;

@@ -77,6 +77,24 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     List<MiembroProyecto> buscarActivosDeProyectoConPerfilProfesionYRol(
             @Param("idProyecto") Long idProyecto);
 
+    /**
+     * Participantes activos del chat grupal (UC-41), con perfil, usuario,
+     * profesión, imagen y rol inicializados.
+     */
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion pr
+        LEFT JOIN FETCH p.imagen img
+        JOIN FETCH mp.rolProyecto r
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC
+    """)
+    List<MiembroProyecto> buscarActivosDeProyectoParaChat(
+            @Param("idProyecto") Long idProyecto);
+
     @Query("""
         SELECT mp FROM MiembroProyecto mp
         JOIN FETCH mp.perfil p

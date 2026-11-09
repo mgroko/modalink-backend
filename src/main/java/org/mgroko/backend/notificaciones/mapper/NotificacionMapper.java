@@ -23,6 +23,8 @@ public final class NotificacionMapper {
             "CONEXION_ELIMINADA";
     private static final String TIPO_MENSAJE_PRIVADO_RECIBIDO =
             "MENSAJE_PRIVADO_RECIBIDO";
+    private static final String TIPO_MENSAJE_GRUPAL_RECIBIDO =
+            "MENSAJE_GRUPAL_RECIBIDO";
 
     private NotificacionMapper() {
     }
@@ -85,6 +87,10 @@ public final class NotificacionMapper {
                             && notificacion.getEntidadId() != null
                             ? "/mensajes?conversacion=" + notificacion.getEntidadId()
                             : "/mensajes";
+            case TIPO_MENSAJE_GRUPAL_RECIBIDO ->
+                    idProyecto != null
+                            ? "/proyectos/" + idProyecto + "/chat"
+                            : null;
             default -> null;
         };
     }
