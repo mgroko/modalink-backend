@@ -265,8 +265,8 @@ class BajaPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                         "Perfil de prueba UC-27.", List.of()));
 
         jdbcTemplate.update(
-                "INSERT INTO perfil_tyc (id_perfil, id_tyc, descripcion, fecha_inicio) "
-                        + "VALUES (?, 1, 'TyC UC-27', NOW())",
+                "INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio, fecha_fin) "
+                        + "VALUES (?, 'TyC UC-27', NOW() - INTERVAL '1 day', NOW())",
                 perfil.idPerfil());
 
         return new PerfilCreado(usuario.getIdUsuario(), perfil.idPerfil());

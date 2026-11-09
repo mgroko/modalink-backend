@@ -2,6 +2,8 @@ package org.mgroko.backend.proyectos.dto;
 
 import java.time.LocalDate;
 
+import org.mgroko.backend.ubicacion.dto.CiudadResponse;
+
 public record ProyectoBusquedaResponse(
         Long idProyecto,
         String nombre,
@@ -11,5 +13,6 @@ public record ProyectoBusquedaResponse(
         String privacidad,
         Boolean aceptaPostulacionGral,
         Long idDirector,
-        String nombreDirector
+        String nombreDirector,
+        CiudadResponse ciudad
 ) {}

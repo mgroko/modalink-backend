@@ -21,9 +21,12 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.perfiles.dto.AceptacionTerminosPorPerfilRequest;
+import org.mgroko.backend.perfiles.dto.AceptacionTerminosRequest;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.perfiles.exception.TerminosCondicionesException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
@@ -90,8 +93,13 @@ public class CrearInvitacionBatchService {
                         new CrearInvitacionGralRequest(
                                 idPerfilDestinatario,
                                 request.idRequerimientoGral(),
-                                request.mensaje())));
+                                request.mensaje(),
+                                aceptacionPara(idPerfilDestinatario,
+                                        request.aceptacionesTerminos()))));
             } catch (InvitacionNoPermitidaException ex) {
+                errores.add(new InvitacionBatchError(
+                        idPerfilDestinatario, ex.getMessage(), ex.getCodigo()));
+            } catch (TerminosCondicionesException ex) {
                 errores.add(new InvitacionBatchError(
                         idPerfilDestinatario, ex.getMessage(), ex.getCodigo()));
             } catch (PerfilEnBajaException | PerfilNoEncontradoException ex) {
@@ -124,8 +132,13 @@ public class CrearInvitacionBatchService {
                         new CrearInvitacionActividadRequest(
                                 requerimiento.getIdRequerimiento(),
                                 idPerfilDestinatario,
-                                request.mensaje())));
+                                request.mensaje(),
+                                aceptacionPara(idPerfilDestinatario,
+                                        request.aceptacionesTerminos()))));
             } catch (InvitacionNoPermitidaException ex) {
+                errores.add(new InvitacionBatchError(
+                        idPerfilDestinatario, ex.getMessage(), ex.getCodigo()));
+            } catch (TerminosCondicionesException ex) {
                 errores.add(new InvitacionBatchError(
                         idPerfilDestinatario, ex.getMessage(), ex.getCodigo()));
             } catch (PerfilEnBajaException | PerfilNoEncontradoException ex) {
@@ -233,6 +246,22 @@ public class CrearInvitacionBatchService {
                 || perfil.getUsuario().getEstado() != EstadoUsuario.ACTIVO) {
             throw new PerfilEnBajaException("El usuario del perfil no se encuentra activo.");
         }
+    }
+
+    private AceptacionTerminosRequest aceptacionPara(
+            Long idPerfil,
+            List<AceptacionTerminosPorPerfilRequest> aceptaciones) {
+
+        if (aceptaciones == null || aceptaciones.isEmpty()) {
+            return null;
+        }
+
+        return aceptaciones.stream()
+                .filter(aceptacion -> idPerfil.equals(aceptacion.idPerfil()))
+                .findFirst()
+                .map(aceptacion -> new AceptacionTerminosRequest(
+                        aceptacion.idTyc(), aceptacion.aceptaTerminos()))
+                .orElse(null);
     }
 
     private List<Long> idsUnicos(List<Long> ids) {

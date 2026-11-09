@@ -21,6 +21,7 @@ import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-56 — Gestionar habilidades del sistema.
@@ -61,6 +62,7 @@ public class AdminHabilidadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public HabilidadResponse crear(AdminHabilidadRequest request) {
         String nombre = normalizarNombre(request.nombre());
         if (habilidadRepository.existsByNombreIgnoreCase(nombre)) {
@@ -78,6 +80,7 @@ public class AdminHabilidadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public HabilidadResponse actualizar(Long idHabilidad, AdminHabilidadRequest request) {
         Habilidad habilidad = buscarOFallar(idHabilidad);
         String nombre = normalizarNombre(request.nombre());
@@ -110,6 +113,7 @@ public class AdminHabilidadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminar(Long idHabilidad) {
         Habilidad habilidad = buscarOFallar(idHabilidad);
 

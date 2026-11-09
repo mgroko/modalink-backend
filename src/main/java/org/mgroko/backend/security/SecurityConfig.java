@@ -13,6 +13,7 @@ import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,8 +24,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -36,6 +37,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
+@Import(CsrfConfig.class)
 public class SecurityConfig {
 
     private final JwtService jwtService;
@@ -80,6 +82,8 @@ public class SecurityConfig {
         corsConfig.setAllowedOrigins(origenes);
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         corsConfig.setAllowedHeaders(Arrays.asList("*"));
+        // El frontend necesita leer el nombre del archivo descargado (UC-67).
+        corsConfig.setExposedHeaders(Arrays.asList("Content-Disposition"));
         corsConfig.setAllowCredentials(true);
         corsConfig.setMaxAge(3600L);
 
@@ -90,7 +94,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
+            HttpSecurity http,
+            CsrfTokenRepository csrfTokenRepository
     ) throws Exception {
 
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
@@ -104,6 +109,11 @@ public class SecurityConfig {
                         "/auth/login",
                         "/auth/registro",
                         "/auth/reactivar-cuenta",
+                        // El logout es idempotente y debe poder limpiar la cookie
+                        // aunque el JWT esté vencido o ausente. Si quedara
+                        // protegido, Spring respondería 401 antes de llegar al
+                        // controlador y la cookie nunca se borraría.
+                        "/auth/logout",
                         "/auth/google",
                         "/auth/google/**",
                         "/oauth2/**",
@@ -125,7 +135,7 @@ public class SecurityConfig {
                     .hasAnyRole("ADMINISTRADOR", "USUARIO")
 
                 // Compartido entre ambos roles
-                .requestMatchers("/auth/me", "/auth/logout", "/notificaciones/**", "/health")
+                .requestMatchers("/auth/me", "/notificaciones/**", "/health")
                     .hasAnyRole("ADMINISTRADOR", "USUARIO")
 
                 // Solo usuario
@@ -134,7 +144,10 @@ public class SecurityConfig {
                         "/perfiles/**",
                         "/usuarios/me/**",
                         "/proyectos/**",
+                        "/contratos/**",
                         "/postulaciones/**",
+                        "/requerimientos-generales/**",
+                        "/requerimientos-actividad/**",
                         "/invitaciones/**",
                         "/reemplazos/**",
                         "/calendario/**",
@@ -177,14 +190,16 @@ public class SecurityConfig {
                 .failureHandler(googleOAuth2FailureHandler))
 
             .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRepository(csrfTokenRepository)
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                 // El onboarding de Google viaja con un ticket firmado en cookie
                 // HttpOnly y SameSite=Lax; no hay sesión previa para emitir un
-                // XSRF-TOKEN antes del callback.
-                .ignoringRequestMatchers("/auth/google/**")
+                // XSRF-TOKEN antes del callback. El logout también se exonera:
+                // es idempotente y debe limpiar la cookie aun cuando la sesión
+                // ya no sea válida o falte el token CSRF.
+                .ignoringRequestMatchers("/auth/google/**", "/auth/logout")
             )
-            .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(new CsrfCookieFilter(csrfTokenRepository), UsernamePasswordAuthenticationFilter.class)
 
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -12,22 +12,27 @@ public class JwtCookieFactory {
     public static final String NOMBRE_COOKIE = "jwt";
     public static final String NOMBRE_COOKIE_REGISTRO_GOOGLE = "google_registro";
 
-    private static final int MAX_AGE_SEGUNDOS = 24 * 60 * 60;
     private static final Duration MAX_AGE_REGISTRO_GOOGLE = Duration.ofMinutes(10);
 
     private final boolean secure;
     private final String sameSite;
+    private final long maxAgeSegundos;
 
     public JwtCookieFactory(
             @Value("${app.cookie.secure:false}") boolean secure,
-            @Value("${app.cookie.same-site:Lax}") String sameSite) {
+            @Value("${app.cookie.same-site:Lax}") String sameSite,
+            @Value("${jwt.expiration-ms:3600000}") long expirationMs) {
         this.secure = secure;
         this.sameSite = sameSite;
+        // La cookie no debe sobrevivir al token: si durara más, el navegador
+        // seguiría enviando un JWT vencido y el usuario vería una "sesión
+        // fantasma" que solo se limpia cerrando sesión a mano.
+        this.maxAgeSegundos = Math.max(1L, expirationMs / 1000L);
     }
 
     public ResponseCookie crear(String token) {
         return base(NOMBRE_COOKIE, token)
-                .maxAge(MAX_AGE_SEGUNDOS)
+                .maxAge(maxAgeSegundos)
                 .build();
     }
 

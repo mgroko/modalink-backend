@@ -21,16 +21,36 @@ public class VerPerfilService {
     private final PerfilRepository perfilRepository;
     private final UsuarioRepository usuarioRepository;
     private final ConfiguracionSistemaService configuracionSistemaService;
+    private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
 
     public VerPerfilService(PerfilRepository perfilRepository, UsuarioRepository usuarioRepository,
-            ConfiguracionSistemaService configuracionSistemaService) {
+            ConfiguracionSistemaService configuracionSistemaService,
+            GestionTerminosCondicionesService gestionTerminosCondicionesService) {
         this.perfilRepository = perfilRepository;
         this.usuarioRepository = usuarioRepository;
         this.configuracionSistemaService = configuracionSistemaService;
+        this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
     }
 
     @Transactional(readOnly = true)
     public PerfilDetalleResponse obtenerDetalle(Long idPerfil, Long idUsuarioAutenticado) {
+        PerfilVisible visible = obtenerPerfilVisible(idPerfil, idUsuarioAutenticado);
+        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
+
+        return PerfilMapper.toDetalleResponse(
+                visible.perfil(),
+                visible.esPropietario(),
+                diasBaja,
+                gestionTerminosCondicionesService.obtenerParaPerfil(visible.perfil()));
+    }
+
+    /**
+     * Aplica las reglas de visibilidad de UC-14 y devuelve el perfil junto con
+     * la marca de propiedad. Lo reutilizan otras consultas del área de perfil,
+     * como el listado de reseñas.
+     */
+    @Transactional(readOnly = true)
+    public PerfilVisible obtenerPerfilVisible(Long idPerfil, Long idUsuarioAutenticado) {
         Usuario usuarioAutenticado = usuarioRepository.findById(idUsuarioAutenticado)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
@@ -44,14 +64,13 @@ public class VerPerfilService {
                 .orElseThrow(() -> new PerfilNoEncontradoException("Perfil no encontrado."));
 
         boolean esPropietario = perfil.getUsuario().getIdUsuario().equals(idUsuarioAutenticado);
-        int diasBaja = configuracionSistemaService.obtenerDiasBaja();
 
         if (esPropietario) {
-            // Si el perfil est� en Baja definitiva, no est� disponible
+            // Si el perfil está en Baja definitiva, no está disponible.
             if (perfil.getEstado() == EstadoPerfil.Baja) {
                 throw new PerfilNoEncontradoException("Perfil no encontrado.");
             }
-            return PerfilMapper.toDetalleResponse(perfil, true, diasBaja);
+            return new PerfilVisible(perfil, true);
         }
 
         // Si es un tercero viendo el perfil:
@@ -65,6 +84,9 @@ public class VerPerfilService {
             throw new PerfilNoEncontradoException("Perfil no encontrado.");
         }
 
-        return PerfilMapper.toDetalleResponse(perfil, false, diasBaja);
+        return new PerfilVisible(perfil, false);
+    }
+
+    public record PerfilVisible(Perfil perfil, boolean esPropietario) {
     }
 }

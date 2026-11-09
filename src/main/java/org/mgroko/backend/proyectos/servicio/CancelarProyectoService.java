@@ -36,6 +36,7 @@ import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-35: Cancelar proyecto. Cancela las actividades no finalizadas, rechaza
@@ -91,6 +92,7 @@ public class CancelarProyectoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ProyectoResponse cancelar(
             Long idUsuario,
             Long idPerfilActivo,

@@ -39,6 +39,7 @@ import org.mgroko.backend.requerimientos.dto.BuscarRequerimientosGlobalFiltro;
 import org.mgroko.backend.requerimientos.dto.RequerimientoOportunidadResponse;
 import org.mgroko.backend.requerimientos.dto.TipoRequerimiento;
 import org.mgroko.backend.requerimientos.especificacion.RequerimientoActividadOportunidadSpecifications;
+import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -334,6 +335,9 @@ public class BuscarRequerimientosActividadGlobalService {
                 elegibilidad.motivo(),
                 estadoPostulacion != null,
                 estadoPostulacion,
-                true);
+                true,
+                proyecto.getUbicacion() != null
+                        ? UbicacionMapper.toCiudadResponse(proyecto.getUbicacion().getCiudad())
+                        : null);
     }
 }

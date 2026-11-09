@@ -26,6 +26,7 @@ import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Confirma los candidatos elegidos y envía las invitaciones masivas.
@@ -72,6 +73,7 @@ public class ConfirmarReemplazoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ReemplazoDetalleResponse regenerar(
             Long idUsuario,
             Long idPerfilActivo,
@@ -103,6 +105,7 @@ public class ConfirmarReemplazoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ReemplazoDetalleResponse confirmar(
             Long idUsuario,
             Long idPerfilActivo,

@@ -18,5 +18,7 @@ public record InvitacionReemplazoResponse(
         LocalDateTime fechaInvitacion,
         LocalDateTime fechaHoraInicio,
         Integer duracionMinutos,
-        String mensaje) {
+        String mensaje,
+        LocalDateTime fechaRespuesta,
+        String motivoRespuesta) {
 }

@@ -13,6 +13,7 @@ public record InvitacionBusquedaResponse(
         DireccionInvitacion direccion,
         EstadoSolicitud estado,
         LocalDateTime fechaEnvio,
+        LocalDateTime fechaRechazo,
         Long idProyecto,
         String nombreProyecto,
         Long idRequerimientoGral,
@@ -22,6 +23,44 @@ public record InvitacionBusquedaResponse(
         PerfilInvitacionResponse remitente,
         PerfilInvitacionResponse destinatario,
         String mensaje,
-        boolean puedeEliminar
+        boolean puedeEliminar,
+        Long idTycAceptado
 ) {
+
+    public InvitacionBusquedaResponse(
+            Long idInvitacion,
+            TipoInvitacion tipo,
+            DireccionInvitacion direccion,
+            EstadoSolicitud estado,
+            LocalDateTime fechaEnvio,
+            LocalDateTime fechaRechazo,
+            Long idProyecto,
+            String nombreProyecto,
+            Long idRequerimientoGral,
+            Long idRequerimientoActividad,
+            Long idActividad,
+            String nombreActividad,
+            PerfilInvitacionResponse remitente,
+            PerfilInvitacionResponse destinatario,
+            String mensaje,
+            boolean puedeEliminar) {
+        this(
+                idInvitacion,
+                tipo,
+                direccion,
+                estado,
+                fechaEnvio,
+                fechaRechazo,
+                idProyecto,
+                nombreProyecto,
+                idRequerimientoGral,
+                idRequerimientoActividad,
+                idActividad,
+                nombreActividad,
+                remitente,
+                destinatario,
+                mensaje,
+                puedeEliminar,
+                null);
+    }
 }

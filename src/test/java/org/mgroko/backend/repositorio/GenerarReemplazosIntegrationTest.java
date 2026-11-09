@@ -2,6 +2,7 @@ package org.mgroko.backend.repositorio;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -29,9 +30,17 @@ import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.perfiles.dto.AceptacionTerminosRequest;
+import org.mgroko.backend.reemplazos.dto.AprobarCandidatoRequest;
 import org.mgroko.backend.reemplazos.dto.ConfirmarReemplazoRequest;
+import org.mgroko.backend.reemplazos.enums.EstadoCandidatoReemplazo;
+import org.mgroko.backend.reemplazos.enums.EstadoReemplazo;
+import org.mgroko.backend.reemplazos.enums.NivelUbicacion;
 import org.mgroko.backend.reemplazos.enums.OrigenReemplazo;
+import org.mgroko.backend.reemplazos.enums.TipoDisponibilidad;
 import org.mgroko.backend.reemplazos.evento.ReemplazoNecesarioEvent;
+import org.mgroko.backend.reemplazos.modelo.Reemplazo;
+import org.mgroko.backend.reemplazos.modelo.ReemplazoCandidato;
 import org.mgroko.backend.reemplazos.repositorio.ReemplazoCandidatoRepository;
 import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
 import org.mgroko.backend.reemplazos.servicio.AprobacionIncorporacionService;
@@ -96,6 +105,9 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private MiembroProyectoRepository miembroProyectoRepository;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Test
     @Transactional
@@ -226,6 +238,10 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                         List.of(candidato.getIdCandidato()),
                         "Invitación a actividad"));
 
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", candidato.getIdCandidato()))
+                .isEqualTo(1L);
+
         assertThat(reemplazoCandidatoRepository.findById(candidato.getIdCandidato())
                 .orElseThrow()
                 .getEstado().name())
@@ -250,6 +266,13 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                 .orElseThrow();
         assertThat(candidatoCancelado.getEstado().name()).isEqualTo("CANCELADO");
         assertThat(candidatoCancelado.getMotivoDecision()).isEqualTo("Actividad cancelada");
+
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", candidato.getIdCandidato()))
+                .isZero();
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_CANCELADO", candidato.getIdCandidato()))
+                .isEqualTo(1L);
 
         assertThat(reemplazoQueryService.listarInvitaciones(
                 escenario.idUsuarioCandidato(),
@@ -309,6 +332,342 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                 .existsByMiembro_IdMiembroAndActividad_IdActividad(
                         reemplazoCubierto.getIdMiembroResultante(),
                         escenario.idActividad())).isTrue();
+    }
+
+    @Test
+    @Transactional
+    void permiteVariasAceptacionesYElDirectorEligeCualIncorporar() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+        ReemplazoCandidato primero = candidatosDe(reemplazo).getFirst();
+        ReemplazoCandidato segundo = agregarCandidatoAdicional(reemplazo, escenario);
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(
+                        List.of(primero.getIdCandidato(), segundo.getIdCandidato()),
+                        "Invitación masiva"));
+
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", primero.getIdCandidato()))
+                .isEqualTo(1L);
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", segundo.getIdCandidato()))
+                .isEqualTo(1L);
+
+        invitacionReemplazoService.aceptar(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato(),
+                primero.getIdCandidato());
+        invitacionReemplazoService.aceptar(
+                segundo.getUsuario().getIdUsuario(),
+                segundo.getPerfil().getIdPerfil(),
+                segundo.getIdCandidato());
+
+        assertThat(candidato(primero.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
+        assertThat(candidato(segundo.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.PENDIENTE_APROBACION);
+
+        aprobacionIncorporacionService.aprobar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                segundo.getIdCandidato());
+
+        assertThat(candidato(segundo.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.APROBADO);
+
+        ReemplazoCandidato cancelado = candidato(primero.getIdCandidato());
+        assertThat(cancelado.getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.CANCELADO);
+        assertThat(cancelado.getFechaDecision()).isNotNull();
+        assertThat(cancelado.getMotivoDecision())
+                .contains("Vacante cubierta por otro candidato");
+
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", primero.getIdCandidato()))
+                .isZero();
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_CANCELADO", primero.getIdCandidato()))
+                .isEqualTo(1L);
+        assertThat(contarNotificaciones(
+                "REEMPLAZO_INVITACION_RECIBIDA", segundo.getIdCandidato()))
+                .isEqualTo(1L);
+
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.CUBIERTO);
+
+        assertThat(miembroProyectoRepository.findMiembroActivoConRol(
+                escenario.idProyecto(),
+                segundo.getPerfil().getIdPerfil())).isPresent();
+        assertThat(miembroProyectoRepository.findMiembroActivoConRol(
+                escenario.idProyecto(),
+                escenario.idPerfilCandidato())).isEmpty();
+
+        assertThat(reemplazoQueryService.listarInvitaciones(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato())).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void rechazarUnaAceptacionMantieneElProcesoPendienteSiQuedanOtrosAceptados() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+        ReemplazoCandidato primero = candidatosDe(reemplazo).getFirst();
+        ReemplazoCandidato segundo = agregarCandidatoAdicional(reemplazo, escenario);
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(
+                        List.of(primero.getIdCandidato(), segundo.getIdCandidato()),
+                        "Invitación masiva"));
+
+        invitacionReemplazoService.aceptar(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato(),
+                primero.getIdCandidato());
+        invitacionReemplazoService.aceptar(
+                segundo.getUsuario().getIdUsuario(),
+                segundo.getPerfil().getIdPerfil(),
+                segundo.getIdCandidato());
+
+        aprobacionIncorporacionService.rechazar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                primero.getIdCandidato(),
+                "No disponible para la actividad");
+
+        assertThat(candidato(primero.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.RECHAZADO_ADMIN);
+        assertThat(candidato(segundo.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.PENDIENTE_APROBACION);
+
+        aprobacionIncorporacionService.aprobar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                segundo.getIdCandidato());
+
+        assertThat(candidato(segundo.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.APROBADO);
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.CUBIERTO);
+    }
+
+    @Test
+    @Transactional
+    void rechazoDelProfesionalNoCierraElProcesoSiOtroCandidatoYaAcepto() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+        ReemplazoCandidato primero = candidatosDe(reemplazo).getFirst();
+        ReemplazoCandidato segundo = agregarCandidatoAdicional(reemplazo, escenario);
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(
+                        List.of(primero.getIdCandidato(), segundo.getIdCandidato()),
+                        "Invitación masiva"));
+
+        invitacionReemplazoService.aceptar(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato(),
+                primero.getIdCandidato());
+
+        invitacionReemplazoService.rechazar(
+                segundo.getUsuario().getIdUsuario(),
+                segundo.getPerfil().getIdPerfil(),
+                segundo.getIdCandidato(),
+                "No puedo cubrir la vacante");
+
+        assertThat(candidato(primero.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
+        assertThat(candidato(segundo.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.RECHAZADO);
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.PENDIENTE_APROBACION);
+
+        aprobacionIncorporacionService.aprobar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                primero.getIdCandidato());
+
+        assertThat(candidato(primero.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.APROBADO);
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.CUBIERTO);
+    }
+
+    @Test
+    @Transactional
+    void aprobarCandidatoConTycVigenteRegistraLaVersionAceptada() {
+        Escenario escenario = crearEscenario();
+
+        Long idTyc = jdbcTemplate.queryForObject("""
+                INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio)
+                VALUES (?, 'Términos vigentes para reemplazo', NOW())
+                RETURNING id_tyc
+                """, Long.class, escenario.idPerfilCandidato());
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        var reemplazoActividad = reemplazoRepository
+                .findByProyectoIdProyectoOrderByFechaCreacionDesc(escenario.idProyecto())
+                .stream()
+                .filter(r -> r.getTipo().name().equals("ACTIVIDAD"))
+                .findFirst()
+                .orElseThrow();
+
+        var candidato = reemplazoCandidatoRepository
+                .findConDetalleByReemplazo(reemplazoActividad.getIdReemplazo())
+                .getFirst();
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazoActividad.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(List.of(candidato.getIdCandidato()), "Te invitamos"));
+
+        invitacionReemplazoService.aceptar(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato(),
+                candidato.getIdCandidato());
+
+        var respuesta = aprobacionIncorporacionService.aprobar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazoActividad.getIdReemplazo(),
+                candidato.getIdCandidato(),
+                new AprobarCandidatoRequest(
+                        new AceptacionTerminosRequest(idTyc, true)));
+
+        MiembroProyecto miembro = miembroProyectoRepository.findMiembroActivoConRol(
+                escenario.idProyecto(), escenario.idPerfilCandidato()).orElseThrow();
+
+        assertThat(miembro.getIdTycAceptado()).isEqualTo(idTyc);
+        assertThat(respuesta.idTycAceptado()).isEqualTo(idTyc);
+    }
+
+    private Reemplazo reemplazoActividad(Escenario escenario) {
+        return reemplazoRepository
+                .findByProyectoIdProyectoOrderByFechaCreacionDesc(escenario.idProyecto())
+                .stream()
+                .filter(r -> r.getTipo().name().equals("ACTIVIDAD"))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private List<ReemplazoCandidato> candidatosDe(Reemplazo reemplazo) {
+        return reemplazoCandidatoRepository.findConDetalleByReemplazo(
+                reemplazo.getIdReemplazo());
+    }
+
+    private ReemplazoCandidato candidato(Long idCandidato) {
+        return reemplazoCandidatoRepository.findById(idCandidato).orElseThrow();
+    }
+
+    private Long contarNotificaciones(String tipo, Long idCandidato) {
+        return jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE tipo = ?
+                  AND entidad_tipo = 'REEMPLAZO_CANDIDATO'
+                  AND entidad_id = ?
+                """, Long.class, tipo, idCandidato);
+    }
+
+    /**
+     * Agrega un segundo perfil disponible para el mismo reemplazo, para poder
+     * ejercitar el flujo de varias aceptaciones sin depender de que el motor de
+     * matching devuelva más de un candidato.
+     */
+    private ReemplazoCandidato agregarCandidatoAdicional(
+            Reemplazo reemplazo,
+            Escenario escenario) {
+
+        String sufijo = String.valueOf(Math.abs(System.nanoTime()));
+        String baseDni = sufijo.substring(Math.max(0, sufijo.length() - 11));
+        String baseCorreo = "reemplazo.adicional." + sufijo + ".";
+
+        RolGlobal rolGlobal = rolGlobalRepository.findByNombre("Usuario").orElseThrow();
+        Genero genero = generoRepository.findByCodigo("mujer").orElseThrow();
+        Usuario usuario = crearUsuario(
+                baseCorreo + "candidato@example.com", baseDni, rolGlobal, genero);
+        Profesion profesion = em.find(Profesion.class, escenario.idProfesion());
+        Perfil perfil = crearPerfil(
+                usuario, "Candidato adicional " + sufijo, profesion);
+        crearAgendaDisponible(usuario, reemplazo.getActividad().getFechaHoraInicio());
+
+        return reemplazoCandidatoRepository.saveAndFlush(ReemplazoCandidato.builder()
+                .reemplazo(reemplazo)
+                .idProyecto(escenario.idProyecto())
+                .perfil(perfil)
+                .usuario(usuario)
+                .estado(EstadoCandidatoReemplazo.PROPUESTO)
+                .ordenRanking(2)
+                .puntaje(BigDecimal.valueOf(80))
+                .nivelUbicacion(NivelUbicacion.MISMA_CIUDAD)
+                .esAlternativo(false)
+                .tipoDisponibilidad(TipoDisponibilidad.EXACTA)
+                .build());
     }
 
     private Escenario crearEscenario() {

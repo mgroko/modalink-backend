@@ -27,6 +27,8 @@ import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionDestinoResolver;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
@@ -57,6 +59,8 @@ class EliminarInvitacionServiceTest {
     private InvitacionActividadRepository invitacionActividadRepository;
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
+    @Mock
+    private NotificacionService notificacionService;
 
     private EliminarInvitacionService servicio;
 
@@ -66,7 +70,8 @@ class EliminarInvitacionServiceTest {
                 perfilRepository,
                 invitacionGralRepository,
                 invitacionActividadRepository,
-                proyectoSecurityService);
+                proyectoSecurityService,
+                notificacionService);
     }
 
     @Test
@@ -81,6 +86,10 @@ class EliminarInvitacionServiceTest {
 
         verify(invitacionGralRepository).delete(invitacion);
         verify(invitacionGralRepository).flush();
+        verify(notificacionService).eliminarPorEntidad(
+                NotificacionService.TIPO_INVITACION_RECIBIDA,
+                NotificacionDestinoResolver.ENTIDAD_INVITACION_GRAL,
+                ID_INVITACION);
     }
 
     @Test
@@ -95,6 +104,10 @@ class EliminarInvitacionServiceTest {
 
         verify(invitacionActividadRepository).delete(invitacion);
         verify(invitacionActividadRepository).flush();
+        verify(notificacionService).eliminarPorEntidad(
+                NotificacionService.TIPO_INVITACION_RECIBIDA,
+                NotificacionDestinoResolver.ENTIDAD_INVITACION_ACTIVIDAD,
+                ID_INVITACION);
     }
 
     @Test
@@ -187,6 +200,7 @@ class EliminarInvitacionServiceTest {
                 .hasMessageContaining("pendientes");
 
         verify(invitacionGralRepository, never()).delete(any());
+        verify(notificacionService, never()).eliminarPorEntidad(any(), any(), any());
     }
 
     @Test

@@ -359,6 +359,32 @@ class PlanificadorRecursosServiceTest {
                 .isEqualTo("SIN_DISPONIBILIDAD");
     }
 
+    @Test
+    void planificar_enCursoConInicioAnteriorAlOrigen_usaElInicioRealYNoRompe() {
+        LocalDateTime inicioReal = LocalDateTime.of(2026, 10, 31, 15, 0);
+        Actividad enCurso = actividad(1L, "En curso", 60, EstadoActividad.EN_CURSO);
+        enCurso.setFechaHoraInicio(inicioReal);
+        Actividad objetivo = actividad(2L, "Objetivo", 60, EstadoActividad.PENDIENTE);
+        objetivo.setPredecesoras(Set.of(enCurso));
+        Planificacion planificacion = planificacion(LocalDate.of(2026, 11, 10), null);
+
+        when(asignacionRepository.findActivasByActividadIds(anyCollection()))
+                .thenReturn(List.of(
+                        asignacion(10L, 20L, 31L, enCurso),
+                        asignacion(11L, 21L, 30L, objetivo)));
+        when(calendarioService.verificarDisponibilidadMiembrosEnRango(
+                anyCollection(), eq(objetivo), any(), any(), anyMap(), anySet()))
+                .thenAnswer(inv -> disponible(inv.getArgument(2), 60));
+
+        PlanificadorRecursosService.Resultado resultado = service.planificar(
+                planificacion, List.of(enCurso, objetivo), INICIO, false);
+
+        assertThat(resultado.inicios().get(1L)).isEqualTo(inicioReal);
+        assertThat(resultado.inicios().get(2L)).isAfterOrEqualTo(INICIO);
+        assertThat(resultado.calculo().inicio()).isEqualTo(inicioReal);
+        assertThat(resultado.calculo().viable()).isTrue();
+    }
+
     private PlanificadorRecursosService servicioConReloj(Clock reloj) {
         return new PlanificadorRecursosService(
                 new CronogramaService(reloj),

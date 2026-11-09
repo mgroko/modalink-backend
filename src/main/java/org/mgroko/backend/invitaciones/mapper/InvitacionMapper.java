@@ -29,7 +29,8 @@ public final class InvitacionMapper {
                 null,
                 invitacion.getPerfilRemitente().getIdPerfil(),
                 invitacion.getPerfilDestinatario().getIdPerfil(),
-                invitacion.getMensaje());
+                invitacion.getMensaje(),
+                invitacion.getIdTycAceptado());
     }
 
     public static InvitacionResponse toResponse(InvitacionActividad invitacion) {
@@ -49,7 +50,8 @@ public final class InvitacionMapper {
                 requerimiento.getIdRequerimiento(),
                 invitacion.getPerfilRemitente().getIdPerfil(),
                 invitacion.getPerfilDestinatario().getIdPerfil(),
-                invitacion.getMensaje());
+                invitacion.getMensaje(),
+                invitacion.getIdTycAceptado());
     }
 
     public static InvitacionBusquedaResponse toBusquedaResponse(
@@ -65,6 +67,7 @@ public final class InvitacionMapper {
                 direccion(enviada),
                 invitacion.getEstado(),
                 invitacion.getFechaEnvio(),
+                invitacion.getFechaRechazo(),
                 idProyecto,
                 invitacion.getProyecto().getNombre(),
                 invitacion.getRequerimientoGral() != null
@@ -76,7 +79,8 @@ public final class InvitacionMapper {
                 toPerfilResponse(invitacion.getPerfilRemitente()),
                 toPerfilResponse(invitacion.getPerfilDestinatario()),
                 invitacion.getMensaje(),
-                puedeEliminar(invitacion.getEstado(), enviada));
+                puedeEliminar(invitacion.getEstado(), enviada),
+                invitacion.getIdTycAceptado());
     }
 
     public static InvitacionBusquedaResponse toBusquedaResponse(
@@ -94,6 +98,7 @@ public final class InvitacionMapper {
                 direccion(enviada),
                 invitacion.getEstado(),
                 invitacion.getFechaEnvio(),
+                invitacion.getFechaRechazo(),
                 proyecto.getIdProyecto(),
                 proyecto.getNombre(),
                 null,
@@ -103,7 +108,8 @@ public final class InvitacionMapper {
                 toPerfilResponse(invitacion.getPerfilRemitente()),
                 toPerfilResponse(invitacion.getPerfilDestinatario()),
                 invitacion.getMensaje(),
-                puedeEliminar(invitacion.getEstado(), enviada));
+                puedeEliminar(invitacion.getEstado(), enviada),
+                invitacion.getIdTycAceptado());
     }
 
     private static boolean esRemitente(Perfil perfil, Long idPerfilActivo) {

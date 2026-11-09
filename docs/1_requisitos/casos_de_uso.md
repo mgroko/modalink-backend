@@ -1644,3 +1644,49 @@
 | **Comentarios** | \- |  |
 
 
+
+
+| UC-76 | Gestionar tipos de contrato |  |
+| ----- | ----- | ----- |
+| **Actor** | Administrador |  |
+| **Objetivos asociados**  | OBJ-01 OBJ-04 |  |
+| **Requisitos asociados**  | IRQ-02 |  |
+| **Descripción**  | El caso de uso inicia cuando el administrador quiere gestionar los tipos de contrato disponibles para generar contratos. El sistema permite agregar, modificar, activar, desactivar y eliminar tipos de contrato, y validar la plantilla legal asociada. |  |
+| **Precondición**  | El usuario inició sesión en el sistema y tiene permisos de Administrador. |  |
+| **Secuencia normal**  | **Paso** | **Acción** |
+|  | 1 | El sistema recupera y despliega todos los tipos de contrato registrados, activos e inactivos, con su código, estado y cantidad de contratos asociados. |  |
+|  | 2 | El actor selecciona "Agregar nuevo tipo de contrato". |  |
+|  | 3 | El sistema despliega un formulario con Nombre, Descripción y Plantilla legal. El código se genera automáticamente. |  |
+|  | 4 | El actor completa los campos, valida la plantilla y confirma la acción. |  |
+|  | 5 | El sistema registra el nuevo tipo de contrato en estado activo. |  |
+| **Postcondición** | Se creó un nuevo tipo de contrato en el sistema, con código único e inmutable y auditoría de alta. |  |
+| **Flujo alternativo 2.1** | 2.1 | Si el actor selecciona "Modificar tipo de contrato": |
+|  | 2.1.1 | El actor selecciona el tipo de contrato que quiere modificar. |
+|  | 2.1.2 | El sistema despliega Nombre, Descripción, Código y Plantilla legal. |
+|  | 2.1.3 | El actor modifica los campos permitidos y confirma la acción. |
+|  | 2.1.4 | El sistema registra los cambios y la auditoría. |
+| **Postcondición 2.1** | Se modificó un tipo de contrato. El nombre y la plantilla no pueden modificarse si existen contratos en estado BORRADOR, PENDIENTE_FIRMA o ACTIVO. |  |
+| **Flujo alternativo 2.2** | 2.2 | Si el actor selecciona "Activar" o "Desactivar" un tipo de contrato: |
+|  | 2.2.1 | El sistema solicita confirmación. |
+|  | 2.2.2 | El actor confirma la acción. |
+|  | 2.2.3 | El sistema actualiza el estado del tipo. |
+| **Postcondición 2.2** | Se actualizó el estado del tipo de contrato. No se puede desactivar el último tipo activo ni un tipo con contratos pendientes de firma. Los contratos existentes no se modifican. |  |
+| **Flujo alternativo 2.3** | 2.3 | Si el actor selecciona "Eliminar tipo de contrato": |
+|  | 2.3.1 | El sistema solicita confirmación. |
+|  | 2.3.2 | El actor confirma la acción. |
+|  | 2.3.3 | El sistema registra la baja física. |
+| **Postcondición 2.3** | Se eliminó un tipo de contrato sin contratos asociados. Si tiene contratos, el sistema rechaza la baja y ofrece desactivarlo. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 3 | Si el actor deja campos obligatorios vacíos, el nombre supera los 100 caracteres, la plantilla supera los 100.000 caracteres o contiene placeholders desconocidos o con formato inválido, el sistema notifica la excepción y vuelve al paso 3. |
+|  | 4 | Si ya existe un tipo de contrato con el mismo nombre, el sistema notifica la excepción y vuelve al paso 3. |
+|  | 2.1.3 | Si el tipo tiene contratos BORRADOR, PENDIENTE_FIRMA o ACTIVO y el actor intenta cambiar el nombre o la plantilla, el sistema rechaza la modificación. |
+|  | 2.2.3 | Si el tipo es el último activo o tiene contratos pendientes de firma, el sistema rechaza la desactivación. |
+|  | 2.3.3 | Si el tipo tiene contratos asociados o es el último activo, el sistema rechaza la eliminación. |
+| **Rendimiento**  | **Paso** | **Cota de tiempo**  |
+|  | 5 | 2 segundos |
+|  | 2.1.4 | 2 segundos |
+|  | 2.2.3 | 2 segundos |
+|  | 2.3.3 | 2 segundos |
+| **Frecuencia**  | 5 veces/día |  |
+| **Estabilidad**  | media |  |
+| **Comentarios** | Extensión administrativa del módulo de contratos. |  |

@@ -4,7 +4,7 @@
 | Rol | Área permitida |
 |---|---|
 | `Administrador` | `/admin/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
-| `Usuario` | `/home/**`, `/perfiles/**`, `/proyectos/**`, `/postulaciones/**`, `/invitaciones/**`, `/calendario/**`, `/usuario/**`, `/habilidades/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
+| `Usuario` | `/home/**`, `/perfiles/**`, `/proyectos/**`, `/postulaciones/**`, `/requerimientos-generales/**`, `/requerimientos-actividad/**`, `/invitaciones/**`, `/calendario/**`, `/usuario/**`, `/habilidades/**`, `/auth/me`, `/auth/logout`, `/notificaciones/**`, `GET /profesiones`, `GET /ubicaciones/**` |
 
 Errores:
 
@@ -418,3 +418,113 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Precondición** | La postulación debe estar en estado ‘Pendiente’ |
 | **Postcondición** | Se eliminó una instancia de Postulacion unaPostulacion |
 
+| Nombre | configurarTerminosCondiciones(unPerfil, texto) |
+| :---- | :---- |
+| **Responsabilidades** | Registrar una nueva versión de los términos y condiciones del perfil. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-23 |
+| **Notas** | El texto debe tener entre 1 y 5000 caracteres. Si el texto es igual a la versión vigente, no se crea una versión nueva. |
+| **Excepciones** | Perfil inexistente o ajeno, perfil no activo, texto vacío o mayor a 5000 caracteres. |
+| **Salida** | TerminosCondicionesResponse |
+| **Precondición** | El usuario está autenticado, el perfil existe y está en estado Activo. |
+| **Postcondición** | Se cerró la versión vigente anterior y se creó una nueva versión vigente asociada al perfil. |
+
+| Nombre | aceptarTerminosDePerfil(unPerfil, idTyc, aceptaTerminos) |
+| :---- | :---- |
+| **Responsabilidades** | Validar que el proyecto acepte la versión vigente de los términos y condiciones del perfil que se incorpora. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-23, UC-28, UC-31, UC-34, UC-38 bis |
+| **Notas** | Si el perfil no tiene T&C configurados, no se exige aceptación y el id queda nulo. |
+| **Excepciones** | Falta la aceptación, la versión enviada no es la vigente o el perfil ya no tiene versión vigente. |
+| **Salida** | idTycAceptado |
+| **Precondición** | El perfil destinatario existe y está activo. |
+| **Postcondición** | Se registró la versión aceptada en la invitación o en la membresía del proyecto. |
+
+---
+
+## UC-67 — Generar informe de auditoría
+
+| Nombre | listarAuditoria(fechaDesde, fechaHasta, tipos, page, size) |
+| :---- | :---- |
+| **Responsabilidades** | Listar los eventos críticos de auditoría en un rango de fechas, con filtros opcionales por tipo de evento. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. Las fechas son obligatorias e inclusivas. Si no se envían tipos, **no se aplica filtro por tipo**: se incluyen los históricos (`tipo_evento = NULL`) y los eventos fuera del catálogo. El rango máximo se configura en `AUDITORIA_RANGO_MAX_DIAS` (default 90). El tamaño máximo de página se configura en `AUDITORIA_PAGINA_MAX` (default 100). Orden: `fechaHora DESC, idAuditoria DESC`. |
+| **Excepciones** | Fechas ausentes (`FECHAS_OBLIGATORIAS`), rango invertido (`RANGO_FECHAS_INVALIDO`), rango excedido (`RANGO_FECHAS_EXCEDIDO`), catálogo vacío (`CATALOGO_VACIO`), tipo inexistente (`TIPO_EVENTO_INVALIDO`), paginación inválida (`PAGINACION_INVALIDA`). |
+| **Salida** | `PaginaResponse<AuditoriaEventoResponse>` con `idAuditoria`, `fechaHora`, `tipoEvento`, `tipoEventoNombre`, `entidadAfectada`, `entidadClave`, `idAfectado`, `idUsuario`, `usuarioNombre`, `usuarioBd`, `ipUsuario`, `tipoEventoOriginal`, `legacy`, `operador` y `detalle[]`. |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. Devuelve la página solicitada o una página vacía si no hay coincidencias. |
+
+| Nombre | listarTiposEventoAuditoria() |
+| :---- | :---- |
+| **Responsabilidades** | Devolver el catálogo de tipos de evento activos para poblar el filtro multi-selección. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. |
+| **Excepciones** | Ninguna esperable. |
+| **Salida** | Lista de `TipoEventoAuditoriaResponse` (`codigo`, `nombre`, `descripcion`, `modulo`). |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. |
+
+| Nombre | obtenerResumenAuditoria(fechaDesde, fechaHasta, tipos) |
+| :---- | :---- |
+| **Responsabilidades** | Calcular el total de registros y los agregados por tipo de evento y por entidad afectada. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. Usa los mismos filtros y validaciones que el listado. Sin filtro de tipos, las filas con `tipo_evento = NULL` se agrupan como `SIN_TIPO`. Con filtro de tipos, no se incluye `SIN_TIPO`. |
+| **Excepciones** | Las mismas que el listado. |
+| **Salida** | `AuditoriaResumenResponse` con `fechaDesde`, `fechaHasta`, `tiposAplicados`, `totalRegistros`, `porTipoEvento[]` y `porEntidad[]`. |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. |
+
+| Nombre | exportarAuditoria(formato, fechaDesde, fechaHasta, tipos) |
+| :---- | :---- |
+| **Responsabilidades** | Exportar el resultado filtrado a CSV o PDF, con tope configurable. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | UC-67 |
+| **Notas** | Solo rol Administrador. `formato` es obligatorio (`CSV` o `PDF`). El tope se configura en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000); si se supera, devuelve `400`. El PDF incluye encabezado, resumen y tabla de eventos. Las filas históricas muestran “No disponible (histórico)” como operador. |
+| **Excepciones** | Fechas/tipos inválidos, `FORMATO_EXPORTACION_INVALIDO`, `EXPORTACION_EXCEDIDA`. |
+| **Salida** | Archivo CSV (`text/csv`) o PDF (`application/pdf`) con `Content-Disposition: attachment`. |
+| **Precondición** | El usuario está autenticado con rol Administrador. |
+| **Postcondición** | No modifica datos. |
+
+
+Nombre	enviarSolicitud(unPerfil)
+Responsabilidades	Esta operación se encarga de enviar una solicitud de conexión a un perfil.
+Tipo	Sistema
+Referencias cruzadas	UC-43
+Notas	-
+Excepciones	Ya existe una solicitud de conexión pendiente para ese perfil. (O para el perfil emisor del perfil objetivo)
+Salida	unaSolicitud
+Precondición	El usuario inició sesión en el sistema y tiene un perfil activo
+Postcondición	Se creó una instancia de Solicitud unaSolicitud Se asignó el valor “pendiente” a unaSolicitud.estado Se creó una Notificación con destinatario unPerfil
+
+Nombre	aceptarSolicitud(unaSolicitud)
+Responsabilidades	Esta operación se encarga de aceptar una solicitud de conexión de un perfil
+Tipo	Sistema
+Referencias cruzadas	UC-45
+Notas	-
+Excepciones	Ya existe una conexión vigente entre ambos perfiles.
+Salida	-
+Precondición	La solicitud de conexión está en estado: Pendiente
+Postcondición	Se asignó el valor “aceptada” a unaSolicitud.estado Se creó una instancia de Conexión unaConexion Se agregó unaConexión a unaRedContactos Se creó una Notificación a los perfiles involucrados
+
+Nombre	rechazarSolicitud(unaSolicitud)
+Responsabilidades	Esta operación se encarga de rechazar una solicitud de conexión de un perfil
+Tipo	Sistema
+Referencias cruzadas	UC-45
+Notas	-
+Excepciones	Ya existe una conexión vigente entre ambos perfiles.
+Salida	-
+Precondición	La solicitud de conexión está en estado: Pendiente
+Postcondición	Se asignó el valor “rechazada” a unaSolicitud.estado Se creó una Notificación a los perfiles involucrados
+
+Nombre	eliminarConexion(unaConexion)
+Responsabilidades	Esta operación se encarga de eliminar una conexión de la red de contactos de un perfil.
+Tipo	Sistema
+Referencias cruzadas	UC-44
+Notas	-
+Excepciones	No se encontró la conexión
+Salida	-
+Precondición	unaConexion existe en unaRedDeContactos
+Postcondición	Se eliminó unaConexion de unaRedDeContactos Se creó una Notificación a los perfiles involucrados

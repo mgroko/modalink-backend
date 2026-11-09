@@ -168,7 +168,11 @@ archivo se conserva localmente.
 | PUT    | `/perfiles/{idPerfil}` | Edita el perfil propio (UC-11): nombre artístico, biografía, foto de perfil y características técnicas. La profesión no es modificable (reforzado por trigger). Valida campos obligatorios y las características. |
 | DELETE | `/perfiles/{idPerfil}` | Solicita la baja del perfil (UC-12): pasa a `PendienteBaja`, oculta el perfil a la comunidad y registra una cuenta regresiva de 30 días. Devuelve la fecha límite para reactivar. |
 | POST   | `/perfiles/{idPerfil}/reactivar` | Reactiva un perfil `PendienteBaja` dentro de los 30 días (UC-12). Un perfil no activado a tiempo se da de baja definitivamente por tarea programada diaria. |
+| GET    | `/perfiles/{idPerfil}/terminos-condiciones` | Devuelve la versión vigente de los T&C del perfil o la plantilla base si todavía no configuró (UC-23). |
+| PUT    | `/perfiles/{idPerfil}/terminos-condiciones` | Guarda una nueva versión de los T&C del perfil propio (UC-23). Solo perfiles `Activo`; máximo 5000 caracteres. |
 | GET    | `/usuarios/me/perfiles` | Devuelve los perfiles del usuario autenticado (dashboard). Equivale a `GET /admin/usuarios/{id}/perfiles` pero restringido al propio usuario. |
+
+Los T&C se versionan: cada cambio real cierra la versión vigente y crea una nueva. La versión vigente se incluye en `GET /perfiles/{idPerfil}` y en las invitaciones; cuando el proyecto incorpora a un integrante con T&C configurados, el director debe aceptar esa versión y queda registrada en `id_tyc_aceptado`. La plantilla base se configura en `configuracion_sistema` con la clave `PERFIL_TYC_PLANTILLA`.
 
 ### Catálogos (requiere autenticación)
 

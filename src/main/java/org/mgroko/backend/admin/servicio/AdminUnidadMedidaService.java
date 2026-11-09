@@ -17,6 +17,7 @@ import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.UnidadMedidaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-74 — Gestionar unidades de medida.
@@ -61,6 +62,7 @@ public class AdminUnidadMedidaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public UnidadMedidaResponse crear(AdminUnidadMedidaRequest request) {
         String nombre = request.nombre().trim();
         String simbolo = request.simbolo().trim();
@@ -85,6 +87,7 @@ public class AdminUnidadMedidaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public UnidadMedidaResponse actualizar(Long idUnidad, AdminUnidadMedidaRequest request) {
         UnidadMedida unidad = buscarOFallar(idUnidad);
         String nombre = request.nombre().trim();
@@ -112,6 +115,7 @@ public class AdminUnidadMedidaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminar(Long idUnidad) {
         UnidadMedida unidad = buscarOFallar(idUnidad);
         if (caracteristicaTecnicaRepository.existsByUnidadMedidaIdUnidad(idUnidad)) {

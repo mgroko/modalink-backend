@@ -2,6 +2,7 @@ package org.mgroko.backend.reemplazos.servicio;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -15,12 +16,14 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
+import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
 import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
+import org.mgroko.backend.reemplazos.dto.AprobarCandidatoRequest;
 import org.mgroko.backend.reemplazos.dto.CandidatoReemplazoResponse;
 import org.mgroko.backend.reemplazos.enums.EstadoCandidatoReemplazo;
 import org.mgroko.backend.reemplazos.enums.EstadoReemplazo;
@@ -40,6 +43,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Aprobación o rechazo de la incorporación de un candidato que aceptó.
@@ -48,6 +52,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class AprobacionIncorporacionService {
 
     private static final String ROL_MIEMBRO = "MIEMBRO";
+
+    private static final String MOTIVO_VACANTE_CUBIERTA =
+            "Vacante cubierta por otro candidato";
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_ACEPTADOS =
+            List.of(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITADOS =
+            List.of(EstadoCandidatoReemplazo.INVITADO);
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITACION_ACTIVA =
+            List.of(
+                    EstadoCandidatoReemplazo.PROPUESTO,
+                    EstadoCandidatoReemplazo.INVITADO,
+                    EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
 
     private final ReemplazoRepository reemplazoRepository;
     private final ReemplazoCandidatoRepository candidatoRepository;
@@ -61,6 +80,7 @@ public class AprobacionIncorporacionService {
     private final ReprogramarProyectoService reprogramarProyectoService;
     private final ReemplazoNotificacionService notificacionService;
     private final ApplicationEventPublisher eventPublisher;
+    private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
     private final Clock reloj;
 
     public AprobacionIncorporacionService(
@@ -76,6 +96,7 @@ public class AprobacionIncorporacionService {
             ReprogramarProyectoService reprogramarProyectoService,
             ReemplazoNotificacionService notificacionService,
             ApplicationEventPublisher eventPublisher,
+            GestionTerminosCondicionesService gestionTerminosCondicionesService,
             Clock reloj) {
         this.reemplazoRepository = reemplazoRepository;
         this.candidatoRepository = candidatoRepository;
@@ -89,16 +110,31 @@ public class AprobacionIncorporacionService {
         this.reprogramarProyectoService = reprogramarProyectoService;
         this.notificacionService = notificacionService;
         this.eventPublisher = eventPublisher;
+        this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
         this.reloj = reloj;
     }
 
     @Transactional
+    @AuditarOperacion
     public CandidatoReemplazoResponse aprobar(
             Long idUsuario,
             Long idPerfilActivo,
             Long idProyecto,
             Long idReemplazo,
             Long idCandidato) {
+        return aprobar(idUsuario, idPerfilActivo, idProyecto, idReemplazo,
+                idCandidato, null);
+    }
+
+    @Transactional
+    @AuditarOperacion
+    public CandidatoReemplazoResponse aprobar(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            Long idReemplazo,
+            Long idCandidato,
+            AprobarCandidatoRequest request) {
 
         queryService.validarPerfilActivo(idUsuario, idPerfilActivo);
         proyectoSecurityService.validarDirector(idProyecto, idPerfilActivo);
@@ -115,7 +151,12 @@ public class AprobacionIncorporacionService {
         validarProyectoYVacante(reemplazo);
         validarCandidatoActivo(candidato);
 
+        Long idTycAceptado = gestionTerminosCondicionesService.validarAceptacion(
+                candidato.getPerfil().getIdPerfil(),
+                request != null ? request.aceptacionTerminos() : null);
+
         Long idMiembro;
+        Long idTycRegistrado = idTycAceptado;
         Long idAsignacion = null;
 
         if (reemplazo.getTipo() == TipoReemplazo.ACTIVIDAD) {
@@ -139,8 +180,10 @@ public class AprobacionIncorporacionService {
                                 List.of(candidato.getUsuario().getIdUsuario())));
             }
 
-            MiembroProyecto miembro = obtenerOCrearMiembro(reemplazo, candidato, null);
+            MiembroProyecto miembro = obtenerOCrearMiembro(
+                    reemplazo, candidato, null, idTycAceptado);
             idMiembro = miembro.getIdMiembro();
+            idTycRegistrado = miembro.getIdTycAceptado();
 
             if (asignacionActividadRepository
                     .existsByMiembro_IdMiembroAndActividad_IdActividad(
@@ -167,8 +210,10 @@ public class AprobacionIncorporacionService {
             MiembroProyecto miembro = obtenerOCrearMiembro(
                     reemplazo,
                     candidato,
-                    reemplazo.getRequerimientoGral());
+                    reemplazo.getRequerimientoGral(),
+                    idTycAceptado);
             idMiembro = miembro.getIdMiembro();
+            idTycRegistrado = miembro.getIdTycAceptado();
         }
 
         LocalDateTime ahora = LocalDateTime.now(reloj);
@@ -177,6 +222,7 @@ public class AprobacionIncorporacionService {
         candidato.setIdUsuarioDecision(idUsuario);
         candidato.setIdMiembroCreado(idMiembro);
         candidato.setIdAsignacionCreada(idAsignacion);
+        candidato.setIdTycAceptado(idTycRegistrado);
         candidatoRepository.saveAndFlush(candidato);
 
         reemplazo.setEstado(EstadoReemplazo.CUBIERTO);
@@ -185,9 +231,9 @@ public class AprobacionIncorporacionService {
         reemplazo.setIdAsignacionResultante(idAsignacion);
         reemplazoRepository.saveAndFlush(reemplazo);
 
-        // El primero que aceptó y fue aprobado cubre la vacante: el resto de
-        // las invitaciones de este proceso desaparece.
-        candidatoRepository.deleteOtrosCandidatos(idReemplazo, idCandidato);
+        // El candidato aprobado cubre la vacante: las demás invitaciones
+        // activas se cancelan lógicamente y sus destinatarios son notificados.
+        cancelarOtrosCandidatos(reemplazo, candidato, idUsuario, ahora);
 
         notificacionService.notificarCandidato(
                 candidato,
@@ -208,6 +254,7 @@ public class AprobacionIncorporacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public CandidatoReemplazoResponse rechazar(
             Long idUsuario,
             Long idPerfilActivo,
@@ -235,15 +282,7 @@ public class AprobacionIncorporacionService {
         candidato.setMotivoDecision(normalizarMotivo(motivo));
         candidatoRepository.saveAndFlush(candidato);
 
-        long invitacionesRestantes = candidatoRepository
-                .countByReemplazoIdReemplazoAndEstadoIn(
-                        idReemplazo,
-                        List.of(EstadoCandidatoReemplazo.INVITADO));
-
-        reemplazo.setEstado(invitacionesRestantes > 0
-                ? EstadoReemplazo.INVITACIONES_ENVIADAS
-                : EstadoReemplazo.SIN_CANDIDATOS);
-        reemplazoRepository.saveAndFlush(reemplazo);
+        actualizarEstadoTrasRechazo(reemplazo);
 
         notificacionService.notificarCandidato(
                 candidato,
@@ -259,12 +298,103 @@ public class AprobacionIncorporacionService {
             Reemplazo reemplazo,
             ReemplazoCandidato candidato) {
 
-        if (reemplazo.getEstado() != EstadoReemplazo.PENDIENTE_APROBACION
+        boolean procesoAbierto = reemplazo.getEstado() == EstadoReemplazo.PENDIENTE_APROBACION
+                || reemplazo.getEstado() == EstadoReemplazo.INVITACIONES_ENVIADAS;
+
+        if (!procesoAbierto
                 || candidato.getEstado()
                         != EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION) {
             throw new ReemplazoNoGestionableException(
                     "La incorporación no está pendiente de aprobación.",
                     "INCORPORACION_NO_PENDIENTE");
+        }
+    }
+
+    /**
+     * Cancela las invitaciones que quedaron activas al cubrirse la vacante.
+     *
+     * <p>Se conserva el historial de rechazos del profesional y del director;
+     * sólo se cancelan las propuestas e invitaciones que todavía estaban
+     * abiertas. Cada candidato cancelado recibe una notificación.</p>
+     */
+    private void cancelarOtrosCandidatos(
+            Reemplazo reemplazo,
+            ReemplazoCandidato aprobado,
+            Long idUsuario,
+            LocalDateTime ahora) {
+
+        List<ReemplazoCandidato> otros = candidatoRepository
+                .findByReemplazoIdReemplazoAndEstadoIn(
+                        reemplazo.getIdReemplazo(),
+                        ESTADOS_INVITACION_ACTIVA);
+
+        List<ReemplazoCandidato> cancelados = new ArrayList<>();
+        List<ReemplazoCandidato> notificables = new ArrayList<>();
+        for (ReemplazoCandidato otro : otros) {
+            if (otro.getIdCandidato().equals(aprobado.getIdCandidato())) {
+                continue;
+            }
+            boolean teniaInvitacion =
+                    otro.getEstado() == EstadoCandidatoReemplazo.INVITADO
+                            || otro.getEstado()
+                                    == EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION;
+            otro.setEstado(EstadoCandidatoReemplazo.CANCELADO);
+            otro.setFechaDecision(ahora);
+            otro.setIdUsuarioDecision(idUsuario);
+            otro.setMotivoDecision(MOTIVO_VACANTE_CUBIERTA);
+            cancelados.add(otro);
+            if (teniaInvitacion) {
+                notificables.add(otro);
+            }
+        }
+
+        if (cancelados.isEmpty()) {
+            return;
+        }
+
+        candidatoRepository.saveAllAndFlush(cancelados);
+
+        for (ReemplazoCandidato cancelado : notificables) {
+            notificacionService.eliminarInvitacionRecibida(cancelado);
+            notificacionService.notificarCandidato(
+                    cancelado,
+                    NotificacionService.TIPO_REEMPLAZO_CANCELADO,
+                    "La vacante de " + descripcionVacante(reemplazo)
+                            + " en el proyecto '"
+                            + reemplazo.getProyecto().getNombre()
+                            + "' fue cubierta por otro candidato. "
+                            + "Tu invitación quedó sin efecto.");
+        }
+    }
+
+    /**
+     * Recalcula el estado agregado después de que el director rechaza una
+     * incorporación.
+     *
+     * <p>Si quedan candidatos aceptados, el proceso sigue pendiente de
+     * aprobación; si sólo quedan invitaciones sin responder, vuelve a esperar
+     * respuestas. Recién cuando no queda ninguna de las dos cosas pasa a
+     * {@code SIN_CANDIDATOS}.</p>
+     */
+    private void actualizarEstadoTrasRechazo(Reemplazo reemplazo) {
+        long aceptados = candidatoRepository
+                .countByReemplazoIdReemplazoAndEstadoIn(
+                        reemplazo.getIdReemplazo(),
+                        ESTADOS_ACEPTADOS);
+        long invitados = candidatoRepository
+                .countByReemplazoIdReemplazoAndEstadoIn(
+                        reemplazo.getIdReemplazo(),
+                        ESTADOS_INVITADOS);
+
+        EstadoReemplazo nuevoEstado = aceptados > 0
+                ? EstadoReemplazo.PENDIENTE_APROBACION
+                : invitados > 0
+                        ? EstadoReemplazo.INVITACIONES_ENVIADAS
+                        : EstadoReemplazo.SIN_CANDIDATOS;
+
+        if (reemplazo.getEstado() != nuevoEstado) {
+            reemplazo.setEstado(nuevoEstado);
+            reemplazoRepository.saveAndFlush(reemplazo);
         }
     }
 
@@ -323,15 +453,24 @@ public class AprobacionIncorporacionService {
     private MiembroProyecto obtenerOCrearMiembro(
             Reemplazo reemplazo,
             ReemplazoCandidato candidato,
-            RequerimientoGralProyecto requerimientoGral) {
+            RequerimientoGralProyecto requerimientoGral,
+            Long idTycAceptado) {
 
         var existente = miembroProyectoRepository.findMiembroActivoConRol(
                 reemplazo.getProyecto().getIdProyecto(),
                 candidato.getPerfil().getIdPerfil());
         if (existente.isPresent()) {
             MiembroProyecto miembro = existente.get();
+            boolean requiereGuardar = false;
             if (requerimientoGral != null && miembro.getRequerimientoGral() == null) {
                 miembro.setRequerimientoGral(requerimientoGral);
+                requiereGuardar = true;
+            }
+            if (miembro.getIdTycAceptado() == null && idTycAceptado != null) {
+                miembro.setIdTycAceptado(idTycAceptado);
+                requiereGuardar = true;
+            }
+            if (requiereGuardar) {
                 miembroProyectoRepository.saveAndFlush(miembro);
             }
             return miembro;
@@ -348,6 +487,7 @@ public class AprobacionIncorporacionService {
                     .estadoParticipacion(EstadoParticipacion.ACTIVO)
                     .fechaAlta(LocalDateTime.now(reloj))
                     .requerimientoGral(requerimientoGral)
+                    .idTycAceptado(idTycAceptado)
                     .build());
         } catch (DataIntegrityViolationException ex) {
             throw new ReemplazoNoGestionableException(

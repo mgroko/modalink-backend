@@ -45,6 +45,7 @@ import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-70: asigna directamente una actividad a un miembro activo del proyecto.
@@ -104,6 +105,7 @@ public class AsignarActividadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public AsignacionActividadResponse asignar(
             Long idUsuario,
             Long idPerfilActivo,

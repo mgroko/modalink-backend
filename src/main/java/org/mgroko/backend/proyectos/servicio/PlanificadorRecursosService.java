@@ -149,7 +149,9 @@ public class PlanificadorRecursosService {
         }
 
         LocalDateTime finEntrega = fechaEntrega.atTime(HORA_FIN_ENTREGA);
-        if (!finEntrega.isAfter(fechaInicio)) {
+        LocalDateTime inicioCalculo = cronogramaService.inicioConAnclasReales(
+                fechaInicio, actividades);
+        if (!finEntrega.isAfter(inicioCalculo)) {
             throw new ProyectoNoConfirmableException(
                     "FECHA_ENTREGA_INVALIDA",
                     "La fecha de entrega debe ser posterior a la fecha de inicio.");
@@ -173,12 +175,12 @@ public class PlanificadorRecursosService {
 
         Map<Long, Long> iniciosFijos = construirIniciosFijos(
                 actividades,
-                fechaInicio,
+                inicioCalculo,
                 fijosAdicionales);
 
-        long minutosHastaEntrega = Duration.between(fechaInicio, finEntrega).toMinutes();
+        long minutosHastaEntrega = Duration.between(inicioCalculo, finEntrega).toMinutes();
         LocalDateTime ahora = cronogramaService.ahora();
-        long releaseTime = cronogramaService.releaseTime(fechaInicio, ahora);
+        long releaseTime = cronogramaService.releaseTime(inicioCalculo, ahora);
         CalculoCpm calculo;
         try {
             calculo = cronogramaService.calcular(
@@ -193,6 +195,16 @@ public class PlanificadorRecursosService {
                             ? ex.getMessage()
                             : "No se pudo calcular el cronograma del proyecto.");
         }
+
+        // El motor puro devuelve offsets. Se conserva el origen ajustado para
+        // que los llamadores proyecten con el mismo t0 que usó el planner.
+        calculo = new CalculoCpm(
+                calculo.nodos(),
+                calculo.makespan(),
+                calculo.minutosHastaEntrega(),
+                calculo.viable(),
+                calculo.conflictos(),
+                inicioCalculo);
 
         if (!Boolean.TRUE.equals(calculo.viable())) {
             throw new ProyectoNoConfirmableException(
@@ -222,7 +234,7 @@ public class PlanificadorRecursosService {
             List<Long> usuarios = usuariosDe(
                     asignaciones, extras.getOrDefault(idActividad, List.of()));
             LocalDateTime inicio = inicioExacto(
-                    actividad, idActividad, nodo, fechaInicio, fijosAdicionales);
+                    actividad, idActividad, nodo, inicioCalculo, fijosAdicionales);
             if (usuarios.isEmpty()) {
                 if (!permitirSinAsignaciones) {
                     throw new ProyectoNoConfirmableException(
@@ -258,7 +270,7 @@ public class PlanificadorRecursosService {
             List<Long> usuarios = usuariosDe(
                     asignaciones, extras.getOrDefault(idActividad, List.of()));
 
-            LocalDateTime inicioMinimo = fechaInicio.plusMinutes(nodo.inicioTemprano());
+            LocalDateTime inicioMinimo = inicioCalculo.plusMinutes(nodo.inicioTemprano());
             if (inicioMinimo.isBefore(ahora)) {
                 inicioMinimo = ahora;
             }
@@ -290,7 +302,7 @@ public class PlanificadorRecursosService {
             long ultimoInicio = nodo.inicioTardioEntrega() != null
                     ? nodo.inicioTardioEntrega()
                     : nodo.inicioTardioMakespan();
-            LocalDateTime inicioMaximo = fechaInicio.plusMinutes(ultimoInicio);
+            LocalDateTime inicioMaximo = inicioCalculo.plusMinutes(ultimoInicio);
             if (inicioMaximo.isBefore(inicioMinimo)) {
                 throw new ProyectoNoConfirmableException(
                         "SIN_DISPONIBILIDAD",

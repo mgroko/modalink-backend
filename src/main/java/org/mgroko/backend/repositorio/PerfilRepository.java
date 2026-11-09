@@ -10,8 +10,11 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecificationExecutor<Perfil> {
 
@@ -56,6 +59,20 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      */
     @EntityGraph(attributePaths = "profesion")
     Optional<Perfil> findByIdPerfilAndUsuarioIdUsuario(Long idPerfil, Long idUsuario);
+
+    /**
+     * Busca un perfil propio bloqueando la fila para serializar cambios
+     * concurrentes sobre sus términos y condiciones (UC-23).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT p FROM Perfil p
+        WHERE p.idPerfil = :idPerfil
+          AND p.usuario.idUsuario = :idUsuario
+    """)
+    Optional<Perfil> findByIdPerfilAndUsuarioIdUsuarioForUpdate(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idUsuario") Long idUsuario);
 
     /**
      * Busca un perfil por su ID con la profesión inicializada. Se usa para

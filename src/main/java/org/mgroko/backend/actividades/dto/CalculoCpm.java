@@ -1,5 +1,6 @@
 package org.mgroko.backend.actividades.dto;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,13 +28,16 @@ import java.util.Map;
  * @param viable              resultado de la viabilidad; {@code null} si no hay
  *                            entrega y no se puede afirmar nada
  * @param conflictos          conflictos estructurales detectados
+ * @param inicio              origen absoluto {@code t0} usado para proyectar;
+ *                            {@code null} en cálculos puramente relativos
  */
 public record CalculoCpm(
         Map<Long, NodoCpm> nodos,
         long makespan,
         Long minutosHastaEntrega,
         Boolean viable,
-        List<ConflictoCpm> conflictos) {
+        List<ConflictoCpm> conflictos,
+        LocalDateTime inicio) {
 
     public CalculoCpm {
         if (makespan < 0) {
@@ -41,6 +45,19 @@ public record CalculoCpm(
         }
         nodos = Collections.unmodifiableMap(new LinkedHashMap<>(nodos));
         conflictos = List.copyOf(conflictos);
+    }
+
+    /**
+     * Variante histórica sin origen absoluto. Se conserva para los cálculos
+     * puros y los tests que solo trabajan con offsets.
+     */
+    public CalculoCpm(
+            Map<Long, NodoCpm> nodos,
+            long makespan,
+            Long minutosHastaEntrega,
+            Boolean viable,
+            List<ConflictoCpm> conflictos) {
+        this(nodos, makespan, minutosHastaEntrega, viable, conflictos, null);
     }
 
     /** Devuelve el nodo de la actividad o falla si no pertenece al cálculo. */

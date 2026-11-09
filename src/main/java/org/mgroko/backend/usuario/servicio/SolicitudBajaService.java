@@ -15,6 +15,7 @@ import org.mgroko.backend.usuario.dto.SolicitudBajaResponse;
 import org.mgroko.backend.usuario.exception.SolicitudBajaException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class SolicitudBajaService {
@@ -32,6 +33,7 @@ public class SolicitudBajaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public SolicitudBajaResponse solicitarBaja(Long idUsuario) {
         int diasBaja = configuracionSistemaService.obtenerDiasBaja();
 

@@ -2,6 +2,7 @@ package org.mgroko.backend.perfiles.servicio;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -35,6 +36,7 @@ public class EditarPerfilService {
     }
 
     @Transactional
+    @AuditarOperacion
     public PerfilResponse editar(Long idUsuario, Long idPerfil, EditarPerfilRequest request) {
         // Solo valida que el usuario exista y tenga acceso: el perfil se busca por usuario
         buscarUsuarioActivo(idUsuario);

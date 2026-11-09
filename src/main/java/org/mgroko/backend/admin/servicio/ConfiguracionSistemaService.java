@@ -2,12 +2,15 @@ package org.mgroko.backend.admin.servicio;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerResponse;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerBajaRequest;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerRequest;
 import org.mgroko.backend.admin.dto.EjecutarSchedulerResponse;
+import org.mgroko.backend.auditoria.dto.AuditoriaDetalleRequest;
+import org.mgroko.backend.auditoria.servicio.AuditoriaEventoService;
 import org.mgroko.backend.modelo.ConfiguracionSistema;
 import org.mgroko.backend.perfiles.servicio.ExpirarPerfilService;
 import org.mgroko.backend.repositorio.ConfiguracionSistemaRepository;
@@ -15,6 +18,7 @@ import org.mgroko.backend.usuario.servicio.ExpirarCuentaService;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 @Service
 public class ConfiguracionSistemaService {
@@ -29,6 +33,10 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_TOLERANCIA_PREFERENCIA_MIN =
             "DISPONIBILIDAD_TOLERANCIA_PREFERENCIA_MIN";
     public static final String CLAVE_DIAS_BAJA = "DIAS_BAJA";
+    public static final String CLAVE_AUDITORIA_RANGO_MAX_DIAS = "AUDITORIA_RANGO_MAX_DIAS";
+    public static final String CLAVE_AUDITORIA_EXPORT_MAX_REGISTROS = "AUDITORIA_EXPORT_MAX_REGISTROS";
+    public static final String CLAVE_AUDITORIA_PAGINA_MAX = "AUDITORIA_PAGINA_MAX";
+    public static final String CLAVE_AUDITORIA_PDF_MAX_CAMBIOS = "AUDITORIA_PDF_MAX_CAMBIOS_POR_FILA";
     public static final String CLAVE_IMAGEN_MAX_LADO_PX = "IMAGEN_MAX_LADO_PX";
     public static final String CLAVE_IMAGEN_MAX_MEGAPIXELES = "IMAGEN_MAX_MEGAPIXELES";
     public static final String CLAVE_IMAGEN_CALIDAD_WEBP = "IMAGEN_CALIDAD_WEBP";
@@ -36,27 +44,63 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_IMAGEN_MAX_TAMANO_BYTES = "IMAGEN_MAX_TAMANO_BYTES";
     public static final String CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS = "IMAGEN_LIMPIEZA_INTERVALO_HORAS";
     public static final String CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS = "IMAGEN_LIMPIEZA_GRACIA_MINUTOS";
+    public static final String CLAVE_PERFIL_TYC_PLANTILLA = "PERFIL_TYC_PLANTILLA";
+
+    public static final int PERFIL_TYC_MAX_CARACTERES = 5000;
+
+    private static final String PLANTILLA_PERFIL_TYC_POR_DEFECTO = """
+Mis condiciones de trabajo
+
+1. Alcance. Estas condiciones se aplican a los proyectos en los que participo a través de ModaLink. Cada proyecto puede acordar condiciones particulares, que prevalecen sobre este texto si ambas partes las confirman por escrito.
+
+2. Propuesta y acuerdo previo. Antes de comenzar, acordamos por escrito el alcance del trabajo, la fecha, la duración, el lugar y la retribución (monetaria, canje u otra). No comienzo un trabajo sin acuerdo previo.
+
+3. Retribución. Los valores y la forma de pago se definen en cada proyecto. Si el trabajo es a cambio de canje o colaboración, se detalla qué recibo y en qué plazo.
+
+4. Cancelaciones y cambios. Pido aviso con anticipación razonable ante cualquier cancelación o reprogramación. Los cambios de último momento pueden implicar un ajuste de la retribución o de los plazos.
+
+5. Puntualidad y preparación. Me comprometo a llegar en tiempo y forma. Pido que me informen con antelación el horario, la locación, el equipo de trabajo y los requerimientos de la producción.
+
+6. Uso de imagen y de obra. El uso de mi imagen o de mi trabajo se limita a lo acordado (medios, plazo y territorio). Cualquier uso adicional requiere mi autorización previa. Solicito que se me acredite en las publicaciones, salvo que se acuerde lo contrario.
+
+7. Materiales y equipamiento. Cuido el material que se me confía y pido el mismo cuidado con el mío. Los daños o pérdidas se resuelven según lo acordado en el proyecto.
+
+8. Confidencialidad. Mantengo reserva sobre la información no pública de los proyectos en los que participo, salvo autorización expresa.
+
+9. Ambiente de trabajo. Trabajo en un entorno de respeto. Puedo retirarme de una sesión si se vulneran mi seguridad, mi dignidad o lo acordado.
+
+10. Contratos. Cuando el proyecto lo requiera, formalizo los acuerdos mediante los contratos generados en la plataforma, que deben ser revisados y firmados por las partes.
+
+11. Relación con ModaLink. Estas condiciones son propias de mi perfil y no reemplazan los Términos y Condiciones de ModaLink, que siempre se aplican.
+""".strip();
 
     private static final int DEFAULT_HORA = 2;
     private static final int DEFAULT_MINUTO = 0;
     private static final String DEFAULT_CRON = "0 0 2 * * *";
     private static final int DEFAULT_MARGEN_ACTIVIDAD_MIN = 30;
     private static final int DEFAULT_DIAS_BAJA = 30;
+    private static final int DEFAULT_AUDITORIA_RANGO_MAX_DIAS = 90;
+    private static final int DEFAULT_AUDITORIA_EXPORT_MAX_REGISTROS = 10_000;
+    private static final int DEFAULT_AUDITORIA_PAGINA_MAX = 100;
+    private static final int DEFAULT_AUDITORIA_PDF_MAX_CAMBIOS = 5;
 
     private final ConfiguracionSistemaRepository configuracionSistemaRepository;
     private final ExpirarDeshabilitacionService expirarDeshabilitacionService;
     private final ExpirarCuentaService expirarCuentaService;
     private final ExpirarPerfilService expirarPerfilService;
+    private final AuditoriaEventoService auditoriaEventoService;
 
     public ConfiguracionSistemaService(
             ConfiguracionSistemaRepository configuracionSistemaRepository,
             ExpirarDeshabilitacionService expirarDeshabilitacionService,
             ExpirarCuentaService expirarCuentaService,
-            ExpirarPerfilService expirarPerfilService) {
+            ExpirarPerfilService expirarPerfilService,
+            AuditoriaEventoService auditoriaEventoService) {
         this.configuracionSistemaRepository = configuracionSistemaRepository;
         this.expirarDeshabilitacionService = expirarDeshabilitacionService;
         this.expirarCuentaService = expirarCuentaService;
         this.expirarPerfilService = expirarPerfilService;
+        this.auditoriaEventoService = auditoriaEventoService;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +114,7 @@ public class ConfiguracionSistemaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ConfiguracionSchedulerResponse actualizarConfiguracionDeshabilitacion(ConfigurarSchedulerRequest request) {
         int hora = request.hora();
         int minuto = request.minuto();
@@ -150,6 +195,69 @@ public class ConfiguracionSistemaService {
     }
 
     /**
+     * Rango máximo de días permitido en la consulta de auditoría (UC-67).
+     * Ante fila ausente o valor inválido se usa 90 días.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerRangoMaximoAuditoriaDias() {
+        int dias = obtenerValorEntero(
+                CLAVE_AUDITORIA_RANGO_MAX_DIAS, DEFAULT_AUDITORIA_RANGO_MAX_DIAS);
+        return dias > 0 ? dias : DEFAULT_AUDITORIA_RANGO_MAX_DIAS;
+    }
+
+    /**
+     * Cantidad máxima de registros que se pueden exportar desde UC-67.
+     * Ante fila ausente o valor inválido se usa 10.000.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaximoExportacionAuditoria() {
+        int maximo = obtenerValorEntero(
+                CLAVE_AUDITORIA_EXPORT_MAX_REGISTROS, DEFAULT_AUDITORIA_EXPORT_MAX_REGISTROS);
+        return maximo > 0 ? maximo : DEFAULT_AUDITORIA_EXPORT_MAX_REGISTROS;
+    }
+
+    /**
+     * Tamaño máximo de página permitido en el listado de auditoría (UC-67).
+     * Ante fila ausente o valor inválido se usa 100.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerPaginaMaximaAuditoria() {
+        int maximo = obtenerValorEntero(
+                CLAVE_AUDITORIA_PAGINA_MAX, DEFAULT_AUDITORIA_PAGINA_MAX);
+        return maximo > 0 ? maximo : DEFAULT_AUDITORIA_PAGINA_MAX;
+    }
+
+    /**
+     * Cantidad máxima de cambios que se muestran por fila en el PDF de
+     * auditoría. Ante fila ausente o valor inválido se usa 5.
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxCambiosPdfAuditoria() {
+        int maximo = obtenerValorEntero(
+                CLAVE_AUDITORIA_PDF_MAX_CAMBIOS, DEFAULT_AUDITORIA_PDF_MAX_CAMBIOS);
+        return maximo > 0 ? maximo : DEFAULT_AUDITORIA_PDF_MAX_CAMBIOS;
+    }
+
+    /**
+     * Plantilla base de términos y condiciones para perfiles (UC-23). Se lee
+     * de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_PERFIL_TYC_PLANTILLA}). Si la fila falta, está vacía o
+     * supera el máximo permitido, se usa la plantilla por defecto del código.
+     *
+     * @return texto de la plantilla, nunca vacío y con un máximo de
+     *         {@link #PERFIL_TYC_MAX_CARACTERES} caracteres
+     */
+    @Transactional(readOnly = true)
+    public String obtenerPlantillaTerminosCondiciones() {
+        return configuracionSistemaRepository.findByClave(CLAVE_PERFIL_TYC_PLANTILLA)
+                .map(ConfiguracionSistema::getValor)
+                .map(String::trim)
+                .filter(valor -> !valor.isEmpty()
+                        && valor.length() <= PERFIL_TYC_MAX_CARACTERES)
+                .orElse(PLANTILLA_PERFIL_TYC_POR_DEFECTO);
+    }
+
+    /**
      * Horas entre ejecuciones del job de limpieza de imágenes huérfanas.
      * Se lee de {@code configuracion_sistema} (clave
      * {@link #CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS}) en cada ciclo, por lo que
@@ -188,8 +296,19 @@ public class ConfiguracionSistemaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public EjecutarSchedulerResponse ejecutarDeshabilitacionManual() {
         int reactivados = expirarDeshabilitacionService.reactivarVencidos();
+
+        auditoriaEventoService.registrar(
+                "scheduler",
+                0L,
+                "SCHEDULER_EJECUTADO",
+                "UPDATE",
+                List.of(
+                        new AuditoriaDetalleRequest("scheduler", null, "DESHABILITACION"),
+                        new AuditoriaDetalleRequest("reactivados", null, String.valueOf(reactivados))));
+
         return new EjecutarSchedulerResponse(
                 reactivados,
                 LocalDateTime.now(),
@@ -214,6 +333,7 @@ public class ConfiguracionSistemaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public ConfiguracionSchedulerBajaResponse actualizarConfiguracionBaja(ConfigurarSchedulerBajaRequest request) {
         int hora = request.hora();
         int minuto = request.minuto();
@@ -250,11 +370,22 @@ public class ConfiguracionSistemaService {
      * cuentas (UC-07) y los perfiles (UC-12) cuyo plazo venció.
      */
     @Transactional
+    @AuditarOperacion
     public EjecutarSchedulerResponse ejecutarBajaManual() {
         int diasBaja = obtenerDiasBaja();
         int cuentasExpiradas = expirarCuentaService.expirarVencidos(diasBaja);
         int perfilesExpirados = expirarPerfilService.expirarVencidos(diasBaja);
         int total = cuentasExpiradas + perfilesExpirados;
+
+        auditoriaEventoService.registrar(
+                "scheduler",
+                0L,
+                "SCHEDULER_EJECUTADO",
+                "UPDATE",
+                List.of(
+                        new AuditoriaDetalleRequest("scheduler", null, "BAJA"),
+                        new AuditoriaDetalleRequest("cuentasExpiradas", null, String.valueOf(cuentasExpiradas)),
+                        new AuditoriaDetalleRequest("perfilesExpirados", null, String.valueOf(perfilesExpirados))));
 
         return new EjecutarSchedulerResponse(
                 total,

@@ -21,6 +21,7 @@ import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-47 — Gestionar habilidades desde el perfil.
@@ -52,6 +53,7 @@ public class GestionHabilidadPerfilService {
     }
 
     @Transactional
+    @AuditarOperacion
     public HabilidadResponse agregar(Long idUsuario, Long idPerfil, Long idHabilidad) {
         Perfil perfil = buscarPerfilPropioParaModificar(idUsuario, idPerfil);
         Habilidad habilidad = buscarHabilidad(idHabilidad);
@@ -70,6 +72,7 @@ public class GestionHabilidadPerfilService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void quitar(Long idUsuario, Long idPerfil, Long idHabilidad) {
         Perfil perfil = buscarPerfilPropioParaModificar(idUsuario, idPerfil);
 

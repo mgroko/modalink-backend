@@ -67,6 +67,10 @@ import org.springframework.stereotype.Service;
  *       cuando el proyecto se confirme;</li>
  * <li>si la fecha de inicio quedó en el pasado, se conserva como {@code t0};
  *       las actividades libres usan un {@code releaseTime} separado.</li>
+ *   <li>si hay actividades {@code EN_CURSO} o {@code FINALIZADA} con un inicio
+ *       real anterior, {@code t0} retrocede hasta el más temprano
+ *       ({@link #inicioEfectivo(Planificacion, List)}). Un inicio real no es
+ *       una proyección: nunca debe quedar antes del origen.</li>
  * </ul>
  */
 @Service
@@ -188,16 +192,24 @@ public class CronogramaService {
             throw new FechaEntregaNoDefinidaException();
         }
 
-        LocalDateTime inicio = inicioEfectivo(planificacion);
+        LocalDateTime inicio = inicioEfectivo(planificacion, actividades);
         Long entrega = minutosHastaEntrega(planificacion, inicio);
         long releaseTime = Math.max(
                 0L,
                 Duration.between(inicio, LocalDateTime.now(reloj)).toMinutes());
-        return calcular(
+        CalculoCpm calculo = calcular(
                 actividades,
                 iniciosFijos(planificacion, actividades, inicio),
                 entrega,
                 releaseTime);
+
+        return new CalculoCpm(
+                calculo.nodos(),
+                calculo.makespan(),
+                calculo.minutosHastaEntrega(),
+                calculo.viable(),
+                calculo.conflictos(),
+                inicio);
     }
 
     /**
@@ -360,7 +372,9 @@ public class CronogramaService {
             CalculoCpm calculo,
             Long idActividad) {
 
-        LocalDateTime inicio = inicioEfectivo(planificacion);
+        LocalDateTime inicio = calculo != null && calculo.inicio() != null
+                ? calculo.inicio()
+                : inicioEfectivo(planificacion);
         NodoCpm nodo = calculo.nodoDe(idActividad);
         RangoFactible ventanaInicio = nodo.ventanaInicio();
         RangoFactible ventanaEjecucion = nodo.ventanaEjecucion();
@@ -436,6 +450,58 @@ public class CronogramaService {
     }
 
     /**
+     * Origen del cálculo considerando los inicios reales ya registrados.
+     *
+     * <p>Una actividad {@code EN_CURSO} o {@code FINALIZADA} puede haber
+     * empezado antes de la fecha de inicio confirmada o del "hoy" estimado
+     * (por ejemplo, en un proyecto publicado sin fecha de inicio). Ese inicio
+     * es un hecho, no una proyección: si se usa un {@code t0} posterior, el
+     * CPM lo marca como {@code FUERA_DE_PROYECTO} y todo el cronograma queda
+     * inviable. El origen se corre hacia atrás hasta el inicio real más
+     * temprano para que todos los offsets fijos sean no negativos.</p>
+     *
+     * <p>Correr {@code t0} no cambia las fechas absolutas: el
+     * {@code releaseTime} y los minutos hasta la entrega se desplazan en la
+     * misma proporción.</p>
+     */
+    public LocalDateTime inicioEfectivo(
+            Planificacion planificacion,
+            List<Actividad> actividades) {
+
+        return inicioConAnclasReales(inicioEfectivo(planificacion), actividades);
+    }
+
+    /**
+     * Ajusta un origen candidato para que ninguna actividad inmóvil quede
+     * antes de {@code t0}. Se usa también en el planificador, que recibe un
+     * origen explícito (por ejemplo, el instante de confirmación).
+     */
+    public LocalDateTime inicioConAnclasReales(
+            LocalDateTime inicio,
+            List<Actividad> actividades) {
+
+        if (inicio == null || actividades == null) {
+            return inicio;
+        }
+
+        LocalDateTime ajustado = inicio;
+        for (Actividad actividad : actividades) {
+            if (actividad == null
+                    || actividad.getEstado() == EstadoActividad.CANCELADA
+                    || (actividad.getEstado() != EstadoActividad.EN_CURSO
+                            && actividad.getEstado() != EstadoActividad.FINALIZADA)) {
+                continue;
+            }
+
+            LocalDateTime inicioReal = actividad.getFechaHoraInicio();
+            if (inicioReal != null && inicioReal.isBefore(ajustado)) {
+                ajustado = inicioReal;
+            }
+        }
+        return ajustado;
+    }
+
+    /**
      * Indica si las fechas del proyecto son una estimación porque todavía no
      * se confirmó su fecha de inicio.
      */
@@ -484,7 +550,7 @@ public class CronogramaService {
             boolean tolerarDesborde) {
 
         LocalDateTime finCronograma = finCronograma(planificacion);
-        LocalDateTime inicio = inicioEfectivo(planificacion);
+        LocalDateTime inicio = inicioEfectivo(planificacion, actividades);
         long minutosDisponibles = Duration.between(inicio, finCronograma).toMinutes();
         long releaseTime = Math.max(
                 0L,

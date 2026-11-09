@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-15: bandeja de revisión de reportes de perfil para administradores.
@@ -82,6 +83,7 @@ public class AdminReportePerfilService {
     }
 
     @Transactional
+    @AuditarOperacion
     public AdminReportePerfilDetalleResponse actualizarEstado(
             Long idReporte,
             Long idAdmin,

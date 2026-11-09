@@ -316,6 +316,30 @@ class CronogramaServiceTest {
     }
 
     @Test
+    void calcularProyeccion_enCursoAnteriorAlOrigen_usaElInicioRealComoT0() {
+        Planificacion planificacion = planificacion(
+                LocalDate.of(2026, 11, 10), null);
+        LocalDateTime inicioReal = LocalDateTime.of(2026, 10, 24, 15, 0);
+
+        Actividad enCurso = actividad(
+                1L, "En curso", 60, EstadoActividad.EN_CURSO, inicioReal);
+        Actividad pendiente = actividad(
+                2L, "Pendiente", 60, EstadoActividad.PENDIENTE, null);
+        pendiente.setPredecesoras(Set.of(enCurso));
+
+        CalculoCpm calculo = cronogramaService.calcularProyeccion(
+                planificacion, List.of(enCurso, pendiente));
+
+        assertThat(calculo.viable()).isTrue();
+        assertThat(calculo.conflictos()).isEmpty();
+        assertThat(calculo.inicio()).isEqualTo(inicioReal);
+        assertThat(calculo.nodoDe(1L).inicioTemprano()).isZero();
+        assertThat(cronogramaService.inicioEfectivo(
+                planificacion, List.of(enCurso, pendiente)))
+                .isEqualTo(inicioReal);
+    }
+
+    @Test
     void estadoDe_conConflictoFijo_devuelveConflicto() {
         CalculoCpm calculo = new CalculoCpm(
                 Map.of(),
@@ -361,9 +385,12 @@ class CronogramaServiceTest {
             List<Actividad> actividades,
             Long idActividad) {
         CalculoCpm calculo = cronogramaService.calcularProyeccion(planificacion, actividades);
+        LocalDateTime inicio = calculo.inicio() != null
+                ? calculo.inicio()
+                : cronogramaService.inicioEfectivo(planificacion);
         return cronogramaService.proyectar(
                 calculo,
-                cronogramaService.inicioEfectivo(planificacion),
+                inicio,
                 cronogramaService.esTentativa(planificacion))
                 .fechaDe(idActividad);
     }

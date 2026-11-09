@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.mgroko.backend.repositorio.ContratoRepository;
 import org.mgroko.backend.repositorio.HitoRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
@@ -37,6 +38,7 @@ public class NotificacionDestinoResolver {
     public static final String ENTIDAD_INVITACION_GRAL = "INVITACION_GRAL";
     public static final String ENTIDAD_INVITACION_ACTIVIDAD = "INVITACION_ACTIVIDAD";
     public static final String ENTIDAD_REPORTE_PERFIL = "REPORTE_PERFIL";
+    public static final String ENTIDAD_CONTRATO = "CONTRATO";
 
     private final PostulacionGralRepository postulacionGralRepository;
     private final PostulacionActividadRepository postulacionActividadRepository;
@@ -44,6 +46,7 @@ public class NotificacionDestinoResolver {
     private final InvitacionGralRepository invitacionGralRepository;
     private final InvitacionActividadRepository invitacionActividadRepository;
     private final HitoRepository hitoRepository;
+    private final ContratoRepository contratoRepository;
 
     public NotificacionDestinoResolver(
             PostulacionGralRepository postulacionGralRepository,
@@ -51,13 +54,15 @@ public class NotificacionDestinoResolver {
             ActividadRepository actividadRepository,
             InvitacionGralRepository invitacionGralRepository,
             InvitacionActividadRepository invitacionActividadRepository,
-            HitoRepository hitoRepository) {
+            HitoRepository hitoRepository,
+            ContratoRepository contratoRepository) {
         this.postulacionGralRepository = postulacionGralRepository;
         this.postulacionActividadRepository = postulacionActividadRepository;
         this.actividadRepository = actividadRepository;
         this.invitacionGralRepository = invitacionGralRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
         this.hitoRepository = hitoRepository;
+        this.contratoRepository = contratoRepository;
     }
 
     /**
@@ -76,6 +81,7 @@ public class NotificacionDestinoResolver {
         Set<Long> idsInvitacionesGral = new HashSet<>();
         Set<Long> idsInvitacionesActividad = new HashSet<>();
         Set<Long> idsHitos = new HashSet<>();
+        Set<Long> idsContratos = new HashSet<>();
         Map<Long, Long> proyectos = new HashMap<>();
 
         for (Notificacion notificacion : notificaciones) {
@@ -111,6 +117,8 @@ public class NotificacionDestinoResolver {
                         notificacion.getEntidadId());
                 case ENTIDAD_HITO -> idsHitos.add(
                         notificacion.getEntidadId());
+                case ENTIDAD_CONTRATO -> idsContratos.add(
+                        notificacion.getEntidadId());
                 default -> {
                     // Tipo sin proyecto navegable.
                 }
@@ -141,6 +149,10 @@ public class NotificacionDestinoResolver {
                 idsHitos.isEmpty()
                         ? List.of()
                         : hitoRepository.findProyectoPorIds(idsHitos));
+        Map<Long, Long> proyectoPorContrato = aMapa(
+                idsContratos.isEmpty()
+                        ? List.of()
+                        : contratoRepository.findProyectoPorIds(idsContratos));
 
         for (Notificacion notificacion : notificaciones) {
             if (notificacion == null
@@ -164,6 +176,8 @@ public class NotificacionDestinoResolver {
                     proyectoPorInvitacionActividad.get(notificacion.getEntidadId());
                 case ENTIDAD_HITO ->
                     proyectoPorHito.get(notificacion.getEntidadId());
+                case ENTIDAD_CONTRATO ->
+                    proyectoPorContrato.get(notificacion.getEntidadId());
                 default -> null;
             };
 

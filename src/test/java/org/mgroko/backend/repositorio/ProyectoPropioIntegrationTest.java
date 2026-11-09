@@ -137,7 +137,7 @@ class ProyectoPropioIntegrationTest extends AbstractPostgresIntegrationTest {
     private void crearMiembro(Proyecto proyecto, Perfil perfil, RolProyecto rol) {
         em.persist(MiembroProyecto.builder()
                 .proyecto(proyecto).perfil(perfil).rolProyecto(rol)
-                .idTycAceptado(1L)
+                .idTycAceptado(null)
                 .estadoParticipacion(EstadoParticipacion.Activo).build());
     }
 

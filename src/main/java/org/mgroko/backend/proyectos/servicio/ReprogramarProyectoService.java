@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Recalcula y persiste el cronograma de un proyecto confirmado.
@@ -91,6 +92,7 @@ public class ReprogramarProyectoService {
      * @return actividades movidas y conflictos de actividades fijas
      */
     @Transactional
+    @AuditarOperacion
     public ReprogramacionProyectoResponse reprogramar(
             Long idProyecto,
             MotivoReprogramacion motivo,
@@ -105,6 +107,7 @@ public class ReprogramarProyectoService {
      * fecha anterior.
      */
     @Transactional
+    @AuditarOperacion
     public ReprogramacionProyectoResponse reprogramar(
             Long idProyecto,
             MotivoReprogramacion motivo,
@@ -251,6 +254,7 @@ public class ReprogramarProyectoService {
      * {@code PENDIENTE}. Las predecesoras no se mueven.
      */
     @Transactional
+    @AuditarOperacion
     public ReprogramacionProyectoResponse reprogramarActividad(
             Long idProyecto,
             Long idActividad,
@@ -300,7 +304,7 @@ public class ReprogramarProyectoService {
                 actividades,
                 fechaInicio,
                 usuariosExtraPorActividad,
-                iniciosFijosAdicionales(actividades, movibles));
+                iniciosFijosAdicionales(actividades, movibles, fechaInicio));
 
         List<ActividadReprogramadaResponse> cambios = new ArrayList<>();
         for (Actividad actividad : actividades) {
@@ -405,7 +409,7 @@ public class ReprogramarProyectoService {
                 actividades,
                 fechaInicio,
                 Map.of(idActividad, idsUsuarios == null ? List.of() : idsUsuarios),
-                iniciosFijosAdicionales(actividades, movibles));
+                iniciosFijosAdicionales(actividades, movibles, fechaInicio));
 
         Actividad objetivo = porId.get(idActividad);
         LocalDateTime inicioPropuesto = plan.inicios().get(idActividad);
@@ -737,20 +741,33 @@ public class ReprogramarProyectoService {
      * Ancla temporalmente las {@code PENDIENTE} que no forman parte de la
      * reprogramación acotada. El anclaje es solo para esta operación: no se
      * persiste ni cambia la regla global de movilidad.
+     *
+     * <p>Solo se anclan inicios que caen dentro del cronograma vigente
+     * ({@code inicio >= fechaInicio}). Las fechas anteriores al origen son
+     * proyecciones provisionales de un cálculo previo: en un proyecto
+     * publicado el origen es "hoy", así que al cambiar el día quedan antes de
+     * {@code t0}. Anclarlas produce offsets negativos, el CPM las reporta
+     * como {@code FUERA_DE_PROYECTO} y cualquier asignación falla con
+     * {@code CRONOGRAMA_NO_VIABLE}. Esas fechas se descartan y el planificador
+     * las recoloca desde el origen actual.</p>
      */
     private Map<Long, LocalDateTime> iniciosFijosAdicionales(
             List<Actividad> actividades,
-            Set<Long> movibles) {
+            Set<Long> movibles,
+            LocalDateTime fechaInicio) {
 
         Map<Long, LocalDateTime> fijos = new HashMap<>();
         for (Actividad actividad : actividades) {
-            if (actividad.getEstado() == EstadoActividad.PENDIENTE
-                    && !movibles.contains(actividad.getIdActividad())
-                    && actividad.getFechaHoraInicio() != null) {
-                fijos.put(
-                        actividad.getIdActividad(),
-                        actividad.getFechaHoraInicio());
+            if (actividad.getEstado() != EstadoActividad.PENDIENTE
+                    || movibles.contains(actividad.getIdActividad())
+                    || actividad.getFechaHoraInicio() == null) {
+                continue;
             }
+            LocalDateTime inicio = actividad.getFechaHoraInicio();
+            if (inicio.isBefore(fechaInicio)) {
+                continue;
+            }
+            fijos.put(actividad.getIdActividad(), inicio);
         }
         return fijos;
     }

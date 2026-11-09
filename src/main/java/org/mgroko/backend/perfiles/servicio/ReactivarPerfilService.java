@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -30,6 +31,7 @@ public class ReactivarPerfilService {
     }
 
     @Transactional
+    @AuditarOperacion
     public Perfil reactivar(Long idUsuario, Long idPerfil) {
         buscarUsuarioActivo(idUsuario);
 

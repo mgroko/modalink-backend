@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-38: el Director elimina lógicamente a un integrante del proyecto.
@@ -89,6 +90,7 @@ public class EliminarIntegranteService {
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminar(
             Long idUsuario,
             Long idPerfilActivo,

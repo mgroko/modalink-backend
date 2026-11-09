@@ -77,6 +77,7 @@ public class CancelarReemplazosPorActividadService {
                             ESTADOS_CANDIDATO_ACTIVOS);
 
             for (ReemplazoCandidato candidato : candidatos) {
+                notificacionService.eliminarInvitacionRecibida(candidato);
                 candidato.setEstado(EstadoCandidatoReemplazo.CANCELADO);
                 candidato.setFechaDecision(ahora);
                 candidato.setMotivoDecision(MOTIVO_CIERRE);

@@ -6,6 +6,7 @@ import java.time.Period;
 import org.mgroko.backend.auth.exception.EdadInvalidaException;
 import org.mgroko.backend.auth.exception.GeneroNoEncontradoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Ubicacion;
 import org.mgroko.backend.modelo.Usuario;
@@ -35,6 +36,7 @@ public class DatosPersonalesService {
     }
 
     @Transactional
+    @AuditarOperacion
     public DatosPersonalesResponse actualizar(Long idUsuario, DatosPersonalesRequest request) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));

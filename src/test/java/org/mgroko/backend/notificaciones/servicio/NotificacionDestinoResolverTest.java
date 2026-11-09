@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.mgroko.backend.repositorio.ContratoRepository;
 import org.mgroko.backend.repositorio.HitoRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
@@ -43,6 +44,9 @@ class NotificacionDestinoResolverTest {
 
     @Mock
     private HitoRepository hitoRepository;
+
+    @Mock
+    private ContratoRepository contratoRepository;
 
     @InjectMocks
     private NotificacionDestinoResolver resolver;
@@ -167,6 +171,20 @@ class NotificacionDestinoResolverTest {
                 invitacionGralRepository,
                 invitacionActividadRepository,
                 hitoRepository);
+    }
+
+    @Test
+    void contrato_resuelveProyectoEnLote() {
+        when(contratoRepository.findProyectoPorIds(Set.of(99L)))
+                .thenReturn(List.of(new FilaProyecto(99L, 108L)));
+
+        Notificacion notificacion = notificacion(
+                1L, NotificacionService.TIPO_CONTRATO_PENDIENTE_FIRMA,
+                NotificacionDestinoResolver.ENTIDAD_CONTRATO, 99L);
+
+        Map<Long, Long> resultado = resolver.resolverProyectos(List.of(notificacion));
+
+        assertThat(resultado).containsExactly(Map.entry(1L, 108L));
     }
 
     @Test

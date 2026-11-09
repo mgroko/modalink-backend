@@ -42,6 +42,9 @@ class ConfiguracionSistemaServiceTest {
     @Mock
     private ExpirarPerfilService expirarPerfilService;
 
+    @Mock
+    private org.mgroko.backend.auditoria.servicio.AuditoriaEventoService auditoriaEventoService;
+
     @InjectMocks
     private ConfiguracionSistemaService configuracionSistemaService;
 

@@ -10,7 +10,6 @@ import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -161,16 +160,6 @@ public interface ReemplazoCandidatoRepository extends JpaRepository<ReemplazoCan
     long countByReemplazoIdReemplazoAndEstadoIn(
             Long idReemplazo,
             Collection<EstadoCandidatoReemplazo> estados);
-
-    @Modifying(flushAutomatically = true)
-    @Query("""
-            DELETE FROM ReemplazoCandidato c
-            WHERE c.reemplazo.idReemplazo = :idReemplazo
-              AND c.idCandidato <> :idCandidato
-            """)
-    int deleteOtrosCandidatos(
-            @Param("idReemplazo") Long idReemplazo,
-            @Param("idCandidato") Long idCandidato);
 
     @Query("""
             SELECT c.idCandidato AS entidadId,

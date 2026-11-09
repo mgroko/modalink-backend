@@ -54,6 +54,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-28: aceptar una invitación general o por actividad.
@@ -110,6 +111,7 @@ public class AceptarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse aceptarGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -150,7 +152,8 @@ public class AceptarInvitacionService {
                     "El perfil ya es miembro activo de este proyecto.");
         }
 
-        MiembroProyecto miembro = crearMiembro(proyecto, perfil, requerimiento);
+        MiembroProyecto miembro = crearMiembro(
+                proyecto, perfil, requerimiento, invitacion.getIdTycAceptado());
 
         invitacion.setEstado(EstadoSolicitud.ACEPTADA);
         invitacionGralRepository.saveAndFlush(invitacion);
@@ -179,6 +182,7 @@ public class AceptarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse aceptarActividad(
             Long idUsuario,
             Long idPerfilActivo,
@@ -261,7 +265,12 @@ public class AceptarInvitacionService {
         }
 
         if (miembro == null) {
-            miembro = crearMiembro(proyecto, perfil, null);
+            miembro = crearMiembro(
+                    proyecto, perfil, null, invitacion.getIdTycAceptado());
+        } else if (miembro.getIdTycAceptado() == null
+                && invitacion.getIdTycAceptado() != null) {
+            miembro.setIdTycAceptado(invitacion.getIdTycAceptado());
+            miembro = miembroProyectoRepository.saveAndFlush(miembro);
         }
 
         if (proyecto.getEstado() != null
@@ -422,7 +431,8 @@ public class AceptarInvitacionService {
     private MiembroProyecto crearMiembro(
             Proyecto proyecto,
             Perfil perfil,
-            RequerimientoGralProyecto requerimientoGral) {
+            RequerimientoGralProyecto requerimientoGral,
+            Long idTycAceptado) {
 
         RolProyecto rolMiembro = rolProyectoRepository.findByCodigo(ROL_MIEMBRO)
                 .orElseThrow(() -> new RolProyectoNoEncontradoException(ROL_MIEMBRO));
@@ -435,6 +445,7 @@ public class AceptarInvitacionService {
                     .estadoParticipacion(EstadoParticipacion.ACTIVO)
                     .fechaAlta(LocalDateTime.now(reloj))
                     .requerimientoGral(requerimientoGral)
+                    .idTycAceptado(idTycAceptado)
                     .build());
         } catch (DataIntegrityViolationException ex) {
             throw new InvitacionNoPermitidaException(

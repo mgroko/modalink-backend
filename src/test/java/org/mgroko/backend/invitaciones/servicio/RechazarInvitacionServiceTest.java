@@ -6,6 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,6 +47,8 @@ class RechazarInvitacionServiceTest {
     private static final Long ID_PERFIL = 10L;
     private static final Long ID_PROYECTO = 5L;
     private static final Long ID_INVITACION = 100L;
+    private static final LocalDateTime FECHA_RECHAZO =
+            LocalDateTime.of(2026, 11, 7, 10, 15, 30);
 
     @Mock
     private PerfilRepository perfilRepository;
@@ -71,7 +76,8 @@ class RechazarInvitacionServiceTest {
                 requerimientoGralProyectoRepository,
                 requerimientoActividadRepository,
                 miembroProyectoRepository,
-                notificacionService);
+                notificacionService,
+                Clock.fixed(FECHA_RECHAZO.toInstant(ZoneOffset.UTC), ZoneOffset.UTC));
     }
 
     @Test
@@ -90,6 +96,7 @@ class RechazarInvitacionServiceTest {
         assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.RECHAZADA);
         assertThat(respuesta.idMiembro()).isNull();
         assertThat(invitacion.getEstado()).isEqualTo(EstadoSolicitud.RECHAZADA);
+        assertThat(invitacion.getFechaRechazo()).isEqualTo(FECHA_RECHAZO);
         verify(invitacionGralRepository).saveAndFlush(invitacion);
         verify(notificacionService).registrarTodas(any());
     }

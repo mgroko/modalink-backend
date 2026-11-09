@@ -28,6 +28,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-37: finaliza un proyecto en estado Confirmado.
@@ -60,6 +61,7 @@ public class FinalizarProyectoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public FinalizarProyectoResponse finalizar(
             Long idUsuario,
             Long idPerfilActivo,

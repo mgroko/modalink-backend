@@ -8,6 +8,8 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionDestinoResolver;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -18,6 +20,7 @@ import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-32: baja física de invitaciones pendientes.
@@ -35,19 +38,23 @@ public class EliminarInvitacionService {
     private final InvitacionGralRepository invitacionGralRepository;
     private final InvitacionActividadRepository invitacionActividadRepository;
     private final ProyectoSecurityService proyectoSecurityService;
+    private final NotificacionService notificacionService;
 
     public EliminarInvitacionService(
             PerfilRepository perfilRepository,
             InvitacionGralRepository invitacionGralRepository,
             InvitacionActividadRepository invitacionActividadRepository,
-            ProyectoSecurityService proyectoSecurityService) {
+            ProyectoSecurityService proyectoSecurityService,
+            NotificacionService notificacionService) {
         this.perfilRepository = perfilRepository;
         this.invitacionGralRepository = invitacionGralRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
         this.proyectoSecurityService = proyectoSecurityService;
+        this.notificacionService = notificacionService;
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminarInvitacionGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -68,11 +75,17 @@ public class EliminarInvitacionService {
         validarRemitente(invitacion.getPerfilRemitente(), idPerfilActivo);
         validarPendiente(invitacion.getEstado());
 
+        notificacionService.eliminarPorEntidad(
+                NotificacionService.TIPO_INVITACION_RECIBIDA,
+                NotificacionDestinoResolver.ENTIDAD_INVITACION_GRAL,
+                idInvitacion);
+
         invitacionGralRepository.delete(invitacion);
         invitacionGralRepository.flush();
     }
 
     @Transactional
+    @AuditarOperacion
     public void eliminarInvitacionActividad(
             Long idUsuario,
             Long idPerfilActivo,
@@ -98,6 +111,11 @@ public class EliminarInvitacionService {
         validarPermiso(idProyecto, idPerfilActivo);
         validarRemitente(invitacion.getPerfilRemitente(), idPerfilActivo);
         validarPendiente(invitacion.getEstado());
+
+        notificacionService.eliminarPorEntidad(
+                NotificacionService.TIPO_INVITACION_RECIBIDA,
+                NotificacionDestinoResolver.ENTIDAD_INVITACION_ACTIVIDAD,
+                idInvitacion);
 
         invitacionActividadRepository.delete(invitacion);
         invitacionActividadRepository.flush();

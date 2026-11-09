@@ -3,6 +3,7 @@ package org.mgroko.backend.reemplazos.controlador;
 import java.util.List;
 
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.reemplazos.dto.AprobarCandidatoRequest;
 import org.mgroko.backend.reemplazos.dto.CandidatoReemplazoResponse;
 import org.mgroko.backend.reemplazos.dto.CancelarReemplazoRequest;
 import org.mgroko.backend.reemplazos.dto.ConfirmarReemplazoRequest;
@@ -125,14 +126,18 @@ public class ReemplazoController {
             @PathVariable Long idProyecto,
             @PathVariable Long idReemplazo,
             @PathVariable Long idCandidato,
+            @RequestBody(required = false) @Valid AprobarCandidatoRequest request,
             Authentication authentication) {
 
-        return ResponseEntity.ok(aprobacionService.aprobar(
-                idUsuario(authentication),
-                idPerfilActivo(authentication),
-                idProyecto,
-                idReemplazo,
-                idCandidato));
+        Long idUsuario = idUsuario(authentication);
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        return ResponseEntity.ok(request == null
+                ? aprobacionService.aprobar(
+                        idUsuario, idPerfilActivo, idProyecto, idReemplazo, idCandidato)
+                : aprobacionService.aprobar(
+                        idUsuario, idPerfilActivo, idProyecto, idReemplazo, idCandidato,
+                        request));
     }
 
     @PostMapping("/proyectos/{idProyecto}/reemplazos/{idReemplazo}/candidatos/{idCandidato}/rechazar")
@@ -157,6 +162,15 @@ public class ReemplazoController {
             Authentication authentication) {
 
         return ResponseEntity.ok(queryService.listarInvitaciones(
+                idUsuario(authentication),
+                idPerfilActivo(authentication)));
+    }
+
+    @GetMapping("/reemplazos/invitaciones/rechazadas")
+    public ResponseEntity<List<InvitacionReemplazoResponse>> invitacionesRechazadas(
+            Authentication authentication) {
+
+        return ResponseEntity.ok(queryService.listarInvitacionesRechazadas(
                 idUsuario(authentication),
                 idPerfilActivo(authentication)));
     }

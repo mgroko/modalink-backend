@@ -114,7 +114,8 @@ public final class ReemplazoMapper {
                 candidato.getFechaInvitacion(),
                 candidato.getFechaRespuesta(),
                 candidato.getFechaDecision(),
-                candidato.getMotivoDecision());
+                candidato.getMotivoDecision(),
+                candidato.getIdTycAceptado());
     }
 
     public static InvitacionReemplazoResponse toInvitacion(ReemplazoCandidato candidato) {
@@ -140,7 +141,9 @@ public final class ReemplazoMapper {
                 candidato.getFechaInvitacion(),
                 actividad != null ? actividad.getFechaHoraInicio() : null,
                 actividad != null ? actividad.getDuracionMinutos() : null,
-                candidato.getMensaje());
+                candidato.getMensaje(),
+                candidato.getFechaRespuesta(),
+                candidato.getMotivoRespuesta());
     }
 
     private static CaracteristicaResponse toCaracteristica(CaracteristicaPerfil caracteristica) {

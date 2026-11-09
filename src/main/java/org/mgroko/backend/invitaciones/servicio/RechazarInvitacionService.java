@@ -1,5 +1,7 @@
 package org.mgroko.backend.invitaciones.servicio;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +35,7 @@ import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-28: rechazar una invitación general o por actividad.
@@ -47,6 +50,7 @@ public class RechazarInvitacionService {
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final NotificacionService notificacionService;
+    private final Clock reloj;
 
     public RechazarInvitacionService(
             PerfilRepository perfilRepository,
@@ -55,7 +59,8 @@ public class RechazarInvitacionService {
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
             MiembroProyectoRepository miembroProyectoRepository,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService,
+            Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.invitacionGralRepository = invitacionGralRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
@@ -63,9 +68,11 @@ public class RechazarInvitacionService {
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.notificacionService = notificacionService;
+        this.reloj = reloj;
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse rechazarGeneral(
             Long idUsuario,
             Long idPerfilActivo,
@@ -93,6 +100,7 @@ public class RechazarInvitacionService {
         validarProyecto(proyecto);
 
         invitacion.setEstado(EstadoSolicitud.RECHAZADA);
+        invitacion.setFechaRechazo(LocalDateTime.now(reloj));
         invitacionGralRepository.saveAndFlush(invitacion);
 
         notificarDirectores(
@@ -116,6 +124,7 @@ public class RechazarInvitacionService {
     }
 
     @Transactional
+    @AuditarOperacion
     public InvitacionGestionadaResponse rechazarActividad(
             Long idUsuario,
             Long idPerfilActivo,
@@ -142,6 +151,7 @@ public class RechazarInvitacionService {
         validarProyecto(proyecto);
 
         invitacion.setEstado(EstadoSolicitud.RECHAZADA);
+        invitacion.setFechaRechazo(LocalDateTime.now(reloj));
         invitacionActividadRepository.saveAndFlush(invitacion);
 
         notificarDirectores(

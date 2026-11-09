@@ -36,6 +36,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * UC-37: una vez finalizado el proyecto, cada participante activo califica a
@@ -64,6 +65,7 @@ public class CalificarEquipoService {
     }
 
     @Transactional
+    @AuditarOperacion
     public CalificacionesProyectoResponse calificar(
             Long idUsuario,
             Long idPerfilActivo,

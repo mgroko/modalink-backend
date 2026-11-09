@@ -18,7 +18,7 @@ public class PerfilTyc {
     @JoinColumn(name = "id_perfil")
     private Perfil perfil;
 
-    @Column(name = "descripcion", nullable = false, length = 200)
+    @Column(name = "descripcion", nullable = false, columnDefinition = "TEXT")
     private String descripcion;
 
     @Column(name = "fecha_inicio", nullable = false)
@@ -27,4 +27,8 @@ public class PerfilTyc {
 
     @Column(name = "fecha_fin")
     private LocalDateTime fechaFin;
+
+    public Long getIdTyc() {
+        return id != null ? id.getIdTyc() : null;
+    }
 }

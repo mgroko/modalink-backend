@@ -4,9 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.mgroko.backend.common.util.LikePatrones;
+import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
+import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.Privacidad;
@@ -18,6 +22,8 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 public class ProyectoSpecifications {
 
@@ -66,8 +72,85 @@ public class ProyectoSpecifications {
                 predicates.add(conSubqueryDirector(query, cb, root, filtro.director()));
             }
 
+            // Filtrado por profesión: el proyecto tiene al menos un requerimiento
+            // abierto (general o de actividad Pendiente/En curso) de esa profesión.
+            if (filtro.idProfesion() != null) {
+                predicates.add(conProfesionRequerida(query, cb, root, filtro.idProfesion()));
+            }
+
+            // Filtrado por ubicación del proyecto (provincia y/o localidad Georef).
+            if (tieneTexto(filtro.provinciaId()) || tieneTexto(filtro.localidadId())) {
+                predicates.add(conUbicacion(cb, root, filtro.provinciaId(), filtro.localidadId()));
+            }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private static boolean tieneTexto(String valor) {
+        return valor != null && !valor.isBlank();
+    }
+
+    /**
+     * Ubicación del proyecto: {@code proyecto.ubicacion.ciudad} y su provincia.
+     * Los ids son los identificadores externos del catálogo Georef, que es lo
+     * que expone la API pública de ubicaciones.
+     */
+    private static Predicate conUbicacion(
+            CriteriaBuilder cb,
+            Path<Proyecto> root,
+            String provinciaId,
+            String localidadId) {
+
+        Path<Ciudad> ciudad = root.get("ubicacion").get("ciudad");
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (tieneTexto(provinciaId)) {
+            predicates.add(cb.equal(
+                    ciudad.get("provincia").get("idExterno"), provinciaId));
+        }
+        if (tieneTexto(localidadId)) {
+            predicates.add(cb.equal(ciudad.get("idExterno"), localidadId));
+        }
+
+        return cb.and(predicates.toArray(new Predicate[0]));
+    }
+
+    /**
+     * El proyecto necesita esa profesión si tiene al menos un requerimiento
+     * abierto: general no archivado, o de actividad no archivado en una
+     * actividad Pendiente o En curso.
+     */
+    private static Predicate conProfesionRequerida(
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            Path<Proyecto> root,
+            Long idProfesion) {
+
+        Subquery<Long> general = query.subquery(Long.class);
+        Root<RequerimientoGralProyecto> requerimientoGral =
+                general.from(RequerimientoGralProyecto.class);
+        general.select(requerimientoGral.get("idRequerimientoGral"));
+        general.where(
+                cb.equal(requerimientoGral.get("proyecto"), root),
+                cb.isNull(requerimientoGral.get("fechaArchivado")),
+                cb.equal(requerimientoGral.get("profesion").get("idProfesion"),
+                        idProfesion));
+
+        Subquery<Long> actividad = query.subquery(Long.class);
+        Root<RequerimientoActividad> requerimientoActividad =
+                actividad.from(RequerimientoActividad.class);
+        actividad.select(requerimientoActividad.get("idRequerimiento"));
+        actividad.where(
+                cb.equal(requerimientoActividad.get("actividad")
+                                .get("planificacion").get("proyecto"), root),
+                cb.isNull(requerimientoActividad.get("fechaArchivado")),
+                requerimientoActividad.get("actividad").get("estado")
+                        .in(EstadoActividad.PENDIENTE, EstadoActividad.EN_CURSO),
+                cb.equal(requerimientoActividad.get("profesion").get("idProfesion"),
+                        idProfesion));
+
+        return cb.or(cb.exists(general), cb.exists(actividad));
     }
 
     /**

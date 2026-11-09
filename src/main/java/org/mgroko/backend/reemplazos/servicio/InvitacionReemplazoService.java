@@ -30,7 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InvitacionReemplazoService {
 
-    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITACION =
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_ACEPTADOS =
+            List.of(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
+
+    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITADOS =
             List.of(EstadoCandidatoReemplazo.INVITADO);
 
     private final ReemplazoRepository reemplazoRepository;
@@ -88,8 +91,13 @@ public class InvitacionReemplazoService {
         candidato.setFechaRespuesta(ahora);
         candidatoRepository.saveAndFlush(candidato);
 
-        reemplazo.setEstado(EstadoReemplazo.PENDIENTE_APROBACION);
-        reemplazoRepository.saveAndFlush(reemplazo);
+        // La aceptación no cierra el proceso: varios candidatos pueden aceptar
+        // y el director decide a cuál incorporar. PENDIENTE_APROBACION
+        // significa "hay al menos un candidato esperando decisión".
+        if (reemplazo.getEstado() != EstadoReemplazo.PENDIENTE_APROBACION) {
+            reemplazo.setEstado(EstadoReemplazo.PENDIENTE_APROBACION);
+            reemplazoRepository.saveAndFlush(reemplazo);
+        }
 
         notificacionService.notificarDirectores(
                 reemplazo,
@@ -130,13 +138,7 @@ public class InvitacionReemplazoService {
         candidato.setMotivoRespuesta(normalizarMotivo(motivo));
         candidatoRepository.saveAndFlush(candidato);
 
-        if (reemplazo.getEstado() == EstadoReemplazo.INVITACIONES_ENVIADAS
-                && candidatoRepository.countByReemplazoIdReemplazoAndEstadoIn(
-                        reemplazo.getIdReemplazo(),
-                        ESTADOS_INVITACION) == 0) {
-            reemplazo.setEstado(EstadoReemplazo.SIN_CANDIDATOS);
-            reemplazoRepository.saveAndFlush(reemplazo);
-        }
+        actualizarEstadoTrasRespuesta(reemplazo);
 
         notificacionService.notificarDirectores(
                 reemplazo,
@@ -171,15 +173,45 @@ public class InvitacionReemplazoService {
     }
 
     private void validarProcesoAbierto(Reemplazo reemplazo) {
-        if (reemplazo.getEstado() == EstadoReemplazo.PENDIENTE_APROBACION) {
-            throw new ReemplazoNoGestionableException(
-                    "Ya hay un candidato esperando la aprobación del director.",
-                    "REEMPLAZO_CON_CANDIDATO_PENDIENTE");
-        }
-        if (reemplazo.getEstado() != EstadoReemplazo.INVITACIONES_ENVIADAS) {
+        // Se admiten respuestas tanto mientras sólo hay invitaciones enviadas
+        // como cuando ya hay uno o más candidatos aceptados esperando que el
+        // director elija a quién incorporar.
+        if (reemplazo.getEstado() != EstadoReemplazo.INVITACIONES_ENVIADAS
+                && reemplazo.getEstado() != EstadoReemplazo.PENDIENTE_APROBACION) {
             throw new ReemplazoNoGestionableException(
                     "El proceso de reemplazo ya no admite respuestas.",
                     "REEMPLAZO_NO_ADMITE_RESPUESTAS");
+        }
+    }
+
+    /**
+     * Recalcula el estado agregado del proceso después de una respuesta.
+     *
+     * <p>Mientras haya candidatos aceptados, el proceso sigue pendiente de
+     * aprobación aunque también queden invitaciones sin responder.</p>
+     */
+    private void actualizarEstadoTrasRespuesta(Reemplazo reemplazo) {
+        if (reemplazo.getEstado() != EstadoReemplazo.INVITACIONES_ENVIADAS
+                && reemplazo.getEstado() != EstadoReemplazo.PENDIENTE_APROBACION) {
+            return;
+        }
+
+        long aceptados = candidatoRepository.countByReemplazoIdReemplazoAndEstadoIn(
+                reemplazo.getIdReemplazo(),
+                ESTADOS_ACEPTADOS);
+        long invitados = candidatoRepository.countByReemplazoIdReemplazoAndEstadoIn(
+                reemplazo.getIdReemplazo(),
+                ESTADOS_INVITADOS);
+
+        EstadoReemplazo nuevoEstado = aceptados > 0
+                ? EstadoReemplazo.PENDIENTE_APROBACION
+                : invitados > 0
+                        ? EstadoReemplazo.INVITACIONES_ENVIADAS
+                        : EstadoReemplazo.SIN_CANDIDATOS;
+
+        if (reemplazo.getEstado() != nuevoEstado) {
+            reemplazo.setEstado(nuevoEstado);
+            reemplazoRepository.saveAndFlush(reemplazo);
         }
     }
 

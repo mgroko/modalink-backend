@@ -22,6 +22,9 @@ public class InvitacionActividad {
     @Builder.Default
     private LocalDateTime fechaEnvio = LocalDateTime.now();
 
+    @Column(name = "fecha_rechazo")
+    private LocalDateTime fechaRechazo;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 20)
     @Builder.Default
@@ -38,4 +41,11 @@ public class InvitacionActividad {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_requerimiento_act", nullable = false)
     private RequerimientoActividad requerimiento;
+
+    /**
+     * Versión de los términos y condiciones del perfil destinatario que el
+     * proyecto aceptó al enviar la invitación (UC-23 / UC-31).
+     */
+    @Column(name = "id_tyc_aceptado")
+    private Long idTycAceptado;
 }

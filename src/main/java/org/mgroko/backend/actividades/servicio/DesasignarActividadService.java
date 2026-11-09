@@ -39,6 +39,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 
 /**
  * Desasigna físicamente un miembro de una actividad.
@@ -90,6 +91,7 @@ public class DesasignarActividadService {
     }
 
     @Transactional
+    @AuditarOperacion
     public DesasignacionActividadResponse desasignar(
             Long idUsuario,
             Long idPerfilActivo,

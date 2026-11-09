@@ -19,7 +19,8 @@ public record PostulacionGestionadaResponse(
         Long idAsignacionActividad,
         ResultadoPreferencia resultadoPreferencia,
         Long desvioMinutos,
-        List<AdvertenciaSobrecompromiso> advertencias) {
+        List<AdvertenciaSobrecompromiso> advertencias,
+        Long idTycAceptado) {
 
     /**
      * Constructor histórico para respuestas de rechazo o consumidores que aún
@@ -45,7 +46,39 @@ public record PostulacionGestionadaResponse(
                 idAsignacionActividad,
                 null,
                 null,
-                List.of());
+                List.of(),
+                null);
+    }
+
+    /**
+     * Constructor histórico para respuestas que ya informan preferencia y
+     * sobrecompromiso, pero todavía no leen la versión de T&C aceptada.
+     */
+    public PostulacionGestionadaResponse(
+            Long idPostulacion,
+            TipoPostulacion tipo,
+            EstadoSolicitud estado,
+            Long idProyecto,
+            Long idRequerimiento,
+            Long idPerfil,
+            Long idMiembro,
+            Long idAsignacionActividad,
+            ResultadoPreferencia resultadoPreferencia,
+            Long desvioMinutos,
+            List<AdvertenciaSobrecompromiso> advertencias) {
+        this(
+                idPostulacion,
+                tipo,
+                estado,
+                idProyecto,
+                idRequerimiento,
+                idPerfil,
+                idMiembro,
+                idAsignacionActividad,
+                resultadoPreferencia,
+                desvioMinutos,
+                advertencias,
+                null);
     }
 
     public PostulacionGestionadaResponse {

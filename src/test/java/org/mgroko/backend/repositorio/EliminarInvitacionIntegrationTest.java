@@ -99,6 +99,10 @@ class EliminarInvitacionIntegrationTest extends AbstractPostgresIntegrationTest 
                 director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
                 new CrearInvitacionGralRequest(destinatario.idPerfil(), null));
 
+        assertThat(contarNotificaciones(
+                "INVITACION_RECIBIDA", "INVITACION_GRAL", invitacion.idInvitacion()))
+                .isEqualTo(1L);
+
         eliminarInvitacionService.eliminarInvitacionGeneral(
                 director.idUsuario(), director.idPerfil(),
                 publicado.idProyecto(), invitacion.idInvitacion());
@@ -107,6 +111,9 @@ class EliminarInvitacionIntegrationTest extends AbstractPostgresIntegrationTest 
                 SELECT COUNT(*) FROM invitacion_gral WHERE id_invitacion_gral = ?
                 """, Long.class, invitacion.idInvitacion());
         assertThat(restantes).isZero();
+        assertThat(contarNotificaciones(
+                "INVITACION_RECIBIDA", "INVITACION_GRAL", invitacion.idInvitacion()))
+                .isZero();
 
         PaginaResponse<InvitacionBusquedaResponse> busqueda =
                 buscarInvitacionService.buscar(
@@ -134,6 +141,10 @@ class EliminarInvitacionIntegrationTest extends AbstractPostgresIntegrationTest 
                 new CrearInvitacionActividadRequest(
                         idRequerimiento, destinatario.idPerfil(), null));
 
+        assertThat(contarNotificaciones(
+                "INVITACION_RECIBIDA", "INVITACION_ACTIVIDAD", invitacion.idInvitacion()))
+                .isEqualTo(1L);
+
         eliminarInvitacionService.eliminarInvitacionActividad(
                 director.idUsuario(), director.idPerfil(),
                 publicado.idProyecto(), invitacion.idInvitacion());
@@ -142,6 +153,9 @@ class EliminarInvitacionIntegrationTest extends AbstractPostgresIntegrationTest 
                 SELECT COUNT(*) FROM invitacion_actividad WHERE id_invitacion = ?
                 """, Long.class, invitacion.idInvitacion());
         assertThat(restantes).isZero();
+        assertThat(contarNotificaciones(
+                "INVITACION_RECIBIDA", "INVITACION_ACTIVIDAD", invitacion.idInvitacion()))
+                .isZero();
     }
 
     @Test
@@ -246,6 +260,15 @@ class EliminarInvitacionIntegrationTest extends AbstractPostgresIntegrationTest 
                 .isInstanceOf(InvitacionNoEncontradaException.class);
     }
 
+    private Long contarNotificaciones(String tipo, String entidadTipo, Long entidadId) {
+        return jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE tipo = ?
+                  AND entidad_tipo = ?
+                  AND entidad_id = ?
+                """, Long.class, tipo, entidadTipo, entidadId);
+    }
+
     private PerfilCreado crearPerfil(
             String correo,
             String dni,
@@ -273,8 +296,8 @@ class EliminarInvitacionIntegrationTest extends AbstractPostgresIntegrationTest 
                         "Perfil de prueba UC-32.", List.of()));
 
         jdbcTemplate.update(
-                "INSERT INTO perfil_tyc (id_perfil, id_tyc, descripcion, fecha_inicio) "
-                        + "VALUES (?, 1, 'TyC UC-32', NOW())",
+                "INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio, fecha_fin) "
+                        + "VALUES (?, 'TyC UC-32', NOW() - INTERVAL '1 day', NOW())",
                 perfil.idPerfil());
 
         return new PerfilCreado(usuario.getIdUsuario(), perfil.idPerfil());

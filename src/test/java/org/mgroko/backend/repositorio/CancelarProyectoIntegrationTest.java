@@ -99,7 +99,7 @@ class CancelarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
                 new CrearPerfilRequest(nombreArtistico, idProfesionModelo, "Perfil de prueba UC-35.", List.of()));
 
         jdbcTemplate.update(
-                "INSERT INTO perfil_tyc (id_perfil, id_tyc, descripcion, fecha_inicio) VALUES (?, 1, 'TyC UC-35', NOW())",
+                "INSERT INTO perfil_tyc (id_perfil, descripcion, fecha_inicio, fecha_fin) VALUES (?, 'TyC UC-35', NOW() - INTERVAL '1 day', NOW())",
                 perfil.idPerfil());
 
         return new PerfilCreado(usuario.getIdUsuario(), perfil.idPerfil());
