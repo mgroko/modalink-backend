@@ -140,7 +140,7 @@ class NotificacionMapperTest {
                 null);
 
         assertThat(response.link())
-                .isEqualTo("/solicitudes-conexion?direccion=RECIBIDA");
+                .isEqualTo("/mi-red?tab=recibidas");
     }
 
     @Test
@@ -151,7 +151,7 @@ class NotificacionMapperTest {
                 null);
 
         assertThat(response.link())
-                .isEqualTo("/red-contactos?idConexion=55");
+                .isEqualTo("/mi-red?tab=conexiones&idConexion=55");
     }
 
     @Test
@@ -162,7 +162,7 @@ class NotificacionMapperTest {
                 null);
 
         assertThat(response.link())
-                .isEqualTo("/solicitudes-conexion?direccion=ENVIADA&estado=RECHAZADA");
+                .isEqualTo("/mi-red?tab=enviadas&estado=RECHAZADA");
     }
 
     @Test
@@ -171,7 +171,7 @@ class NotificacionMapperTest {
                 notificacion("CONEXION_ELIMINADA", "CONEXION", 55L, null),
                 null);
 
-        assertThat(response.link()).isEqualTo("/red-contactos");
+        assertThat(response.link()).isEqualTo("/mi-red?tab=conexiones");
     }
 
     @Test

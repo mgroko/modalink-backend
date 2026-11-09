@@ -1,5 +1,7 @@
 package org.mgroko.backend.conexiones.dto;
 
+import org.mgroko.backend.ubicacion.dto.CiudadResponse;
+
 /**
  * Datos mínimos de un perfil remitente o destinatario de una conexión.
  */
@@ -10,6 +12,7 @@ public record PerfilConexionResponse(
         String apellido,
         Long idProfesion,
         String nombreProfesion,
-        String fotoUrl
+        String fotoUrl,
+        CiudadResponse ciudad
 ) {
 }

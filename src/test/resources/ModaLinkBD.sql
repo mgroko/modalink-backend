@@ -8167,68 +8167,68 @@ DECLARE
     v_usuario_1_estado VARCHAR(20);
     v_usuario_2_estado VARCHAR(20);
 BEGIN
-    SELECT p.id_usuario, p.estado, u.estado
-      INTO v_usuario_1, v_perfil_1_estado, v_usuario_1_estado
-      FROM perfil p
-      JOIN usuario u ON u.id_usuario = p.id_usuario
-     WHERE p.id_perfil = NEW.id_perfil_1;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'El perfil % no existe.', NEW.id_perfil_1
-            USING ERRCODE = 'foreign_key_violation';
-    END IF;
-
-    SELECT p.id_usuario, p.estado, u.estado
-      INTO v_usuario_2, v_perfil_2_estado, v_usuario_2_estado
-      FROM perfil p
-      JOIN usuario u ON u.id_usuario = p.id_usuario
-     WHERE p.id_perfil = NEW.id_perfil_2;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'El perfil % no existe.', NEW.id_perfil_2
-            USING ERRCODE = 'foreign_key_violation';
-    END IF;
-
-    IF v_perfil_1_estado <> 'ACTIVO' OR v_perfil_2_estado <> 'ACTIVO' THEN
-        RAISE EXCEPTION 'Ambos perfiles deben estar activos para registrar una conexión.'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    IF v_usuario_1_estado <> 'ACTIVO' OR v_usuario_2_estado <> 'ACTIVO' THEN
-        RAISE EXCEPTION 'Ambos usuarios deben estar activos para registrar una conexión.'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    IF v_usuario_1 = v_usuario_2 THEN
-        RAISE EXCEPTION 'No se puede conectar dos perfiles del mismo usuario.'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    SELECT s.estado, s.id_perfil_remitente, s.id_perfil_destinatario
-      INTO v_solicitud_estado, v_solicitud_remitente, v_solicitud_destinatario
-      FROM solicitud_conexion s
-     WHERE s.id_solicitud_conexion = NEW.id_solicitud_conexion;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'La solicitud de conexión % no existe.', NEW.id_solicitud_conexion
-            USING ERRCODE = 'foreign_key_violation';
-    END IF;
-
-    IF v_solicitud_estado <> 'ACEPTADA' THEN
-        RAISE EXCEPTION 'La conexión sólo puede originarse en una solicitud aceptada.'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    IF NOT (
-        (v_solicitud_remitente = NEW.id_perfil_1 AND v_solicitud_destinatario = NEW.id_perfil_2)
-        OR
-        (v_solicitud_remitente = NEW.id_perfil_2 AND v_solicitud_destinatario = NEW.id_perfil_1)
-    ) THEN
-        RAISE EXCEPTION 'La solicitud no corresponde a los perfiles de la conexión.'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
     IF TG_OP = 'INSERT' THEN
+        SELECT p.id_usuario, p.estado, u.estado
+          INTO v_usuario_1, v_perfil_1_estado, v_usuario_1_estado
+          FROM perfil p
+          JOIN usuario u ON u.id_usuario = p.id_usuario
+         WHERE p.id_perfil = NEW.id_perfil_1;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'El perfil % no existe.', NEW.id_perfil_1
+                USING ERRCODE = 'foreign_key_violation';
+        END IF;
+
+        SELECT p.id_usuario, p.estado, u.estado
+          INTO v_usuario_2, v_perfil_2_estado, v_usuario_2_estado
+          FROM perfil p
+          JOIN usuario u ON u.id_usuario = p.id_usuario
+         WHERE p.id_perfil = NEW.id_perfil_2;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'El perfil % no existe.', NEW.id_perfil_2
+                USING ERRCODE = 'foreign_key_violation';
+        END IF;
+
+        IF v_perfil_1_estado <> 'ACTIVO' OR v_perfil_2_estado <> 'ACTIVO' THEN
+            RAISE EXCEPTION 'Ambos perfiles deben estar activos para registrar una conexión.'
+                USING ERRCODE = 'check_violation';
+        END IF;
+
+        IF v_usuario_1_estado <> 'ACTIVO' OR v_usuario_2_estado <> 'ACTIVO' THEN
+            RAISE EXCEPTION 'Ambos usuarios deben estar activos para registrar una conexión.'
+                USING ERRCODE = 'check_violation';
+        END IF;
+
+        IF v_usuario_1 = v_usuario_2 THEN
+            RAISE EXCEPTION 'No se puede conectar dos perfiles del mismo usuario.'
+                USING ERRCODE = 'check_violation';
+        END IF;
+
+        SELECT s.estado, s.id_perfil_remitente, s.id_perfil_destinatario
+          INTO v_solicitud_estado, v_solicitud_remitente, v_solicitud_destinatario
+          FROM solicitud_conexion s
+         WHERE s.id_solicitud_conexion = NEW.id_solicitud_conexion;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'La solicitud de conexión % no existe.', NEW.id_solicitud_conexion
+                USING ERRCODE = 'foreign_key_violation';
+        END IF;
+
+        IF v_solicitud_estado <> 'ACEPTADA' THEN
+            RAISE EXCEPTION 'La conexión sólo puede originarse en una solicitud aceptada.'
+                USING ERRCODE = 'check_violation';
+        END IF;
+
+        IF NOT (
+            (v_solicitud_remitente = NEW.id_perfil_1 AND v_solicitud_destinatario = NEW.id_perfil_2)
+            OR
+            (v_solicitud_remitente = NEW.id_perfil_2 AND v_solicitud_destinatario = NEW.id_perfil_1)
+        ) THEN
+            RAISE EXCEPTION 'La solicitud no corresponde a los perfiles de la conexión.'
+                USING ERRCODE = 'check_violation';
+        END IF;
+
         IF NEW.estado <> 'ACTIVA' OR NEW.fecha_fin_conexion IS NOT NULL THEN
             RAISE EXCEPTION 'Una conexión nueva debe crearse ACTIVA.'
                 USING ERRCODE = 'check_violation';

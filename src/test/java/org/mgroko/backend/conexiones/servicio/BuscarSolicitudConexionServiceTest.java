@@ -19,6 +19,7 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.conexiones.dto.BuscarSolicitudesConexionFiltro;
 import org.mgroko.backend.conexiones.dto.DireccionSolicitudConexion;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionBusquedaResponse;
+import org.mgroko.backend.conexiones.exception.FiltroSolicitudConexionInvalidoException;
 import org.mgroko.backend.conexiones.exception.RangoFechasSolicitudConexionInvalidoException;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
@@ -106,10 +107,20 @@ class BuscarSolicitudConexionServiceTest {
     void buscar_rangoFechasInvalido_lanzaExcepcion() {
         BuscarSolicitudesConexionFiltro filtro = new BuscarSolicitudesConexionFiltro(
                 null, null, null, null, null, null,
-                LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 9));
+                LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 9), false);
 
         assertThatThrownBy(() -> service.buscar(ID_PERFIL_ACTIVO, filtro, 0, 20))
                 .isInstanceOf(RangoFechasSolicitudConexionInvalidoException.class);
+    }
+
+    @Test
+    void buscar_todosLosEstadosConEstadoEspecifico_lanzaFiltroInvalido() {
+        BuscarSolicitudesConexionFiltro filtro = new BuscarSolicitudesConexionFiltro(
+                null, EstadoSolicitud.ACEPTADA, null, null, null, null,
+                null, null, true);
+
+        assertThatThrownBy(() -> service.buscar(ID_PERFIL_ACTIVO, filtro, 0, 20))
+                .isInstanceOf(FiltroSolicitudConexionInvalidoException.class);
     }
 
     @Test

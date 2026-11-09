@@ -174,15 +174,17 @@ archivo se conserva localmente.
 
 Los T&C se versionan: cada cambio real cierra la versión vigente y crea una nueva. La versión vigente se incluye en `GET /perfiles/{idPerfil}` y en las invitaciones; cuando el proyecto incorpora a un integrante con T&C configurados, el director debe aceptar esa versión y queda registrada en `id_tyc_aceptado`. La plantilla base se configura en `configuracion_sistema` con la clave `PERFIL_TYC_PLANTILLA`.
 
-### Red de contactos (UC-43, requiere autenticación)
+### Red de contactos (UC-43 a UC-46, requiere autenticación)
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | POST   | `/solicitudes-conexion` | Envía una solicitud de conexión desde el perfil activo al perfil indicado en el body (`idPerfilDestinatario`). Crea la solicitud en estado `PENDIENTE` y una notificación `SOLICITUD_CONEXION_RECIBIDA` al perfil destinatario. Devuelve `201 Created`. |
-| GET    | `/solicitudes-conexion` | Busca solicitudes recibidas o enviadas por el perfil activo. Filtros opcionales: `direccion`, `estado` (por defecto `PENDIENTE`), `nombre`, `apellido`, `nombreArtistico`, `idProfesion`, `fechaDesde`, `fechaHasta`. Devuelve una página de resultados. |
+| GET    | `/solicitudes-conexion` | Busca solicitudes recibidas o enviadas por el perfil activo. Filtros opcionales: `direccion`, `estado` (por defecto `PENDIENTE`), `todosLosEstados`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`, `fechaDesde`, `fechaHasta`. Devuelve una página de resultados. |
 | POST   | `/solicitudes-conexion/{idSolicitudConexion}/aceptar` | Acepta una solicitud `PENDIENTE` recibida por el perfil activo. Crea la conexión y notifica a ambas partes. Devuelve `200` con `idConexion`. |
 | POST   | `/solicitudes-conexion/{idSolicitudConexion}/rechazar` | Rechaza una solicitud `PENDIENTE` recibida por el perfil activo. Notifica solo al remitente. Devuelve `200` con `idConexion = null`. |
 | DELETE | `/solicitudes-conexion/{idSolicitudConexion}` | Cancela una solicitud `PENDIENTE` enviada por el perfil activo. Elimina físicamente la solicitud y la notificación `SOLICITUD_CONEXION_RECIBIDA` del destinatario. Devuelve `204 No Content`. |
+| GET    | `/conexiones` | Lista la red activa del perfil activo (UC-44 bis). Filtros opcionales sobre la contraparte: `texto`, `nombre`, `apellido`, `nombreArtistico`, `idProfesion`. Ordena por `fechaInicioConexion DESC`. Devuelve una página con la contraparte de cada conexión. |
+| DELETE | `/conexiones/{idConexion}` | Elimina lógicamente una conexión activa del perfil activo (UC-44). Pasa a `ELIMINADA`, registra `fechaFinConexion`, audita `CONEXION_ELIMINADA` y notifica a ambas partes. Devuelve `204 No Content`; `409 CONEXION_NO_ACTIVA` si ya estaba eliminada. |
 
 `GET /perfiles/{idPerfil}` incorpora los campos `estadoConexion` (`NINGUNA`, `SOLICITUD_ENVIADA`, `SOLICITUD_RECIBIDA`, `CONECTADO`), `idSolicitudConexion` e `idConexion` para que el frontend muestre la acción disponible.
 
@@ -196,12 +198,15 @@ Reglas de UC-43:
 - Sólo el perfil remitente puede cancelar su propia solicitud y sólo mientras esté `PENDIENTE`.
 - La cancelación es física: el par queda libre y se puede volver a enviar la solicitud.
 - La búsqueda de UC-46 se limita al perfil activo. Por defecto devuelve `PENDIENTE` y ordena por `fechaEnvio DESC`.
+- `todosLosEstados=true` devuelve solicitudes en cualquier estado; no se puede combinar con `estado` (responde `400 FILTRO_INVALIDO`).
 - Los filtros de nombre, apellido, nombre artístico y profesión se aplican a la contraparte y son case-insensitive e insensibles a acentos.
 - La búsqueda sin resultados devuelve `200` con una página vacía.
 - Sólo el perfil destinatario puede aceptar o rechazar una solicitud.
 - Aceptar crea una conexión `ACTIVA` y notifica a ambas partes; rechazar notifica sólo al remitente.
-- Las notificaciones de conexiones incluyen `link` para navegar a solicitudes o a la red de contactos.
+- Las notificaciones de conexiones incluyen `link` para navegar a `/mi-red?tab=recibidas`, `/mi-red?tab=enviadas` o `/mi-red?tab=conexiones`.
 - El alta y la baja de conexiones se auditan (`CONEXION_CREADA` / `CONEXION_ELIMINADA`); las solicitudes no se auditan.
+- La baja de UC-44 es lógica: la conexión queda `ELIMINADA` con `fechaFinConexion` y desaparece de `GET /conexiones`.
+- Sólo los usuarios `ACTIVO` reciben notificaciones de conexiones; las contrapartes en `PENDIENTE_BAJA`, `BAJA` o `DESHABILITADO` no se notifican.
 - La base de datos refuerza las reglas con un índice único parcial, checks y triggers.
 
 Antes de levantar esta versión sobre una base existente, ejecutar con la aplicación detenida
@@ -216,6 +221,11 @@ la extensión `unaccent` usada por la búsqueda insensible a acentos.
 Para UC-45 ejecutar
 `docs/3_diseño/migraciones/2026-11-09_uc45_auditoria_conexiones.sql`, que agrega los
 eventos `CONEXION_CREADA` y `CONEXION_ELIMINADA` y el trigger de auditoría sobre `conexion`.
+
+Para UC-44 y UC-44 bis ejecutar
+`docs/3_diseño/migraciones/2026-11-09_uc44_eliminar_conexion.sql`, que ajusta
+`fn_validar_conexion` para permitir la baja lógica aunque la contraparte esté inactiva
+y deja idempotentes el catálogo y el trigger de auditoría de conexiones.
 
 ### Catálogos (requiere autenticación)
 

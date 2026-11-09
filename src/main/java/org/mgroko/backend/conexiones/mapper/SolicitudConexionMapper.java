@@ -7,6 +7,7 @@ import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.SolicitudConexion;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 
 public final class SolicitudConexionMapper {
 
@@ -31,6 +32,7 @@ public final class SolicitudConexionMapper {
         var usuario = perfil.getUsuario();
         var profesion = perfil.getProfesion();
         var imagen = perfil.getImagen();
+        var ubicacion = usuario != null ? usuario.getUbicacion() : null;
 
         return new PerfilConexionResponse(
                 perfil.getIdPerfil(),
@@ -39,7 +41,9 @@ public final class SolicitudConexionMapper {
                 usuario != null ? usuario.getApellido() : null,
                 profesion != null ? profesion.getIdProfesion() : null,
                 profesion != null ? profesion.getNombre() : null,
-                imagen != null ? imagen.getUrl() : null);
+                imagen != null ? imagen.getUrl() : null,
+                UbicacionMapper.toCiudadResponse(
+                        ubicacion != null ? ubicacion.getCiudad() : null));
     }
 
     public static SolicitudConexionBusquedaResponse toBusquedaResponse(

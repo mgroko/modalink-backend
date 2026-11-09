@@ -67,15 +67,16 @@ public final class NotificacionMapper {
 
         return switch (tipo) {
             case TIPO_SOLICITUD_CONEXION_RECIBIDA ->
-                    "/solicitudes-conexion?direccion=RECIBIDA";
+                    "/mi-red?tab=recibidas";
             case TIPO_SOLICITUD_CONEXION_ACEPTADA ->
                     ENTIDAD_CONEXION.equals(notificacion.getEntidadTipo())
                             && notificacion.getEntidadId() != null
-                            ? "/red-contactos?idConexion=" + notificacion.getEntidadId()
-                            : "/red-contactos";
+                            ? "/mi-red?tab=conexiones&idConexion="
+                                    + notificacion.getEntidadId()
+                            : "/mi-red?tab=conexiones";
             case TIPO_SOLICITUD_CONEXION_RECHAZADA ->
-                    "/solicitudes-conexion?direccion=ENVIADA&estado=RECHAZADA";
-            case TIPO_CONEXION_ELIMINADA -> "/red-contactos";
+                    "/mi-red?tab=enviadas&estado=RECHAZADA";
+            case TIPO_CONEXION_ELIMINADA -> "/mi-red?tab=conexiones";
             default -> null;
         };
     }

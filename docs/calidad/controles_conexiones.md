@@ -1,8 +1,13 @@
-# Controles de Base de Datos — Red de contactos (UC-43)
+# Controles de Base de Datos — Red de contactos (UC-43 a UC-46)
 
-> **Alcance:** esquema base de UC-43 y preparación de UC-44, UC-45 y UC-46.
+> **Alcance:** esquema de solicitudes y conexiones, cancelación, gestión, búsqueda,
+> listado de red y baja lógica.
 > **Esquema canónico:** `docs/3_diseño/ModaLinkBD.sql`.
-> **Migración:** `docs/3_diseño/migraciones/2026-11-08_uc43_solicitud_conexion.sql`.
+> **Migraciones:**
+> `2026-11-08_uc43_solicitud_conexion.sql`,
+> `2026-11-09_uc46_buscar_solicitudes_conexion.sql`,
+> `2026-11-09_uc45_auditoria_conexiones.sql` y
+> `2026-11-09_uc44_eliminar_conexion.sql`.
 
 ## 1. Tablas
 
@@ -48,7 +53,7 @@
 | Trigger | Tabla | Regla |
 |---|---|---|
 | `trg_validar_solicitud_conexion` | `solicitud_conexion` | Perfiles activos, usuarios activos, usuarios distintos, estado inicial y transiciones |
-| `trg_validar_conexion` | `conexion` | Solicitud origen `ACEPTADA`, mismo par, perfiles activos, usuarios distintos y transiciones |
+| `trg_validar_conexion` | `conexion` | Solicitud origen `ACEPTADA`, mismo par, perfiles activos y usuarios activos **sólo en `INSERT`**; inmutabilidad del par/solicitud y transición a `ELIMINADA` en `UPDATE` |
 
 ### 3.1 Reglas de transición
 
@@ -82,6 +87,9 @@ Tipos agregados a `notificacion_tipo`:
 | Insertar conexión desde solicitud `PENDIENTE` | Falla por trigger |
 | Insertar dos conexiones activas para el mismo par | Falla por índice único |
 | Eliminar lógicamente una conexión y crear otra para el mismo par | Permitido |
+| Eliminar una conexión cuya contraparte está `PENDIENTE_BAJA` | Permitido (sólo se valida en `INSERT`) |
+| Actualizar una conexión `ELIMINADA` | Falla por trigger |
+| Modificar el par o la solicitud de una conexión | Falla por trigger |
 
 ## 6. Cancelación de solicitud (extensión UC-43)
 
@@ -151,3 +159,40 @@ rechazo generan eventos de auditoría.
 
 La migración asociada es
 `docs/3_diseño/migraciones/2026-11-09_uc45_auditoria_conexiones.sql`.
+
+## 10. Eliminar conexión (UC-44)
+
+- La baja es **lógica**: `conexion.estado` pasa de `ACTIVA` a `ELIMINADA` y se
+  completa `fecha_fin_conexion`.
+- `chk_conexion_fechas` exige que `fecha_fin_conexion` esté presente en
+  `ELIMINADA`; el trigger la completa con `clock_timestamp()` si llega nula.
+- `UQ_conexion_activa` sólo aplica a filas `ACTIVA`, por lo que el par puede
+  volver a conectarse después de una baja.
+- `fn_validar_conexion` valida que los perfiles y usuarios estén activos
+  **únicamente en `INSERT`**. En `UPDATE` sólo verifica que el par, la solicitud
+  y `fecha_inicio_conexion` no cambien y que la transición sea
+  `ACTIVA → ELIMINADA`. Esto permite eliminar una conexión aunque la
+  contraparte ya esté `PENDIENTE_BAJA`, `BAJA` o `DESHABILITADO`.
+- `trg_auditar_conexion` registra `CONEXION_ELIMINADA` con acción `UPDATE` y los
+  valores anterior/nuevo de `estado` y `fecha_fin_conexion`.
+- El servicio bloquea la fila con `PESSIMISTIC_WRITE`; dos bajas simultáneas
+  producen una sola transición y una sola auditoría; la segunda devuelve
+  `409 CONEXION_NO_ACTIVA`.
+- La notificación `CONEXION_ELIMINADA` se envía a ambas partes, pero se omite
+  para usuarios que no estén `ACTIVO`.
+- La solicitud de origen permanece `ACEPTADA` y no se modifica.
+- La migración asociada es
+  `docs/3_diseño/migraciones/2026-11-09_uc44_eliminar_conexion.sql`.
+
+## 11. Listar red de contactos (UC-44 bis)
+
+- `GET /conexiones` sólo devuelve conexiones `ACTIVA` donde participa el perfil
+  activo.
+- Los filtros se aplican a la contraparte y usan `unaccent(lower(...))`, igual
+  que UC-46.
+- La consulta se pagina en base de datos y las asociaciones de la página se
+  cargan con `@EntityGraph` para evitar N+1.
+- Orden: `fecha_inicio_conexion DESC`, luego `id_conexion DESC`.
+- No se crean tablas, columnas ni índices nuevos: se reutilizan
+  `UQ_conexion_activa` y los índices de `perfil`, `usuario` y `profesion`.
+- El tamaño máximo de página es 100.

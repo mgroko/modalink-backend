@@ -45,7 +45,10 @@ import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
 import org.mgroko.backend.calendario.exception.HorarioComprometidoException;
 import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
 import org.mgroko.backend.calendario.exception.RangoInvalidoException;
+import org.mgroko.backend.conexiones.exception.ConexionNoActivaException;
+import org.mgroko.backend.conexiones.exception.ConexionNoEncontradaException;
 import org.mgroko.backend.conexiones.exception.ConexionYaExistenteException;
+import org.mgroko.backend.conexiones.exception.FiltroSolicitudConexionInvalidoException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionDuplicadaException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionInvalidaException;
 import org.mgroko.backend.conexiones.exception.SolicitudConexionNoEncontradaException;
@@ -902,6 +905,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RangoFechasSolicitudConexionInvalidoException.class)
     public ResponseEntity<Map<String, Object>> handleRangoFechasSolicitudConexion(
             RangoFechasSolicitudConexionInvalidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConexionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleConexionNoEncontrada(
+            ConexionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ConexionNoActivaException.class)
+    public ResponseEntity<Map<String, Object>> handleConexionNoActiva(
+            ConexionNoActivaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(FiltroSolicitudConexionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleFiltroSolicitudConexion(
+            FiltroSolicitudConexionInvalidoException ex) {
         return buildErrorResponseConCodigo(
                 ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
     }

@@ -174,6 +174,26 @@ class BuscarSolicitudConexionIntegrationTest extends AbstractPostgresIntegration
     }
 
     @Test
+    void buscar_todosLosEstados_devuelvePendientesAceptadasYRechazadas() {
+        PaginaResponse<SolicitudConexionBusquedaResponse> respuesta =
+                buscarSolicitudConexionService.buscar(
+                        perfilA.getIdPerfil(),
+                        new BuscarSolicitudesConexionFiltro(
+                                null, null, null, null, null, null,
+                                null, null, true),
+                        0,
+                        20);
+
+        assertEquals(4, respuesta.totalElementos());
+        assertTrue(respuesta.contenido().stream()
+                .anyMatch(item -> item.estado() == EstadoSolicitud.PENDIENTE));
+        assertTrue(respuesta.contenido().stream()
+                .anyMatch(item -> item.estado() == EstadoSolicitud.ACEPTADA));
+        assertTrue(respuesta.contenido().stream()
+                .anyMatch(item -> item.estado() == EstadoSolicitud.RECHAZADA));
+    }
+
+    @Test
     void buscar_sinResultados_devuelvePaginaVacia() {
         PaginaResponse<SolicitudConexionBusquedaResponse> respuesta =
                 buscar(null, EstadoSolicitud.ACEPTADA, "Nadie", null, null, null, 0, 20);
@@ -196,7 +216,7 @@ class BuscarSolicitudConexionIntegrationTest extends AbstractPostgresIntegration
                 perfilA.getIdPerfil(),
                 new BuscarSolicitudesConexionFiltro(
                         direccion, estado, nombre, apellido, nombreArtistico,
-                        idProfesion, fechaDesde, fechaHasta),
+                        idProfesion, fechaDesde, fechaHasta, false),
                 0,
                 20);
     }
@@ -214,7 +234,7 @@ class BuscarSolicitudConexionIntegrationTest extends AbstractPostgresIntegration
                 perfilA.getIdPerfil(),
                 new BuscarSolicitudesConexionFiltro(
                         direccion, estado, nombre, apellido, nombreArtistico,
-                        idProfesion, null, null),
+                        idProfesion, null, null, false),
                 page,
                 size);
     }

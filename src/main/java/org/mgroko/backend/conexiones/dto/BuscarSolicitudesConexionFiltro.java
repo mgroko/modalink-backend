@@ -20,6 +20,7 @@ public record BuscarSolicitudesConexionFiltro(
         String nombreArtistico,
         Long idProfesion,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
+        Boolean todosLosEstados
 ) {
 }

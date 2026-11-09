@@ -327,8 +327,8 @@ class SolicitudConexionControllerTest {
                 EstadoSolicitud.PENDIENTE,
                 LocalDateTime.of(2026, 11, 8, 12, 0),
                 null,
-                new PerfilConexionResponse(10L, "Ana Moda", "Ana", "Perez", 1L, "Modelo", null),
-                new PerfilConexionResponse(20L, "Bruno Estilo", "Bruno", "Gomez", 2L, "Fotógrafo", null));
+                new PerfilConexionResponse(10L, "Ana Moda", "Ana", "Perez", 1L, "Modelo", null, null),
+                new PerfilConexionResponse(20L, "Bruno Estilo", "Bruno", "Gomez", 2L, "Fotógrafo", null, null));
     }
 
     private PaginaResponse<SolicitudConexionBusquedaResponse> pagina() {
@@ -340,7 +340,7 @@ class SolicitudConexionControllerTest {
                 DireccionSolicitudConexion.RECIBIDA,
                 10L,
                 20L,
-                new PerfilConexionResponse(10L, "Ana Moda", "Ana", "Perez", 1L, "Modelo", null),
+                new PerfilConexionResponse(10L, "Ana Moda", "Ana", "Perez", 1L, "Modelo", null, null),
                 true,
                 true,
                 false);

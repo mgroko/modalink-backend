@@ -9,6 +9,7 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.conexiones.dto.BuscarSolicitudesConexionFiltro;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionBusquedaResponse;
 import org.mgroko.backend.conexiones.especificacion.SolicitudConexionSpecifications;
+import org.mgroko.backend.conexiones.exception.FiltroSolicitudConexionInvalidoException;
 import org.mgroko.backend.conexiones.exception.RangoFechasSolicitudConexionInvalidoException;
 import org.mgroko.backend.conexiones.mapper.SolicitudConexionMapper;
 import org.mgroko.backend.modelo.SolicitudConexion;
@@ -93,10 +94,18 @@ public class BuscarSolicitudConexionService {
     }
 
     private void validarFechas(BuscarSolicitudesConexionFiltro filtro) {
-        if (filtro == null || filtro.fechaDesde() == null || filtro.fechaHasta() == null) {
+        if (filtro == null) {
             return;
         }
-        if (filtro.fechaDesde().isAfter(filtro.fechaHasta())) {
+
+        if (Boolean.TRUE.equals(filtro.todosLosEstados())
+                && filtro.estado() != null) {
+            throw new FiltroSolicitudConexionInvalidoException(
+                    "No se puede combinar todosLosEstados con un estado específico.");
+        }
+
+        if (filtro.fechaDesde() != null && filtro.fechaHasta() != null
+                && filtro.fechaDesde().isAfter(filtro.fechaHasta())) {
             throw new RangoFechasSolicitudConexionInvalidoException();
         }
     }
@@ -108,18 +117,25 @@ public class BuscarSolicitudConexionService {
             return new BuscarSolicitudesConexionFiltro(
                     null,
                     EstadoSolicitud.PENDIENTE,
-                    null, null, null, null, null, null);
+                    null, null, null, null, null, null, false);
         }
+
+        EstadoSolicitud estado = Boolean.TRUE.equals(filtro.todosLosEstados())
+                ? null
+                : (filtro.estado() != null
+                        ? filtro.estado()
+                        : EstadoSolicitud.PENDIENTE);
 
         return new BuscarSolicitudesConexionFiltro(
                 filtro.direccion(),
-                filtro.estado() != null ? filtro.estado() : EstadoSolicitud.PENDIENTE,
+                estado,
                 filtro.nombre(),
                 filtro.apellido(),
                 filtro.nombreArtistico(),
                 filtro.idProfesion(),
                 filtro.fechaDesde(),
-                filtro.fechaHasta());
+                filtro.fechaHasta(),
+                filtro.todosLosEstados());
     }
 
     private int normalizarTamano(int size) {
