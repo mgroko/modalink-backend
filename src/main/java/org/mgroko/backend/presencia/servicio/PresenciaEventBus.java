@@ -17,6 +17,18 @@ public interface PresenciaEventBus {
 
     void registrarSuscriptor(Collection<Long> idsPerfil, SseEmitter emitter);
 
+    /**
+     * Registra un suscriptor identificado por pestaña/cliente. La implementación
+     * puede usar el identificador para cerrar un stream anterior de la misma
+     * pestaña antes de registrar el nuevo y evitar emisores huérfanos.
+     */
+    default void registrarSuscriptor(
+            Collection<Long> idsPerfil,
+            SseEmitter emitter,
+            String clientId) {
+        registrarSuscriptor(idsPerfil, emitter);
+    }
+
     void eliminarSuscriptor(SseEmitter emitter);
 
     void ping();

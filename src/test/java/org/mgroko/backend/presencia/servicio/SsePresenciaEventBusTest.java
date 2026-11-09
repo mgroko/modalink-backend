@@ -1,11 +1,13 @@
 package org.mgroko.backend.presencia.servicio;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -53,5 +55,29 @@ class SsePresenciaEventBusTest {
         bus.publicar(new PresenciaEvento(1L, false));
 
         verify(suscriptor, never()).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void registrarSuscriptor_conMismoCliente_cierraElEmisorAnterior() {
+        SseEmitter anterior = mock(SseEmitter.class);
+        SseEmitter nuevo = mock(SseEmitter.class);
+
+        bus.registrarSuscriptor(List.of(1L), anterior, "tab-1");
+        bus.registrarSuscriptor(List.of(1L), nuevo, "tab-1");
+
+        verify(anterior).complete();
+    }
+
+    @Test
+    void publicar_siElEnvioFalla_cierraElEmisor() throws Exception {
+        SseEmitter suscriptor = mock(SseEmitter.class);
+        doThrow(new IOException("cliente cerrado"))
+                .when(suscriptor)
+                .send(any(SseEmitter.SseEventBuilder.class));
+
+        bus.registrarSuscriptor(List.of(1L), suscriptor);
+        bus.publicar(new PresenciaEvento(1L, true));
+
+        verify(suscriptor).completeWithError(any(IOException.class));
     }
 }

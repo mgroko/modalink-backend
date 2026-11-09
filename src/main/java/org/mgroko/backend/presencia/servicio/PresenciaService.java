@@ -89,6 +89,7 @@ public class PresenciaService {
                 && !ultimaActividad.isBefore(limite(ahora));
     }
 
+    @Transactional(readOnly = true)
     public List<PresenciaPerfilResponse> snapshot(Collection<Long> idsPerfil) {
         if (idsPerfil == null || idsPerfil.isEmpty()) {
             return List.of();

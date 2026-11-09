@@ -20,6 +20,7 @@ public class SsePresenciaEventBus implements PresenciaEventBus {
 
     private final Map<Long, Set<SseEmitter>> suscriptores = new ConcurrentHashMap<>();
     private final Map<SseEmitter, Set<Long>> idsPorEmisor = new ConcurrentHashMap<>();
+    private final Map<String, SseEmitter> emisoresPorCliente = new ConcurrentHashMap<>();
 
     @Override
     public void publicar(PresenciaEvento evento) {
@@ -34,13 +35,32 @@ public class SsePresenciaEventBus implements PresenciaEventBus {
                         .name("presencia")
                         .data(evento, MediaType.APPLICATION_JSON));
             } catch (IOException | IllegalStateException ex) {
-                eliminarSuscriptor(emitter);
+                cerrarSuscriptor(emitter, ex);
             }
         }
     }
 
     @Override
     public void registrarSuscriptor(Collection<Long> idsPerfil, SseEmitter emitter) {
+        registrarSuscriptor(idsPerfil, emitter, null);
+    }
+
+    @Override
+    public void registrarSuscriptor(
+            Collection<Long> idsPerfil,
+            SseEmitter emitter,
+            String clientId) {
+
+        // Si la misma pestaña reconecta, el stream anterior se cierra antes de
+        // registrar el nuevo. Así no se acumulan emisores ni conexiones JDBC
+        // cuando el navegador reemplaza un EventSource.
+        if (clientId != null && !clientId.isBlank()) {
+            SseEmitter anterior = emisoresPorCliente.put(clientId, emitter);
+            if (anterior != null && anterior != emitter) {
+                cerrarSuscriptor(anterior, null);
+            }
+        }
+
         Set<Long> ids = Set.copyOf(idsPerfil);
         idsPorEmisor.put(emitter, ids);
 
@@ -57,6 +77,8 @@ public class SsePresenciaEventBus implements PresenciaEventBus {
     @Override
     public void eliminarSuscriptor(SseEmitter emitter) {
         Set<Long> ids = idsPorEmisor.remove(emitter);
+        emisoresPorCliente.entrySet().removeIf(entry -> entry.getValue() == emitter);
+
         if (ids == null) {
             return;
         }
@@ -73,13 +95,31 @@ public class SsePresenciaEventBus implements PresenciaEventBus {
         }
     }
 
+    /**
+     * Quita el emisor del bus y completa el request async. Sin este cierre, el
+     * navegador puede haber cerrado el EventSource pero el servidor mantiene
+     * vivo el request SSE (y su conexión JDBC) hasta el timeout del emitter.
+     */
+    private void cerrarSuscriptor(SseEmitter emitter, Throwable error) {
+        eliminarSuscriptor(emitter);
+        try {
+            if (error != null) {
+                emitter.completeWithError(error);
+            } else {
+                emitter.complete();
+            }
+        } catch (Exception ignored) {
+            // El contenedor o el cliente ya habían cerrado el request.
+        }
+    }
+
     @Override
     public void ping() {
         for (SseEmitter emitter : new ArrayList<>(idsPorEmisor.keySet())) {
             try {
                 emitter.send(SseEmitter.event().comment("ping"));
             } catch (IOException | IllegalStateException ex) {
-                eliminarSuscriptor(emitter);
+                cerrarSuscriptor(emitter, ex);
             }
         }
     }

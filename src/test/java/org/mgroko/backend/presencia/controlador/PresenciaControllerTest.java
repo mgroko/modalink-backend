@@ -121,6 +121,22 @@ class PresenciaControllerTest {
     }
 
     @Test
+    void stream_conClientId_registraElSuscriptorConSuCliente() throws Exception {
+        when(presenciaService.snapshot(any()))
+                .thenReturn(List.of(new PresenciaPerfilResponse(10L, true)));
+
+        mockMvc.perform(get("/presencia/stream")
+                        .param("idsPerfil", "10")
+                        .param("clientId", "tab-1")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk())
+                .andExpect(request().asyncStarted());
+
+        verify(presenciaEventBus).registrarSuscriptor(
+                eq(List.of(10L)), any(), eq("tab-1"));
+    }
+
+    @Test
     void stream_sinIds_devuelve400() throws Exception {
         mockMvc.perform(get("/presencia/stream")
                         .principal(autenticacion(10L)))

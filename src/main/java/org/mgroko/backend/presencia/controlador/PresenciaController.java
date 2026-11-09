@@ -74,7 +74,8 @@ public class PresenciaController {
      */
     @GetMapping(value = "/presencia/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> stream(
-            @RequestParam(name = "idsPerfil") List<Long> idsPerfil) {
+            @RequestParam(name = "idsPerfil") List<Long> idsPerfil,
+            @RequestParam(name = "clientId", required = false) String clientId) {
 
         validarIdsComunes(idsPerfil);
         if (idsPerfil == null || idsPerfil.isEmpty()) {
@@ -96,7 +97,11 @@ public class PresenciaController {
                     .body(emitter);
         }
 
-        presenciaEventBus.registrarSuscriptor(idsPerfil, emitter);
+        if (clientId == null || clientId.isBlank()) {
+            presenciaEventBus.registrarSuscriptor(idsPerfil, emitter);
+        } else {
+            presenciaEventBus.registrarSuscriptor(idsPerfil, emitter, clientId);
+        }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache")
