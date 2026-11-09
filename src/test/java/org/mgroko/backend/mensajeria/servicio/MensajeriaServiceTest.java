@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.mensajeria.dto.ConversacionResponse;
+import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeResponse;
 import org.mgroko.backend.mensajeria.dto.ResumenConversacionesResponse;
@@ -43,6 +44,7 @@ import org.mgroko.backend.repositorio.MensajeRepository;
 import org.mgroko.backend.repositorio.NotificacionRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -292,6 +294,72 @@ class MensajeriaServiceTest {
         ConversacionResponse item = pagina.contenido().get(0);
         assertThat(item.tieneNoLeidos()).isTrue();
         assertThat(item.puedeEnviar()).isTrue();
+    }
+
+    @Test
+    void obtenerConversacion_devuelveLaContraparte() {
+        ConversacionResponse response = service.obtenerConversacion(
+                ID_USUARIO, ID_PERFIL_ACTIVO, ID_CONVERSACION);
+
+        assertThat(response.idConversacion()).isEqualTo(ID_CONVERSACION);
+        assertThat(response.perfil().idPerfil()).isEqualTo(ID_PERFIL_DESTINO);
+        assertThat(response.puedeEnviar()).isTrue();
+    }
+
+    @Test
+    void obtenerConversacion_noParticipante_lanzaNoEncontrada() {
+        Conversacion ajena = Conversacion.builder()
+                .idConversacion(ID_CONVERSACION)
+                .perfil1(perfil(99L, 9L, "Otro"))
+                .perfil2(perfil(100L, 10L, "Otro Dos"))
+                .build();
+        when(conversacionRepository.buscarPorIdConPerfiles(ID_CONVERSACION))
+                .thenReturn(Optional.of(ajena));
+
+        assertThatThrownBy(() -> service.obtenerConversacion(
+                ID_USUARIO, ID_PERFIL_ACTIVO, ID_CONVERSACION))
+                .isInstanceOf(ConversacionNoEncontradaException.class);
+    }
+
+    @Test
+    void notificarEscribiendo_publicaEventoAlDestinatario() {
+        service.notificarEscribiendo(
+                ID_USUARIO, ID_PERFIL_ACTIVO, ID_CONVERSACION, true);
+
+        ArgumentCaptor<EscribiendoEvento> captor =
+                ArgumentCaptor.forClass(EscribiendoEvento.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+
+        EscribiendoEvento evento = captor.getValue();
+        assertThat(evento.idConversacion()).isEqualTo(ID_CONVERSACION);
+        assertThat(evento.idPerfilEmisor()).isEqualTo(ID_PERFIL_ACTIVO);
+        assertThat(evento.idPerfilDestinatario()).isEqualTo(ID_PERFIL_DESTINO);
+        assertThat(evento.escribiendo()).isTrue();
+    }
+
+    @Test
+    void notificarEscribiendo_sinConexionActiva_lanzaNoPermitido() {
+        when(conexionRepository.existsActivaEntre(anyLong(), anyLong()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.notificarEscribiendo(
+                ID_USUARIO, ID_PERFIL_ACTIVO, ID_CONVERSACION, true))
+                .isInstanceOf(MensajeNoPermitidoException.class);
+    }
+
+    @Test
+    void notificarEscribiendo_noParticipante_lanzaNoEncontrada() {
+        Conversacion ajena = Conversacion.builder()
+                .idConversacion(ID_CONVERSACION)
+                .perfil1(perfil(99L, 9L, "Otro"))
+                .perfil2(perfil(100L, 10L, "Otro Dos"))
+                .build();
+        when(conversacionRepository.buscarPorIdConPerfiles(ID_CONVERSACION))
+                .thenReturn(Optional.of(ajena));
+
+        assertThatThrownBy(() -> service.notificarEscribiendo(
+                ID_USUARIO, ID_PERFIL_ACTIVO, ID_CONVERSACION, true))
+                .isInstanceOf(ConversacionNoEncontradaException.class);
     }
 
     private Perfil perfil(Long idPerfil, Long idUsuario, String nombreArtistico) {

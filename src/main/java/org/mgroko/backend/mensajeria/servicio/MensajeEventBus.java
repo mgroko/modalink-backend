@@ -1,6 +1,7 @@
 package org.mgroko.backend.mensajeria.servicio;
 
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
+import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -16,6 +17,8 @@ public interface MensajeEventBus {
     void publicarMensaje(MensajeEvento evento);
 
     void publicarLeido(ConversacionLeidaEvento evento);
+
+    void publicarEscribiendo(EscribiendoEvento evento);
 
     void ping();
 }

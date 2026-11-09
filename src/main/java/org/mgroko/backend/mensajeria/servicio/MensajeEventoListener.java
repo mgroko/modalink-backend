@@ -1,6 +1,7 @@
 package org.mgroko.backend.mensajeria.servicio;
 
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
+import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -31,5 +32,12 @@ public class MensajeEventoListener {
             fallbackExecution = true)
     public void alLeerConversacion(ConversacionLeidaEvento evento) {
         eventBus.publicarLeido(evento);
+    }
+
+    @TransactionalEventListener(
+            phase = TransactionPhase.AFTER_COMMIT,
+            fallbackExecution = true)
+    public void alEscribir(EscribiendoEvento evento) {
+        eventBus.publicarEscribiendo(evento);
     }
 }

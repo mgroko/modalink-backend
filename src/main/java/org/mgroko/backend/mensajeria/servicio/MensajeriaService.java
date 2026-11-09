@@ -12,6 +12,7 @@ import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
 import org.mgroko.backend.mensajeria.dto.ConversacionResponse;
+import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeResponse;
 import org.mgroko.backend.mensajeria.dto.MensajeStreamResponse;
@@ -200,6 +201,30 @@ public class MensajeriaService {
                 mensajeRepository.contarConversacionesNoLeidas(activo.getIdPerfil()));
     }
 
+    /**
+     * Devuelve una conversación puntual del perfil activo. Se usa para abrir
+     * el chat desde el link de una notificación, aunque la conversación no
+     * esté en la primera página del listado.
+     */
+    @Transactional(readOnly = true)
+    public ConversacionResponse obtenerConversacion(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idConversacion) {
+
+        Perfil activo = perfilActivoService.resolver(idUsuario, idPerfilActivo);
+
+        Conversacion conversacion = conversacionRepository
+                .buscarPorIdConPerfiles(idConversacion)
+                .orElseThrow(ConversacionNoEncontradaException::new);
+
+        if (!participa(conversacion, activo.getIdPerfil())) {
+            throw new ConversacionNoEncontradaException();
+        }
+
+        return toConversacionResponse(conversacion, activo.getIdPerfil(), false);
+    }
+
     @Transactional(readOnly = true)
     public PaginaResponse<MensajeResponse> listarMensajes(
             Long idUsuario,
@@ -357,6 +382,42 @@ public class MensajeriaService {
                     ultimoId,
                     fechaLectura));
         }
+    }
+
+    /**
+     * UC-42 - Aviso efímero de escritura. No persiste nada: valida que el
+     * perfil activo participe y que la conexión siga activa, y publica el
+     * evento SSE sólo para la contraparte.
+     */
+    @Transactional(readOnly = true)
+    public void notificarEscribiendo(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idConversacion,
+            boolean escribiendo) {
+
+        Perfil activo = perfilActivoService.resolver(idUsuario, idPerfilActivo);
+
+        Conversacion conversacion = conversacionRepository
+                .buscarPorIdConPerfiles(idConversacion)
+                .orElseThrow(ConversacionNoEncontradaException::new);
+
+        if (!participa(conversacion, activo.getIdPerfil())) {
+            throw new ConversacionNoEncontradaException();
+        }
+
+        Perfil destinatario = MensajeriaMapper.contraparte(
+                conversacion, activo.getIdPerfil());
+
+        validarConexionActiva(conversacion);
+        validarPerfilActivo(destinatario);
+
+        eventPublisher.publishEvent(new EscribiendoEvento(
+                idConversacion,
+                activo.getIdPerfil(),
+                destinatario.getIdPerfil(),
+                escribiendo,
+                LocalDateTime.now(reloj)));
     }
 
     private Perfil validarDestinatario(Perfil activo, Long idPerfilDestinatario) {

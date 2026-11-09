@@ -69,6 +69,14 @@
   leídos, la notificación **no** se marca como leída.
 - No se audita el contenido de los mensajes.
 
+## 5. Escritura efímera
+
+- `POST /conversaciones/{id}/escribiendo` no inserta filas ni usa triggers.
+- El evento SSE `escribiendo` vive en memoria y solo se envía a la contraparte.
+- No genera notificación ni auditoría; si se pierde, el cliente lo oculta por TTL.
+- La validación es la misma que la del envío: perfil activo participante, conexión
+  `ACTIVA` y contraparte activa.
+
 ## 5. Lectura
 
 - `leido = false` significa que la contraparte todavía no leyó el mensaje.

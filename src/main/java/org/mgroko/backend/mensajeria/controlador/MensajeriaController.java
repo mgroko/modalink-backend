@@ -8,6 +8,7 @@ import org.mgroko.backend.mensajeria.config.MensajeriaProperties;
 import org.mgroko.backend.mensajeria.dto.ConversacionResponse;
 import org.mgroko.backend.mensajeria.dto.CrearConversacionRequest;
 import org.mgroko.backend.mensajeria.dto.EnviarMensajeRequest;
+import org.mgroko.backend.mensajeria.dto.EscribiendoRequest;
 import org.mgroko.backend.mensajeria.dto.MarcarLeidoRequest;
 import org.mgroko.backend.mensajeria.dto.MensajeResponse;
 import org.mgroko.backend.mensajeria.dto.ResumenConversacionesResponse;
@@ -87,6 +88,36 @@ public class MensajeriaController {
         return ResponseEntity
                 .status(resultado.creada() ? HttpStatus.CREATED : HttpStatus.OK)
                 .body(resultado.conversacion());
+    }
+
+    @GetMapping("/conversaciones/{idConversacion}")
+    public ResponseEntity<ConversacionResponse> obtener(
+            @PathVariable Long idConversacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(mensajeriaService.obtenerConversacion(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idConversacion));
+    }
+
+    @PostMapping("/conversaciones/{idConversacion}/escribiendo")
+    public ResponseEntity<Void> escribiendo(
+            @PathVariable Long idConversacion,
+            @RequestBody(required = false) EscribiendoRequest request,
+            Authentication authentication) {
+
+        boolean escribiendo = request == null
+                || request.escribiendo() == null
+                || request.escribiendo();
+
+        mensajeriaService.notificarEscribiendo(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idConversacion,
+                escribiendo);
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/conversaciones/{idConversacion}/mensajes")

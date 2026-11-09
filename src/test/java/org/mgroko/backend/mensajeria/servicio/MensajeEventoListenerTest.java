@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
+import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeStreamResponse;
 
@@ -41,5 +42,19 @@ class MensajeEventoListenerTest {
         listener.alLeerConversacion(evento);
 
         verify(eventBus).publicarLeido(evento);
+    }
+
+    @Test
+    void escribiendo_delegaEnElBus() {
+        MensajeEventBus eventBus = mock(MensajeEventBus.class);
+        MensajeEventoListener listener = new MensajeEventoListener(eventBus);
+
+        EscribiendoEvento evento = new EscribiendoEvento(
+                30L, 10L, 20L, true,
+                LocalDateTime.of(2026, 11, 9, 15, 1));
+
+        listener.alEscribir(evento);
+
+        verify(eventBus).publicarEscribiendo(evento);
     }
 }

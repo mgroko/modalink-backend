@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
+import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -64,6 +65,15 @@ public class SseMensajeEventBus implements MensajeEventBus {
         if (!evento.idPerfilLector().equals(evento.idPerfilOtro())) {
             enviar(evento.idPerfilOtro(), "conversacion_leida", evento);
         }
+    }
+
+    /**
+     * El aviso de escritura sólo se envía a la contraparte: el emisor no
+     * necesita mostrarse su propio indicador.
+     */
+    @Override
+    public void publicarEscribiendo(EscribiendoEvento evento) {
+        enviar(evento.idPerfilDestinatario(), "escribiendo", evento);
     }
 
     @Override

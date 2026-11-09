@@ -184,10 +184,12 @@ queda en solo lectura si la conexión se elimina.
 | GET    | `/conversaciones` | Lista las conversaciones del perfil activo. Incluye `tieneNoLeidos` y `puedeEnviar`. |
 | GET    | `/conversaciones/resumen` | Devuelve `totalConversaciones` y `conversacionesNoLeidas` para el badge. |
 | POST   | `/conversaciones` | Obtiene o crea la conversación con `idPerfilDestinatario`. Devuelve `200` si existía y `201` si se creó. |
+| GET    | `/conversaciones/{idConversacion}` | Devuelve una conversación puntual del perfil activo. Se usa para abrir el chat desde un link de notificación. |
 | GET    | `/conversaciones/{idConversacion}/mensajes` | Historial paginado, ordenado del más nuevo al más viejo. |
 | POST   | `/conversaciones/{idConversacion}/mensajes` | Envía un texto de hasta 1000 caracteres. Devuelve `201`. |
+| POST   | `/conversaciones/{idConversacion}/escribiendo` | Aviso efímero de escritura. Body opcional `{ "escribiendo": true|false }`. Devuelve `204`. |
 | PATCH  | `/conversaciones/{idConversacion}/leido` | Marca mensajes como leídos y marca la notificación de la conversación. |
-| GET    | `/mensajes/stream` | Stream SSE del perfil activo con eventos `mensaje` y `conversacion_leida`. |
+| GET    | `/mensajes/stream` | Stream SSE del perfil activo con eventos `mensaje`, `conversacion_leida` y `escribiendo`. |
 
 Reglas:
 
@@ -199,6 +201,7 @@ Reglas:
 - Se crea como máximo una notificación no leída por conversación (`MENSAJE_PRIVADO_RECIBIDO`), cuando la conversación pasa de leída a no leída.
 - Al marcar toda la conversación como leída se marca también esa notificación; si queda algún mensaje no leído, la notificación sigue pendiente.
 - La notificación incluye `link` a `/mensajes?conversacion={idConversacion}`.
+- “Escribiendo” es efímero: se avisa con `POST /escribiendo` y se reenvía por SSE sólo a la contraparte; no se persiste, no notifica y no se audita.
 - Si la conexión se elimina, el historial sigue visible, pero `puedeEnviar` es `false` y el envío responde `409 MENSAJE_NO_PERMITIDO`.
 - Las conexiones eliminadas y el historial no generan auditoría de mensajes.
 - El bus SSE es en memoria y asume una única instancia; para escalar horizontalmente hace falta Redis Pub/Sub o `LISTEN/NOTIFY`.

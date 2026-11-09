@@ -3,6 +3,7 @@ package org.mgroko.backend.mensajeria.controlador;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -25,6 +26,7 @@ import org.mgroko.backend.mensajeria.dto.ConversacionResponse;
 import org.mgroko.backend.mensajeria.dto.MensajeResponse;
 import org.mgroko.backend.mensajeria.dto.PerfilMensajeResponse;
 import org.mgroko.backend.mensajeria.dto.ResumenConversacionesResponse;
+import org.mgroko.backend.mensajeria.exception.ConversacionNoEncontradaException;
 import org.mgroko.backend.mensajeria.servicio.MensajeEventBus;
 import org.mgroko.backend.mensajeria.servicio.MensajeriaService;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -133,6 +135,55 @@ class MensajeriaControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"hastaIdMensaje\":50}"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void obtenerConversacion_devuelve200() throws Exception {
+        when(mensajeriaService.obtenerConversacion(1L, 10L, 30L))
+                .thenReturn(conversacion());
+
+        mockMvc.perform(get("/conversaciones/30")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idConversacion").value(30))
+                .andExpect(jsonPath("$.perfil.idPerfil").value(20));
+    }
+
+    @Test
+    void escribiendo_porDefectoDevuelve204() throws Exception {
+        doNothing().when(mensajeriaService)
+                .notificarEscribiendo(1L, 10L, 30L, true);
+
+        mockMvc.perform(post("/conversaciones/30/escribiendo")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isNoContent());
+
+        verify(mensajeriaService).notificarEscribiendo(1L, 10L, 30L, true);
+    }
+
+    @Test
+    void escribiendo_falseDevuelve204() throws Exception {
+        doNothing().when(mensajeriaService)
+                .notificarEscribiendo(1L, 10L, 30L, false);
+
+        mockMvc.perform(post("/conversaciones/30/escribiendo")
+                        .principal(autenticacion(10L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"escribiendo\":false}"))
+                .andExpect(status().isNoContent());
+
+        verify(mensajeriaService).notificarEscribiendo(1L, 10L, 30L, false);
+    }
+
+    @Test
+    void escribiendo_conversacionAjena_devuelve404() throws Exception {
+        doThrow(new ConversacionNoEncontradaException())
+                .when(mensajeriaService)
+                .notificarEscribiendo(1L, 10L, 30L, true);
+
+        mockMvc.perform(post("/conversaciones/30/escribiendo")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

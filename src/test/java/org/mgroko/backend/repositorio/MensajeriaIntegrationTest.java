@@ -260,8 +260,37 @@ class MensajeriaIntegrationTest extends AbstractPostgresIntegrationTest {
                 mensajeriaService.enviarMensaje(
                         perfilA.idUsuario(), perfilA.idPerfil(), idConversacion, "Otro"));
 
+        assertThrows(MensajeNoPermitidoException.class, () ->
+                mensajeriaService.notificarEscribiendo(
+                        perfilA.idUsuario(), perfilA.idPerfil(), idConversacion, true));
+
         mensajeriaService.marcarLeido(
                 perfilB.idUsuario(), perfilB.idPerfil(), idConversacion, null);
+    }
+
+    @Test
+    void obtenerConversacion_devuelveLaContraparte() {
+        ConversacionResponse conversacion = mensajeriaService.obtenerConversacion(
+                perfilA.idUsuario(), perfilA.idPerfil(), idConversacion);
+
+        assertEquals(idConversacion, conversacion.idConversacion());
+        assertEquals(perfilB.idPerfil(), conversacion.perfil().idPerfil());
+        assertTrue(conversacion.puedeEnviar());
+    }
+
+    @Test
+    void obtenerConversacion_tercero_lanzaNoEncontrada() {
+        assertThrows(ConversacionNoEncontradaException.class, () ->
+                mensajeriaService.obtenerConversacion(
+                        perfilC.idUsuario(), perfilC.idPerfil(), idConversacion));
+    }
+
+    @Test
+    void notificarEscribiendo_conConexionActiva_noFalla() {
+        mensajeriaService.notificarEscribiendo(
+                perfilA.idUsuario(), perfilA.idPerfil(), idConversacion, true);
+        mensajeriaService.notificarEscribiendo(
+                perfilA.idUsuario(), perfilA.idPerfil(), idConversacion, false);
     }
 
     @Test

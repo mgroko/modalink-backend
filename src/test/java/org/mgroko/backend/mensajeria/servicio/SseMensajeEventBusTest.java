@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
+import org.mgroko.backend.mensajeria.dto.EscribiendoEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeStreamResponse;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -59,6 +60,25 @@ class SseMensajeEventBusTest {
         bus.publicarMensaje(evento());
 
         verify(emisor, never()).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void publicarEscribiendo_enviaSoloAlDestinatario() throws Exception {
+        SseEmitter emisor = mock(SseEmitter.class);
+        SseEmitter receptor = mock(SseEmitter.class);
+        SseEmitter ajeno = mock(SseEmitter.class);
+
+        bus.registrarSuscriptor(10L, emisor);
+        bus.registrarSuscriptor(20L, receptor);
+        bus.registrarSuscriptor(30L, ajeno);
+
+        bus.publicarEscribiendo(new EscribiendoEvento(
+                30L, 10L, 20L, true,
+                LocalDateTime.of(2026, 11, 9, 15, 0)));
+
+        verify(receptor, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+        verify(emisor, never()).send(any(SseEmitter.SseEventBuilder.class));
+        verify(ajeno, never()).send(any(SseEmitter.SseEventBuilder.class));
     }
 
     private MensajeEvento evento() {

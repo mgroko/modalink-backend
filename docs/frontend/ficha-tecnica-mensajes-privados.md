@@ -28,8 +28,10 @@ conversaciones separadas.
 | `GET` | `/conversaciones?page=0&size=20` | Lista conversaciones del perfil activo |
 | `GET` | `/conversaciones/resumen` | Badge de conversaciones no leídas |
 | `POST` | `/conversaciones` | Obtiene o crea la conversación con un perfil |
+| `GET` | `/conversaciones/{idConversacion}` | Conversación puntual (para abrir el chat desde una notificación) |
 | `GET` | `/conversaciones/{idConversacion}/mensajes?page=0&size=50` | Historial paginado |
 | `POST` | `/conversaciones/{idConversacion}/mensajes` | Envía un mensaje |
+| `POST` | `/conversaciones/{idConversacion}/escribiendo` | Aviso efímero de escritura (`{ "escribiendo": true|false }`) |
 | `PATCH` | `/conversaciones/{idConversacion}/leido` | Marca la conversación como leída |
 | `GET` | `/mensajes/stream` | Stream SSE del perfil activo |
 
@@ -121,6 +123,31 @@ la página para mostrarla en orden cronológico.
 `puedeEnviar = false` si la conexión fue eliminada o algún participante dejó de estar
 activo. En ese caso el historial se puede leer, pero no enviar.
 
+### Obtener una conversación
+
+```http
+GET /conversaciones/12
+```
+
+Devuelve el mismo formato que un elemento de la lista. Sirve para abrir el chat desde
+un link de notificación cuando la conversación no está en la página cargada. Responde
+`404 CONVERSACION_NO_ENCONTRADA` si no existe o el perfil activo no participa.
+
+### Aviso de escritura
+
+```http
+POST /conversaciones/12/escribiendo
+Content-Type: application/json
+
+{ "escribiendo": true }
+```
+
+- Body opcional; sin body se asume `true`.
+- `204 No Content`.
+- `404` si no existe o el perfil activo no participa.
+- `409 MENSAJE_NO_PERMITIDO` si la conexión dejó de estar activa.
+- No persiste nada, no crea notificación y no se audita.
+
 ### Resumen
 
 ```json
@@ -180,6 +207,23 @@ data: {
 }
 ```
 
+- Evento `escribiendo` (solo se envía a la contraparte):
+
+```text
+event: escribiendo
+data: {
+  "idConversacion": 12,
+  "idPerfilEmisor": 10,
+  "idPerfilDestinatario": 20,
+  "escribiendo": true,
+  "fechaEvento": "2026-11-09T15:02:00"
+}
+```
+
+El frontend muestra el indicador mientras reciba `escribiendo: true`; con
+`escribiendo: false`, con un `mensaje` de la contraparte o tras 4 segundos sin
+eventos, lo oculta.
+
 El mismo evento `mensaje` se envía al emisor y al receptor. El frontend decide si el
 mensaje es propio comparando `idPerfilEmisor` con el perfil activo.
 
@@ -205,6 +249,10 @@ mensaje es propio comparando `idPerfilEmisor` con el perfil activo.
 11. El emisor no recibe notificación por su propio mensaje.
 12. No se audita el contenido.
 13. No hay adjuntos, edición, borrado ni búsqueda.
+14. “Escribiendo” es efímero: no se persiste, no genera notificación ni auditoría y
+    sólo se envía a la contraparte.
+15. La notificación `MENSAJE_PRIVADO_RECIBIDO` incluye
+    `link = /mensajes?conversacion={idConversacion}`.
 
 ## 6. Errores
 
@@ -227,3 +275,10 @@ mensaje es propio comparando `idPerfilEmisor` con el perfil activo.
 - El badge de “Mensajes” usa `conversacionesNoLeidas`.
 - Mostrar doble tilde cuando `leido = true` en los mensajes propios.
 - Si `puedeEnviar = false`, ocultar o deshabilitar el editor y mostrar el historial.
+- Para “Escribiendo…”, enviar `POST /escribiendo` como máximo cada 3 segundos mientras
+  haya texto, y `escribiendo: false` al enviar, vaciar el campo o cambiar de chat.
+  Ocultar el indicador a los 4 segundos sin eventos. Mostrarlo arriba del composer y
+  en la fila de la lista sin reordenar.
+- La notificación de mensaje navega a `/mensajes?conversacion={idConversacion}`; si la
+  conversación no está en la página cargada, resolverla con `GET /conversaciones/{id}`.
+  Mantener el query param sincronizado con el chat abierto.
