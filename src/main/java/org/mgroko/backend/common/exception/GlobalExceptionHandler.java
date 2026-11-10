@@ -412,6 +412,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleImagenMoodboardNoEncontrada(
+            org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(LimiteImagenesPublicacionExcedidoException.class)
     public ResponseEntity<Map<String, Object>> handleLimiteImagenesPublicacionExcedido(
             LimiteImagenesPublicacionExcedidoException ex) {

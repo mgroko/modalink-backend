@@ -29,9 +29,11 @@ import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
+import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.repositorio.ImagenRepository;
@@ -277,5 +279,63 @@ class MoodboardImagenesServiceTest {
 
         verify(proyectoSecurityService).validarPermiso(
                 eq(5L), eq(2L), eq(MoodboardImagenesService.PERMISO_MODIFICAR_PROYECTO));
+    }
+
+    @Test
+    void subirImagenes_proyectoFinalizado_lanzaEstadoNoModificable() {
+        proyecto.setEstado(EstadoProyecto.FINALIZADO);
+
+        assertThrows(EstadoProyectoNoModificableException.class, () ->
+                servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg"))));
+
+        verify(storageService, never()).almacenarImagenMoodboard(any());
+    }
+
+    @Test
+    void subirImagenes_proyectoCancelado_lanzaEstadoNoModificable() {
+        proyecto.setEstado(EstadoProyecto.CANCELADO);
+
+        assertThrows(EstadoProyectoNoModificableException.class, () ->
+                servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg"))));
+
+        verify(storageService, never()).almacenarImagenMoodboard(any());
+    }
+
+    @Test
+    void subirImagenes_proyectoPublicado_permiteSubir() {
+        proyecto.setEstado(EstadoProyecto.PUBLICADO);
+        when(moodboardRepository.findByProyectoIdProyecto(5L)).thenReturn(Optional.of(
+                Moodboard.builder().idMoodboard(7L).proyecto(proyecto).imagenes(new HashSet<>()).build()));
+        when(moodboardRepository.save(any(Moodboard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        devolverAlmacenado("a.jpg", "moodboard_a.webp");
+        when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
+            Imagen imagen = invocation.getArgument(0);
+            imagen.setIdImagen(12L);
+            return imagen;
+        });
+
+        MoodboardResponse response = servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg")));
+
+        assertEquals(1, response.imagenes().size());
+        verify(storageService).almacenarImagenMoodboard(any());
+    }
+
+    @Test
+    void subirImagenes_proyectoConfirmado_permiteSubir() {
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        when(moodboardRepository.findByProyectoIdProyecto(5L)).thenReturn(Optional.of(
+                Moodboard.builder().idMoodboard(7L).proyecto(proyecto).imagenes(new HashSet<>()).build()));
+        when(moodboardRepository.save(any(Moodboard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        devolverAlmacenado("a.jpg", "moodboard_a.webp");
+        when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
+            Imagen imagen = invocation.getArgument(0);
+            imagen.setIdImagen(12L);
+            return imagen;
+        });
+
+        MoodboardResponse response = servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg")));
+
+        assertEquals(1, response.imagenes().size());
+        verify(storageService).almacenarImagenMoodboard(any());
     }
 }

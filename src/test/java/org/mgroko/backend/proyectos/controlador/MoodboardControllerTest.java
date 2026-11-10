@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.proyectos.dto.ImagenMoodboardResponse;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
+import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.MoodboardImagenesService;
@@ -108,5 +109,21 @@ class MoodboardControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("El moodboard no puede contener más de 10 imágenes."));
+    }
+
+    @Test
+    void subirImagenes_proyectoFinalizado_devuelve409() throws Exception {
+        MockMultipartFile archivo = new MockMultipartFile(
+                "archivos", "mood.jpg", MediaType.IMAGE_JPEG_VALUE, "bytes".getBytes());
+
+        when(moodboardImagenesService.subirImagenes(eq(1L), eq(10L), eq(101L), any()))
+                .thenThrow(new EstadoProyectoNoModificableException("Finalizado"));
+
+        mockMvc.perform(multipart("/proyectos/{id}/moodboard/imagenes", 101L)
+                        .file(archivo)
+                        .principal(auth(1L, 10L)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message")
+                        .value("No se puede modificar un proyecto en estado Finalizado."));
     }
 }

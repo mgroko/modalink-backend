@@ -26,8 +26,9 @@ public class MoodboardController {
         this.moodboardImagenesService = moodboardImagenesService;
     }
 
-    // UC-24: subir imágenes del moodboard (paso 2 tras pulsar Finalizar:
-    // el front primero llama POST /proyectos y con el id devuelto, este endpoint)
+    // UC-24 / UC-36: subir imágenes del moodboard. En la creación el front
+    // primero llama POST /proyectos y con el id devuelto usa este endpoint;
+    // en la modificación sirve para agregar imágenes nuevas.
     @PostMapping(value = "/proyectos/{idProyecto}/moodboard/imagenes",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MoodboardResponse> subirImagenes(

@@ -11,6 +11,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
+import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
@@ -27,8 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * UC-24: subida de imágenes del moodboard una vez creado el proyecto
- * (flujo del wizard: el front llama a POST /proyectos y, enseguida, a este endpoint).
+ * UC-24 / UC-36: alta de imágenes del moodboard de un proyecto ya creado.
+ * En la creación el front llama a POST /proyectos y, enseguida, a este
+ * endpoint; en la modificación se usa para agregar las imágenes nuevas.
  */
 @Service
 public class MoodboardImagenesService {
@@ -79,6 +81,10 @@ public class MoodboardImagenesService {
                 .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
 
         proyectoSecurityService.validarPermiso(idProyecto, idPerfilActivo, PERMISO_MODIFICAR_PROYECTO);
+
+        if (!proyecto.getEstado().permiteModificacion()) {
+            throw new EstadoProyectoNoModificableException(proyecto.getEstado().getNombre());
+        }
 
         if (archivos == null || archivos.isEmpty()) {
             throw new ArchivoVacioException("Debes adjuntar al menos una imagen para el moodboard.");

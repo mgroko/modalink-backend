@@ -28,6 +28,14 @@ public enum EstadoProyecto {
     }
 
     /**
+     * Indica si el proyecto admite modificación de su información (UC-36),
+     * incluido el moodboard. Un proyecto finalizado o cancelado es inmutable.
+     */
+    public boolean permiteModificacion() {
+        return this == BORRADOR || this == PUBLICADO || this == CONFIRMADO;
+    }
+
+    /**
      * Indica si el proyecto admite reprogramación de actividades.
      *
      * <p>Los proyectos publicados y confirmados tienen cronograma calculable.
