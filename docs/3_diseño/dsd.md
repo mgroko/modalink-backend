@@ -21,7 +21,8 @@
 > - `perfilActivo` y `usuarioActivo` representan el contexto de sesión del
 >   actor; no se declaran como variables locales.
 > - Quedan fuera de este alcance los UC que no tienen DSS ni contrato en la
->   Fase 2 (por ejemplo, UC-39, UC-53, UC-54, UC-55 y UC-68).
+>   Fase 2 (por ejemplo, UC-54, UC-55 y UC-68) y los UC no iniciados
+>   (UC-45 y UC-62).
 
 ## Correspondencia con el modelo de datos
 
@@ -34,8 +35,16 @@
 | `perfilesTyc` | `perfil_tyc` |
 | `profesiones` | `profesion` |
 | `caracteristicasTecnicas` | `caracteristica_tecnica` |
+| `valoresCaracteristica` | `valor_caracteristica` |
+| `caracteristicasPerfil` | `caracteristica_perfil` |
+| `unidadesMedida` | `unidad_medida` |
 | `habilidades` | `habilidad` |
 | `proyectos` | `proyecto` |
+| `tiposAcuerdoContrato` | `tipo_acuerdo_contrato` |
+| `contratos` | `contrato` |
+| `firmasContrato` | `firma_contrato` |
+| `contratoVersiones` | `contrato_version` |
+| `eventosContrato` | `contrato_evento` |
 | `planificaciones` | `planificacion` |
 | `rolesProyecto` | `rol_proyecto` |
 | `ubicaciones` | `ubicacion` |
@@ -94,11 +103,14 @@
 | UC-36 | `modificarProyecto` |
 | UC-37 | `finalizarProyecto`, `calificarMiembro` |
 | UC-38 | `eliminarIntegrante` |
+| UC-39 | `obtenerOpcionesContrato`, `previsualizarContrato`, `generarContrato` |
 | UC-40 | `darseDeBaja` |
 | UC-49 | `crearActividad`, `agregarPredecesora`, `buscarUbicacion`, `agregarUbicacion`, `agregarRequerimiento` |
 | UC-50 | `modificarActividad` |
 | UC-51 | `eliminarActividad`, `guardarMiembro` |
 | UC-52 | `buscarActividades`, `seleccionarActividad` |
+| UC-53 | `previsualizarModificacionContrato`, `modificarContrato` |
+| UC-57 | `listarCaracteristicasTecnicas`, `registrarCaracteristicaTecnica`, `modificarCaracteristicaTecnica`, `eliminarCaracteristicaTecnica`, `agregarValorCaracteristica`, `modificarValorCaracteristica`, `eliminarValorCaracteristica` |
 | UC-60 | `confirmarProyecto` |
 | UC-67 | `listarAuditoria`, `listarTiposEventoAuditoria`, `obtenerResumenAuditoria`, `exportarAuditoria` |
 | UC-70 | `buscarUsuario`, `verificarDisponibilidad`, `asignarActividad` |
@@ -627,6 +639,332 @@ del Contrato y conserva la referencia al UC:
        - `:ModaLink` retorna `archivo` al actor.
 
 ---
+
+### DSD listarCaracteristicasTecnicas() | UC-57: Gestionar características técnicas por profesión
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `caracteristicasPerfil` (Colección de características de perfil)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+  - `unUso : CaracteristicaPerfil` (Instancia de la entidad CaracteristicaPerfil)
+  - `unRequerimiento : RequerimientoActividad` (Instancia de la entidad RequerimientoActividad)
+- **Variables locales / Notas:**
+  - `Lista caracteristicas = nueva Lista()`
+  - `boolean enUso`
+- **Flujo de interacción:**
+  1. El actor envía `caracteristicas = listarCaracteristicasTecnicas()` a `:ModaLink`.
+  2. Se inicializan las variables locales `caracteristicas` y `enUso`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya características técnicas]:
+     - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCaracteristica`: `enUso = estaEnUso(caracteristicasPerfil, requerimientosActividad, requerimientosGenerales)`.
+     - `:ModaLink` agrega a `caracteristicas`: `CaracteristicaTecnicaResponse(unaCaracteristica, enUso)`.
+  4. `:ModaLink` ordena `caracteristicas` por código.
+  5. `:ModaLink` retorna `caracteristicas` al actor.
+
+---
+
+### DSD registrarCaracteristicaTecnica(codigo, nombre, idUnidad, idProfesion, tipoDato, valores[]) | UC-57: Gestionar características técnicas por profesión
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `profesiones` (Colección de profesiones)
+  - `unidadesMedida` (Colección de unidades de medida)
+  - `valoresCaracteristica` (Colección de valores de característica)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+  - `unaProfesion : Profesion` (Instancia de la entidad Profesion)
+  - `unaUnidad : UnidadMedida` (Instancia de la entidad UnidadMedida)
+  - `unValor : ValorCaracteristica` (Instancia de la entidad ValorCaracteristica)
+- **Variables locales / Notas:**
+  - `boolean codigoDuplicado = false`
+  - `boolean profesionValida = false`
+  - `boolean tipoValido`
+  - `boolean unidadCompatible = true`
+  - `boolean valoresValidos = true`
+- **Flujo de interacción:**
+  1. El actor envía `unaCaracteristica = registrarCaracteristicaTecnica(codigo, nombre, idUnidad, idProfesion, tipoDato, valores[])` a `:ModaLink`.
+  2. Se inicializan las variables locales `codigoDuplicado`, `profesionValida`, `tipoValido`, `unidadCompatible` y `valoresValidos`.
+  3. `:ModaLink` valida el tipo de dato: `tipoValido = tipoDato == "ENUMERADO" || tipoDato == "TEXTO" || tipoDato == "NUMERICO"`.
+  4. **Bloque Alternativo (`alt`)** [!tipoValido]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("tipoDato debe ser ENUMERADO, TEXTO o NUMERICO")`.
+  5. **Bloque Alternativo (`alt`)** [tipoValido]:
+     - **Bloque Bucle (`loop`)** [Mientras haya características técnicas && `codigoDuplicado == false`]:
+       - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unaCaracteristica`: `codigoDuplicado = tieneCodigo(codigo)`.
+     - **Bloque Alternativo (`alt`)** [codigoDuplicado]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Ya existe una característica técnica con ese código")`.
+     - **Bloque Alternativo (`alt`)** [!codigoDuplicado]:
+       - **Bloque Bucle (`loop`)** [Mientras haya profesiones && `profesionValida == false`]:
+         - `:ModaLink` solicita a `profesiones`: `unaProfesion = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unaProfesion`: `profesionValida = tieneId(idProfesion)`.
+       - **Bloque Alternativo (`alt`)** [!profesionValida]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("La profesión no existe")`.
+       - **Bloque Alternativo (`alt`)** [profesionValida]:
+         - **Bloque Alternativo (`alt`)** [idUnidad == null]:
+           - `unaUnidad = null`.
+         - **Bloque Opcional (`opt`)** [idUnidad != null]:
+           - `:ModaLink` solicita a `unidadesMedida`: `unaUnidad = buscarPorId(idUnidad)`.
+           - **Bloque Alternativo (`alt`)** [unaUnidad == null]:
+             - `:ModaLink` retorna una excepción al actor: `Excepcion("La unidad de medida no existe")`.
+           - **Bloque Alternativo (`alt`)** [unaUnidad != null]:
+             - `:ModaLink` consulta a `unaUnidad`: `unidadCompatible = permiteTipoDato(tipoDato)`.
+             - **Bloque Alternativo (`alt`)** [!unidadCompatible]:
+               - `:ModaLink` retorna una excepción al actor: `Excepcion("La unidad no admite el tipo de dato indicado")`.
+         - **Bloque Alternativo (`alt`)** [tipoDato != "ENUMERADO" && valores != null && !valores.isEmpty()]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo las características ENUMERADO admiten valores")`.
+         - **Bloque Alternativo (`alt`)** [unidadCompatible && (tipoDato == "ENUMERADO" || valores == null || valores.isEmpty())]:
+           - `:ModaLink` crea la característica: `unaCaracteristica = registrar(codigo, nombre, unaUnidad, unaProfesion, tipoDato)`.
+           - `caracteristicasTecnicas.agregar(unaCaracteristica)`.
+           - **Bloque Opcional (`opt`)** [tipoDato == "ENUMERADO" && valores != null]:
+             - **Bloque Bucle (`loop`)** [Mientras haya valores por cargar]:
+               - `:ModaLink` solicita a `valores`: `unValor = obtenerSiguiente()`.
+               - `:ModaLink` consulta a `valoresCaracteristica`: `valoresValidos = !existeEtiqueta(unaCaracteristica, unValor.codigo())`.
+               - **Bloque Alternativo (`alt`)** [valoresValidos]:
+                 - `:ModaLink` crea el valor: `unValor = registrar(unaCaracteristica, unValor.codigo(), unValor.colorHex())`.
+                 - `valoresCaracteristica.agregar(unValor)`.
+               - **Bloque Alternativo (`alt`)** [!valoresValidos]:
+                 - `:ModaLink` retorna una excepción al actor: `Excepcion("Valor de catálogo duplicado")`.
+           - `:ModaLink` retorna al actor: `CaracteristicaTecnicaResponse(unaCaracteristica, false)`.
+
+---
+
+### DSD modificarCaracteristicaTecnica(idCaracteristica, codigo, nombre, idUnidad, idProfesion, tipoDato, valores[]) | UC-57: Gestionar características técnicas por profesión
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `caracteristicasPerfil` (Colección de características de perfil)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `profesiones` (Colección de profesiones)
+  - `unidadesMedida` (Colección de unidades de medida)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+  - `unaProfesion : Profesion` (Instancia de la entidad Profesion)
+  - `unaUnidad : UnidadMedida` (Instancia de la entidad UnidadMedida)
+- **Variables locales / Notas:**
+  - `boolean encontrada = false`
+  - `boolean enUso`
+  - `boolean soloNombreValido`
+  - `boolean codigoDuplicado = false`
+  - `boolean profesionValida = false`
+  - `boolean cambioDeTipoInvalido`
+  - `boolean unidadCompatible = true`
+- **Flujo de interacción:**
+  1. El actor envía `unaCaracteristica = modificarCaracteristicaTecnica(idCaracteristica, codigo, nombre, idUnidad, idProfesion, tipoDato, valores[])` a `:ModaLink`.
+  2. Se inicializan las variables locales `encontrada`, `enUso`, `soloNombreValido`, `codigoDuplicado`, `profesionValida`, `cambioDeTipoInvalido` y `unidadCompatible`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya características técnicas && `encontrada == false`]:
+     - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCaracteristica`: `encontrada = tieneId(idCaracteristica)`.
+  4. **Bloque Alternativo (`alt`)** [!encontrada]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Característica técnica inexistente")`.
+  5. **Bloque Alternativo (`alt`)** [encontrada]:
+     - `:ModaLink` consulta a `unaCaracteristica`: `enUso = estaEnUso(caracteristicasPerfil, requerimientosActividad, requerimientosGenerales)`.
+     - **Bloque Alternativo (`alt`)** [enUso]:
+       - `:ModaLink` consulta a `unaCaracteristica`: `soloNombreValido = soloCambiaNombre(codigo, idUnidad, idProfesion, tipoDato)`.
+       - **Bloque Alternativo (`alt`)** [!soloNombreValido]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("La característica está en uso; sólo puede modificarse el nombre")`.
+       - **Bloque Alternativo (`alt`)** [soloNombreValido]:
+         - `:ModaLink` envía a `unaCaracteristica`: `setNombre(nombre)`.
+         - `:ModaLink` retorna al actor: `CaracteristicaTecnicaResponse(unaCaracteristica, enUso)`.
+     - **Bloque Alternativo (`alt`)** [!enUso]:
+       - **Bloque Bucle (`loop`)** [Mientras haya características técnicas && `codigoDuplicado == false`]:
+         - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unaCaracteristica`: `codigoDuplicado = tieneCodigo(codigo) && !tieneId(idCaracteristica)`.
+       - **Bloque Alternativo (`alt`)** [codigoDuplicado]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("Ya existe una característica técnica con ese código")`.
+       - **Bloque Alternativo (`alt`)** [!codigoDuplicado]:
+         - **Bloque Bucle (`loop`)** [Mientras haya profesiones && `profesionValida == false`]:
+           - `:ModaLink` solicita a `profesiones`: `unaProfesion = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unaProfesion`: `profesionValida = tieneId(idProfesion)`.
+         - **Bloque Alternativo (`alt`)** [!profesionValida]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("La profesión no existe")`.
+         - **Bloque Alternativo (`alt`)** [profesionValida]:
+           - `:ModaLink` consulta a `unaCaracteristica`: `cambioDeTipoInvalido = esEnumerada() && tipoDato != "ENUMERADO" && tieneValores()`.
+           - **Bloque Alternativo (`alt`)** [cambioDeTipoInvalido]:
+             - `:ModaLink` retorna una excepción al actor: `Excepcion("Elimine los valores antes de cambiar el tipo")`.
+           - **Bloque Alternativo (`alt`)** [!cambioDeTipoInvalido]:
+             - **Bloque Alternativo (`alt`)** [idUnidad == null]:
+               - `unaUnidad = null`.
+             - **Bloque Opcional (`opt`)** [idUnidad != null]:
+               - `:ModaLink` solicita a `unidadesMedida`: `unaUnidad = buscarPorId(idUnidad)`.
+               - **Bloque Alternativo (`alt`)** [unaUnidad == null]:
+                 - `:ModaLink` retorna una excepción al actor: `Excepcion("La unidad de medida no existe")`.
+               - **Bloque Alternativo (`alt`)** [unaUnidad != null]:
+                 - `:ModaLink` consulta a `unaUnidad`: `unidadCompatible = permiteTipoDato(tipoDato)`.
+                 - **Bloque Alternativo (`alt`)** [!unidadCompatible]:
+                   - `:ModaLink` retorna una excepción al actor: `Excepcion("La unidad no admite el tipo de dato indicado")`.
+             - **Bloque Alternativo (`alt`)** [unidadCompatible && tipoDato != "ENUMERADO" && valores != null && !valores.isEmpty()]:
+               - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo las características ENUMERADO admiten valores")`.
+             - **Bloque Alternativo (`alt`)** [unidadCompatible && (tipoDato == "ENUMERADO" || valores == null || valores.isEmpty())]:
+               - `:ModaLink` envía a `unaCaracteristica`: `setCodigo(codigo)`.
+               - `:ModaLink` envía a `unaCaracteristica`: `setNombre(nombre)`.
+               - `:ModaLink` envía a `unaCaracteristica`: `setUnidad(unaUnidad)`.
+               - `:ModaLink` envía a `unaCaracteristica`: `setTipoDato(tipoDato)`.
+               - `:ModaLink` envía a `unaCaracteristica`: `setProfesion(unaProfesion)`.
+               - `:ModaLink` retorna al actor: `CaracteristicaTecnicaResponse(unaCaracteristica, enUso)`.
+
+---
+
+### DSD eliminarCaracteristicaTecnica(idCaracteristica) | UC-57: Gestionar características técnicas por profesión
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `caracteristicasPerfil` (Colección de características de perfil)
+  - `requerimientosActividad` (Colección de requerimientos de actividad)
+  - `requerimientosGenerales` (Colección de requerimientos generales)
+  - `valoresCaracteristica` (Colección de valores de característica)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+  - `unValor : ValorCaracteristica` (Instancia de la entidad ValorCaracteristica)
+- **Variables locales / Notas:**
+  - `boolean encontrada = false`
+  - `boolean enUso`
+- **Flujo de interacción:**
+  1. El actor envía `eliminarCaracteristicaTecnica(idCaracteristica)` a `:ModaLink`.
+  2. Se inicializan las variables locales `encontrada` y `enUso`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya características técnicas && `encontrada == false`]:
+     - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCaracteristica`: `encontrada = tieneId(idCaracteristica)`.
+  4. **Bloque Alternativo (`alt`)** [!encontrada]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Característica técnica inexistente")`.
+  5. **Bloque Alternativo (`alt`)** [encontrada]:
+     - `:ModaLink` consulta a `unaCaracteristica`: `enUso = estaEnUso(caracteristicasPerfil, requerimientosActividad, requerimientosGenerales)`.
+     - **Bloque Alternativo (`alt`)** [enUso]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("La característica está en uso y no puede eliminarse")`.
+     - **Bloque Alternativo (`alt`)** [!enUso]:
+       - **Bloque Bucle (`loop`)** [Mientras haya valores de la característica]:
+         - `:ModaLink` solicita a `valoresCaracteristica`: `unValor = obtenerSiguiente()`.
+         - **Bloque Alternativo (`alt`)** [unValor.perteneceA(unaCaracteristica)]:
+           - `valoresCaracteristica.eliminar(unValor)`.
+       - `:ModaLink` solicita a `caracteristicasTecnicas`: `eliminar(unaCaracteristica)`.
+       - `:ModaLink` retorna al actor: `operacionExitosa()`.
+
+---
+
+### DSD agregarValorCaracteristica(idCaracteristica, codigo, colorHex) | UC-57: Gestionar características técnicas por profesión
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `valoresCaracteristica` (Colección de valores de característica)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+  - `unValor : ValorCaracteristica` (Instancia de la entidad ValorCaracteristica)
+- **Variables locales / Notas:**
+  - `boolean encontrada = false`
+  - `boolean esEnumerada`
+  - `boolean valorDuplicado = false`
+- **Flujo de interacción:**
+  1. El actor envía `unValor = agregarValorCaracteristica(idCaracteristica, codigo, colorHex)` a `:ModaLink`.
+  2. Se inicializan las variables locales `encontrada`, `esEnumerada` y `valorDuplicado`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya características técnicas && `encontrada == false`]:
+     - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCaracteristica`: `encontrada = tieneId(idCaracteristica)`.
+  4. **Bloque Alternativo (`alt`)** [!encontrada]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Característica técnica inexistente")`.
+  5. **Bloque Alternativo (`alt`)** [encontrada]:
+     - `:ModaLink` consulta a `unaCaracteristica`: `esEnumerada = esEnumerada()`.
+     - **Bloque Alternativo (`alt`)** [!esEnumerada]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo las características ENUMERADO admiten valores")`.
+     - **Bloque Alternativo (`alt`)** [esEnumerada]:
+       - **Bloque Bucle (`loop`)** [Mientras haya valores de la característica && `valorDuplicado == false`]:
+         - `:ModaLink` solicita a `valoresCaracteristica`: `unValor = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unValor`: `valorDuplicado = perteneceA(unaCaracteristica) && tieneEtiqueta(codigo)`.
+       - **Bloque Alternativo (`alt`)** [valorDuplicado]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("La característica ya posee un valor con ese código")`.
+       - **Bloque Alternativo (`alt`)** [!valorDuplicado]:
+         - `:ModaLink` crea el valor: `unValor = registrar(unaCaracteristica, codigo, colorHex)`.
+         - `valoresCaracteristica.agregar(unValor)`.
+         - `:ModaLink` retorna `unValor` al actor.
+
+---
+
+### DSD modificarValorCaracteristica(idCaracteristica, idValor, codigo, colorHex) | UC-57: Gestionar características técnicas por profesión
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `valoresCaracteristica` (Colección de valores de característica)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+  - `unValor : ValorCaracteristica` (Instancia de la entidad ValorCaracteristica)
+  - `otroValor : ValorCaracteristica` (Instancia de la entidad ValorCaracteristica)
+- **Variables locales / Notas:**
+  - `boolean caracteristicaEncontrada = false`
+  - `boolean valorEncontrado = false`
+  - `boolean valorDuplicado = false`
+- **Flujo de interacción:**
+  1. El actor envía `unValor = modificarValorCaracteristica(idCaracteristica, idValor, codigo, colorHex)` a `:ModaLink`.
+  2. Se inicializan las variables locales `caracteristicaEncontrada`, `valorEncontrado` y `valorDuplicado`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya características técnicas && `caracteristicaEncontrada == false`]:
+     - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCaracteristica`: `caracteristicaEncontrada = tieneId(idCaracteristica)`.
+  4. **Bloque Alternativo (`alt`)** [!caracteristicaEncontrada]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Característica técnica inexistente")`.
+  5. **Bloque Alternativo (`alt`)** [caracteristicaEncontrada]:
+     - **Bloque Bucle (`loop`)** [Mientras haya valores de la característica && `valorEncontrado == false`]:
+       - `:ModaLink` solicita a `valoresCaracteristica`: `unValor = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unValor`: `valorEncontrado = tieneId(idValor)`.
+     - **Bloque Alternativo (`alt`)** [!valorEncontrado]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Valor de característica inexistente")`.
+     - **Bloque Alternativo (`alt`)** [valorEncontrado]:
+       - **Bloque Bucle (`loop`)** [Mientras haya valores de la característica && `valorDuplicado == false`]:
+         - `:ModaLink` solicita a `valoresCaracteristica`: `otroValor = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `otroValor`: `valorDuplicado = otroValor.perteneceA(unaCaracteristica) && otroValor.tieneEtiqueta(codigo) && !otroValor.tieneId(idValor)`.
+       - **Bloque Alternativo (`alt`)** [valorDuplicado]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("La característica ya posee un valor con ese código")`.
+       - **Bloque Alternativo (`alt`)** [!valorDuplicado]:
+         - `:ModaLink` envía a `unValor`: `setEtiqueta(codigo)`.
+         - `:ModaLink` envía a `unValor`: `setColorHex(colorHex)`.
+         - `:ModaLink` retorna `unValor` al actor.
+
+---
+
+### DSD eliminarValorCaracteristica(idCaracteristica, idValor) | UC-57: Gestionar características técnicas por profesión
+
+- **Actores:** Administrador
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `caracteristicasTecnicas` (Colección de características técnicas)
+  - `valoresCaracteristica` (Colección de valores de característica)
+  - `caracteristicasPerfil` (Colección de características de perfil)
+  - `unaCaracteristica : CaracteristicaTecnica` (Instancia de la entidad CaracteristicaTecnica)
+  - `unValor : ValorCaracteristica` (Instancia de la entidad ValorCaracteristica)
+  - `unUso : CaracteristicaPerfil` (Instancia de la entidad CaracteristicaPerfil)
+- **Variables locales / Notas:**
+  - `boolean caracteristicaEncontrada = false`
+  - `boolean valorEncontrado = false`
+  - `boolean valorEnUso = false`
+- **Flujo de interacción:**
+  1. El actor envía `eliminarValorCaracteristica(idCaracteristica, idValor)` a `:ModaLink`.
+  2. Se inicializan las variables locales `caracteristicaEncontrada`, `valorEncontrado` y `valorEnUso`.
+  3. **Bloque Bucle (`loop`)** [Mientras haya características técnicas && `caracteristicaEncontrada == false`]:
+     - `:ModaLink` solicita a `caracteristicasTecnicas`: `unaCaracteristica = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unaCaracteristica`: `caracteristicaEncontrada = tieneId(idCaracteristica)`.
+  4. **Bloque Alternativo (`alt`)** [!caracteristicaEncontrada]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Característica técnica inexistente")`.
+  5. **Bloque Alternativo (`alt`)** [caracteristicaEncontrada]:
+     - **Bloque Bucle (`loop`)** [Mientras haya valores de la característica && `valorEncontrado == false`]:
+       - `:ModaLink` solicita a `valoresCaracteristica`: `unValor = obtenerSiguiente()`.
+       - `:ModaLink` consulta a `unValor`: `valorEncontrado = tieneId(idValor)`.
+     - **Bloque Alternativo (`alt`)** [!valorEncontrado]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Valor de característica inexistente")`.
+     - **Bloque Alternativo (`alt`)** [valorEncontrado]:
+       - **Bloque Bucle (`loop`)** [Mientras haya características de perfil && `valorEnUso == false`]:
+         - `:ModaLink` solicita a `caracteristicasPerfil`: `unUso = obtenerSiguiente()`.
+         - `:ModaLink` consulta a `unUso`: `valorEnUso = utilizaValor(unValor)`.
+       - **Bloque Alternativo (`alt`)** [valorEnUso]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El valor está en uso por perfiles y no puede eliminarse")`.
+       - **Bloque Alternativo (`alt`)** [!valorEnUso]:
+         - `:ModaLink` solicita a `valoresCaracteristica`: `eliminar(unValor)`.
+         - `:ModaLink` retorna al actor: `operacionExitosa()`.
 
 ---
 
@@ -2724,4 +3062,513 @@ del Contrato y conserva la referencia al UC:
            - `asignaciones.agregar(unaAsignacion)`.
          - `:ModaLink` agrega a `notificaciones`: `notificarAsignacion(unMiembro, unaActividad)`.
          - `:ModaLink` retorna `unaAsignacion` al actor.
+
+---
+
+## 8. Contratos
+
+### DSD obtenerOpcionesContrato(idProyecto) | UC-39: Generar contrato
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `perfiles` (Colección de perfiles)
+  - `miembros` (Colección de miembros de proyecto)
+  - `tiposAcuerdoContrato` (Colección de tipos de acuerdo de contrato)
+  - `contratos` (Colección de contratos)
+  - `planificaciones` (Colección de planificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unEmisor : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unTipoAcuerdo : TipoAcuerdoContrato` (Instancia de la entidad TipoAcuerdoContrato)
+  - `unContrato : Contrato` (Instancia de la entidad Contrato)
+  - `unaPlanificacion : Planificacion` (Instancia de la entidad Planificacion)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean proyectoEncontrado = false`
+  - `boolean proyectoApto`
+  - `boolean esDirector`
+  - `boolean tipoActivo`
+  - `boolean perteneceAlProyecto`
+  - `Lista tiposActivos = nueva Lista()`
+  - `Lista miembrosActivos = nueva Lista()`
+  - `Lista contratosActivos = nueva Lista()`
+  - `LocalDate fechaEntrega`
+- **Flujo de interacción:**
+  1. El actor envía `opciones = obtenerOpcionesContrato(idProyecto)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `proyectoEncontrado`, `proyectoApto`, `esDirector`, `tipoActivo`, `perteneceAlProyecto`, `tiposActivos`, `miembrosActivos` y `contratosActivos`.
+  3. `:ModaLink` solicita a `perfiles`: `unPerfil = buscarPerfilActivo(perfilActivo)`.
+  4. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no existe o no está activo")`.
+  6. **Bloque Bucle (`loop`)** [Mientras haya proyectos && `proyectoEncontrado == false`]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `proyectoEncontrado = tieneId(idProyecto)`.
+  7. **Bloque Alternativo (`alt`)** [!proyectoEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Proyecto inexistente")`.
+  8. **Bloque Alternativo (`alt`)** [proyectoEncontrado]:
+     - `:ModaLink` consulta a `unProyecto`: `proyectoApto = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+     - **Bloque Alternativo (`alt`)** [!proyectoApto]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo se puede generar un contrato para un proyecto PUBLICADO o CONFIRMADO")`.
+     - **Bloque Alternativo (`alt`)** [proyectoApto]:
+       - `:ModaLink` consulta a `unProyecto`: `esDirector = tieneDirectorActivo(unPerfil)`.
+       - **Bloque Alternativo (`alt`)** [!esDirector]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no es director del proyecto")`.
+       - **Bloque Alternativo (`alt`)** [esDirector]:
+         - `:ModaLink` solicita a `unProyecto`: `unEmisor = obtenerMiembroActivo(unPerfil)`.
+         - **Bloque Bucle (`loop`)** [Mientras haya planificaciones]:
+           - `:ModaLink` solicita a `planificaciones`: `unaPlanificacion = obtenerSiguiente()`.
+           - **Bloque Alternativo (`alt`)** [unaPlanificacion.perteneceA(unProyecto)]:
+             - `fechaEntrega = unaPlanificacion.obtenerFechaEntrega()`.
+         - **Bloque Bucle (`loop`)** [Mientras haya tipos de acuerdo]:
+           - `:ModaLink` solicita a `tiposAcuerdoContrato`: `unTipoAcuerdo = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unTipoAcuerdo`: `tipoActivo = estaActivo()`.
+           - **Bloque Alternativo (`alt`)** [tipoActivo]:
+             - `tiposActivos.agregar(unTipoAcuerdo)`.
+         - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto]:
+           - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unMiembro`: `perteneceAlProyecto = correspondeA(unProyecto) && estaActivo()`.
+           - **Bloque Alternativo (`alt`)** [perteneceAlProyecto]:
+             - `miembrosActivos.agregar(unMiembro)`.
+         - **Bloque Bucle (`loop`)** [Mientras haya contratos del proyecto]:
+           - `:ModaLink` solicita a `contratos`: `unContrato = obtenerSiguiente()`.
+           - **Bloque Alternativo (`alt`)** [unContrato.perteneceA(unProyecto) && unContrato.estaActivo()]:
+             - `contratosActivos.agregar(unContrato)`.
+         - `:ModaLink` retorna al actor: `OpcionesGeneracionContratoResponse(unProyecto, fechaEntrega, unEmisor, tiposActivos, miembrosActivos, contratosActivos)`.
+
+---
+
+### DSD previsualizarContrato(idProyecto, idTipoAcuerdo, idsMiembro[], clausulasAdicionales[]) | UC-39: Generar contrato
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `perfiles` (Colección de perfiles)
+  - `miembros` (Colección de miembros de proyecto)
+  - `tiposAcuerdoContrato` (Colección de tipos de acuerdo de contrato)
+  - `contratos` (Colección de contratos)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unEmisor : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unTipoAcuerdo : TipoAcuerdoContrato` (Instancia de la entidad TipoAcuerdoContrato)
+  - `unContrato : Contrato` (Instancia de la entidad Contrato)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean proyectoEncontrado = false`
+  - `boolean proyectoApto`
+  - `boolean esDirector`
+  - `boolean tipoEncontrado = false`
+  - `boolean sinDestinatarios`
+  - `boolean destinatarioValido`
+  - `boolean tieneContratoActivo`
+  - `Lista destinatarios = nueva Lista()`
+  - `Lista conflictos = nueva Lista()`
+  - `String texto`
+- **Flujo de interacción:**
+  1. El actor envía `previsualizacion = previsualizarContrato(idProyecto, idTipoAcuerdo, idsMiembro[], clausulasAdicionales[])` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `proyectoEncontrado`, `proyectoApto`, `esDirector`, `tipoEncontrado`, `sinDestinatarios`, `destinatarioValido`, `tieneContratoActivo`, `destinatarios` y `conflictos`.
+  3. `:ModaLink` solicita a `perfiles`: `unPerfil = buscarPerfilActivo(perfilActivo)`.
+  4. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no existe o no está activo")`.
+  6. **Bloque Bucle (`loop`)** [Mientras haya proyectos && `proyectoEncontrado == false`]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `proyectoEncontrado = tieneId(idProyecto)`.
+  7. **Bloque Alternativo (`alt`)** [!proyectoEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Proyecto inexistente")`.
+  8. **Bloque Alternativo (`alt`)** [proyectoEncontrado]:
+     - `:ModaLink` consulta a `unProyecto`: `proyectoApto = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+     - **Bloque Alternativo (`alt`)** [!proyectoApto]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo se puede generar un contrato para un proyecto PUBLICADO o CONFIRMADO")`.
+     - **Bloque Alternativo (`alt`)** [proyectoApto]:
+       - `:ModaLink` consulta a `unProyecto`: `esDirector = tieneDirectorActivo(unPerfil)`.
+       - **Bloque Alternativo (`alt`)** [!esDirector]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no es director del proyecto")`.
+       - **Bloque Alternativo (`alt`)** [esDirector]:
+         - **Bloque Bucle (`loop`)** [Mientras haya tipos de acuerdo && `tipoEncontrado == false`]:
+           - `:ModaLink` solicita a `tiposAcuerdoContrato`: `unTipoAcuerdo = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unTipoAcuerdo`: `tipoEncontrado = tieneId(idTipoAcuerdo) && estaActivo()`.
+         - **Bloque Alternativo (`alt`)** [!tipoEncontrado]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("Tipo de acuerdo inexistente o inactivo")`.
+         - **Bloque Alternativo (`alt`)** [tipoEncontrado]:
+           - `:ModaLink` evalúa: `sinDestinatarios = idsMiembro == null || idsMiembro.isEmpty()`.
+           - **Bloque Alternativo (`alt`)** [sinDestinatarios]:
+             - `:ModaLink` retorna una excepción al actor: `Excepcion("Debe seleccionar al menos un miembro destinatario")`.
+           - **Bloque Alternativo (`alt`)** [!sinDestinatarios]:
+             - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto]:
+               - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+               - **Bloque Alternativo (`alt`)** [idsMiembro.contiene(unMiembro.getIdMiembro())]:
+                 - `:ModaLink` consulta a `unMiembro`: `destinatarioValido = correspondeA(unProyecto) && estaActivo()`.
+                 - **Bloque Alternativo (`alt`)** [destinatarioValido]:
+                   - `destinatarios.agregar(unMiembro)`.
+                 - **Bloque Alternativo (`alt`)** [!destinatarioValido]:
+                   - `conflictos.agregar("DESTINATARIO_INVALIDO", unMiembro.getIdMiembro())`.
+             - **Bloque Bucle (`loop`)** [Mientras haya contratos del proyecto]:
+               - `:ModaLink` solicita a `contratos`: `unContrato = obtenerSiguiente()`.
+               - `:ModaLink` consulta a `unContrato`: `tieneContratoActivo = tieneContratoActivoDe(unProyecto, unTipoAcuerdo, destinatarios)`.
+               - **Bloque Alternativo (`alt`)** [tieneContratoActivo]:
+                 - `conflictos.agregar("CONTRATO_DUPLICADO_ACTIVO", unContrato.obtenerMiembroDuplicado())`.
+             - `:ModaLink` solicita a `unProyecto`: `unEmisor = obtenerMiembroActivo(unPerfil)`.
+             - `:ModaLink` solicita a `unTipoAcuerdo`: `texto = generarTexto(unProyecto, unEmisor, destinatarios, clausulasAdicionales)`.
+             - `:ModaLink` retorna al actor: `PrevisualizacionContratoResponse(texto, conflictos.isEmpty(), conflictos)`.
+
+---
+
+### DSD generarContrato(idProyecto, idTipoAcuerdo, idsMiembro[], clausulasAdicionales[]) | UC-39: Generar contrato
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `perfiles` (Colección de perfiles)
+  - `miembros` (Colección de miembros de proyecto)
+  - `tiposAcuerdoContrato` (Colección de tipos de acuerdo de contrato)
+  - `contratos` (Colección de contratos)
+  - `firmasContrato` (Colección de firmas de contrato)
+  - `eventosContrato` (Colección de eventos de contrato)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unEmisor : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unTipoAcuerdo : TipoAcuerdoContrato` (Instancia de la entidad TipoAcuerdoContrato)
+  - `unContrato : Contrato` (Instancia de la entidad Contrato)
+  - `unaFirma : FirmaContrato` (Instancia de la entidad FirmaContrato)
+  - `unDestinatario : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean proyectoEncontrado = false`
+  - `boolean proyectoApto`
+  - `boolean esDirector`
+  - `boolean tipoEncontrado = false`
+  - `boolean sinDestinatarios`
+  - `boolean destinatarioValido`
+  - `boolean tieneContratoActivo`
+  - `Lista destinatarios = nueva Lista()`
+  - `Lista conflictos = nueva Lista()`
+  - `Lista firmas = nueva Lista()`
+  - `String texto`
+  - `String nombre`
+  - `String descripcion`
+- **Flujo de interacción:**
+  1. El actor envía `unContrato = generarContrato(idProyecto, idTipoAcuerdo, idsMiembro[], clausulasAdicionales[])` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `proyectoEncontrado`, `proyectoApto`, `esDirector`, `tipoEncontrado`, `sinDestinatarios`, `destinatarioValido`, `tieneContratoActivo`, `destinatarios`, `conflictos` y `firmas`.
+  3. `:ModaLink` solicita a `perfiles`: `unPerfil = buscarPerfilActivo(perfilActivo)`.
+  4. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no existe o no está activo")`.
+  6. **Bloque Bucle (`loop`)** [Mientras haya proyectos && `proyectoEncontrado == false`]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `proyectoEncontrado = tieneId(idProyecto)`.
+  7. **Bloque Alternativo (`alt`)** [!proyectoEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Proyecto inexistente")`.
+  8. **Bloque Alternativo (`alt`)** [proyectoEncontrado]:
+     - `:ModaLink` consulta a `unProyecto`: `proyectoApto = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+     - **Bloque Alternativo (`alt`)** [!proyectoApto]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo se puede generar un contrato para un proyecto PUBLICADO o CONFIRMADO")`.
+     - **Bloque Alternativo (`alt`)** [proyectoApto]:
+       - `:ModaLink` consulta a `unProyecto`: `esDirector = tieneDirectorActivo(unPerfil)`.
+       - **Bloque Alternativo (`alt`)** [!esDirector]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no es director del proyecto")`.
+       - **Bloque Alternativo (`alt`)** [esDirector]:
+         - **Bloque Bucle (`loop`)** [Mientras haya tipos de acuerdo && `tipoEncontrado == false`]:
+           - `:ModaLink` solicita a `tiposAcuerdoContrato`: `unTipoAcuerdo = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unTipoAcuerdo`: `tipoEncontrado = tieneId(idTipoAcuerdo) && estaActivo()`.
+         - **Bloque Alternativo (`alt`)** [!tipoEncontrado]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("Tipo de acuerdo inexistente o inactivo")`.
+         - **Bloque Alternativo (`alt`)** [tipoEncontrado]:
+           - `:ModaLink` evalúa: `sinDestinatarios = idsMiembro == null || idsMiembro.isEmpty()`.
+           - **Bloque Alternativo (`alt`)** [sinDestinatarios]:
+             - `:ModaLink` retorna una excepción al actor: `Excepcion("Debe seleccionar al menos un miembro destinatario")`.
+           - **Bloque Alternativo (`alt`)** [!sinDestinatarios]:
+             - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto]:
+               - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+               - **Bloque Alternativo (`alt`)** [idsMiembro.contiene(unMiembro.getIdMiembro())]:
+                 - `:ModaLink` consulta a `unMiembro`: `destinatarioValido = correspondeA(unProyecto) && estaActivo()`.
+                 - **Bloque Alternativo (`alt`)** [destinatarioValido]:
+                   - `destinatarios.agregar(unMiembro)`.
+                 - **Bloque Alternativo (`alt`)** [!destinatarioValido]:
+                   - `conflictos.agregar("DESTINATARIO_INVALIDO", unMiembro.getIdMiembro())`.
+             - **Bloque Bucle (`loop`)** [Mientras haya contratos del proyecto]:
+               - `:ModaLink` solicita a `contratos`: `unContrato = obtenerSiguiente()`.
+               - `:ModaLink` consulta a `unContrato`: `tieneContratoActivo = tieneContratoActivoDe(unProyecto, unTipoAcuerdo, destinatarios)`.
+               - **Bloque Alternativo (`alt`)** [tieneContratoActivo]:
+                 - `conflictos.agregar("CONTRATO_DUPLICADO_ACTIVO", unContrato.obtenerMiembroDuplicado())`.
+             - **Bloque Alternativo (`alt`)** [!conflictos.isEmpty()]:
+               - `:ModaLink` retorna una excepción al actor: `Excepcion("Existen conflictos de destinatarios o contratos activos")`.
+             - **Bloque Alternativo (`alt`)** [conflictos.isEmpty()]:
+               - `:ModaLink` solicita a `unTipoAcuerdo`: `texto = generarTexto(unProyecto, unPerfil, destinatarios, clausulasAdicionales)`.
+               - `:ModaLink` solicita a `unTipoAcuerdo`: `nombre = generarNombre(unProyecto)`.
+               - `:ModaLink` solicita a `unProyecto`: `descripcion = generarDescripcion()`.
+               - `:ModaLink` solicita a `unProyecto`: `unEmisor = obtenerMiembroActivo(unPerfil)`.
+               - `:ModaLink` crea el contrato: `unContrato = registrar(unProyecto, unTipoAcuerdo, unEmisor, nombre, descripcion, texto, BORRADOR, 1)`.
+               - `contratos.agregar(unContrato)`.
+               - **Bloque Bucle (`loop`)** [Mientras haya destinatarios]:
+                 - `:ModaLink` solicita a `destinatarios`: `unDestinatario = obtenerSiguiente()`.
+                 - `:ModaLink` crea la firma: `unaFirma = registrar(unContrato, unDestinatario, DESTINATARIO, PENDIENTE)`.
+                 - `firmasContrato.agregar(unaFirma)`.
+                 - `firmas.agregar(unaFirma)`.
+               - `:ModaLink` crea la firma del director: `unaFirma = registrar(unContrato, unEmisor, DIRECTOR, PENDIENTE)`.
+               - `firmasContrato.agregar(unaFirma)`.
+               - `firmas.agregar(unaFirma)`.
+               - `:ModaLink` envía a `unContrato`: `setEstado(PENDIENTE_FIRMA)`.
+               - `:ModaLink` envía a `unContrato`: `setFechaEmision(ahora)`.
+               - `eventosContrato.agregar(registrar(unContrato, EMITIDO, ahora))`.
+               - **Bloque Bucle (`loop`)** [Mientras haya destinatarios]:
+                 - `:ModaLink` solicita a `destinatarios`: `unDestinatario = obtenerSiguiente()`.
+                 - `notificaciones.agregar(notificarContratoPendienteFirma(unDestinatario, unContrato))`.
+               - `:ModaLink` retorna al actor: `ContratoGeneradoResponse(unContrato, firmas)`.
+
+---
+
+### DSD previsualizarModificacionContrato(idProyecto, idContrato, idTipoAcuerdo, idsMiembro[], texto, clausulasAdicionales[], nombre, descripcion) | UC-53: Modificar contrato
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `perfiles` (Colección de perfiles)
+  - `miembros` (Colección de miembros de proyecto)
+  - `tiposAcuerdoContrato` (Colección de tipos de acuerdo de contrato)
+  - `contratos` (Colección de contratos)
+  - `firmasContrato` (Colección de firmas de contrato)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unTipoAcuerdo : TipoAcuerdoContrato` (Instancia de la entidad TipoAcuerdoContrato)
+  - `unContrato : Contrato` (Instancia de la entidad Contrato)
+  - `otroContrato : Contrato` (Instancia de la entidad Contrato)
+  - `unaFirma : FirmaContrato` (Instancia de la entidad FirmaContrato)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean proyectoEncontrado = false`
+  - `boolean proyectoApto`
+  - `boolean esDirector`
+  - `boolean contratoEncontrado = false`
+  - `boolean contratoPendiente`
+  - `boolean firmaRegistrada = false`
+  - `boolean tipoEncontrado = false`
+  - `boolean sinDestinatarios`
+  - `boolean destinatarioValido`
+  - `boolean tieneContratoActivo`
+  - `Lista destinatarios = nueva Lista()`
+  - `Lista conflictos = nueva Lista()`
+  - `String textoFinal`
+  - `String nombreFinal`
+  - `String descripcionFinal`
+- **Flujo de interacción:**
+  1. El actor envía `previsualizacion = previsualizarModificacionContrato(idProyecto, idContrato, idTipoAcuerdo, idsMiembro[], texto, clausulasAdicionales[], nombre, descripcion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `proyectoEncontrado`, `proyectoApto`, `esDirector`, `contratoEncontrado`, `contratoPendiente`, `firmaRegistrada`, `tipoEncontrado`, `sinDestinatarios`, `destinatarioValido`, `tieneContratoActivo`, `destinatarios` y `conflictos`.
+  3. `:ModaLink` solicita a `perfiles`: `unPerfil = buscarPerfilActivo(perfilActivo)`.
+  4. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no existe o no está activo")`.
+  6. **Bloque Bucle (`loop`)** [Mientras haya proyectos && `proyectoEncontrado == false`]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `proyectoEncontrado = tieneId(idProyecto)`.
+  7. **Bloque Alternativo (`alt`)** [!proyectoEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Proyecto inexistente")`.
+  8. **Bloque Alternativo (`alt`)** [proyectoEncontrado]:
+     - `:ModaLink` consulta a `unProyecto`: `proyectoApto = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+     - **Bloque Alternativo (`alt`)** [!proyectoApto]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo se puede modificar un contrato de un proyecto PUBLICADO o CONFIRMADO")`.
+     - **Bloque Alternativo (`alt`)** [proyectoApto]:
+       - `:ModaLink` consulta a `unProyecto`: `esDirector = tieneDirectorActivo(unPerfil)`.
+       - **Bloque Alternativo (`alt`)** [!esDirector]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no es director del proyecto")`.
+       - **Bloque Alternativo (`alt`)** [esDirector]:
+         - **Bloque Bucle (`loop`)** [Mientras haya contratos && `contratoEncontrado == false`]:
+           - `:ModaLink` solicita a `contratos`: `unContrato = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unContrato`: `contratoEncontrado = tieneId(idContrato) && perteneceA(unProyecto)`.
+         - **Bloque Alternativo (`alt`)** [!contratoEncontrado]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("Contrato inexistente")`.
+         - **Bloque Alternativo (`alt`)** [contratoEncontrado]:
+           - `:ModaLink` consulta a `unContrato`: `contratoPendiente = estaEnEstado(PENDIENTE_FIRMA)`.
+           - **Bloque Alternativo (`alt`)** [!contratoPendiente]:
+             - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo se puede modificar un contrato PENDIENTE_FIRMA")`.
+           - **Bloque Alternativo (`alt`)** [contratoPendiente]:
+             - **Bloque Bucle (`loop`)** [Mientras haya firmas del contrato && `firmaRegistrada == false`]:
+               - `:ModaLink` solicita a `firmasContrato`: `unaFirma = obtenerSiguiente()`.
+               - `:ModaLink` consulta a `unaFirma`: `firmaRegistrada = estaFirmada() || estaRechazada() || estaInvalidada()`.
+             - **Bloque Alternativo (`alt`)** [firmaRegistrada]:
+               - `:ModaLink` retorna una excepción al actor: `Excepcion("No se puede modificar un contrato con firmas registradas")`.
+             - **Bloque Alternativo (`alt`)** [!firmaRegistrada]:
+               - **Bloque Bucle (`loop`)** [Mientras haya tipos de acuerdo && `tipoEncontrado == false`]:
+                 - `:ModaLink` solicita a `tiposAcuerdoContrato`: `unTipoAcuerdo = obtenerSiguiente()`.
+                 - `:ModaLink` consulta a `unTipoAcuerdo`: `tipoEncontrado = tieneId(idTipoAcuerdo) && estaActivo()`.
+               - **Bloque Alternativo (`alt`)** [!tipoEncontrado]:
+                 - `:ModaLink` retorna una excepción al actor: `Excepcion("Tipo de acuerdo inexistente o inactivo")`.
+               - **Bloque Alternativo (`alt`)** [tipoEncontrado]:
+                 - `:ModaLink` evalúa: `sinDestinatarios = idsMiembro == null || idsMiembro.isEmpty()`.
+                 - **Bloque Alternativo (`alt`)** [sinDestinatarios]:
+                   - `:ModaLink` retorna una excepción al actor: `Excepcion("Debe seleccionar al menos un miembro destinatario")`.
+                 - **Bloque Alternativo (`alt`)** [!sinDestinatarios]:
+                   - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto]:
+                     - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+                     - **Bloque Alternativo (`alt`)** [idsMiembro.contiene(unMiembro.getIdMiembro())]:
+                       - `:ModaLink` consulta a `unMiembro`: `destinatarioValido = correspondeA(unProyecto) && estaActivo()`.
+                       - **Bloque Alternativo (`alt`)** [destinatarioValido]:
+                         - `destinatarios.agregar(unMiembro)`.
+                       - **Bloque Alternativo (`alt`)** [!destinatarioValido]:
+                         - `conflictos.agregar("DESTINATARIO_INVALIDO", unMiembro.getIdMiembro())`.
+                   - **Bloque Bucle (`loop`)** [Mientras haya contratos del proyecto]:
+                     - `:ModaLink` solicita a `contratos`: `otroContrato = obtenerSiguiente()`.
+                     - `:ModaLink` consulta a `otroContrato`: `tieneContratoActivo = otroContrato.tieneContratoActivoDe(unProyecto, unTipoAcuerdo, destinatarios)`.
+                     - **Bloque Alternativo (`alt`)** [tieneContratoActivo]:
+                       - `conflictos.agregar("CONTRATO_DUPLICADO_ACTIVO", otroContrato.obtenerMiembroDuplicado())`.
+                   - **Bloque Alternativo (`alt`)** [texto != null && texto != ""]:
+                     - `:ModaLink` solicita a `unContrato`: `textoFinal = validarTexto(texto)`.
+                   - **Bloque Alternativo (`alt`)** [texto == null || texto == ""]:
+                     - `:ModaLink` solicita a `unTipoAcuerdo`: `textoFinal = generarTexto(unProyecto, unContrato.obtenerEmisor(), destinatarios, clausulasAdicionales)`.
+                   - **Bloque Alternativo (`alt`)** [nombre != null && nombre != ""]:
+                     - `nombreFinal = nombre`.
+                   - **Bloque Alternativo (`alt`)** [nombre == null || nombre == ""]:
+                     - `:ModaLink` solicita a `unContrato`: `nombreFinal = generarNombre(unTipoAcuerdo, unProyecto)`.
+                   - **Bloque Alternativo (`alt`)** [descripcion != null]:
+                     - `descripcionFinal = descripcion`.
+                   - **Bloque Alternativo (`alt`)** [descripcion == null]:
+                     - `:ModaLink` solicita a `unContrato`: `descripcionFinal = obtenerDescripcion()`.
+                   - `:ModaLink` retorna al actor: `PrevisualizacionModificacionResponse(textoFinal, nombreFinal, descripcionFinal, conflictos)`.
+
+---
+
+### DSD modificarContrato(idProyecto, idContrato, idTipoAcuerdo, idsMiembro[], texto, clausulasAdicionales[], nombre, descripcion) | UC-53: Modificar contrato
+
+- **Actores:** Director de proyecto
+- **Objetos / Instancias participantes:**
+  - `:ModaLink` (Controlador / Sistema)
+  - `proyectos` (Colección de proyectos)
+  - `perfiles` (Colección de perfiles)
+  - `miembros` (Colección de miembros de proyecto)
+  - `tiposAcuerdoContrato` (Colección de tipos de acuerdo de contrato)
+  - `contratos` (Colección de contratos)
+  - `firmasContrato` (Colección de firmas de contrato)
+  - `eventosContrato` (Colección de eventos de contrato)
+  - `notificaciones` (Colección de notificaciones)
+  - `unProyecto : Proyecto` (Instancia de la entidad Proyecto)
+  - `unPerfil : Perfil` (Instancia de la entidad Perfil)
+  - `unMiembro : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+  - `unTipoAcuerdo : TipoAcuerdoContrato` (Instancia de la entidad TipoAcuerdoContrato)
+  - `unContrato : Contrato` (Instancia de la entidad Contrato)
+  - `otroContrato : Contrato` (Instancia de la entidad Contrato)
+  - `unaFirma : FirmaContrato` (Instancia de la entidad FirmaContrato)
+  - `unDestinatario : MiembroProyecto` (Instancia de la entidad MiembroProyecto)
+- **Variables locales / Notas:**
+  - `boolean perfilActivo`
+  - `boolean proyectoEncontrado = false`
+  - `boolean proyectoApto`
+  - `boolean esDirector`
+  - `boolean contratoEncontrado = false`
+  - `boolean contratoPendiente`
+  - `boolean firmaRegistrada = false`
+  - `boolean tipoEncontrado = false`
+  - `boolean sinDestinatarios`
+  - `boolean destinatarioValido`
+  - `boolean tieneContratoActivo`
+  - `Lista destinatarios = nueva Lista()`
+  - `Lista conflictos = nueva Lista()`
+  - `Lista firmas = nueva Lista()`
+  - `String textoFinal`
+  - `String nombreFinal`
+  - `String descripcionFinal`
+- **Flujo de interacción:**
+  1. El actor envía `unContrato = modificarContrato(idProyecto, idContrato, idTipoAcuerdo, idsMiembro[], texto, clausulasAdicionales[], nombre, descripcion)` a `:ModaLink`.
+  2. Se inicializan las variables locales `perfilActivo`, `proyectoEncontrado`, `proyectoApto`, `esDirector`, `contratoEncontrado`, `contratoPendiente`, `firmaRegistrada`, `tipoEncontrado`, `sinDestinatarios`, `destinatarioValido`, `tieneContratoActivo`, `destinatarios`, `conflictos` y `firmas`.
+  3. `:ModaLink` solicita a `perfiles`: `unPerfil = buscarPerfilActivo(perfilActivo)`.
+  4. `:ModaLink` consulta a `unPerfil`: `perfilActivo = estaActivo()`.
+  5. **Bloque Alternativo (`alt`)** [!perfilActivo]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no existe o no está activo")`.
+  6. **Bloque Bucle (`loop`)** [Mientras haya proyectos && `proyectoEncontrado == false`]:
+     - `:ModaLink` solicita a `proyectos`: `unProyecto = obtenerSiguiente()`.
+     - `:ModaLink` consulta a `unProyecto`: `proyectoEncontrado = tieneId(idProyecto)`.
+  7. **Bloque Alternativo (`alt`)** [!proyectoEncontrado]:
+     - `:ModaLink` retorna una excepción al actor: `Excepcion("Proyecto inexistente")`.
+  8. **Bloque Alternativo (`alt`)** [proyectoEncontrado]:
+     - `:ModaLink` consulta a `unProyecto`: `proyectoApto = estaEnEstado(PUBLICADO) || estaEnEstado(CONFIRMADO)`.
+     - **Bloque Alternativo (`alt`)** [!proyectoApto]:
+       - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo se puede modificar un contrato de un proyecto PUBLICADO o CONFIRMADO")`.
+     - **Bloque Alternativo (`alt`)** [proyectoApto]:
+       - `:ModaLink` consulta a `unProyecto`: `esDirector = tieneDirectorActivo(unPerfil)`.
+       - **Bloque Alternativo (`alt`)** [!esDirector]:
+         - `:ModaLink` retorna una excepción al actor: `Excepcion("El perfil activo no es director del proyecto")`.
+       - **Bloque Alternativo (`alt`)** [esDirector]:
+         - **Bloque Bucle (`loop`)** [Mientras haya contratos && `contratoEncontrado == false`]:
+           - `:ModaLink` solicita a `contratos`: `unContrato = obtenerSiguiente()`.
+           - `:ModaLink` consulta a `unContrato`: `contratoEncontrado = tieneId(idContrato) && perteneceA(unProyecto)`.
+         - **Bloque Alternativo (`alt`)** [!contratoEncontrado]:
+           - `:ModaLink` retorna una excepción al actor: `Excepcion("Contrato inexistente")`.
+         - **Bloque Alternativo (`alt`)** [contratoEncontrado]:
+           - `:ModaLink` consulta a `unContrato`: `contratoPendiente = estaEnEstado(PENDIENTE_FIRMA)`.
+           - **Bloque Alternativo (`alt`)** [!contratoPendiente]:
+             - `:ModaLink` retorna una excepción al actor: `Excepcion("Solo se puede modificar un contrato PENDIENTE_FIRMA")`.
+           - **Bloque Alternativo (`alt`)** [contratoPendiente]:
+             - **Bloque Bucle (`loop`)** [Mientras haya firmas del contrato && `firmaRegistrada == false`]:
+               - `:ModaLink` solicita a `firmasContrato`: `unaFirma = obtenerSiguiente()`.
+               - `:ModaLink` consulta a `unaFirma`: `firmaRegistrada = estaFirmada() || estaRechazada() || estaInvalidada()`.
+             - **Bloque Alternativo (`alt`)** [firmaRegistrada]:
+               - `:ModaLink` retorna una excepción al actor: `Excepcion("No se puede modificar un contrato con firmas registradas")`.
+             - **Bloque Alternativo (`alt`)** [!firmaRegistrada]:
+               - **Bloque Bucle (`loop`)** [Mientras haya tipos de acuerdo && `tipoEncontrado == false`]:
+                 - `:ModaLink` solicita a `tiposAcuerdoContrato`: `unTipoAcuerdo = obtenerSiguiente()`.
+                 - `:ModaLink` consulta a `unTipoAcuerdo`: `tipoEncontrado = tieneId(idTipoAcuerdo) && estaActivo()`.
+               - **Bloque Alternativo (`alt`)** [!tipoEncontrado]:
+                 - `:ModaLink` retorna una excepción al actor: `Excepcion("Tipo de acuerdo inexistente o inactivo")`.
+               - **Bloque Alternativo (`alt`)** [tipoEncontrado]:
+                 - `:ModaLink` evalúa: `sinDestinatarios = idsMiembro == null || idsMiembro.isEmpty()`.
+                 - **Bloque Alternativo (`alt`)** [sinDestinatarios]:
+                   - `:ModaLink` retorna una excepción al actor: `Excepcion("Debe seleccionar al menos un miembro destinatario")`.
+                 - **Bloque Alternativo (`alt`)** [!sinDestinatarios]:
+                   - **Bloque Bucle (`loop`)** [Mientras haya miembros del proyecto]:
+                     - `:ModaLink` solicita a `miembros`: `unMiembro = obtenerSiguiente()`.
+                     - **Bloque Alternativo (`alt`)** [idsMiembro.contiene(unMiembro.getIdMiembro())]:
+                       - `:ModaLink` consulta a `unMiembro`: `destinatarioValido = correspondeA(unProyecto) && estaActivo()`.
+                       - **Bloque Alternativo (`alt`)** [destinatarioValido]:
+                         - `destinatarios.agregar(unMiembro)`.
+                       - **Bloque Alternativo (`alt`)** [!destinatarioValido]:
+                         - `conflictos.agregar("DESTINATARIO_INVALIDO", unMiembro.getIdMiembro())`.
+                   - **Bloque Bucle (`loop`)** [Mientras haya contratos del proyecto]:
+                     - `:ModaLink` solicita a `contratos`: `otroContrato = obtenerSiguiente()`.
+                     - `:ModaLink` consulta a `otroContrato`: `tieneContratoActivo = otroContrato.tieneContratoActivoDe(unProyecto, unTipoAcuerdo, destinatarios)`.
+                     - **Bloque Alternativo (`alt`)** [tieneContratoActivo]:
+                       - `conflictos.agregar("CONTRATO_DUPLICADO_ACTIVO", otroContrato.obtenerMiembroDuplicado())`.
+                   - **Bloque Alternativo (`alt`)** [!conflictos.isEmpty()]:
+                     - `:ModaLink` retorna una excepción al actor: `Excepcion("Existen conflictos de destinatarios o contratos activos")`.
+                   - **Bloque Alternativo (`alt`)** [conflictos.isEmpty()]:
+                     - **Bloque Bucle (`loop`)** [Mientras haya firmas del contrato]:
+                       - `:ModaLink` solicita a `firmasContrato`: `unaFirma = obtenerSiguiente()`.
+                       - `firmas.agregar(unaFirma)`.
+                       - **Bloque Alternativo (`alt`)** [!destinatarios.contiene(unaFirma.obtenerMiembro())]:
+                         - `:ModaLink` envía a `unaFirma`: `cancelar()`.
+                     - **Bloque Bucle (`loop`)** [Mientras haya destinatarios]:
+                       - `:ModaLink` solicita a `destinatarios`: `unDestinatario = obtenerSiguiente()`.
+                       - **Bloque Alternativo (`alt`)** [!firmasContrato.existeFirma(unContrato, unDestinatario)]:
+                         - `:ModaLink` crea la firma: `unaFirma = registrar(unContrato, unDestinatario, DESTINATARIO, PENDIENTE)`.
+                         - `firmasContrato.agregar(unaFirma)`.
+                         - `firmas.agregar(unaFirma)`.
+                     - **Bloque Alternativo (`alt`)** [texto != null && texto != ""]:
+                       - `:ModaLink` solicita a `unContrato`: `textoFinal = validarTexto(texto)`.
+                     - **Bloque Alternativo (`alt`)** [texto == null || texto == ""]:
+                       - `:ModaLink` solicita a `unTipoAcuerdo`: `textoFinal = generarTexto(unProyecto, unContrato.obtenerEmisor(), destinatarios, clausulasAdicionales)`.
+                     - **Bloque Alternativo (`alt`)** [nombre != null && nombre != ""]:
+                       - `nombreFinal = nombre`.
+                     - **Bloque Alternativo (`alt`)** [nombre == null || nombre == ""]:
+                       - `:ModaLink` solicita a `unContrato`: `nombreFinal = generarNombre(unTipoAcuerdo, unProyecto)`.
+                     - **Bloque Alternativo (`alt`)** [descripcion != null]:
+                       - `descripcionFinal = descripcion`.
+                     - **Bloque Alternativo (`alt`)** [descripcion == null]:
+                       - `:ModaLink` solicita a `unContrato`: `descripcionFinal = obtenerDescripcion()`.
+                     - `:ModaLink` envía a `unContrato`: `setTipoAcuerdo(unTipoAcuerdo)`.
+                     - `:ModaLink` envía a `unContrato`: `setNombre(nombreFinal)`.
+                     - `:ModaLink` envía a `unContrato`: `setDescripcion(descripcionFinal)`.
+                     - `:ModaLink` envía a `unContrato`: `setTexto(textoFinal)`.
+                     - `:ModaLink` envía a `unContrato`: `setFechaModificacion(ahora)`.
+                     - `eventosContrato.agregar(registrar(unContrato, MODIFICADO, ahora))`.
+                     - **Bloque Bucle (`loop`)** [Mientras haya destinatarios]:
+                       - `:ModaLink` solicita a `destinatarios`: `unDestinatario = obtenerSiguiente()`.
+                       - `notificaciones.agregar(notificarContratoModificado(unDestinatario, unContrato))`.
+                     - `:ModaLink` retorna al actor: `ContratoDetalleResponse(unContrato, firmas)`.
 
