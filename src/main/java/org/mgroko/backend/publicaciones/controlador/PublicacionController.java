@@ -2,6 +2,7 @@ package org.mgroko.backend.publicaciones.controlador;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.CrearPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
@@ -53,6 +54,7 @@ public class PublicacionController {
     @GetMapping("/perfiles/{idPerfil}/publicaciones")
     public ResponseEntity<PaginaResponse<PublicacionResponse>> listar(
             @PathVariable Long idPerfil,
+            @ModelAttribute BuscarPublicacionesFiltro filtro,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication) {
@@ -61,6 +63,7 @@ public class PublicacionController {
                 idPerfil,
                 idUsuario(authentication),
                 idPerfilActivo(authentication),
+                filtro,
                 page,
                 size);
 

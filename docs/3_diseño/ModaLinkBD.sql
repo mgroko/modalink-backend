@@ -3925,6 +3925,12 @@ ALTER TABLE publicacion ADD CONSTRAINT fk_publicacion_ubicacion
 CREATE INDEX "IDX_publicacion_perfil_fecha"
     ON publicacion (id_perfil, fecha_publicacion DESC);
 
+CREATE INDEX "IDX_publicacion_perfil_estado_fecha"
+    ON publicacion (id_perfil, estado, fecha_publicacion DESC);
+
+CREATE INDEX "IDX_publicacion_perfil_estado_proyecto"
+    ON publicacion (id_perfil, estado, id_proyecto, fecha_publicacion DESC);
+
 CREATE INDEX "IDX_imagen_publicacion_publicacion"
     ON imagen_publicacion (id_publicacion, orden);
 

@@ -2,11 +2,15 @@ package org.mgroko.backend.publicaciones.servicio;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,14 +28,20 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.perfiles.servicio.VerPerfilService;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
+import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.exception.RangoFechasPublicacionInvalidoException;
 import org.mgroko.backend.repositorio.PublicacionRepository;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ListarPublicacionesPerfilServiceTest {
 
     @Mock
@@ -122,6 +132,56 @@ class ListarPublicacionesPerfilServiceTest {
                 servicio.listar(7L, 1L, 2L, 0, 10);
 
         assertNull(response.contenido().get(0).proyecto());
+    }
+
+    @Test
+    void listar_conFiltros_usaSpecificationYDevuelveResultados() {
+        Publicacion publicacion = publicacionConProyecto(null);
+        when(publicacionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(publicacion)));
+
+        BuscarPublicacionesFiltro filtro = new BuscarPublicacionesFiltro(
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 12, 31),
+                null,
+                "Editorial",
+                null);
+
+        PaginaResponse<PublicacionResponse> response =
+                servicio.listar(7L, 1L, 2L, filtro, 0, 10);
+
+        assertEquals(1, response.contenido().size());
+        verify(publicacionRepository).findAll(any(Specification.class), any(Pageable.class));
+        verify(publicacionRepository, never())
+                .findByPerfilIdPerfilAndEstadoOrderByFechaPublicacionDesc(
+                        any(Long.class), any(EstadoPublicacion.class), any(Pageable.class));
+    }
+
+    @Test
+    void listar_filtroVacio_usaConsultaSimple() {
+        Publicacion publicacion = publicacionConProyecto(null);
+        when(publicacionRepository
+                .findByPerfilIdPerfilAndEstadoOrderByFechaPublicacionDesc(
+                        eq(7L), eq(EstadoPublicacion.ACTIVA), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(publicacion)));
+
+        servicio.listar(7L, 1L, 2L, new BuscarPublicacionesFiltro(
+                null, null, null, "   ", ""), 0, 10);
+
+        verify(publicacionRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void listar_rangoDeFechasInvalido_lanzaExcepcion() {
+        BuscarPublicacionesFiltro filtro = new BuscarPublicacionesFiltro(
+                LocalDate.of(2026, 12, 31),
+                LocalDate.of(2026, 1, 1),
+                null,
+                null,
+                null);
+
+        assertThrows(RangoFechasPublicacionInvalidoException.class,
+                () -> servicio.listar(7L, 1L, 2L, filtro, 0, 10));
     }
 
     private Publicacion publicacionConProyecto(Proyecto proyecto) {

@@ -85,6 +85,7 @@ import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoExcep
 import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
 import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
+import org.mgroko.backend.publicaciones.exception.RangoFechasPublicacionInvalidoException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
@@ -427,6 +428,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PublicacionInvalidaException.class)
     public ResponseEntity<Map<String, Object>> handlePublicacionInvalida(
             PublicacionInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RangoFechasPublicacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasPublicacionInvalido(
+            RangoFechasPublicacionInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 

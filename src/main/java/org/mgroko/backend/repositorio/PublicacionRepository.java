@@ -6,8 +6,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface PublicacionRepository extends JpaRepository<Publicacion, Long> {
+public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
+        JpaSpecificationExecutor<Publicacion> {
 
     /**
      * Publicaciones de un perfil en el estado indicado, más recientes primero.
