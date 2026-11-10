@@ -436,4 +436,3 @@ Fichas específicas:
 - [x] Notificaciones, reportes de perfil, auditoría y administración
 - [x] Búsqueda global de requerimientos generales y de actividad
 - [ ] Publicaciones (11 UC): alta, baja, modificación, búsqueda, colaboración, interacción y reporte
-- [ ] Recuperación de contraseña (no hay UC definido)
