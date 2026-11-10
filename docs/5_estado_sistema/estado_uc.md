@@ -64,7 +64,7 @@ el historial de git sirva de bitácora adicional.
 | UC-19 | Alta publicación | Implementado y testeado | `POST /publicaciones`, `GET /perfiles/{idPerfil}/publicaciones` | Sí (unitario + MVC; integración pendiente de Docker) | Imágenes 1-10 (10 MB), título obligatorio, descripción/ubicación/proyecto opcionales. Proyecto solo CONFIRMADO/FINALIZADO con membresía activa. Orden de imágenes, estado ACTIVA/OCULTA y exclusión por estado de perfil. |
 | UC-20 | Baja publicación                   | No iniciado |                  |       | Segunda iteracion |
 | UC-21 | Modificar publicación              | No iniciado |                  |       | Segunda iteracion |
-| UC-22 | Buscar publicación                 | No iniciado |                  |       | Segunda iteracion |
+| UC-22 | Buscar publicación | Implementado y testeado | `GET /perfiles/{idPerfil}/publicaciones` con filtros opcionales | Sí (unitario + MVC; integración pendiente de Docker) | Filtros opcionales por rango de fechas, `idProyecto`, título y descripción, combinados con AND. Solo publicaciones `ACTIVA` de perfiles visibles; orden por fecha descendente; página vacía con 200 si no hay resultados. |
 | UC-61 | Enviar solicitud de colaboración   | No iniciado |                  |       | Segunda iteracion |
 | UC-62 | Aceptar solicitud de colaboración  | No iniciado |                  |       | Segunda iteracion |
 | UC-63 | Rechazar solicitud de colaboración | No iniciado |                  |       | Segunda iteracion |
