@@ -9,6 +9,7 @@ import org.mgroko.backend.publicaciones.dto.CrearPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -36,14 +37,17 @@ public class PublicacionController {
     private final CrearPublicacionService crearPublicacionService;
     private final ListarPublicacionesPerfilService listarPublicacionesPerfilService;
     private final ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService;
+    private final ListarFeedPublicacionesService listarFeedPublicacionesService;
 
     public PublicacionController(
             CrearPublicacionService crearPublicacionService,
             ListarPublicacionesPerfilService listarPublicacionesPerfilService,
-            ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService) {
+            ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService,
+            ListarFeedPublicacionesService listarFeedPublicacionesService) {
         this.crearPublicacionService = crearPublicacionService;
         this.listarPublicacionesPerfilService = listarPublicacionesPerfilService;
         this.listarProyectosPublicacionesPerfilService = listarProyectosPublicacionesPerfilService;
+        this.listarFeedPublicacionesService = listarFeedPublicacionesService;
     }
 
     @PostMapping(value = "/publicaciones", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -56,6 +60,27 @@ public class PublicacionController {
                 idUsuario(authentication), idPerfilActivo, request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Feed de publicaciones de los contactos activos del perfil. Incluye las
+     * publicaciones propias por defecto.
+     */
+    @GetMapping("/publicaciones/feed")
+    public ResponseEntity<PaginaResponse<PublicacionResponse>> feed(
+            @RequestParam(defaultValue = "true") boolean incluirPropias,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+
+        PaginaResponse<PublicacionResponse> response = listarFeedPublicacionesService.listar(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                incluirPropias,
+                page,
+                size);
+
+        return ResponseEntity.ok(response);
     }
 
     /**

@@ -22,6 +22,7 @@ import org.mgroko.backend.publicaciones.dto.ImagenPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -52,6 +53,9 @@ class PublicacionControllerTest {
 
     @MockitoBean
     private ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService;
+
+    @MockitoBean
+    private ListarFeedPublicacionesService listarFeedPublicacionesService;
 
     private static UsernamePasswordAuthenticationToken auth(Long idUsuario, Long idPerfilActivo) {
         var token = new UsernamePasswordAuthenticationToken(String.valueOf(idUsuario), null, List.of());
@@ -135,6 +139,27 @@ class PublicacionControllerTest {
                 .andExpect(jsonPath("$.contenido.length()").value(1))
                 .andExpect(jsonPath("$.contenido[0].titulo").value("Editorial"))
                 .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void feed_devuelvePaginaDeContactos() throws Exception {
+        PaginaResponse<PublicacionResponse> pagina = new PaginaResponse<>(
+                List.of(response()), 0, 10, 1, 1, true, true);
+        when(listarFeedPublicacionesService.listar(1L, 7L, true, 0, 10))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/publicaciones/feed")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido.length()").value(1))
+                .andExpect(jsonPath("$.contenido[0].titulo").value("Editorial"));
+    }
+
+    @Test
+    void feed_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(get("/publicaciones/feed")
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

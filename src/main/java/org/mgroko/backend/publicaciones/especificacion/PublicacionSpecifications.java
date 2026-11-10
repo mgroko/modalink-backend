@@ -1,11 +1,14 @@
 package org.mgroko.backend.publicaciones.especificacion;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.mgroko.backend.common.util.LikePatrones;
 import org.mgroko.backend.modelo.Publicacion;
+import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -62,6 +65,23 @@ public final class PublicacionSpecifications {
                             LikePatrones.CARACTER_ESCAPE));
                 }
             }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    /**
+     * Feed de publicaciones de un conjunto de perfiles (contactos activos y,
+     * opcionalmente, el perfil propio).
+     */
+    public static Specification<Publicacion> conPerfiles(Collection<Long> idsPerfiles) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(root.get("perfil").get("idPerfil").in(idsPerfiles));
+            predicates.add(cb.equal(root.get("estado"), EstadoPublicacion.ACTIVA));
+            predicates.add(cb.equal(root.get("perfil").get("estado"), EstadoPerfil.ACTIVO));
+            predicates.add(cb.equal(root.get("perfil").get("usuario").get("estado"), EstadoUsuario.ACTIVO));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
