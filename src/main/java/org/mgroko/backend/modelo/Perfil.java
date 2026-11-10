@@ -51,6 +51,13 @@ public class Perfil {
     @Column(name = "fecha_solicitud_baja")
     private LocalDateTime fechaSolicitudBaja;
 
+    /**
+     * Último heartbeat del perfil. Es la fuente de verdad de la presencia:
+     * no se expone en las respuestas, solo se usa para calcular {@code enLinea}.
+     */
+    @Column(name = "ultima_actividad")
+    private LocalDateTime ultimaActividad;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;

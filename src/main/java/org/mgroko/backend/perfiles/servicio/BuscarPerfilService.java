@@ -6,6 +6,7 @@ import org.mgroko.backend.perfiles.dto.BuscarPerfilesFiltro;
 import org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse;
 import org.mgroko.backend.perfiles.especificacion.PerfilSpecifications;
 import org.mgroko.backend.perfiles.mapper.PerfilMapper;
+import org.mgroko.backend.presencia.servicio.PresenciaService;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,9 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class BuscarPerfilService {
 
     private final PerfilRepository perfilRepository;
+    private final PresenciaService presenciaService;
 
-    public BuscarPerfilService(PerfilRepository perfilRepository) {
+    public BuscarPerfilService(
+            PerfilRepository perfilRepository,
+            PresenciaService presenciaService) {
         this.perfilRepository = perfilRepository;
+        this.presenciaService = presenciaService;
     }
 
     @Transactional(readOnly = true)
@@ -45,7 +50,11 @@ public class BuscarPerfilService {
         Specification<Perfil> spec = PerfilSpecifications.conFiltros(filtro);
         Page<Perfil> resultados = perfilRepository.findAll(spec, pageable);
 
-        Page<PerfilBusquedaResponse> paginaDto = resultados.map(PerfilMapper::toBusquedaResponse);
+        var ahora = presenciaService.ahora();
+        Page<PerfilBusquedaResponse> paginaDto = resultados.map(perfil ->
+                PerfilMapper.toBusquedaResponse(
+                        perfil,
+                        presenciaService.estaEnLinea(perfil, ahora)));
         return PaginaResponse.fromPage(paginaDto);
     }
 }

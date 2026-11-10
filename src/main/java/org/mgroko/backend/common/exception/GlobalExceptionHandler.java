@@ -45,6 +45,16 @@ import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
 import org.mgroko.backend.calendario.exception.HorarioComprometidoException;
 import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
 import org.mgroko.backend.calendario.exception.RangoInvalidoException;
+import org.mgroko.backend.conexiones.exception.ConexionNoActivaException;
+import org.mgroko.backend.conexiones.exception.ConexionNoEncontradaException;
+import org.mgroko.backend.conexiones.exception.ConexionYaExistenteException;
+import org.mgroko.backend.conexiones.exception.FiltroSolicitudConexionInvalidoException;
+import org.mgroko.backend.conexiones.exception.SolicitudConexionDuplicadaException;
+import org.mgroko.backend.conexiones.exception.SolicitudConexionInvalidaException;
+import org.mgroko.backend.conexiones.exception.SolicitudConexionNoEncontradaException;
+import org.mgroko.backend.conexiones.exception.RangoFechasSolicitudConexionInvalidoException;
+import org.mgroko.backend.conexiones.exception.SolicitudConexionNoPendienteException;
+import org.mgroko.backend.conexiones.exception.SolicitudConexionNoPermitidaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaDuplicateException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.CaracteristicaProfesionNoCoincideException;
@@ -58,7 +68,12 @@ import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.ValorNumericoNegativoException;
+import org.mgroko.backend.mensajeria.exception.ConversacionNoEncontradaException;
+import org.mgroko.backend.mensajeria.exception.ConversacionNoPermitidaException;
+import org.mgroko.backend.mensajeria.exception.MensajeInvalidoException;
+import org.mgroko.backend.mensajeria.exception.MensajeNoPermitidoException;
 import org.mgroko.backend.perfiles.exception.ValorObligatorioException;
+import org.mgroko.backend.presencia.exception.PresenciaSolicitudInvalidaException;
 import org.mgroko.backend.actividades.exception.AsignacionActividadNoEncontradaException;
 import org.mgroko.backend.actividades.exception.AsignacionActividadNoPermitidaException;
 import org.mgroko.backend.actividades.exception.AsignacionNoDisponibleException;
@@ -326,6 +341,40 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePerfilActivoNoSeleccionado(
             org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(PresenciaSolicitudInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePresenciaSolicitudInvalida(
+            PresenciaSolicitudInvalidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConversacionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleConversacionNoEncontrada(
+            ConversacionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ConversacionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleConversacionNoPermitida(
+            ConversacionNoPermitidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(MensajeInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleMensajeInvalido(
+            MensajeInvalidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MensajeNoPermitidoException.class)
+    public ResponseEntity<Map<String, Object>> handleMensajeNoPermitido(
+            MensajeNoPermitidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.mgroko.backend.perfiles.exception.ResenaNoEncontradaException.class)
@@ -862,6 +911,74 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PerfilEnBajaException.class)
     public ResponseEntity<Map<String, Object>> handlePerfilEnBaja(PerfilEnBajaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SolicitudConexionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudConexionInvalida(
+            SolicitudConexionInvalidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SolicitudConexionDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudConexionDuplicada(
+            SolicitudConexionDuplicadaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ConexionYaExistenteException.class)
+    public ResponseEntity<Map<String, Object>> handleConexionYaExistente(
+            ConexionYaExistenteException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SolicitudConexionNoPendienteException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudConexionNoPendiente(
+            SolicitudConexionNoPendienteException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(RangoFechasSolicitudConexionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasSolicitudConexion(
+            RangoFechasSolicitudConexionInvalidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConexionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleConexionNoEncontrada(
+            ConexionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ConexionNoActivaException.class)
+    public ResponseEntity<Map<String, Object>> handleConexionNoActiva(
+            ConexionNoActivaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(FiltroSolicitudConexionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleFiltroSolicitudConexion(
+            FiltroSolicitudConexionInvalidoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SolicitudConexionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudConexionNoEncontrada(
+            SolicitudConexionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(SolicitudConexionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudConexionNoPermitida(
+            SolicitudConexionNoPermitidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.FORBIDDEN);
     }
 
     /**

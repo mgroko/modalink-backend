@@ -15,6 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
@@ -33,6 +35,7 @@ import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class VerPerfilServiceTest {
 
     @Mock
@@ -46,6 +49,12 @@ class VerPerfilServiceTest {
 
     @Mock
     private GestionTerminosCondicionesService gestionTerminosCondicionesService;
+
+    @Mock
+    private org.mgroko.backend.conexiones.servicio.RelacionPerfilService relacionPerfilService;
+
+    @Mock
+    private org.mgroko.backend.presencia.servicio.PresenciaService presenciaService;
 
     @InjectMocks
     private VerPerfilService verPerfilService;
@@ -97,6 +106,12 @@ class VerPerfilServiceTest {
                 .caracteristicas(new HashSet<>())
                 .habilidades(new HashSet<>())
                 .build();
+
+        when(presenciaService.ahora()).thenReturn(LocalDateTime.of(2026, 11, 9, 12, 0));
+        when(presenciaService.estaEnLinea(
+                org.mockito.ArgumentMatchers.any(Perfil.class),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class)))
+                .thenReturn(true);
     }
 
     @Test
@@ -115,6 +130,7 @@ class VerPerfilServiceTest {
         assertThat(response.nombreUsuario()).isEqualTo("Maria");
         assertThat(response.apellidoUsuario()).isEqualTo("Gomez");
         assertThat(response.ciudad().nombre()).isEqualTo("Rosario");
+        assertThat(response.enLinea()).isTrue();
         assertThat(response.ciudad().provincia().nombre()).isEqualTo("Santa Fe");
         assertThat(response.genero()).isEqualTo("FEM");
         assertThat(response.esPropietario()).isFalse();

@@ -105,7 +105,12 @@ public class PerfilController {
             @PathVariable Long idPerfil,
             Authentication authentication) {
         Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
-        org.mgroko.backend.perfiles.dto.PerfilDetalleResponse response = verPerfilService.obtenerDetalle(idPerfil, idUsuario);
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof org.mgroko.backend.security.ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+        org.mgroko.backend.perfiles.dto.PerfilDetalleResponse response =
+                verPerfilService.obtenerDetalle(idPerfil, idUsuario, idPerfilActivo);
         return ResponseEntity.ok(response);
     }
 

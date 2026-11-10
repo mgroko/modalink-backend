@@ -2,7 +2,8 @@ package org.mgroko.backend.modelo.enums;
 
 /**
  * Valores exactos según el CHECK en postulacion_actividad, postulacion_gral,
- * invitacion_actividad e invitacion_gral en ModaLinkBD.sql:
+ * invitacion_actividad, invitacion_gral y solicitud_conexion en
+ * ModaLinkBD.sql:
  * CHECK (estado IN ('PENDIENTE', 'RECHAZADA', 'ACEPTADA'))
  */
 public enum EstadoSolicitud {

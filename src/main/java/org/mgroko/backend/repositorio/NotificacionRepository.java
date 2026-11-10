@@ -1,6 +1,7 @@
 package org.mgroko.backend.repositorio;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.Notificacion;
@@ -30,6 +31,12 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
 
     long countByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfilAndLeidaFalse(
             Long idUsuario, Long idPerfilContexto);
+
+    boolean existsByUsuarioDestino_IdUsuarioAndTipoAndEntidadTipoAndEntidadIdAndLeidaFalse(
+            Long idUsuario,
+            String tipo,
+            String entidadTipo,
+            Long entidadId);
 
     @Modifying(flushAutomatically = true)
     @Query("""
@@ -67,5 +74,50 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     int marcarTodasLeidasDePerfil(
             @Param("idUsuario") Long idUsuario,
             @Param("idPerfilContexto") Long idPerfilContexto,
+            @Param("fechaLeida") LocalDateTime fechaLeida);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Notificacion n
+               SET n.leida = true,
+                   n.fechaLeida = :fechaLeida
+             WHERE n.usuarioDestino.idUsuario = :idUsuario
+               AND n.entidadTipo = 'CONVERSACION'
+               AND n.entidadId = :idConversacion
+               AND n.leida = false
+            """)
+    int marcarLeidasDeConversacion(
+            @Param("idUsuario") Long idUsuario,
+            @Param("idConversacion") Long idConversacion,
+            @Param("fechaLeida") LocalDateTime fechaLeida);
+
+    @Query("""
+            SELECT DISTINCT n.perfilContexto.idPerfil
+              FROM Notificacion n
+             WHERE n.tipo = :tipo
+               AND n.entidadTipo = 'PROYECTO'
+               AND n.entidadId = :idProyecto
+               AND n.leida = false
+            """)
+    List<Long> buscarPerfilesConNotificacionNoLeida(
+            @Param("tipo") String tipo,
+            @Param("idProyecto") Long idProyecto);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Notificacion n
+               SET n.leida = true,
+                   n.fechaLeida = :fechaLeida
+             WHERE n.usuarioDestino.idUsuario = :idUsuario
+               AND n.perfilContexto.idPerfil = :idPerfilContexto
+               AND n.tipo = 'MENSAJE_GRUPAL_RECIBIDO'
+               AND n.entidadTipo = 'PROYECTO'
+               AND n.entidadId = :idProyecto
+               AND n.leida = false
+            """)
+    int marcarLeidasDeChatGrupal(
+            @Param("idUsuario") Long idUsuario,
+            @Param("idPerfilContexto") Long idPerfilContexto,
+            @Param("idProyecto") Long idProyecto,
             @Param("fechaLeida") LocalDateTime fechaLeida);
 }

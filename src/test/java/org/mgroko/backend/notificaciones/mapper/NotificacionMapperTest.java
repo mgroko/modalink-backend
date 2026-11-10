@@ -133,6 +133,70 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void solicitudConexionRecibida_incluyeLinkASolicitudesRecibidas() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_CONEXION_RECIBIDA",
+                        "SOLICITUD_CONEXION", 100L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/mi-red?tab=recibidas");
+    }
+
+    @Test
+    void solicitudConexionAceptada_incluyeLinkARedContactosConId() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_CONEXION_ACEPTADA",
+                        "CONEXION", 55L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/mi-red?tab=conexiones&idConexion=55");
+    }
+
+    @Test
+    void solicitudConexionRechazada_incluyeLinkASolicitudesEnviadas() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_CONEXION_RECHAZADA",
+                        "SOLICITUD_CONEXION", 100L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/mi-red?tab=enviadas&estado=RECHAZADA");
+    }
+
+    @Test
+    void conexionEliminada_incluyeLinkARedContactos() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("CONEXION_ELIMINADA", "CONEXION", 55L, null),
+                null);
+
+        assertThat(response.link()).isEqualTo("/mi-red?tab=conexiones");
+    }
+
+    @Test
+    void mensajePrivado_incluyeLinkAConversacion() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("MENSAJE_PRIVADO_RECIBIDO",
+                        "CONVERSACION", 30L, null),
+                null);
+
+        assertThat(response.link()).isEqualTo("/mensajes?conversacion=30");
+        assertThat(response.titulo()).isEqualTo("Mensaje privado recibido");
+    }
+
+    @Test
+    void mensajeGrupal_incluyeLinkAlChatDelProyecto() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("MENSAJE_GRUPAL_RECIBIDO",
+                        "PROYECTO", 50L, 50L),
+                50L);
+
+        assertThat(response.link()).isEqualTo("/proyectos/50/chat");
+        assertThat(response.titulo()).isEqualTo("Mensaje grupal recibido");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");
