@@ -2,7 +2,9 @@ package org.mgroko.backend.modelo;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.hibernate.annotations.BatchSize;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
@@ -77,4 +79,18 @@ public class Publicacion {
             inverseJoinColumns = @JoinColumn(name = "id_imagen"))
     @OrderColumn(name = "orden")
     private List<Imagen> imagenes = new ArrayList<>();
+
+    /**
+     * UC-21: colaboradores de la publicación. La tabla ya existe en el
+     * esquema; la invitación se gestiona en UC-61 y por ahora esta colección
+     * solo se usa para mostrar los colaboradores aceptados.
+     */
+    @Builder.Default
+    @BatchSize(size = 20)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "colaborador_publicacion",
+            joinColumns = @JoinColumn(name = "id_publicacion"),
+            inverseJoinColumns = @JoinColumn(name = "id_perfil"))
+    private Set<Perfil> colaboradores = new LinkedHashSet<>();
 }

@@ -25,11 +25,14 @@ import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
+import org.mgroko.backend.publicaciones.servicio.ModificarPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -56,6 +59,12 @@ class PublicacionControllerTest {
 
     @MockitoBean
     private ListarFeedPublicacionesService listarFeedPublicacionesService;
+
+    @MockitoBean
+    private ObtenerPublicacionService obtenerPublicacionService;
+
+    @MockitoBean
+    private ModificarPublicacionService modificarPublicacionService;
 
     private static UsernamePasswordAuthenticationToken auth(Long idUsuario, Long idPerfilActivo) {
         var token = new UsernamePasswordAuthenticationToken(String.valueOf(idUsuario), null, List.of());
@@ -123,6 +132,87 @@ class PublicacionControllerTest {
                         .param("titulo", "Editorial")
                         .principal(auth(1L, 7L)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void obtener_devuelveLaPublicacionPropia() throws Exception {
+        when(obtenerPublicacionService.obtener(1L, 7L, 99L)).thenReturn(response());
+
+        mockMvc.perform(get("/publicaciones/{idPublicacion}", 99L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPublicacion").value(99L))
+                .andExpect(jsonPath("$.titulo").value("Editorial"));
+    }
+
+    @Test
+    void obtener_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(get("/publicaciones/{idPublicacion}", 99L)
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void obtener_publicacionAjena_devuelve404() throws Exception {
+        when(obtenerPublicacionService.obtener(1L, 7L, 99L))
+                .thenThrow(new org.mgroko.backend.publicaciones.exception
+                        .PublicacionNoEncontradaException(99L));
+
+        mockMvc.perform(get("/publicaciones/{idPublicacion}", 99L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void modificar_multipartValido_devuelve200() throws Exception {
+        when(modificarPublicacionService.modificar(eq(1L), eq(7L), eq(99L), any()))
+                .thenReturn(response());
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/publicaciones/{idPublicacion}", 99L)
+                        .file(archivo())
+                        .param("titulo", "Editorial")
+                        .param("descripcion", "Descripción")
+                        .param("imagenesConservadas", "10")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPublicacion").value(99L))
+                .andExpect(jsonPath("$.titulo").value("Editorial"));
+
+        ArgumentCaptor<org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest> captor =
+                ArgumentCaptor.forClass(
+                        org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest.class);
+        verify(modificarPublicacionService).modificar(eq(1L), eq(7L), eq(99L), captor.capture());
+        assertEquals("Editorial", captor.getValue().getTitulo());
+        assertEquals(List.of(10L), captor.getValue().getImagenesConservadas());
+        assertEquals(1, captor.getValue().getArchivos().size());
+    }
+
+    @Test
+    void modificar_sinTitulo_devuelve400() throws Exception {
+        mockMvc.perform(multipart(HttpMethod.PUT, "/publicaciones/{idPublicacion}", 99L)
+                        .file(archivo())
+                        .param("imagenesConservadas", "10")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void modificar_sinImagenesConservadas_devuelve400() throws Exception {
+        mockMvc.perform(multipart(HttpMethod.PUT, "/publicaciones/{idPublicacion}", 99L)
+                        .file(archivo())
+                        .param("titulo", "Editorial")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void modificar_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(multipart(HttpMethod.PUT, "/publicaciones/{idPublicacion}", 99L)
+                        .file(archivo())
+                        .param("titulo", "Editorial")
+                        .param("imagenesConservadas", "10")
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

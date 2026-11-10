@@ -4,11 +4,11 @@ Backend de **ModaLink**, una plataforma de networking profesional para la indust
 
 Proyecto final de la carrera **Analista en Sistemas de Computación**, desarrollado con **Proceso Unificado (UP)**, foco en testing, validaciones de negocio en backend y persistencia, y trazabilidad mediante auditoría.
 
-> **Estado actual (2026-11-10):** **65 de 76 casos de uso implementados y testeados (85,5 %)**.
+> **Estado actual (2026-11-10):** **68 de 76 casos de uso implementados y testeados (89,5 %)**.
 >
 > Módulos completos: autenticación y usuarios, administración, perfiles y disponibilidad, proyectos y equipo, actividades y cronograma, contratos, conexiones, presencia y mensajería.
 >
-> Pendientes: los **11 UC del módulo de publicaciones** (`UC-19`, `UC-20`, `UC-21`, `UC-22`, `UC-61` a `UC-66` y `UC-69`).
+> Pendientes: los **8 UC del módulo de publicaciones** (`UC-20`, `UC-61` a `UC-66` y `UC-69`).
 >
 > Seguimiento detallado: [`docs/5_estado_sistema/estado_uc.md`](docs/5_estado_sistema/estado_uc.md).
 
@@ -387,7 +387,7 @@ mvn verify
 Última ejecución completa de la suite:
 
 ```text
-2392 tests, 0 failures, 0 errors
+2526 tests, 0 failures, 0 errors
 ```
 
 > Los tests de integración requieren Docker disponible. Si Docker no está corriendo, los tests que extienden `AbstractPostgresIntegrationTest` fallan.
@@ -435,4 +435,5 @@ Fichas específicas:
 - [x] Mensajería privada y chat grupal
 - [x] Notificaciones, reportes de perfil, auditoría y administración
 - [x] Búsqueda global de requerimientos generales y de actividad
-- [ ] Publicaciones (11 UC): alta, baja, modificación, búsqueda, colaboración, interacción y reporte
+- [x] Publicaciones: alta, búsqueda y modificación
+- [ ] Publicaciones: baja, colaboración, interacción y reporte

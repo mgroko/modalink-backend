@@ -413,6 +413,23 @@
 
 ---
 
+### **UC-21: Modificar publicación**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-22 Buscar publicación`.
+  2. El actor envía el mensaje `unaPublicacion = obtenerPublicacion(idPublicacion)`.
+  3. El sistema retorna `mostrarFormularioEdicion(unaPublicacion)`.
+  4. El actor envía el mensaje `modificarPublicacion(unaPublicacion, titulo, descripcion, proyecto, ubicacion, imagenesConservadas[], imagenesNuevas[])`.
+  5. **Bloque Alternativo (`alt`)**:
+     - `[campos obligatorios vacíos, imágenes fuera de rango o proyecto no asociable]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `publicacionActualizada(unaPublicacion)`.
+       - **Bloque Opcional (`opt`)** `[el actor decide invitar a un colaborador]`: **Referencia/Inclusión:** Comienza el DSS de `UC-61 Enviar solicitud de colaboración`.
+
+---
+
 ### **UC-36: Modificar proyecto**
 
 - **Actor:** Director de proyecto

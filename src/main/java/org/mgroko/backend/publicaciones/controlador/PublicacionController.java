@@ -6,12 +6,15 @@ import java.util.List;
 
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.CrearPublicacionRequest;
+import org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
+import org.mgroko.backend.publicaciones.servicio.ModificarPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,16 +42,22 @@ public class PublicacionController {
     private final ListarPublicacionesPerfilService listarPublicacionesPerfilService;
     private final ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService;
     private final ListarFeedPublicacionesService listarFeedPublicacionesService;
+    private final ObtenerPublicacionService obtenerPublicacionService;
+    private final ModificarPublicacionService modificarPublicacionService;
 
     public PublicacionController(
             CrearPublicacionService crearPublicacionService,
             ListarPublicacionesPerfilService listarPublicacionesPerfilService,
             ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService,
-            ListarFeedPublicacionesService listarFeedPublicacionesService) {
+            ListarFeedPublicacionesService listarFeedPublicacionesService,
+            ObtenerPublicacionService obtenerPublicacionService,
+            ModificarPublicacionService modificarPublicacionService) {
         this.crearPublicacionService = crearPublicacionService;
         this.listarPublicacionesPerfilService = listarPublicacionesPerfilService;
         this.listarProyectosPublicacionesPerfilService = listarProyectosPublicacionesPerfilService;
         this.listarFeedPublicacionesService = listarFeedPublicacionesService;
+        this.obtenerPublicacionService = obtenerPublicacionService;
+        this.modificarPublicacionService = modificarPublicacionService;
     }
 
     @PostMapping(value = "/publicaciones", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -60,6 +70,41 @@ public class PublicacionController {
                 idUsuario(authentication), idPerfilActivo, request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * UC-21, paso 2: detalle de una publicación propia para editar.
+     */
+    @GetMapping("/publicaciones/{idPublicacion}")
+    public ResponseEntity<PublicacionResponse> obtener(
+            @PathVariable Long idPublicacion,
+            Authentication authentication) {
+
+        PublicacionResponse response = obtenerPublicacionService.obtener(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                idPublicacion);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UC-21: modificación atómica de datos e imágenes de una publicación
+     * propia.
+     */
+    @PutMapping(value = "/publicaciones/{idPublicacion}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PublicacionResponse> modificar(
+            @PathVariable Long idPublicacion,
+            @Valid @ModelAttribute ModificarPublicacionRequest request,
+            Authentication authentication) {
+
+        PublicacionResponse response = modificarPublicacionService.modificar(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                idPublicacion,
+                request);
+
+        return ResponseEntity.ok(response);
     }
 
     /**

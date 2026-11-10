@@ -1,6 +1,7 @@
 package org.mgroko.backend.repositorio;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
@@ -52,4 +53,23 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     List<Proyecto> findProyectosConPublicaciones(
             @Param("idPerfil") Long idPerfil,
             @Param("estado") EstadoPublicacion estado);
+
+    /**
+     * UC-21: publicación propia con las asociaciones que necesita el
+     * formulario de edición. Las colecciones ({@code imagenes} y
+     * {@code colaboradores}) se cargan en lote para no armar un producto
+     * cartesiano ni romper la paginación de los listados.
+     */
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.profesion",
+            "perfil.imagen",
+            "proyecto",
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    Optional<Publicacion> findByIdPublicacionAndPerfilIdPerfil(
+            Long idPublicacion, Long idPerfil);
 }

@@ -82,13 +82,17 @@ class CrearPublicacionServiceTest {
 
     @BeforeEach
     void setUp() {
-        servicio = new CrearPublicacionService(
+        PublicacionDatosService publicacionDatosService = new PublicacionDatosService(
                 perfilRepository,
                 proyectoRepository,
+                proyectoVisibilidadService,
+                ubicacionService);
+
+        servicio = new CrearPublicacionService(
                 publicacionRepository,
                 imagenRepository,
                 proyectoVisibilidadService,
-                ubicacionService,
+                publicacionDatosService,
                 storageService,
                 borradoArchivosDiferido);
 

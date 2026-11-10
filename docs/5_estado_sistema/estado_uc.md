@@ -63,7 +63,7 @@ el historial de git sirva de bitácora adicional.
 | ----- | ---------------------------------- | ----------- | ---------------- | ----- | ----------------- |
 | UC-19 | Alta publicación | Implementado y testeado | `POST /publicaciones`, `GET /perfiles/{idPerfil}/publicaciones` | Sí (unitario + MVC; integración pendiente de Docker) | Imágenes 1-10 (10 MB), título obligatorio, descripción/ubicación/proyecto opcionales. Proyecto solo CONFIRMADO/FINALIZADO con membresía activa. Orden de imágenes, estado ACTIVA/OCULTA y exclusión por estado de perfil. |
 | UC-20 | Baja publicación                   | No iniciado |                  |       | Segunda iteracion |
-| UC-21 | Modificar publicación              | No iniciado |                  |       | Segunda iteracion |
+| UC-21 | Modificar publicación | Implementado y testeado | `GET /publicaciones/{idPublicacion}`, `PUT /publicaciones/{idPublicacion}` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el perfil activo dueño. Edición atómica de título, descripción, proyecto, ubicación e imágenes (`multipart/form-data`). `imagenesConservadas` es obligatorio y define el orden; las no conservadas se borran (fila + archivo post-commit). Final 1-10 imágenes. Proyecto sin cambios no se revalida; proyecto nuevo debe estar `CONFIRMADO`/`FINALIZADO` y el perfil debe ser miembro activo. Colaboradores en modo lectura; la invitación sigue en UC-61. |
 | UC-22 | Buscar publicación | Implementado y testeado | `GET /perfiles/{idPerfil}/publicaciones` con filtros opcionales, `GET /perfiles/{idPerfil}/publicaciones/proyectos` y `GET /publicaciones/feed` | Sí (unitario + MVC; integración pendiente de Docker) | Filtros por rango de fechas, `idProyecto`, título y descripción, combinados con AND. Solo publicaciones `ACTIVA` de perfiles visibles; orden por fecha descendente; página vacía con 200. El feed incluye contactos activos y opcionalmente las publicaciones propias. |
 | UC-61 | Enviar solicitud de colaboración   | No iniciado |                  |       | Segunda iteracion |
 | UC-62 | Aceptar solicitud de colaboración  | No iniciado |                  |       | Segunda iteracion |
@@ -136,11 +136,11 @@ el historial de git sirva de bitácora adicional.
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
 | Gestión de usuarios y administración | 16     | 16                      | 0            | 0           | 0           |
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
-| Gestión de publicaciones           | 11       | 0                       | 0            | 0           | 11          |
+| Gestión de publicaciones           | 11       | 3                       | 0            | 0           | 8           |
 | Gestión de proyectos               | 26       | 26                      | 0            | 0           | 0           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
 | Gestión de conexiones y mensajería | 5        | 5                       | 0            | 0           | 0           |
-| **Total**                          | **76**   | **65**                  | **0**        | **0**       | **11**      |
+| **Total**                          | **76**   | **68**                  | **0**        | **0**       | **8**       |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -154,4 +154,4 @@ el historial de git sirva de bitácora adicional.
 > desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan sus filas en el
 > módulo correspondiente solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 65 de 76 casos de uso implementados y testeados = **85,5 %** del catálogo de requisitos.
+**Avance global:** 68 de 76 casos de uso implementados y testeados = **89,5 %** del catálogo de requisitos.
