@@ -13,6 +13,10 @@ import org.mgroko.backend.actividades.dto.ActividadBusquedaResponse;
 import org.mgroko.backend.actividades.dto.BuscarActividadesFiltro;
 import org.mgroko.backend.actividades.servicio.BuscarActividadService;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
+import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
+import org.mgroko.backend.conexiones.servicio.EnviarSolicitudConexionService;
+import org.mgroko.backend.conexiones.servicio.GestionarSolicitudConexionService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Genero;
@@ -65,6 +69,12 @@ class BuscarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private BuscarActividadService buscarActividadService;
+
+    @Autowired
+    private EnviarSolicitudConexionService enviarSolicitudConexionService;
+
+    @Autowired
+    private GestionarSolicitudConexionService gestionarSolicitudConexionService;
 
     private Perfil crearPerfil(String sufijo, String dni) {
         RolGlobal rol = rolGlobalRepository.findByNombre("Usuario").orElseThrow();
@@ -160,6 +170,37 @@ class BuscarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
                 """, RolProyecto.class)
                 .setMaxResults(1)
                 .getSingleResult();
+    }
+
+    private void crearDirector(Proyecto proyecto, Perfil perfil) {
+        em.persist(MiembroProyecto.builder()
+                .proyecto(proyecto)
+                .perfil(perfil)
+                .rolProyecto(rolDirector())
+                .idTycAceptado(null)
+                .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .build());
+    }
+
+    private RolProyecto rolDirector() {
+        return em.createQuery("""
+                SELECT r FROM RolProyecto r
+                WHERE r.codigo = 'DIRECTOR' OR LOWER(r.nombre) LIKE 'director%'
+                """, RolProyecto.class)
+                .setMaxResults(1)
+                .getSingleResult();
+    }
+
+    private void crearConexion(Perfil remitente, Perfil destinatario) {
+        SolicitudConexionResponse solicitud = enviarSolicitudConexionService.enviar(
+                remitente.getUsuario().getIdUsuario(),
+                remitente.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(destinatario.getIdPerfil()));
+
+        gestionarSolicitudConexionService.aceptar(
+                destinatario.getUsuario().getIdUsuario(),
+                destinatario.getIdPerfil(),
+                solicitud.idSolicitudConexion());
     }
 
     private RequerimientoActividad crearRequerimiento(
@@ -316,6 +357,27 @@ class BuscarActividadIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThatThrownBy(() -> buscarActividadService.buscar(
                 perfil.getIdPerfil(), borrador.getIdProyecto(), null, 0, 20, false))
                 .isInstanceOf(AccesoDenegadoProyectoException.class);
+    }
+
+    @Test
+    void contactoDeDirector_veActividadesDeProyectoPrivado() {
+        Perfil director = crearPerfil("CD", "99300011");
+        Perfil contacto = crearPerfil("CC", "99300012");
+
+        Proyecto privado = crearProyecto(
+                "Privado Contacto D", EstadoProyecto.PUBLICADO, Privacidad.PRIVADO);
+        Planificacion planificacion = crearPlanificacion(privado);
+        crearActividad(planificacion, "Casting privado", "Modelos", 30,
+                LocalDateTime.of(2026, 11, 4, 9, 0), EstadoActividad.PENDIENTE);
+
+        crearDirector(privado, director);
+        em.flush();
+        crearConexion(contacto, director);
+
+        PaginaResponse<ActividadBusquedaResponse> pagina = buscarActividadService.buscar(
+                contacto.getIdPerfil(), privado.getIdProyecto(), null, 0, 20, false);
+
+        assertThat(nombres(pagina)).containsExactly("Casting privado");
     }
 
     @Test

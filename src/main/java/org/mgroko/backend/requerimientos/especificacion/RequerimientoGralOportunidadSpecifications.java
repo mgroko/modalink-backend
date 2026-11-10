@@ -14,7 +14,7 @@ import org.mgroko.backend.modelo.RequerimientoGralCaractValor;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
-import org.mgroko.backend.modelo.enums.Privacidad;
+import org.mgroko.backend.proyectos.especificacion.ProyectoVisibilidadSpecifications;
 import org.mgroko.backend.requerimientos.dto.BuscarRequerimientosGlobalFiltro;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -56,7 +56,8 @@ public final class RequerimientoGralOportunidadSpecifications {
             predicates.add(cb.equal(proyecto.get("aceptaPostulacionGral"), Boolean.TRUE));
 
             predicates.add(conCupoDisponible(query, cb, root));
-            predicates.add(conVisibilidad(query, cb, proyecto, idPerfilActivo));
+            predicates.add(ProyectoVisibilidadSpecifications.visibleParaPerfil(
+                    query, cb, proyecto, idPerfilActivo));
 
             if (filtro != null) {
                 aplicarFiltros(query, cb, root, proyecto, idPerfilActivo,
@@ -167,28 +168,6 @@ public final class RequerimientoGralOportunidadSpecifications {
                 cb.equal(miembro.get("estadoParticipacion"), EstadoParticipacion.ACTIVO));
 
         return cb.greaterThan(root.<Integer>get("cantidad").as(Long.class), subquery);
-    }
-
-    private static Predicate conVisibilidad(
-            CriteriaQuery<?> query,
-            CriteriaBuilder cb,
-            Path<Proyecto> proyecto,
-            Long idPerfilActivo) {
-
-        Predicate publico = cb.equal(proyecto.get("privacidad"), Privacidad.PUBLICO);
-        if (idPerfilActivo == null) {
-            return publico;
-        }
-
-        Subquery<Long> subquery = query.subquery(Long.class);
-        Root<MiembroProyecto> miembro = subquery.from(MiembroProyecto.class);
-        subquery.select(miembro.get("idMiembro"));
-        subquery.where(
-                cb.equal(miembro.get("proyecto"), proyecto),
-                cb.equal(miembro.get("perfil").get("idPerfil"), idPerfilActivo),
-                cb.equal(miembro.get("estadoParticipacion"), EstadoParticipacion.ACTIVO));
-
-        return cb.or(publico, cb.exists(subquery));
     }
 
     private static Predicate conCaracteristica(

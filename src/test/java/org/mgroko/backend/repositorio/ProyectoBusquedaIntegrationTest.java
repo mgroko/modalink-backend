@@ -7,6 +7,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
+import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
+import org.mgroko.backend.conexiones.servicio.EnviarSolicitudConexionService;
+import org.mgroko.backend.conexiones.servicio.GestionarSolicitudConexionService;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PerfilTyc;
@@ -35,8 +39,9 @@ import jakarta.persistence.PersistenceContext;
 
 /**
  * Integración de la regla de visibilidad de la búsqueda global (UC-29)
- * contra PostgreSQL real: el Borrador y el Privado solo son visibles para
- * miembros activos; lo Público no-borrador es visible para cualquier perfil.
+ * contra PostgreSQL real: Borrador y Cancelado solo para miembros; Público
+ * para cualquier perfil activo; Privado para miembros y contactos de los
+ * directores activos del proyecto.
  */
 @SpringBootTest
 @Transactional
@@ -56,6 +61,15 @@ class ProyectoBusquedaIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private ProyectoRepository proyectoRepository;
+
+    @Autowired
+    private EnviarSolicitudConexionService enviarSolicitudConexionService;
+
+    @Autowired
+    private GestionarSolicitudConexionService gestionarSolicitudConexionService;
+
+    @Autowired
+    private org.mgroko.backend.conexiones.servicio.EliminarConexionService eliminarConexionService;
 
     private record Escenario(
             Perfil perfilPropio,
@@ -128,7 +142,7 @@ class ProyectoBusquedaIntegrationTest extends AbstractPostgresIntegrationTest {
                 EstadoProyecto.PUBLICADO, Privacidad.PUBLICO);
 
         crearMiembro(borradorPropio, perfilPropio);
-        crearMiembro(privadoPropio, perfilPropio);
+        crearMiembro(privadoPropio, perfilPropio, rolDirector());
         crearMiembro(publicoPropio, perfilPropio);
 
         em.flush();
@@ -146,8 +160,12 @@ class ProyectoBusquedaIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private void crearMiembro(Proyecto proyecto, Perfil perfil) {
+        crearMiembro(proyecto, perfil, rolMiembro());
+    }
+
+    private void crearMiembro(Proyecto proyecto, Perfil perfil, RolProyecto rol) {
         em.persist(MiembroProyecto.builder()
-                .proyecto(proyecto).perfil(perfil).rolProyecto(rolMiembro())
+                .proyecto(proyecto).perfil(perfil).rolProyecto(rol)
                 .idTycAceptado(null)
                 .estadoParticipacion(EstadoParticipacion.ACTIVO).build());
     }
@@ -159,6 +177,27 @@ class ProyectoBusquedaIntegrationTest extends AbstractPostgresIntegrationTest {
                 """, RolProyecto.class)
                 .setMaxResults(1)
                 .getSingleResult();
+    }
+
+    private RolProyecto rolDirector() {
+        return em.createQuery("""
+                SELECT r FROM RolProyecto r
+                WHERE r.codigo = 'DIRECTOR' OR LOWER(r.nombre) LIKE 'director%'
+                """, RolProyecto.class)
+                .setMaxResults(1)
+                .getSingleResult();
+    }
+
+    private Long crearConexion(Perfil remitente, Perfil destinatario) {
+        SolicitudConexionResponse solicitud = enviarSolicitudConexionService.enviar(
+                remitente.getUsuario().getIdUsuario(),
+                remitente.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(destinatario.getIdPerfil()));
+
+        return gestionarSolicitudConexionService.aceptar(
+                destinatario.getUsuario().getIdUsuario(),
+                destinatario.getIdPerfil(),
+                solicitud.idSolicitudConexion()).idConexion();
     }
 
     private List<String> nombresVisibles(Long idPerfil, BuscarProyectosFiltro filtro) {
@@ -198,6 +237,55 @@ class ProyectoBusquedaIntegrationTest extends AbstractPostgresIntegrationTest {
                 e.privadoPropio().getNombre(),
                 e.borradorAjeno().getNombre(),
                 e.privadoAjeno().getNombre());
+    }
+
+    @Test
+    void comoContactoDeDirector_vePrivadoPublicadoPeroNoBorradorNiCancelado() {
+        Escenario e = crearEscenario("F", "99200011", "99200012");
+        crearConexion(e.perfilAjeno(), e.perfilPropio());
+
+        Proyecto privadoCancelado = crearProyecto(
+                "Privado Cancelado F", EstadoProyecto.CANCELADO, Privacidad.PRIVADO);
+        crearMiembro(privadoCancelado, e.perfilPropio(), rolDirector());
+        em.flush();
+
+        List<String> nombres = nombresVisibles(e.perfilAjeno().getIdPerfil(), null);
+
+        assertThat(nombres).contains(e.privadoPropio().getNombre());
+        assertThat(nombres).doesNotContain(
+                e.borradorPropio().getNombre(),
+                privadoCancelado.getNombre());
+    }
+
+    @Test
+    void contactoDeMiembroNoDirector_noVeProyectoPrivado() {
+        Escenario e = crearEscenario("G", "99200013", "99200014");
+
+        Proyecto privadoDeMiembro = crearProyecto(
+                "Privado Miembro G", EstadoProyecto.PUBLICADO, Privacidad.PRIVADO);
+        crearMiembro(privadoDeMiembro, e.perfilPropio(), rolMiembro());
+        em.flush();
+
+        crearConexion(e.perfilAjeno(), e.perfilPropio());
+
+        List<String> nombres = nombresVisibles(e.perfilAjeno().getIdPerfil(), null);
+
+        assertThat(nombres).doesNotContain(privadoDeMiembro.getNombre());
+    }
+
+    @Test
+    void contactoDeDirectorConConexionEliminada_dejaDeVerProyectoPrivado() {
+        Escenario e = crearEscenario("H", "99200015", "99200016");
+        Long idConexion = crearConexion(e.perfilAjeno(), e.perfilPropio());
+
+        eliminarConexionService.eliminar(
+                e.perfilAjeno().getUsuario().getIdUsuario(),
+                e.perfilAjeno().getIdPerfil(),
+                idConexion);
+
+        List<String> nombres = nombresVisibles(e.perfilAjeno().getIdPerfil(), null);
+
+        assertThat(nombres).doesNotContain(e.privadoPropio().getNombre());
     }
 
     @Test

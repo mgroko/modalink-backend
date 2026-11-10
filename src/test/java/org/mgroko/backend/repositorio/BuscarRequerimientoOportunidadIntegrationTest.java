@@ -9,6 +9,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
+import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
+import org.mgroko.backend.conexiones.servicio.EnviarSolicitudConexionService;
+import org.mgroko.backend.conexiones.servicio.GestionarSolicitudConexionService;
 import org.mgroko.backend.home.servicio.HomeOportunidadesService;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
@@ -81,6 +85,12 @@ class BuscarRequerimientoOportunidadIntegrationTest extends AbstractPostgresInte
     @Autowired
     private HomeOportunidadesService homeOportunidadesService;
 
+    @Autowired
+    private EnviarSolicitudConexionService enviarSolicitudConexionService;
+
+    @Autowired
+    private GestionarSolicitudConexionService gestionarSolicitudConexionService;
+
     @Test
     void generales_priorizaProfesionYRespetaVisibilidad() {
         Perfil perfil = crearPerfil("A", "99400001", "Modelo");
@@ -135,6 +145,33 @@ class BuscarRequerimientoOportunidadIntegrationTest extends AbstractPostgresInte
                         0, 20, false);
 
         assertThat(soloPrivado.contenido()).isEmpty();
+    }
+
+    @Test
+    void generales_contactoDeDirector_veRequerimientoDeProyectoPrivado() {
+        Perfil director = crearPerfil("CD", "99400011", "Modelo");
+        Perfil contacto = crearPerfil("CC", "99400012", "Modelo");
+
+        Proyecto privado = crearProyecto(
+                "Privado Contacto R", EstadoProyecto.PUBLICADO, Privacidad.PRIVADO, true);
+        RequerimientoGralProyecto requerimiento = crearRequerimientoGeneral(
+                privado, contacto.getProfesion(), 1, "Privado contacto");
+
+        crearMiembro(privado, director, rolDirector(), EstadoParticipacion.ACTIVO);
+        em.flush();
+        crearConexion(contacto, director);
+
+        PaginaResponse<RequerimientoOportunidadResponse> pagina =
+                buscarGeneralesService.buscar(
+                        contacto.getIdPerfil(),
+                        new BuscarRequerimientosGlobalFiltro(
+                                null, privado.getIdProyecto(), null, null,
+                                null, null, null, null, null, null),
+                        0, 20, false);
+
+        assertThat(pagina.contenido())
+                .extracting(RequerimientoOportunidadResponse::idRequerimiento)
+                .containsExactly(requerimiento.getIdRequerimientoGral());
     }
 
     @Test
@@ -549,5 +586,17 @@ class BuscarRequerimientoOportunidadIntegrationTest extends AbstractPostgresInte
                 """, RolProyecto.class)
                 .setMaxResults(1)
                 .getSingleResult();
+    }
+
+    private void crearConexion(Perfil remitente, Perfil destinatario) {
+        SolicitudConexionResponse solicitud = enviarSolicitudConexionService.enviar(
+                remitente.getUsuario().getIdUsuario(),
+                remitente.getIdPerfil(),
+                new EnviarSolicitudConexionRequest(destinatario.getIdPerfil()));
+
+        gestionarSolicitudConexionService.aceptar(
+                destinatario.getUsuario().getIdUsuario(),
+                destinatario.getIdPerfil(),
+                solicitud.idSolicitudConexion());
     }
 }

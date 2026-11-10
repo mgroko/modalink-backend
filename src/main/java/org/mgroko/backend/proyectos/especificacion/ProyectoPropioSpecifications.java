@@ -84,7 +84,7 @@ public class ProyectoPropioSpecifications {
 
     private static Predicate conRol(RolProyectoUsuario rol, Path<MiembroProyecto> miembro, CriteriaBuilder cb) {
         return switch (rol) {
-            case DIRECTOR -> ProyectoSpecifications.esRolDirector(miembro, cb);
+            case DIRECTOR -> ProyectoVisibilidadSpecifications.esRolDirector(miembro, cb);
             case MIEMBRO -> cb.or(
                     cb.equal(cb.lower(miembro.get("rolProyecto").get("codigo")), "miembro"),
                     cb.like(cb.lower(miembro.get("rolProyecto").get("nombre")),
