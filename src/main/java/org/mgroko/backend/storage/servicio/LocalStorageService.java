@@ -30,7 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Persiste en disco local las fotos de perfil, las im&aacute;genes del moodboard
- * y -a futuro- las im&aacute;genes de publicaciones, ya convertidas por
+ * y las im&aacute;genes de publicaciones, ya convertidas por
  * {@link ProcesadorImagen}. Cada tipo de imagen vive en su propio
  * subdirectorio dentro de {@code uploads}:
  * <ul>
@@ -57,6 +57,7 @@ public class LocalStorageService implements StorageService {
     private static final String PREFIJO_CONTENT_TYPE = "image/";
     private static final String PREFIJO_NOMBRE_PERFIL = "perfil_";
     private static final String PREFIJO_NOMBRE_MOODBOARD = "moodboard_";
+    private static final String PREFIJO_NOMBRE_PUBLICACION = "publicacion_";
 
     private final Path perfilesPath;
     private final Path moodboardPath;
@@ -86,19 +87,25 @@ public class LocalStorageService implements StorageService {
 
     @Override
     public ArchivoAlmacenado almacenarFotoPerfil(MultipartFile archivo) {
-        return almacenar(perfilesSubdir, perfilesPath, PREFIJO_NOMBRE_PERFIL, archivo);
+        return almacenar(perfilesSubdir, perfilesPath, PREFIJO_NOMBRE_PERFIL, archivo, false);
     }
 
     @Override
     public ArchivoAlmacenado almacenarImagenMoodboard(MultipartFile archivo) {
-        return almacenar(moodboardSubdir, moodboardPath, PREFIJO_NOMBRE_MOODBOARD, archivo);
+        return almacenar(moodboardSubdir, moodboardPath, PREFIJO_NOMBRE_MOODBOARD, archivo, false);
+    }
+
+    @Override
+    public ArchivoAlmacenado almacenarImagenPublicacion(MultipartFile archivo) {
+        return almacenar(publicacionesSubdir, publicacionesPath, PREFIJO_NOMBRE_PUBLICACION, archivo, true);
     }
 
     private ArchivoAlmacenado almacenar(
             String subdirectorio,
             Path directorio,
             String prefijoNombre,
-            MultipartFile archivo) {
+            MultipartFile archivo,
+            boolean paraPublicacion) {
 
         if (archivo == null || archivo.isEmpty()) {
             throw new ArchivoVacioException("El archivo de imagen no puede estar vacío.");
@@ -117,7 +124,9 @@ public class LocalStorageService implements StorageService {
             throw new ErrorAlmacenamientoException("Error al leer los bytes del archivo.", e);
         }
 
-        byte[] bytesConvertidos = procesadorImagen.procesar(bytes);
+        byte[] bytesConvertidos = paraPublicacion
+                ? procesadorImagen.procesarParaPublicacion(bytes)
+                : procesadorImagen.procesar(bytes);
 
         String nombreArchivoGenerado = prefijoNombre + UUID.randomUUID()
                 + "." + ProcesadorImagen.EXTENSION_SALIDA;

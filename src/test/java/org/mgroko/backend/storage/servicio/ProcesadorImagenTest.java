@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_LADO_SALIDA_PX;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_LADO_PX;
+import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_MEGAPIXELES;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_TAMANO_BYTES;
 
@@ -50,6 +51,7 @@ class ProcesadorImagenTest {
         valoresPorDefecto.put(CLAVE_IMAGEN_MAX_MEGAPIXELES, "24");
         valoresPorDefecto.put(CLAVE_IMAGEN_MAX_TAMANO_BYTES, "10485760");
         valoresPorDefecto.put(CLAVE_IMAGEN_LADO_SALIDA_PX, String.valueOf(LADO_SALIDA));
+        valoresPorDefecto.put(CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX, "480");
         valoresPorDefecto.put(CLAVE_IMAGEN_CALIDAD_WEBP, "85");
     }
 
@@ -64,6 +66,16 @@ class ProcesadorImagenTest {
         assertNotNull(leida);
         assertEquals(LADO_SALIDA, leida.getWidth());
         assertEquals(LADO_SALIDA, leida.getHeight());
+    }
+
+    @Test
+    void procesarParaPublicacion_respetaRelacionDeAspectoYNoRecorta() throws IOException {
+        byte[] salida = procesador().procesarParaPublicacion(jpeg(1200, 600, Color.BLUE));
+
+        BufferedImage leida = ImageIO.read(new ByteArrayInputStream(salida));
+        assertNotNull(leida);
+        assertEquals(480, leida.getWidth());
+        assertEquals(240, leida.getHeight());
     }
 
     @Test

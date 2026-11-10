@@ -42,6 +42,8 @@ class LocalStorageServiceTest {
     private static final String CLAVE_MAX_MEGAPIXELES = ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_MEGAPIXELES;
     private static final String CLAVE_MAX_TAMANO_BYTES = ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_TAMANO_BYTES;
     private static final String CLAVE_LADO_SALIDA_PX = ConfiguracionSistemaService.CLAVE_IMAGEN_LADO_SALIDA_PX;
+    private static final String CLAVE_PUBLICACION_LADO_SALIDA_PX =
+            ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX;
     private static final String CLAVE_CALIDAD_WEBP = ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP;
 
     private static final Map<String, String> CONFIGURACION = Map.of(
@@ -49,6 +51,7 @@ class LocalStorageServiceTest {
             CLAVE_MAX_MEGAPIXELES, "24",
             CLAVE_MAX_TAMANO_BYTES, "10485760",
             CLAVE_LADO_SALIDA_PX, "600",
+            CLAVE_PUBLICACION_LADO_SALIDA_PX, "1200",
             CLAVE_CALIDAD_WEBP, "85");
 
     @TempDir
@@ -241,6 +244,22 @@ class LocalStorageServiceTest {
     }
 
     @Test
+    void almacenarImagenPublicacion_guardaEnSuDirectorioSinRecortar() throws IOException {
+        ArchivoAlmacenado resultado = storageService.almacenarImagenPublicacion(new MockMultipartFile(
+                "archivo", "publicacion.jpg", "image/jpeg", jpegApaisado()));
+
+        assertTrue(resultado.nombreArchivo().startsWith("publicacion_"));
+        assertTrue(resultado.url().endsWith("/publicaciones/" + resultado.nombreArchivo()));
+
+        Path archivo = tempDir.resolve("publicaciones").resolve(resultado.nombreArchivo());
+        assertTrue(Files.exists(archivo));
+
+        BufferedImage leida = ImageIO.read(new ByteArrayInputStream(Files.readAllBytes(archivo)));
+        assertEquals(1200, leida.getWidth());
+        assertEquals(600, leida.getHeight());
+    }
+
+    @Test
     void listarArchivos_incluyeLosTresDirectorios() throws IOException {
         Files.write(tempDir.resolve("perfiles").resolve("perfil_test.webp"), "perfil".getBytes());
         Files.write(tempDir.resolve("moodboard").resolve("moodboard_test.webp"), "moodboard".getBytes());
@@ -278,6 +297,18 @@ class LocalStorageServiceTest {
         storageService.eliminarFotoPerfil("moodboard_a_borrar.webp");
 
         assertFalse(Files.exists(archivo));
+    }
+
+    private static byte[] jpegApaisado() throws IOException {
+        BufferedImage imagen = new BufferedImage(2400, 1200, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = imagen.createGraphics();
+        g.setColor(Color.BLUE);
+        g.fillRect(0, 0, 2400, 1200);
+        g.dispose();
+
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        assertTrue(ImageIO.write(imagen, "jpg", salida), "No hay escritor JPEG disponible");
+        return salida.toByteArray();
     }
 
     private static byte[] jpeg() throws IOException {

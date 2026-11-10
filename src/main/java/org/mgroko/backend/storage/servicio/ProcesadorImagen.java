@@ -69,6 +69,8 @@ public class ProcesadorImagen {
      * Valida los bytes recibidos, los reescala al lado configurado (respetando la
      * orientación EXIF) y los devuelve codificados en WebP lossy con la calidad
      * configurada.
+     * <p>
+     * Este modo recorta al centro y se usa para fotos de perfil y moodboard.
      *
      * @param bytes bytes originales del archivo subido
      * @return los mismos bytes codificados en WebP
@@ -78,11 +80,31 @@ public class ProcesadorImagen {
      * @throws IllegalStateException               si falta un parámetro en configuracion_sistema
      */
     public byte[] procesar(byte[] bytes) {
+        return procesar(bytes, false);
+    }
+
+    /**
+     * Procesa una imagen de publicación respetando su relación de aspecto. No
+     * recorta: el lado más largo queda limitado por
+     * {@code IMAGEN_PUBLICACION_LADO_SALIDA_PX}.
+     *
+     * @param bytes bytes originales del archivo subido
+     * @return los mismos bytes codificados en WebP
+     * @throws ArchivoVacioException               si no hay bytes que procesar
+     * @throws DimensionesImagenExcedidasException si supera el lado o los píxeles permitidos
+     * @throws FormatoImagenInvalidoException      si el tamaño, los magic bytes o la decodificación fallan
+     * @throws IllegalStateException               si falta un parámetro en configuracion_sistema
+     */
+    public byte[] procesarParaPublicacion(byte[] bytes) {
+        return procesar(bytes, true);
+    }
+
+    private byte[] procesar(byte[] bytes, boolean paraPublicacion) {
         if (bytes == null || bytes.length == 0) {
             throw new ArchivoVacioException("El archivo de imagen no puede estar vacío.");
         }
 
-        ParametrosImagen parametros = leerParametros();
+        ParametrosImagen parametros = leerParametros(paraPublicacion);
 
         if (bytes.length > parametros.maxTamanoBytes()) {
             throw new FormatoImagenInvalidoException("El archivo supera el tamaño máximo permitido de "
@@ -93,7 +115,11 @@ public class ProcesadorImagen {
 
         validarDimensiones(bytes, parametros);
 
-        BufferedImage reescalada = decodificarYReescalar(bytes, parametros.ladoSalidaPx());
+        int ladoSalida = paraPublicacion
+                ? parametros.ladoSalidaPublicacionPx()
+                : parametros.ladoSalidaPx();
+
+        BufferedImage reescalada = decodificarYReescalar(bytes, ladoSalida, !paraPublicacion);
 
         return codificarWebP(reescalada, parametros.calidadWebp());
     }
@@ -159,13 +185,17 @@ public class ProcesadorImagen {
      * la orientación EXIF antes de reescalar (si se decodifica antes con ImageIO y se
      * pasa el BufferedImage, la orientación se pierde).
      */
-    private BufferedImage decodificarYReescalar(byte[] bytes, int ladoSalidaPx) {
+    private BufferedImage decodificarYReescalar(byte[] bytes, int ladoSalidaPx, boolean recortarCuadrado) {
         try {
-            return Thumbnails.of(new ByteArrayInputStream(bytes))
+            var builder = Thumbnails.of(new ByteArrayInputStream(bytes))
                     .useExifOrientation(true)
-                    .size(ladoSalidaPx, ladoSalidaPx)
-                    .crop(Positions.CENTER)
-                    .asBufferedImage();
+                    .size(ladoSalidaPx, ladoSalidaPx);
+
+            if (recortarCuadrado) {
+                builder.crop(Positions.CENTER);
+            }
+
+            return builder.asBufferedImage();
         } catch (IOException e) {
             throw new FormatoImagenInvalidoException("No se pudo decodificar el archivo como una imagen válida.");
         }
@@ -200,16 +230,19 @@ public class ProcesadorImagen {
         return buffer.toByteArray();
     }
 
-    private ParametrosImagen leerParametros() {
+    private ParametrosImagen leerParametros(boolean paraPublicacion) {
         int maxLadoPx = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_LADO_PX);
         int megapixeles = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_MEGAPIXELES);
         int maxTamanoBytes = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_TAMANO_BYTES);
         int ladoSalidaPx = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_LADO_SALIDA_PX);
+        int ladoSalidaPublicacionPx = paraPublicacion
+                ? leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX)
+                : 0;
         int calidadWebp = leerEnteroEnRango(ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP,
                 0, PORCENTAJE_CALIDAD);
 
         return new ParametrosImagen(maxLadoPx, megapixeles * PIXELES_POR_MEGAPIXEL,
-                maxTamanoBytes, ladoSalidaPx, calidadWebp);
+                maxTamanoBytes, ladoSalidaPx, ladoSalidaPublicacionPx, calidadWebp);
     }
 
     private int leerEnteroPositivo(String clave) {
@@ -255,6 +288,6 @@ public class ProcesadorImagen {
     }
 
     private record ParametrosImagen(int maxLadoPx, long maxPixeles, int maxTamanoBytes,
-            int ladoSalidaPx, int calidadWebp) {
+            int ladoSalidaPx, int ladoSalidaPublicacionPx, int calidadWebp) {
     }
 }

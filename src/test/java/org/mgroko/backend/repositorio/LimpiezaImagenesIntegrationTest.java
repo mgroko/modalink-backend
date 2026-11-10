@@ -24,9 +24,11 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarImagenesPerfilService;
@@ -86,10 +88,14 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
     private AgendaRepository agendaRepository;
 
     @Autowired
+    private PublicacionRepository publicacionRepository;
+
+    @Autowired
     private PlatformTransactionManager transactionManager;
 
     private Long idUsuario;
     private Long idPerfil;
+    private final List<Long> idsPublicacion = new ArrayList<>();
     private final List<Long> idsImagen = new ArrayList<>();
     private final List<Path> archivos = new ArrayList<>();
 
@@ -119,6 +125,11 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @AfterEach
     void limpiar() throws Exception {
+        for (Long idPublicacion : idsPublicacion) {
+            publicacionRepository.findById(idPublicacion).ifPresent(publicacionRepository::delete);
+        }
+        idsPublicacion.clear();
+
         // El perfil se borra primero: su columna foto_perfil apunta a la imagen
         if (idPerfil != null) {
             perfilRepository.findById(idPerfil).ifPresent(perfilRepository::delete);
@@ -183,6 +194,22 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
         assertEquals(0, resultado.errores());
         assertFalse(imagenRepository.findById(idImagen).isPresent());
         assertFalse(Files.exists(archivo));
+    }
+
+    @Test
+    void imagenReferenciadaPorPublicacion_noSeBorra() throws Exception {
+        Path archivo = crearArchivoEn(DIRECTORIO_PUBLICACIONES, "publicacion-referenciada.webp", 180);
+        Long idImagen = crearImagen("publicaciones", "publicacion-referenciada.webp",
+                LocalDateTime.now().minusHours(3));
+        Long idPublicacion = crearPublicacionConImagen(idImagen);
+        idsPublicacion.add(idPublicacion);
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(0, resultado.imagenesHuerfanas());
+        assertEquals(0, resultado.archivosHuerfanos());
+        assertTrue(imagenRepository.findById(idImagen).isPresent());
+        assertTrue(Files.exists(archivo));
     }
 
     @Test
@@ -282,6 +309,21 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
                 .build());
         idsImagen.add(imagen.getIdImagen());
         return imagen.getIdImagen();
+    }
+
+    private Long crearPublicacionConImagen(Long idImagen) {
+        return new TransactionTemplate(transactionManager).execute(estado -> {
+            Perfil perfil = perfilRepository.findById(idPerfil).orElseThrow();
+            Imagen imagen = imagenRepository.findById(idImagen).orElseThrow();
+            Publicacion publicacion = Publicacion.builder()
+                    .titulo("Publicación de prueba")
+                    .fechaPublicacion(LocalDateTime.now())
+                    .estado(EstadoPublicacion.ACTIVA)
+                    .perfil(perfil)
+                    .imagenes(new ArrayList<>(List.of(imagen)))
+                    .build();
+            return publicacionRepository.saveAndFlush(publicacion).getIdPublicacion();
+        });
     }
 
     private void asociarFotoAlPerfil(Long idImagen) {

@@ -82,6 +82,9 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
 import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
+import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
+import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
+import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
@@ -405,6 +408,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException.class)
     public ResponseEntity<Map<String, Object>> handleLimiteImagenesMoodboardExcedido(
             org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(LimiteImagenesPublicacionExcedidoException.class)
+    public ResponseEntity<Map<String, Object>> handleLimiteImagenesPublicacionExcedido(
+            LimiteImagenesPublicacionExcedidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ProyectoNoAsociableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoAsociable(
+            ProyectoNoAsociableException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "PROYECTO_NO_ASOCIABLE", HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(PublicacionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePublicacionInvalida(
+            PublicacionInvalidaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
