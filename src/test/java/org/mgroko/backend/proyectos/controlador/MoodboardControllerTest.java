@@ -53,7 +53,7 @@ class MoodboardControllerTest {
                 77L,
                 "Paleta fría",
                 LocalDateTime.of(2026, 6, 1, 10, 0),
-                List.of(new ImagenMoodboardResponse(5L, "/uploads/perfiles/moodboard_1.webp")));
+                List.of(new ImagenMoodboardResponse(5L, "/uploads/moodboard/moodboard_1.webp")));
 
         when(moodboardImagenesService.subirImagenes(eq(1L), eq(10L), eq(101L), any()))
                 .thenReturn(response);
@@ -66,7 +66,7 @@ class MoodboardControllerTest {
                 .andExpect(jsonPath("$.descripcion").value("Paleta fría"))
                 .andExpect(jsonPath("$.imagenes.length()").value(1))
                 .andExpect(jsonPath("$.imagenes[0].idImagen").value(5L))
-                .andExpect(jsonPath("$.imagenes[0].url").value("/uploads/perfiles/moodboard_1.webp"));
+                .andExpect(jsonPath("$.imagenes[0].url").value("/uploads/moodboard/moodboard_1.webp"));
     }
 
     @Test

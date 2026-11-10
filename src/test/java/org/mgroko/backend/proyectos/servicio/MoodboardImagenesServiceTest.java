@@ -119,8 +119,8 @@ class MoodboardImagenesServiceTest {
         });
 
         when(storageService.almacenarImagenMoodboard(any())).thenReturn(
-                new ArchivoAlmacenado("moodboard_a.webp", "/uploads/perfiles/moodboard_a.webp", "image/webp", 512L),
-                new ArchivoAlmacenado("moodboard_b.webp", "/uploads/perfiles/moodboard_b.webp", "image/webp", 512L));
+                new ArchivoAlmacenado("moodboard_a.webp", "/uploads/moodboard/moodboard_a.webp", "image/webp", 512L),
+                new ArchivoAlmacenado("moodboard_b.webp", "/uploads/moodboard/moodboard_b.webp", "image/webp", 512L));
 
         java.util.concurrent.atomic.AtomicInteger secuencia = new java.util.concurrent.atomic.AtomicInteger(10);
         when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
@@ -135,8 +135,8 @@ class MoodboardImagenesServiceTest {
         assertNotNull(response);
         assertEquals(99L, response.idMoodboard());
         assertEquals(2, response.imagenes().size());
-        assertEquals("/uploads/perfiles/moodboard_a.webp", response.imagenes().get(0).url());
-        assertEquals("/uploads/perfiles/moodboard_b.webp", response.imagenes().get(1).url());
+        assertEquals("/uploads/moodboard/moodboard_a.webp", response.imagenes().get(0).url());
+        assertEquals("/uploads/moodboard/moodboard_b.webp", response.imagenes().get(1).url());
         verify(imagenRepository, times(2)).save(any(Imagen.class));
         // Dos guardados: creación del moodboard y alta final con las imágenes
         verify(moodboardRepository, times(2)).save(any(Moodboard.class));
@@ -146,7 +146,7 @@ class MoodboardImagenesServiceTest {
     void subirImagenes_moodboardExistente_agregaYRespetaLimiteDeDiez() {
         Set<Imagen> existentes = new HashSet<>();
         for (int i = 1; i <= 10; i++) {
-            existentes.add(Imagen.builder().idImagen((long) i).url("/uploads/perfiles/moodboard_" + i + ".webp").build());
+            existentes.add(Imagen.builder().idImagen((long) i).url("/uploads/moodboard/moodboard_" + i + ".webp").build());
         }
         Moodboard moodboard = Moodboard.builder()
                 .idMoodboard(7L)
@@ -245,7 +245,7 @@ class MoodboardImagenesServiceTest {
         when(moodboardRepository.save(any(Moodboard.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         when(storageService.almacenarImagenMoodboard(any())).thenReturn(new ArchivoAlmacenado(
-                "moodboard_x.webp", "/uploads/perfiles/moodboard_x.webp", "image/webp", 256L));
+                "moodboard_x.webp", "/uploads/moodboard/moodboard_x.webp", "image/webp", 256L));
         when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
             Imagen imagen = invocation.getArgument(0);
             imagen.setIdImagen(11L);

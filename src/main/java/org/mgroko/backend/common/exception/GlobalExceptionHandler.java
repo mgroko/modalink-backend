@@ -86,6 +86,7 @@ import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
 import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
+import org.mgroko.backend.storage.exception.LimpiezaImagenesEnCursoException;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
 import org.mgroko.backend.ubicacion.exception.PaisNoConfiguradoException;
@@ -1190,6 +1191,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ErrorAlmacenamientoException.class)
     public ResponseEntity<Map<String, Object>> handleErrorAlmacenamiento(ErrorAlmacenamientoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(LimpiezaImagenesEnCursoException.class)
+    public ResponseEntity<Map<String, Object>> handleLimpiezaImagenesEnCurso(
+            LimpiezaImagenesEnCursoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "LIMPIEZA_IMAGENES_EN_CURSO", HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)

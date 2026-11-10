@@ -295,6 +295,23 @@ Mis condiciones de trabajo
         return minutos;
     }
 
+    /**
+     * Modifica cada cuántas horas se ejecuta la limpieza de imágenes.
+     * El scheduler lee el valor en cada ciclo, por lo que el cambio se aplica
+     * sin reiniciar el servidor.
+     *
+     * @param horas intervalo en horas (1 a 168)
+     */
+    @Transactional
+    @AuditarOperacion
+    public void actualizarIntervaloLimpiezaImagenes(int horas) {
+        if (horas < 1 || horas > 168) {
+            throw new IllegalArgumentException("El intervalo de limpieza de imágenes debe estar entre 1 y 168 horas.");
+        }
+        guardarOActualizar(CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS, String.valueOf(horas),
+                "Intervalo en horas para la limpieza de imágenes huérfanas");
+    }
+
     @Transactional
     @AuditarOperacion
     public EjecutarSchedulerResponse ejecutarDeshabilitacionManual() {

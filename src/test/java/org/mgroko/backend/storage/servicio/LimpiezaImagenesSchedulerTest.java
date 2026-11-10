@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -96,5 +97,25 @@ class LimpiezaImagenesSchedulerTest {
                 "Debe programarse a partir de ahora: " + proxima);
         assertTrue(proxima.isBefore(antes.plus(Duration.ofHours(1)).plusSeconds(5)),
                 "El intervalo configurado debe respetarse: " + proxima);
+    }
+
+    @Test
+    @DisplayName("proximaEjecucion - Sin ejecución previa usa el intervalo configurado")
+    void proximaEjecucion_sinEjecucionPrevia_usaElIntervalo() {
+        when(configuracionSistemaService.obtenerIntervaloLimpiezaImagenesHoras()).thenReturn(6);
+
+        LocalDateTime antes = LocalDateTime.now();
+        LocalDateTime proxima = limpiezaImagenesScheduler.proximaEjecucion();
+
+        assertTrue(!proxima.isBefore(antes.plusHours(6).minusSeconds(5)));
+        assertTrue(proxima.isBefore(antes.plusHours(6).plusSeconds(5)));
+    }
+
+    @Test
+    @DisplayName("marcarEjecucionManual - Registra la última ejecución")
+    void marcarEjecucionManual_registraLaFecha() {
+        limpiezaImagenesScheduler.marcarEjecucionManual();
+
+        assertNotNull(limpiezaImagenesScheduler.ultimaEjecucion());
     }
 }

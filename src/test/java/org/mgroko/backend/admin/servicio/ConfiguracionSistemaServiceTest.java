@@ -96,6 +96,29 @@ class ConfiguracionSistemaServiceTest {
     }
 
     @Test
+    @DisplayName("actualizarIntervaloLimpiezaImagenes - Persiste el nuevo intervalo")
+    void actualizarIntervaloLimpiezaImagenes_guardaValor() {
+        when(configuracionSistemaRepository.findByClave(any())).thenReturn(Optional.empty());
+
+        configuracionSistemaService.actualizarIntervaloLimpiezaImagenes(6);
+
+        ArgumentCaptor<ConfiguracionSistema> captor = ArgumentCaptor.forClass(ConfiguracionSistema.class);
+        verify(configuracionSistemaRepository).save(captor.capture());
+        assertEquals(ConfiguracionSistemaService.CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS,
+                captor.getValue().getClave());
+        assertEquals("6", captor.getValue().getValor());
+    }
+
+    @Test
+    @DisplayName("actualizarIntervaloLimpiezaImagenes - Rechaza valores fuera de rango")
+    void actualizarIntervaloLimpiezaImagenes_rechazaFueraDeRango() {
+        assertThrows(IllegalArgumentException.class,
+                () -> configuracionSistemaService.actualizarIntervaloLimpiezaImagenes(0));
+        assertThrows(IllegalArgumentException.class,
+                () -> configuracionSistemaService.actualizarIntervaloLimpiezaImagenes(169));
+    }
+
+    @Test
     @DisplayName("obtenerMargenActividadDefecto - Retorna el valor configurado")
     void obtenerMargenActividadDefecto_valorConfigurado() {
         when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_MARGEN_ACTIVIDAD_MIN))

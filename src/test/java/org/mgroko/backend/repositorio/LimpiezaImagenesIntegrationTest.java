@@ -49,7 +49,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(properties = "app.storage.upload-dir=target/uploads-limpieza-fase5")
 class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
 
-    private static final Path DIRECTORIO_SUBIDAS = Path.of("target", "uploads-limpieza-fase5", "perfiles");
+    private static final Path DIRECTORIO_SUBIDAS = Path.of("target", "uploads-limpieza-fase5");
+    private static final Path DIRECTORIO_PERFILES = DIRECTORIO_SUBIDAS.resolve("perfiles");
+    private static final Path DIRECTORIO_MOODBOARD = DIRECTORIO_SUBIDAS.resolve("moodboard");
+    private static final Path DIRECTORIO_PUBLICACIONES = DIRECTORIO_SUBIDAS.resolve("publicaciones");
     private static final AtomicInteger SECUENCIA = new AtomicInteger();
 
     @Autowired
@@ -144,6 +147,45 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void archivosSinFila_enMoodboardYPublicaciones_seBorran() throws Exception {
+        Path huerfanoMoodboard = crearArchivoEn(DIRECTORIO_MOODBOARD, "moodboard-huerfano.webp", 180);
+        Path huerfanoPublicacion = crearArchivoEn(DIRECTORIO_PUBLICACIONES, "publicacion-huerfana.webp", 180);
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(2, resultado.archivosHuerfanos());
+        assertEquals(0, resultado.errores());
+        assertFalse(Files.exists(huerfanoMoodboard));
+        assertFalse(Files.exists(huerfanoPublicacion));
+    }
+
+    @Test
+    void imagenSinReferenciaEnMoodboard_seBorraLaFilaYElArchivoDeSuCarpeta() throws Exception {
+        Path archivo = crearArchivoEn(DIRECTORIO_MOODBOARD, "moodboard-huerfana.webp", 180);
+        Long idImagen = crearImagen("moodboard", "moodboard-huerfana.webp", LocalDateTime.now().minusHours(3));
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(1, resultado.imagenesHuerfanas());
+        assertEquals(0, resultado.errores());
+        assertFalse(imagenRepository.findById(idImagen).isPresent());
+        assertFalse(Files.exists(archivo));
+    }
+
+    @Test
+    void imagenSinReferenciaEnPublicaciones_seBorraLaFilaYElArchivoDeSuCarpeta() throws Exception {
+        Path archivo = crearArchivoEn(DIRECTORIO_PUBLICACIONES, "publicacion-huerfana.webp", 180);
+        Long idImagen = crearImagen("publicaciones", "publicacion-huerfana.webp", LocalDateTime.now().minusHours(3));
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(1, resultado.imagenesHuerfanas());
+        assertEquals(0, resultado.errores());
+        assertFalse(imagenRepository.findById(idImagen).isPresent());
+        assertFalse(Files.exists(archivo));
+    }
+
+    @Test
     void imagenSinReferenciaAntigua_seBorraFilaYArchivo_yLaRecienteNo() throws Exception {
         Path archivoViejo = crearArchivo("huerfana-vieja.webp", 180);
         Long idVieja = crearImagen("huerfana-vieja.webp", LocalDateTime.now().minusHours(3));
@@ -187,7 +229,7 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void falloAlBorrarUnaImagen_noAbortaElResto() throws Exception {
-        Path directorioBloqueado = DIRECTORIO_SUBIDAS.resolve("bloqueada.webp");
+        Path directorioBloqueado = DIRECTORIO_PERFILES.resolve("bloqueada.webp");
         Files.createDirectories(directorioBloqueado);
         Files.write(directorioBloqueado.resolve("interno.bin"), "dummy".getBytes());
         archivos.add(directorioBloqueado.resolve("interno.bin"));
@@ -213,8 +255,12 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private Path crearArchivo(String nombre, long minutosDeAntiguedad) throws IOException {
-        Files.createDirectories(DIRECTORIO_SUBIDAS);
-        Path ruta = DIRECTORIO_SUBIDAS.resolve(nombre);
+        return crearArchivoEn(DIRECTORIO_PERFILES, nombre, minutosDeAntiguedad);
+    }
+
+    private Path crearArchivoEn(Path directorio, String nombre, long minutosDeAntiguedad) throws IOException {
+        Files.createDirectories(directorio);
+        Path ruta = directorio.resolve(nombre);
         Files.write(ruta, "dummy".getBytes());
         Files.setLastModifiedTime(ruta, FileTime.from(Instant.now().minusSeconds(minutosDeAntiguedad * 60)));
         archivos.add(ruta);
@@ -222,8 +268,12 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private Long crearImagen(String nombreArchivo, LocalDateTime fechaSubida) {
+        return crearImagen("perfiles", nombreArchivo, fechaSubida);
+    }
+
+    private Long crearImagen(String subdirectorio, String nombreArchivo, LocalDateTime fechaSubida) {
         Imagen imagen = imagenRepository.saveAndFlush(Imagen.builder()
-                .url("/uploads/perfiles/" + nombreArchivo)
+                .url("/uploads/" + subdirectorio + "/" + nombreArchivo)
                 .estado("Activa")
                 .nombreArchivo(nombreArchivo)
                 .tipoImagen("image/webp")

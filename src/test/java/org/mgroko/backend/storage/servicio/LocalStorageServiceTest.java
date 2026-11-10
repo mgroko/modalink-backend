@@ -2,6 +2,7 @@ package org.mgroko.backend.storage.servicio;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -66,7 +68,12 @@ class LocalStorageServiceTest {
             return Optional.of(ConfiguracionSistema.builder().clave(clave).valor(valor).build());
         });
 
-        storageService = new LocalStorageService(tempDir.toString(), "perfiles", new ProcesadorImagen(repositorio));
+        storageService = new LocalStorageService(
+                tempDir.toString(),
+                "perfiles",
+                "moodboard",
+                "publicaciones",
+                new ProcesadorImagen(repositorio));
     }
 
     @Test
@@ -220,6 +227,57 @@ class LocalStorageServiceTest {
         // En Windows el borrado falla si la conversión dejó algún stream abierto
         assertDoesNotThrow(() -> storageService.eliminarFotoPerfil(almacenado.nombreArchivo()));
         assertTrue(Files.notExists(tempDir.resolve("perfiles").resolve(almacenado.nombreArchivo())));
+    }
+
+    @Test
+    void almacenarImagenMoodboard_guardaEnElDirectorioMoodboard() throws IOException {
+        ArchivoAlmacenado resultado = storageService.almacenarImagenMoodboard(new MockMultipartFile(
+                "archivo", "mood.jpg", "image/jpeg", jpeg()));
+
+        assertTrue(resultado.nombreArchivo().startsWith("moodboard_"));
+        assertTrue(resultado.url().endsWith("/moodboard/" + resultado.nombreArchivo()));
+        assertTrue(Files.exists(tempDir.resolve("moodboard").resolve(resultado.nombreArchivo())));
+        assertFalse(Files.exists(tempDir.resolve("perfiles").resolve(resultado.nombreArchivo())));
+    }
+
+    @Test
+    void listarArchivos_incluyeLosTresDirectorios() throws IOException {
+        Files.write(tempDir.resolve("perfiles").resolve("perfil_test.webp"), "perfil".getBytes());
+        Files.write(tempDir.resolve("moodboard").resolve("moodboard_test.webp"), "moodboard".getBytes());
+        Files.write(tempDir.resolve("publicaciones").resolve("publicacion_test.webp"), "publicacion".getBytes());
+
+        List<String> subdirectorios = storageService.listarArchivos().stream()
+                .map(archivo -> archivo.subdirectorio())
+                .toList();
+
+        assertEquals(3, subdirectorios.size());
+        assertTrue(subdirectorios.contains("perfiles"));
+        assertTrue(subdirectorios.contains("moodboard"));
+        assertTrue(subdirectorios.contains("publicaciones"));
+    }
+
+    @Test
+    void eliminarArchivo_borraSoloElSubdirectorioIndicado() throws IOException {
+        String nombre = "mismo-nombre.webp";
+        Path enMoodboard = tempDir.resolve("moodboard").resolve(nombre);
+        Path enPublicaciones = tempDir.resolve("publicaciones").resolve(nombre);
+        Files.write(enMoodboard, "moodboard".getBytes());
+        Files.write(enPublicaciones, "publicaciones".getBytes());
+
+        storageService.eliminarArchivo("moodboard", nombre);
+
+        assertFalse(Files.exists(enMoodboard));
+        assertTrue(Files.exists(enPublicaciones));
+    }
+
+    @Test
+    void eliminarFotoPerfil_buscaTambienEnMoodboard() throws IOException {
+        Path archivo = tempDir.resolve("moodboard").resolve("moodboard_a_borrar.webp");
+        Files.write(archivo, "dummy".getBytes());
+
+        storageService.eliminarFotoPerfil("moodboard_a_borrar.webp");
+
+        assertFalse(Files.exists(archivo));
     }
 
     private static byte[] jpeg() throws IOException {

@@ -1,9 +1,11 @@
 package org.mgroko.backend.storage.servicio;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
+import org.mgroko.backend.storage.dto.ArchivoEnDisco;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface StorageService {
@@ -25,12 +27,24 @@ public interface StorageService {
     ArchivoAlmacenado almacenarImagenMoodboard(MultipartFile archivo);
 
     /**
-     * Elimina el archivo de almacenamiento según su nombre de archivo en disco.
+     * Elimina el archivo de almacenamiento según su nombre, buscándolo en todos
+     * los directorios gestionados (perfiles, moodboard y publicaciones).
      *
      * @param nombreArchivo nombre del archivo a eliminar
-     * @throws ErrorAlmacenamientoException si el archivo no se pudo borrar
+     * @throws org.mgroko.backend.storage.exception.ErrorAlmacenamientoException
+     *         si el archivo no se pudo borrar
      */
     void eliminarFotoPerfil(String nombreArchivo);
+
+    /**
+     * Elimina un archivo de un subdirectorio concreto.
+     *
+     * @param subdirectorio carpeta relativa dentro de {@code uploads}
+     * @param nombreArchivo nombre simple del archivo
+     * @throws org.mgroko.backend.storage.exception.ErrorAlmacenamientoException
+     *         si el subdirectorio no existe o el archivo no se pudo borrar
+     */
+    void eliminarArchivo(String subdirectorio, String nombreArchivo);
 
     /**
      * Lista las fotos de perfil que existen en disco con su última modificación.
@@ -41,4 +55,13 @@ public interface StorageService {
      * @return nombre de archivo - instante de última modificación
      */
     Map<String, Instant> listarFotografiasDePerfil();
+
+    /**
+     * Lista todos los archivos físicos de los directorios gestionados, con su
+     * subdirectorio y fecha de modificación. Es la fuente que usa el job de
+     * limpieza para reconciliar disco y base de datos.
+     *
+     * @return archivos encontrados en perfiles, moodboard y publicaciones
+     */
+    List<ArchivoEnDisco> listarArchivos();
 }
