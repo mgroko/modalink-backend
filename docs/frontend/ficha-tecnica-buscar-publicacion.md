@@ -29,7 +29,27 @@ Parámetros opcionales:
 
 Todos los filtros son opcionales y se combinan con `AND`.
 
-## 3. Ejemplos
+## 3. Opciones de proyecto para el selector
+
+```http
+GET /perfiles/{idPerfil}/publicaciones/proyectos
+```
+
+Devuelve únicamente los proyectos que tienen al menos una publicación
+`ACTIVA` del perfil y que son visibles para el perfil activo del viewer.
+
+```json
+[
+  {
+    "idProyecto": 25,
+    "nombre": "Campaña Otoño"
+  }
+]
+```
+
+Si no hay proyectos visibles con publicaciones, devuelve `200 []`.
+
+## 4. Ejemplos
 
 ```http
 GET /perfiles/7/publicaciones?page=0&size=10
@@ -47,7 +67,7 @@ GET /perfiles/7/publicaciones?idProyecto=25&titulo=editorial
 GET /perfiles/7/publicaciones?titulo=otoño&descripcion=campaña
 ```
 
-## 4. Respuesta
+## 5. Respuesta
 
 Se mantiene `PaginaResponse<PublicacionResponse>`.
 
@@ -82,7 +102,7 @@ Se mantiene `PaginaResponse<PublicacionResponse>`.
 }
 ```
 
-## 5. Reglas
+## 6. Reglas
 
 - Solo devuelve publicaciones `ACTIVA`.
 - Aplica las reglas de visibilidad del perfil de UC-14.
@@ -91,7 +111,7 @@ Se mantiene `PaginaResponse<PublicacionResponse>`.
 - Si no hay resultados, devuelve `200` con `contenido: []`.
 - Si `fechaDesde > fechaHasta`, devuelve `400`.
 
-## 6. Errores
+## 7. Errores
 
 | HTTP | Caso |
 |---|---|
@@ -101,7 +121,7 @@ Se mantiene `PaginaResponse<PublicacionResponse>`.
 | `404` | Perfil no existe o no es visible |
 | `500` | Error interno |
 
-## 7. Frontend
+## 8. Frontend
 
 - Agregar filtros sobre el portfolio:
   - rango de fechas;

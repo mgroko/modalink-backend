@@ -2,10 +2,14 @@ package org.mgroko.backend.publicaciones.controlador;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import java.util.List;
+
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.CrearPublicacionRequest;
+import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -31,12 +35,15 @@ public class PublicacionController {
 
     private final CrearPublicacionService crearPublicacionService;
     private final ListarPublicacionesPerfilService listarPublicacionesPerfilService;
+    private final ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService;
 
     public PublicacionController(
             CrearPublicacionService crearPublicacionService,
-            ListarPublicacionesPerfilService listarPublicacionesPerfilService) {
+            ListarPublicacionesPerfilService listarPublicacionesPerfilService,
+            ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService) {
         this.crearPublicacionService = crearPublicacionService;
         this.listarPublicacionesPerfilService = listarPublicacionesPerfilService;
+        this.listarProyectosPublicacionesPerfilService = listarProyectosPublicacionesPerfilService;
     }
 
     @PostMapping(value = "/publicaciones", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -49,6 +56,24 @@ public class PublicacionController {
                 idUsuario(authentication), idPerfilActivo, request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Proyectos con publicaciones activas del perfil, para el selector de
+     * filtros de UC-22.
+     */
+    @GetMapping("/perfiles/{idPerfil}/publicaciones/proyectos")
+    public ResponseEntity<List<ProyectoPublicacionFiltroResponse>> listarProyectos(
+            @PathVariable Long idPerfil,
+            Authentication authentication) {
+
+        List<ProyectoPublicacionFiltroResponse> response =
+                listarProyectosPublicacionesPerfilService.listar(
+                        idPerfil,
+                        idUsuario(authentication),
+                        idPerfilActivo(authentication));
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/perfiles/{idPerfil}/publicaciones")

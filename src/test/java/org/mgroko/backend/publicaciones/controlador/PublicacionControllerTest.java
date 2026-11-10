@@ -19,8 +19,10 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.publicaciones.dto.AutorPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.ImagenPublicacionResponse;
+import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +49,9 @@ class PublicacionControllerTest {
 
     @MockitoBean
     private ListarPublicacionesPerfilService listarPublicacionesPerfilService;
+
+    @MockitoBean
+    private ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService;
 
     private static UsernamePasswordAuthenticationToken auth(Long idUsuario, Long idPerfilActivo) {
         var token = new UsernamePasswordAuthenticationToken(String.valueOf(idUsuario), null, List.of());
@@ -130,6 +135,19 @@ class PublicacionControllerTest {
                 .andExpect(jsonPath("$.contenido.length()").value(1))
                 .andExpect(jsonPath("$.contenido[0].titulo").value("Editorial"))
                 .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void listarProyectos_devuelveOpcionesDelSelector() throws Exception {
+        when(listarProyectosPublicacionesPerfilService.listar(7L, 1L, 7L))
+                .thenReturn(List.of(new ProyectoPublicacionFiltroResponse(25L, "Campaña")));
+
+        mockMvc.perform(get("/perfiles/{idPerfil}/publicaciones/proyectos", 7L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].idProyecto").value(25L))
+                .andExpect(jsonPath("$[0].nombre").value("Campaña"));
     }
 
     @Test
