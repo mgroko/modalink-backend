@@ -1,8 +1,11 @@
 package org.mgroko.backend.publicaciones.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Imagen;
@@ -12,6 +15,8 @@ import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.SolicitudColaboracion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
+import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 
 class SolicitudColaboracionMapperTest {
@@ -57,5 +62,55 @@ class SolicitudColaboracionMapperTest {
         assertEquals(8L, response.destinatario().idPerfil());
         assertEquals("Fotógrafa", response.destinatario().profesion());
         assertEquals(null, response.destinatario().fotoUrl());
+    }
+
+    @Test
+    void toBusquedaResponse_mapeaDireccionFlagsYPortada() {
+        Perfil remitente = Perfil.builder()
+                .idPerfil(7L)
+                .nombreArtistico("Luna Diseños")
+                .estado(EstadoPerfil.Activo)
+                .profesion(Profesion.builder().idProfesion(3L).nombre("Diseñadora").build())
+                .build();
+        Perfil destinatario = Perfil.builder()
+                .idPerfil(8L)
+                .nombreArtistico("Sol")
+                .estado(EstadoPerfil.Activo)
+                .profesion(Profesion.builder().idProfesion(4L).nombre("Fotógrafa").build())
+                .build();
+        Publicacion publicacion = Publicacion.builder()
+                .idPublicacion(99L)
+                .titulo("Editorial Otoño")
+                .perfil(remitente)
+                .imagenes(List.of(Imagen.builder()
+                        .idImagen(10L)
+                        .url("/uploads/publicaciones/portada.webp")
+                        .build()))
+                .build();
+        SolicitudColaboracion solicitud = SolicitudColaboracion.builder()
+                .idSolicitudColaboracion(50L)
+                .estado(EstadoSolicitud.PENDIENTE)
+                .fechaEnvio(LocalDateTime.of(2026, 11, 10, 20, 30))
+                .publicacion(publicacion)
+                .perfilRemitente(remitente)
+                .perfilDestinatario(destinatario)
+                .build();
+
+        SolicitudColaboracionBusquedaResponse recibida =
+                SolicitudColaboracionMapper.toBusquedaResponse(solicitud, 8L);
+        SolicitudColaboracionBusquedaResponse enviada =
+                SolicitudColaboracionMapper.toBusquedaResponse(solicitud, 7L);
+
+        assertEquals(DireccionSolicitudColaboracion.RECIBIDA, recibida.direccion());
+        assertTrue(recibida.puedeAceptar());
+        assertTrue(recibida.puedeRechazar());
+        assertFalse(recibida.puedeEliminar());
+        assertEquals("/uploads/publicaciones/portada.webp", recibida.publicacion().portadaUrl());
+        assertEquals("ACTIVA", recibida.publicacion().estado());
+
+        assertEquals(DireccionSolicitudColaboracion.ENVIADA, enviada.direccion());
+        assertFalse(enviada.puedeAceptar());
+        assertFalse(enviada.puedeRechazar());
+        assertTrue(enviada.puedeEliminar());
     }
 }

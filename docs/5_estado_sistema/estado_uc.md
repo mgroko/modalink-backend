@@ -69,7 +69,7 @@ el historial de git sirva de bitácora adicional.
 | UC-62 | Aceptar solicitud de colaboración  | No iniciado |                  |       | Segunda iteracion |
 | UC-63 | Rechazar solicitud de colaboración | No iniciado |                  |       | Segunda iteracion |
 | UC-64 | Eliminar solicitud de colaboración | No iniciado |                  |       | Segunda iteracion |
-| UC-65 | Buscar solicitudes de colaboración | No iniciado |                  |       | Segunda iteracion |
+| UC-65 | Buscar solicitudes de colaboración | Implementado y testeado | `GET /solicitudes-colaboracion` | Sí (unitario + MVC + integración) | Segunda iteración. Búsqueda acotada al perfil activo (enviadas y recibidas). Filtros opcionales por dirección, `idPerfilEmisor`, `idPerfilReceptor`, estado (`PENDIENTE` por defecto; `todosLosEstados=true`), rango de fechas e `idPublicacion`. Oculta solicitudes cuya contraparte esté en baja o cuya publicación no esté `ACTIVA`. Devuelve la publicación con portada y flags `puedeAceptar`, `puedeRechazar` y `puedeEliminar`. |
 | UC-66 | Interactuar con publicación        | No iniciado |                  |       | Segunda iteracion |
 | UC-69 | Reportar publicación               | No iniciado |                  |       | Segunda iteracion |
 
@@ -136,11 +136,11 @@ el historial de git sirva de bitácora adicional.
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
 | Gestión de usuarios y administración | 16     | 16                      | 0            | 0           | 0           |
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
-| Gestión de publicaciones           | 11       | 4                       | 0            | 0           | 7           |
+| Gestión de publicaciones           | 11       | 5                       | 0            | 0           | 6           |
 | Gestión de proyectos               | 26       | 26                      | 0            | 0           | 0           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
 | Gestión de conexiones y mensajería | 5        | 5                       | 0            | 0           | 0           |
-| **Total**                          | **76**   | **69**                  | **0**        | **0**       | **7**       |
+| **Total**                          | **76**   | **70**                  | **0**        | **0**       | **6**       |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -154,4 +154,4 @@ el historial de git sirva de bitácora adicional.
 > desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan sus filas en el
 > módulo correspondiente solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 69 de 76 casos de uso implementados y testeados = **90,8 %** del catálogo de requisitos.
+**Avance global:** 70 de 76 casos de uso implementados y testeados = **92,1 %** del catálogo de requisitos.

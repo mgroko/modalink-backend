@@ -84,8 +84,10 @@ import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalido
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
 import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
+import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
+import org.mgroko.backend.publicaciones.exception.RangoFechasSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionDuplicadaException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.RangoFechasPublicacionInvalidoException;
@@ -458,6 +460,18 @@ public class GlobalExceptionHandler {
             SolicitudColaboracionDuplicadaException ex) {
         return buildErrorResponseConCodigo(
                 ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(FiltroSolicitudColaboracionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleFiltroSolicitudColaboracionInvalido(
+            FiltroSolicitudColaboracionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RangoFechasSolicitudColaboracionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasSolicitudColaboracionInvalido(
+            RangoFechasSolicitudColaboracionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(RangoFechasPublicacionInvalidoException.class)

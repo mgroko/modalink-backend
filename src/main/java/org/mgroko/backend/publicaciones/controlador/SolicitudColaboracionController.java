@@ -1,17 +1,24 @@
 package org.mgroko.backend.publicaciones.controlador;
 
+import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.publicaciones.dto.BuscarSolicitudesColaboracionFiltro;
 import org.mgroko.backend.publicaciones.dto.EnviarSolicitudColaboracionRequest;
+import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
+import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -24,10 +31,30 @@ import jakarta.validation.Valid;
 public class SolicitudColaboracionController {
 
     private final EnviarSolicitudColaboracionService enviarSolicitudColaboracionService;
+    private final BuscarSolicitudColaboracionService buscarSolicitudColaboracionService;
 
     public SolicitudColaboracionController(
-            EnviarSolicitudColaboracionService enviarSolicitudColaboracionService) {
+            EnviarSolicitudColaboracionService enviarSolicitudColaboracionService,
+            BuscarSolicitudColaboracionService buscarSolicitudColaboracionService) {
         this.enviarSolicitudColaboracionService = enviarSolicitudColaboracionService;
+        this.buscarSolicitudColaboracionService = buscarSolicitudColaboracionService;
+    }
+
+    /**
+     * UC-65 - Busca solicitudes de colaboración del perfil activo.
+     */
+    @GetMapping("/solicitudes-colaboracion")
+    public ResponseEntity<PaginaResponse<SolicitudColaboracionBusquedaResponse>> buscar(
+            @ModelAttribute BuscarSolicitudesColaboracionFiltro filtro,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+
+        PaginaResponse<SolicitudColaboracionBusquedaResponse> response =
+                buscarSolicitudColaboracionService.buscar(
+                        idPerfilActivoRequerido(authentication), filtro, page, size);
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/publicaciones/{idPublicacion}/solicitudes-colaboracion")

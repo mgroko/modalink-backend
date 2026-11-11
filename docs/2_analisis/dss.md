@@ -447,6 +447,22 @@
 
 ---
 
+### **UC-65: Buscar solicitudes de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. El actor envía el mensaje `buscarSolicitudesColaboracion(direccion, idPerfilEmisor, idPerfilReceptor, estado, fechaDesde, fechaHasta, idPublicacion, pagina, tamanio)`.
+  2. El sistema consulta las solicitudes donde el perfil activo es emisor o destinatario y aplica los filtros.
+  3. **Bloque Alternativo (`alt`)**:
+     - `[filtros inválidos]`: El sistema retorna `excepcion()`.
+     - `[sin resultados]`: El sistema retorna `paginaVacia()`.
+     - `[resultados encontrados]`:
+       - El sistema retorna `listarSolicitudesConPublicaciones(solicitudes[])`.
+       - El sistema calcula `direccion` y flags de acciones para el perfil activo.
+
+---
+
 ### **UC-36: Modificar proyecto**
 
 - **Actor:** Director de proyecto

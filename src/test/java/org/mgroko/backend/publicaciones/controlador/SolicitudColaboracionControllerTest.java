@@ -4,20 +4,29 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.publicaciones.dto.AutorPublicacionResponse;
+import org.mgroko.backend.publicaciones.dto.BuscarSolicitudesColaboracionFiltro;
+import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
 import org.mgroko.backend.publicaciones.dto.EnviarSolicitudColaboracionRequest;
+import org.mgroko.backend.publicaciones.dto.PublicacionSolicitudColaboracionResponse;
+import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
+import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionDuplicadaException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionInvalidaException;
+import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +50,9 @@ class SolicitudColaboracionControllerTest {
 
     @MockitoBean
     private EnviarSolicitudColaboracionService enviarSolicitudColaboracionService;
+
+    @MockitoBean
+    private BuscarSolicitudColaboracionService buscarSolicitudColaboracionService;
 
     private static UsernamePasswordAuthenticationToken auth(Long idUsuario, Long idPerfilActivo) {
         var token = new UsernamePasswordAuthenticationToken(String.valueOf(idUsuario), null, List.of());
@@ -128,5 +140,100 @@ class SolicitudColaboracionControllerTest {
                         .principal(auth(1L, 7L)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_COLABORACION_PENDIENTE"));
+    }
+
+    private static SolicitudColaboracionBusquedaResponse busquedaResponse() {
+        return new SolicitudColaboracionBusquedaResponse(
+                50L,
+                EstadoSolicitud.PENDIENTE,
+                LocalDateTime.of(2026, 11, 10, 20, 30),
+                DireccionSolicitudColaboracion.RECIBIDA,
+                7L,
+                8L,
+                new AutorPublicacionResponse(7L, "Luna Diseños", "Diseñadora", "/uploads/luna.webp"),
+                new AutorPublicacionResponse(8L, "Sol", "Fotógrafa", "/uploads/sol.webp"),
+                new PublicacionSolicitudColaboracionResponse(
+                        99L, "Editorial Otoño", "/uploads/publicaciones/a.webp", "ACTIVA"),
+                true,
+                true,
+                false);
+    }
+
+    @Test
+    void buscar_devuelvePaginaDeSolicitudes() throws Exception {
+        PaginaResponse<SolicitudColaboracionBusquedaResponse> pagina =
+                new PaginaResponse<>(List.of(busquedaResponse()), 0, 20, 1, 1, true, true);
+        when(buscarSolicitudColaboracionService.buscar(
+                eq(7L), any(BuscarSolicitudesColaboracionFiltro.class), eq(0), eq(20)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/solicitudes-colaboracion")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido.length()").value(1))
+                .andExpect(jsonPath("$.contenido[0].idSolicitudColaboracion").value(50L))
+                .andExpect(jsonPath("$.contenido[0].direccion").value("RECIBIDA"))
+                .andExpect(jsonPath("$.contenido[0].publicacion.idPublicacion").value(99L))
+                .andExpect(jsonPath("$.contenido[0].puedeAceptar").value(true));
+    }
+
+    @Test
+    void buscar_mapeaFiltrosDeQueryParams() throws Exception {
+        PaginaResponse<SolicitudColaboracionBusquedaResponse> pagina =
+                new PaginaResponse<>(List.of(), 0, 10, 0, 0, true, true);
+        when(buscarSolicitudColaboracionService.buscar(
+                eq(7L), any(BuscarSolicitudesColaboracionFiltro.class), eq(1), eq(10)))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/solicitudes-colaboracion")
+                        .param("direccion", "ENVIADA")
+                        .param("idPerfilEmisor", "7")
+                        .param("idPerfilReceptor", "8")
+                        .param("estado", "ACEPTADA")
+                        .param("fechaDesde", "2026-01-01")
+                        .param("fechaHasta", "2026-12-31")
+                        .param("idPublicacion", "99")
+                        .param("page", "1")
+                        .param("size", "10")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<BuscarSolicitudesColaboracionFiltro> captor =
+                ArgumentCaptor.forClass(BuscarSolicitudesColaboracionFiltro.class);
+        verify(buscarSolicitudColaboracionService).buscar(
+                eq(7L), captor.capture(), eq(1), eq(10));
+
+        BuscarSolicitudesColaboracionFiltro filtro = captor.getValue();
+        org.junit.jupiter.api.Assertions.assertEquals(
+                DireccionSolicitudColaboracion.ENVIADA, filtro.direccion());
+        org.junit.jupiter.api.Assertions.assertEquals(7L, filtro.idPerfilEmisor());
+        org.junit.jupiter.api.Assertions.assertEquals(8L, filtro.idPerfilReceptor());
+        org.junit.jupiter.api.Assertions.assertEquals(EstadoSolicitud.ACEPTADA, filtro.estado());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                LocalDate.of(2026, 1, 1), filtro.fechaDesde());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                LocalDate.of(2026, 12, 31), filtro.fechaHasta());
+        org.junit.jupiter.api.Assertions.assertEquals(99L, filtro.idPublicacion());
+    }
+
+    @Test
+    void buscar_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(get("/solicitudes-colaboracion")
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void buscar_filtroInvalido_devuelve400() throws Exception {
+        when(buscarSolicitudColaboracionService.buscar(
+                eq(7L), any(BuscarSolicitudesColaboracionFiltro.class), eq(0), eq(20)))
+                .thenThrow(new FiltroSolicitudColaboracionInvalidoException(
+                        "No se puede combinar todosLosEstados con un estado específico."));
+
+        mockMvc.perform(get("/solicitudes-colaboracion")
+                        .param("todosLosEstados", "true")
+                        .param("estado", "PENDIENTE")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isBadRequest());
     }
 }
