@@ -1,51 +1,62 @@
 package org.mgroko.backend.perfiles.servicio;
 
+import java.util.List;
+
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.PolaroidPerfil;
 import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
+import org.mgroko.backend.repositorio.PolaroidPerfilRepository;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Punto &uacute;nico de liberaci&oacute;n de las im&aacute;genes de un perfil cuando el
- * perfil pasa a {@code BAJA}: desvincula y borra la fila de {@code imagen} dentro
- * de la transacci&oacute;n y deja el borrado del archivo f&iacute;sico para despu&eacute;s
- * del commit (mismo criterio que la Fase 3).
+ * Punto único de liberación de las imágenes de un perfil cuando el perfil pasa
+ * a {@code BAJA}: desvincula y borra las filas de {@code imagen} dentro de la
+ * transacción y deja el borrado de los archivos físicos para después del
+ * commit.
  * <p>
- * Cuando existan las publicaciones independientes del perfil, su
- * eliminaci&oacute;n se agrega en {@link #eliminarImagenesDePerfil(Perfil)} para que
- * los llamadores (expiraci&oacute;n de perfiles y de cuentas) no cambien.
+ * Incluye la foto de perfil y las polaroids. Las publicaciones y el moodboard
+ * pertenecen a otros agregados y no se eliminan desde acá.
  * <p>
- * Los perfiles en {@code PENDIENTE_BAJA} conservan su foto: este m&eacute;todo solo se
- * invoca en la transici&oacute;n efectiva a {@code BAJA}.
+ * Los perfiles en {@code PENDIENTE_BAJA} conservan sus imágenes: este método
+ * solo se invoca en la transición efectiva a {@code BAJA}.
  */
 @Service
 public class EliminarImagenesPerfilService {
 
     private final PerfilRepository perfilRepository;
     private final ImagenRepository imagenRepository;
+    private final PolaroidPerfilRepository polaroidPerfilRepository;
     private final BorradoArchivosDiferido borradoArchivosDiferido;
 
     public EliminarImagenesPerfilService(
             PerfilRepository perfilRepository,
             ImagenRepository imagenRepository,
+            PolaroidPerfilRepository polaroidPerfilRepository,
             BorradoArchivosDiferido borradoArchivosDiferido) {
         this.perfilRepository = perfilRepository;
         this.imagenRepository = imagenRepository;
+        this.polaroidPerfilRepository = polaroidPerfilRepository;
         this.borradoArchivosDiferido = borradoArchivosDiferido;
     }
 
     /**
-     * Elimina las im&aacute;genes del perfil: fila de {@code imagen} en la transacci&oacute;n
-     * en curso y archivo f&iacute;sico despu&eacute;s del commit.
+     * Elimina las imágenes del perfil: filas de {@code imagen} en la transacción
+     * en curso y archivos físicos después del commit.
      *
-     * @param perfil perfil reci&eacute;n pasado a {@code BAJA} (debe estar gestionado
-     *               por la transacci&oacute;n del llamador)
+     * @param perfil perfil recién pasado a {@code BAJA} (debe estar gestionado
+     *               por la transacción del llamador)
      */
     @Transactional
     public void eliminarImagenesDePerfil(Perfil perfil) {
+        eliminarFotoPerfil(perfil);
+        eliminarPolaroids(perfil);
+    }
+
+    private void eliminarFotoPerfil(Perfil perfil) {
         Imagen imagen = perfil.getImagen();
         if (imagen == null) {
             return;
@@ -60,9 +71,32 @@ public class EliminarImagenesPerfilService {
         borradoArchivosDiferido.registrarBorrados(null, nombreArchivo);
     }
 
+    private void eliminarPolaroids(Perfil perfil) {
+        List<PolaroidPerfil> polaroids = polaroidPerfilRepository
+                .findByPerfilIdPerfilOrderByOrdenAsc(perfil.getIdPerfil());
+
+        if (polaroids.isEmpty()) {
+            return;
+        }
+
+        for (PolaroidPerfil polaroid : polaroids) {
+            polaroidPerfilRepository.delete(polaroid);
+        }
+        polaroidPerfilRepository.flush();
+
+        for (PolaroidPerfil polaroid : polaroids) {
+            Imagen imagen = polaroid.getImagen();
+            if (imagen == null) {
+                continue;
+            }
+            borradoArchivosDiferido.registrarBorrados(null, imagen.getNombreArchivo());
+            imagenRepository.delete(imagen);
+        }
+    }
+
     /**
      * Variante para el job de limpieza: carga el perfil en su propia
-     * transacci&oacute;n y elimina sus im&aacute;genes.
+     * transacción y elimina sus imágenes.
      *
      * @param idPerfil identificador del perfil
      */

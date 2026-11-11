@@ -76,6 +76,7 @@ class LocalStorageServiceTest {
                 "perfiles",
                 "moodboard",
                 "publicaciones",
+                "polaroids",
                 new ProcesadorImagen(repositorio));
     }
 

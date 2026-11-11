@@ -22,7 +22,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Job de reconciliaci&oacute;n de im&aacute;genes: en cada ciclo deja los directorios
- * de im&aacute;genes ({@code perfiles}, {@code moodboard} y {@code publicaciones}) y
+ * de im&aacute;genes ({@code perfiles}, {@code moodboard}, {@code publicaciones} y
+ * {@code polaroids}) y
  * la tabla {@code imagen} &uacute;nicamente con lo que los perfiles que no
  * est&aacute;n dados de baja necesitan.
  * <p>
