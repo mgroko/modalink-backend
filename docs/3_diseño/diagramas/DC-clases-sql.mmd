@@ -1,0 +1,916 @@
+classDiagram
+    %% Modelo de clases basado en ModaLinkBD.sql
+    %% PK = PRIMARY KEY; FK = FOREIGN KEY.
+
+    class actividad {
+        <<table>>
+        +int8 id_actividad PK
+        +int8 id_planificacion FK
+        +int8? id_ubicacion FK
+        +varchar estado
+        +varchar nombre
+        +varchar? descripcion
+        +int4 duracion_minutos
+        +timestamp? fecha_hora_inicio
+        +time? horario_preferencia_inicio
+    }
+
+    class agenda {
+        <<table>>
+        +int8 id_agenda PK
+        +int8 id_usuario FK
+        +int4 margen_actividad_min
+    }
+
+    class asignacion_actividad {
+        <<table>>
+        +int8 id_asignacion_act PK
+        +int8 id_miembro FK
+        +int8 id_actividad FK
+        +int8? id_requerimiento_act FK
+    }
+
+    class auditoria {
+        <<table>>
+        +int8 id_auditoria PK
+        +int8 id_tipo_auditoria FK
+        +int8? id_usuario FK
+        +varchar? tipo_evento FK
+        +varchar usuario_bd
+        +varchar entidad_afectada
+        +varchar? entidad_clave
+        +int8 id_afectado
+        +timestamp fecha_hora
+    }
+
+    class bloqueo_agenda {
+        <<table>>
+        +int8 id_bloqueo PK
+        +int8 id_agenda FK
+        +timestamp fecha_hora_inicio
+        +timestamp fecha_hora_fin
+        +varchar motivo
+    }
+
+    class calificacion_perfil {
+        <<table>>
+        +int8 id_calificacion PK
+        +int8 id_proyecto FK
+        +int8 id_perfil_emisor FK
+        +int8 id_perfil_receptor FK
+        +int4 valoracion
+        +varchar resenia
+        +timestamp fecha_registro
+    }
+
+    class caracteristica_perfil {
+        <<table>>
+        +int8 id_caracteristica_perfil PK
+        +int8 id_perfil FK
+        +int8? id_valor FK
+        +int8 id_caracteristica FK
+        +varchar? valor
+        +timestamp fecha_registro
+    }
+
+    class caracteristica_tecnica {
+        <<table>>
+        +int8 id_caracteristica PK
+        +int8 id_profesion FK
+        +int8? id_unidad FK
+        +varchar codigo
+        +varchar? nombre
+        +varchar tipo_dato
+    }
+
+    class ciudad {
+        <<table>>
+        +int8 id_ciudad PK
+        +int8 id_provincia FK
+        +varchar nombre
+        +boolean activo
+        +varchar? codigo_postal
+        +varchar id_externo
+        +varchar fuente_api
+        +decimal? longitud_defecto
+        +decimal? latitud_defecto
+    }
+
+    class colaborador_publicacion {
+        <<table>>
+        +int8 id_publicacion PK/FK
+        +int8 id_perfil PK/FK
+    }
+
+    class comentario {
+        <<table>>
+        +int8 id_comentario PK
+        +int8 id_publicacion FK
+        +int8 id_perfil FK
+        +varchar? texto
+        +timestamp fecha_comentario
+    }
+
+    class conexion {
+        <<table>>
+        +int8 id_conexion PK
+        +int8 id_perfil_1 FK
+        +int8 id_perfil_2 FK
+        +int8 id_solicitud_conexion FK
+        +varchar estado
+        +timestamp fecha_inicio_conexion
+        +timestamp? fecha_fin_conexion
+    }
+
+    class configuracion_sistema {
+        <<table>>
+        +varchar clave PK
+        +text valor
+        +varchar? descripcion
+    }
+
+    class contrato {
+        <<table>>
+        +int8 id_contrato PK
+        +int8 id_proyecto FK
+        +int8 id_tipo_acuerdo FK
+        +int8 id_miembro_emisor FK
+        +varchar nombre
+        +varchar? descripcion
+        +text? texto
+        +timestamp fecha_creacion
+        +timestamp? fecha_baja
+    }
+
+    class contrato_evento {
+        <<table>>
+        +int8 id_evento PK
+        +int8 id_contrato FK
+        +int8? id_miembro FK
+        +int8? id_usuario FK
+        +int8? id_contrato_version FK
+        +varchar tipo_evento
+        +timestamp fecha_hora
+        +varchar? motivo
+    }
+
+    class contrato_version {
+        <<table>>
+        +int8 id_contrato_version PK
+        +int8 id_contrato FK
+        +int8? id_usuario FK
+        +int version
+        +text texto
+        +timestamp fecha_creacion
+    }
+
+    class conversacion {
+        <<table>>
+        +int8 id_conversacion PK
+        +int8 id_perfil_1 FK
+        +int8 id_perfil_2 FK
+        +timestamp fecha_creacion
+        +timestamp? fecha_ultimo_mensaje
+    }
+
+    class dependencia_actividades {
+        <<table>>
+        +int8 id_actividad_sucesora PK/FK
+        +int8 id_actividad_predecesora PK/FK
+    }
+
+    class detalle_auditoria {
+        <<table>>
+        +int8 id_detalle_auditoria PK
+        +int8 id_auditoria FK
+        +varchar? campo
+        +text? valor_anterior
+        +text? valor_nuevo
+    }
+
+    class firma_contrato {
+        <<table>>
+        +int8 id_miembro PK/FK
+        +int8 id_contrato PK/FK
+        +int8? id_contrato_version FK
+        +varchar rol_parte
+        +varchar estado_firma
+        +timestamp? fecha_firma
+        +timestamp? fecha_rechazo
+        +varchar? motivo_rechazo
+    }
+
+    class genero {
+        <<table>>
+        +int8 id_genero PK
+        +varchar codigo
+        +varchar nombre
+    }
+
+    class grupo_polaroid {
+        <<table>>
+        +int8 id_grupo_polaroid PK
+        +varchar codigo
+        +varchar nombre
+    }
+
+    class habilidad {
+        <<table>>
+        +int8 id_habilidad PK
+        +varchar nombre
+        +varchar codigo
+        +varchar? descripcion
+    }
+
+    class habilidad_perfil {
+        <<table>>
+        +int8 id_habilidad PK/FK
+        +int8 id_perfil PK/FK
+    }
+
+    class hito {
+        <<table>>
+        +int8 id_hito PK
+        +int8 id_proyecto FK
+        +timestamp fecha_creacion
+        +varchar nombre
+        +varchar descripcion
+        +varchar estado
+        +timestamp? fecha_limite
+        +timestamp? fecha_cumplimiento
+    }
+
+    class hito_actividad {
+        <<table>>
+        +int8 id_hito PK/FK
+        +int8 id_actividad PK/FK
+    }
+
+    class imagen {
+        <<table>>
+        +int8 id_imagen PK
+        +varchar? estado
+        +varchar url
+        +varchar nombre_archivo
+        +varchar tipo_imagen
+        +int4 tamano_bytes
+        +timestamp fecha_subida
+    }
+
+    class imagen_moodboard {
+        <<table>>
+        +int8 id_imagen PK/FK
+        +int8 id_moodboard PK/FK
+    }
+
+    class imagen_publicacion {
+        <<table>>
+        +int8 id_imagen PK/FK
+        +int8 id_publicacion PK/FK
+        +int4 orden
+    }
+
+    class invitacion_actividad {
+        <<table>>
+        +int8 id_invitacion PK
+        +int8 id_perfil_remitente FK
+        +int8 id_requerimiento_act FK
+        +int8 id_perfil_destinatario FK
+        +int8? id_tyc_aceptado FK
+        +varchar? mensaje
+        +timestamp fecha_envio
+        +varchar estado
+        +timestamp? fecha_rechazo
+    }
+
+    class invitacion_gral {
+        <<table>>
+        +int8 id_invitacion_gral PK
+        +int8 id_perfil_destinatario FK
+        +int8 id_perfil_remitente FK
+        +int8 id_proyecto FK
+        +int8? id_requerimiento_gral FK
+        +int8? id_tyc_aceptado FK
+        +varchar? mensaje
+        +timestamp fecha_envio
+        +varchar estado
+    }
+
+    class jornada_agenda {
+        <<table>>
+        +int8 id_jornada PK
+        +int8 id_agenda FK
+        +int4 dia_semana
+        +time hora_inicio_manana
+        +time? hora_fin_manana
+        +time? hora_inicio_tarde
+        +time hora_fin_tarde
+    }
+
+    class me_gusta {
+        <<table>>
+        +int8 id_publicacion PK/FK
+        +int8 id_perfil PK/FK
+        +timestamp fecha
+    }
+
+    class mensaje {
+        <<table>>
+        +int8 id_mensaje PK
+        +int8 id_conversacion FK
+        +int8 id_perfil_emisor FK
+        +varchar contenido
+        +timestamp fecha_envio
+        +boolean leido
+        +timestamp? fecha_lectura
+    }
+
+    class mensaje_proyecto {
+        <<table>>
+        +int8 id_mensaje_proyecto PK
+        +int8 id_proyecto FK
+        +int8 id_perfil_emisor FK
+        +varchar contenido
+        +timestamp fecha_envio
+    }
+
+    class miembros_proyecto {
+        <<table>>
+        +int8 id_miembro PK
+        +int8 id_rol_proyecto FK
+        +int8 id_proyecto FK
+        +int8 id_perfil FK
+        +int8? id_tyc_aceptado FK
+        +int8? id_requerimiento_gral FK
+        +int8? id_perfil_autor_baja FK
+        +timestamp fecha_alta
+        +timestamp? fecha_baja
+    }
+
+    class moodboard {
+        <<table>>
+        +int8 id_moodboard PK
+        +int8 id_proyecto FK
+        +timestamp fecha_creacion
+        +varchar? descripcion
+    }
+
+    class notificacion {
+        <<table>>
+        +int8 id_notificacion PK
+        +varchar tipo FK
+        +int8 id_usuario_destino FK
+        +int8? id_perfil_contexto FK
+        +text mensaje
+        +varchar origen
+        +varchar? entidad_tipo
+        +int8? entidad_id
+        +boolean leida
+    }
+
+    class notificacion_entrega {
+        <<table>>
+        +int8 id_entrega PK
+        +int8 id_notificacion FK
+        +varchar canal
+        +varchar estado
+        +timestamp? fecha_envio
+        +int intentos
+        +timestamp? proximo_intento
+        +timestamp? fecha_ultimo_intento
+        +varchar? error
+    }
+
+    class notificacion_preferencia {
+        <<table>>
+        +int8 id_usuario PK/FK
+        +varchar tipo PK/FK
+        +varchar canal PK
+        +boolean activo
+    }
+
+    class notificacion_tipo {
+        <<table>>
+        +varchar codigo PK
+        +varchar nombre
+        +varchar prioridad
+        +boolean activo
+        +varchar categoria
+    }
+
+    class objetivo {
+        <<table>>
+        +int8 id_objetivo PK
+        +int8 id_proyecto FK
+        +varchar? nombre
+        +varchar? descripcion
+    }
+
+    class pais {
+        <<table>>
+        +int8 id_pais PK
+        +varchar nombre
+        +boolean activo
+        +varchar codigo_iso
+    }
+
+    class perfil {
+        <<table>>
+        +int8 id_perfil PK
+        +int8 id_usuario FK
+        +int8 id_profesion FK
+        +int8? foto_perfil FK
+        +varchar estado
+        +varchar nombre_artistico
+        +timestamp? fecha_solicitud_baja
+        +varchar biografia
+        +timestamp? ultima_actividad
+    }
+
+    class perfil_tyc {
+        <<table>>
+        +int8 id_perfil PK/FK
+        +int8 id_tyc PK
+        +text descripcion
+        +timestamp fecha_inicio
+        +timestamp? fecha_fin
+    }
+
+    class permiso_global {
+        <<table>>
+        +int8 id_permiso_global PK
+        +varchar nombre
+    }
+
+    class permiso_proyecto {
+        <<table>>
+        +int8 id_permiso_proyecto PK
+        +varchar nombre
+    }
+
+    class planificacion {
+        <<table>>
+        +int8 id_planificacion PK
+        +int8 id_proyecto FK
+        +date? fecha_entrega
+    }
+
+    class polaroid_perfil {
+        <<table>>
+        +int8 id_polaroid PK
+        +int8 id_perfil FK
+        +int8 id_imagen FK
+        +int8 id_tipo_polaroid FK
+        +int4 orden
+        +timestamp fecha_registro
+    }
+
+    class postulacion_actividad {
+        <<table>>
+        +int8 id_postulacion PK
+        +int8 id_perfil FK
+        +int8 id_requerimiento_act FK
+        +varchar estado
+        +timestamp fecha_postulacion
+    }
+
+    class postulacion_gral {
+        <<table>>
+        +int8 id_postulacion_gral PK
+        +int8 id_perfil FK
+        +int8 id_requerimiento_gral FK
+        +varchar estado
+        +timestamp fecha_postulacion
+    }
+
+    class profesion {
+        <<table>>
+        +int8 id_profesion PK
+        +varchar codigo
+        +varchar nombre
+        +varchar? descripcion
+    }
+
+    class provincia {
+        <<table>>
+        +int8 id_provincia PK
+        +int8 id_pais FK
+        +varchar nombre
+        +boolean activo
+        +varchar id_externo
+        +varchar fuente_api
+    }
+
+    class proyecto {
+        <<table>>
+        +int8 id_proyecto PK
+        +int8? id_ubicacion FK
+        +timestamp? fecha_inicio
+        +varchar nombre
+        +varchar descripcion
+        +varchar estado
+        +varchar privacidad
+        +timestamp? fecha_finalizacion
+        +timestamp? fecha_cancelacion
+    }
+
+    class publicacion {
+        <<table>>
+        +int8 id_publicacion PK
+        +int8 id_perfil FK
+        +int8? id_proyecto FK
+        +int8? id_ubicacion FK
+        +varchar titulo
+        +varchar? descripcion
+        +varchar estado
+        +timestamp fecha_publicacion
+    }
+
+    class reemplazo {
+        <<table>>
+        +int8 id_reemplazo PK
+        +int8 id_proyecto FK
+        +int8? id_actividad FK
+        +int8? id_requerimiento_act FK
+        +int8? id_requerimiento_gral FK
+        +int8 id_miembro_baja FK
+        +int8 id_perfil_baja FK
+        +int8? id_miembro_resultante FK
+        +int8? id_asignacion_resultante FK
+    }
+
+    class reemplazo_candidato {
+        <<table>>
+        +int8 id_candidato PK
+        +int8 id_reemplazo FK
+        +int8 id_proyecto FK
+        +int8 id_perfil FK
+        +int8 id_usuario FK
+        +int8? id_miembro_creado FK
+        +int8? id_asignacion_creada FK
+        +varchar estado
+        +varchar? mensaje
+    }
+
+    class reporte {
+        <<table>>
+        +int8 id_reporte PK
+        +int8 id_usuario_autor FK
+        +int8 id_perfil_autor FK
+        +int8? id_perfil_reportado FK
+        +int8? id_admin_revisor FK
+        +varchar? descripcion
+        +varchar estado
+        +varchar entidad_tipo
+        +int8 entidad_id
+    }
+
+    class requerimiento_act_caract {
+        <<table>>
+        +int8 id_req_act_caract PK
+        +int8 id_requerimiento_act FK
+        +int8 id_caracteristica FK
+        +numeric? valor_min
+        +numeric? valor_max
+    }
+
+    class requerimiento_act_caract_valor {
+        <<table>>
+        +int8 id_req_act_caract PK/FK
+        +int8 id_caracteristica PK/FK
+        +int8 id_valor PK/FK
+    }
+
+    class requerimiento_act_habilidad {
+        <<table>>
+        +int8 id_habilidad PK/FK
+        +int8 id_requerimiento_act PK/FK
+    }
+
+    class requerimiento_actividad {
+        <<table>>
+        +int8 id_requerimiento_act PK
+        +int8 id_profesion FK
+        +int8 id_actividad FK
+        +int4 cantidad
+        +varchar? descripcion
+        +timestamp? fecha_archivado
+        +int8? id_requerimiento_origen
+    }
+
+    class requerimiento_gral_caract {
+        <<table>>
+        +int8 id_req_gral_caract PK
+        +int8 id_requerimiento_gral FK
+        +int8 id_caracteristica FK
+        +numeric? valor_min
+        +numeric? valor_max
+    }
+
+    class requerimiento_gral_caract_valor {
+        <<table>>
+        +int8 id_valor PK/FK
+        +int8 id_caracteristica PK/FK
+        +int8 id_req_gral_caract PK/FK
+    }
+
+    class requerimiento_gral_habilidad {
+        <<table>>
+        +int8 id_habilidad PK/FK
+        +int8 id_requerimiento_gral PK/FK
+    }
+
+    class requerimiento_gral_proyecto {
+        <<table>>
+        +int8 id_requerimiento_gral PK
+        +int8 id_proyecto FK
+        +int8 id_profesion FK
+        +int4 cantidad
+        +varchar? descripcion
+        +timestamp? fecha_archivado
+        +int8? id_requerimiento_origen
+    }
+
+    class rol_global {
+        <<table>>
+        +int8 id_rol_global PK
+        +varchar nombre
+        +varchar codigo
+    }
+
+    class rol_global_permiso {
+        <<table>>
+        +int8 id_rol_global PK/FK
+        +int8 id_permiso_global PK/FK
+    }
+
+    class rol_proyecto {
+        <<table>>
+        +int8 id_rol_proyecto PK
+        +varchar codigo
+        +varchar nombre
+    }
+
+    class rol_proyecto_permiso {
+        <<table>>
+        +int8 id_rol_proyecto PK/FK
+        +int8 id_permiso_proyecto PK/FK
+    }
+
+    class solicitud_colaboracion {
+        <<table>>
+        +int8 id_solicitud_colaboracion PK
+        +int8 id_publicacion FK
+        +int8 id_perfil_remitente FK
+        +int8 id_perfil_destinatario FK
+        +varchar estado
+        +timestamp fecha_envio
+        +timestamp? fecha_respuesta
+    }
+
+    class solicitud_conexion {
+        <<table>>
+        +int8 id_solicitud_conexion PK
+        +int8 id_perfil_remitente FK
+        +int8 id_perfil_destinatario FK
+        +varchar estado
+        +timestamp fecha_envio
+        +timestamp? fecha_respuesta
+    }
+
+    class tipo_accion_auditoria {
+        <<table>>
+        +int8 id_tipo_auditoria PK
+        +varchar nombre
+    }
+
+    class tipo_acuerdo_contrato {
+        <<table>>
+        +int8 id_tipo_acuerdo PK
+        +varchar codigo
+        +varchar nombre
+        +varchar? descripcion
+        +boolean activo
+        +text? plantilla
+    }
+
+    class tipo_evento_auditoria {
+        <<table>>
+        +varchar codigo PK
+        +varchar nombre
+        +varchar? descripcion
+        +boolean activo
+        +varchar modulo
+    }
+
+    class tipo_polaroid {
+        <<table>>
+        +int8 id_tipo_polaroid PK
+        +int8 id_grupo_polaroid FK
+        +varchar codigo
+        +varchar nombre
+    }
+
+    class ubicacion {
+        <<table>>
+        +int8 id_ubicacion PK
+        +int8 id_ciudad FK
+        +varchar? direccion
+        +varchar? codigo_postal
+        +decimal? latitud
+        +decimal? longitud
+    }
+
+    class unidad_medida {
+        <<table>>
+        +int8 id_unidad PK
+        +varchar? nombre
+        +varchar? simbolo
+        +varchar? tipo_dato_permitido
+    }
+
+    class usuario {
+        <<table>>
+        +int8 id_usuario PK
+        +int8? id_ubicacion FK
+        +int8 id_genero FK
+        +int8 id_rol_global FK
+        +varchar estado
+        +varchar nombre
+        +varchar correo
+        +varchar? motivo_deshabilitacion
+        +timestamp? fecha_hasta_deshabilitacion
+    }
+
+    class usuario_identidad {
+        <<table>>
+        +int8 id_identidad PK
+        +int8 id_usuario FK
+        +varchar correo
+        +varchar proveedor
+        +varchar? id_externo
+        +boolean correo_verificado
+        +timestamp fecha_vinculacion
+        +usuario? REFERENCES
+    }
+
+    class valor_caracteristica {
+        <<table>>
+        +int8 id_valor PK
+        +int8 id_caracteristica PK/FK
+        +varchar? etiqueta
+        +varchar? color_hex
+    }
+
+    %% Relaciones
+    actividad "0..*" --> "1" planificacion : id_planificacion
+    actividad "0..*" --> "0..1" ubicacion : id_ubicacion
+    agenda "0..*" --> "1" usuario : id_usuario
+    asignacion_actividad "0..*" --> "1" miembros_proyecto : id_miembro
+    asignacion_actividad "0..*" --> "1" actividad : id_actividad
+    asignacion_actividad "0..*" --> "0..1" requerimiento_actividad : id_requerimiento_act
+    auditoria "0..*" --> "1" tipo_accion_auditoria : id_tipo_auditoria
+    auditoria "0..*" --> "0..1" usuario : id_usuario
+    auditoria "0..*" --> "0..1" tipo_evento_auditoria : tipo_evento
+    bloqueo_agenda "0..*" --> "1" agenda : id_agenda
+    calificacion_perfil "0..*" --> "1" proyecto : id_proyecto
+    calificacion_perfil "0..*" --> "1" perfil : id_perfil_emisor
+    calificacion_perfil "0..*" --> "1" perfil : id_perfil_receptor
+    caracteristica_perfil "0..*" --> "1" perfil : id_perfil
+    caracteristica_perfil "0..*" --> "1" valor_caracteristica : id_valor,id_caracteristica
+    caracteristica_perfil "0..*" --> "1" caracteristica_tecnica : id_caracteristica
+    caracteristica_tecnica "0..*" --> "1" profesion : id_profesion
+    caracteristica_tecnica "0..*" --> "0..1" unidad_medida : id_unidad
+    ciudad "0..*" --> "1" provincia : id_provincia
+    colaborador_publicacion "0..*" --> "1" publicacion : id_publicacion
+    colaborador_publicacion "0..*" --> "1" perfil : id_perfil
+    comentario "0..*" --> "1" publicacion : id_publicacion
+    comentario "0..*" --> "1" perfil : id_perfil
+    conexion "0..*" --> "1" perfil : id_perfil_1
+    conexion "0..*" --> "1" perfil : id_perfil_2
+    conexion "0..*" --> "1" solicitud_conexion : id_solicitud_conexion
+    contrato "0..*" --> "1" proyecto : id_proyecto
+    contrato "0..*" --> "1" tipo_acuerdo_contrato : id_tipo_acuerdo
+    contrato "0..*" --> "1" miembros_proyecto : id_miembro_emisor
+    contrato_evento "0..*" --> "1" contrato : id_contrato
+    contrato_evento "0..*" --> "0..1" miembros_proyecto : id_miembro
+    contrato_evento "0..*" --> "0..1" usuario : id_usuario
+    contrato_evento "0..*" --> "0..1" contrato_version : id_contrato_version
+    contrato_version "0..*" --> "1" contrato : id_contrato
+    contrato_version "0..*" --> "0..1" usuario : id_usuario
+    conversacion "0..*" --> "1" perfil : id_perfil_1
+    conversacion "0..*" --> "1" perfil : id_perfil_2
+    dependencia_actividades "0..*" --> "1" actividad : id_actividad_predecesora
+    dependencia_actividades "0..*" --> "1" actividad : id_actividad_sucesora
+    detalle_auditoria "0..*" --> "1" auditoria : id_auditoria
+    firma_contrato "0..*" --> "1" contrato : id_contrato
+    firma_contrato "0..*" --> "1" miembros_proyecto : id_miembro
+    firma_contrato "0..*" --> "0..1" contrato_version : id_contrato_version
+    habilidad_perfil "0..*" --> "1" perfil : id_perfil
+    habilidad_perfil "0..*" --> "1" habilidad : id_habilidad
+    hito "0..*" --> "1" proyecto : id_proyecto
+    hito_actividad "0..*" --> "1" hito : id_hito
+    hito_actividad "0..*" --> "1" actividad : id_actividad
+    imagen_moodboard "0..*" --> "1" imagen : id_imagen
+    imagen_moodboard "0..*" --> "1" moodboard : id_moodboard
+    imagen_publicacion "0..*" --> "1" imagen : id_imagen
+    imagen_publicacion "0..*" --> "1" publicacion : id_publicacion
+    invitacion_actividad "0..*" --> "1" perfil : id_perfil_remitente
+    invitacion_actividad "0..*" --> "1" requerimiento_actividad : id_requerimiento_act
+    invitacion_actividad "0..*" --> "1" perfil : id_perfil_destinatario
+    invitacion_actividad "0..*" --> "1" perfil_tyc : id_perfil_destinatario,id_tyc_aceptado
+    invitacion_gral "0..*" --> "1" perfil : id_perfil_destinatario
+    invitacion_gral "0..*" --> "1" perfil : id_perfil_remitente
+    invitacion_gral "0..*" --> "0..1" requerimiento_gral_proyecto : id_requerimiento_gral
+    invitacion_gral "0..*" --> "1" proyecto : id_proyecto
+    invitacion_gral "0..*" --> "1" perfil_tyc : id_perfil_destinatario,id_tyc_aceptado
+    jornada_agenda "0..*" --> "1" agenda : id_agenda
+    me_gusta "0..*" --> "1" perfil : id_perfil
+    me_gusta "0..*" --> "1" publicacion : id_publicacion
+    mensaje "0..*" --> "1" conversacion : id_conversacion
+    mensaje "0..*" --> "1" perfil : id_perfil_emisor
+    mensaje_proyecto "0..*" --> "1" proyecto : id_proyecto
+    mensaje_proyecto "0..*" --> "1" perfil : id_perfil_emisor
+    miembros_proyecto "0..*" --> "1" perfil : id_perfil
+    miembros_proyecto "0..*" --> "1" rol_proyecto : id_rol_proyecto
+    miembros_proyecto "0..*" --> "1" perfil_tyc : id_perfil,id_tyc_aceptado
+    miembros_proyecto "0..*" --> "1" proyecto : id_proyecto
+    miembros_proyecto "0..*" --> "0..1" requerimiento_gral_proyecto : id_requerimiento_gral
+    miembros_proyecto "0..*" --> "0..1" perfil : id_perfil_autor_baja
+    moodboard "0..*" --> "1" proyecto : id_proyecto
+    notificacion "0..*" --> "1" usuario : id_usuario_destino
+    notificacion "0..*" --> "0..1" perfil : id_perfil_contexto
+    notificacion "0..*" --> "1" notificacion_tipo : tipo
+    notificacion_entrega "0..*" --> "1" notificacion : id_notificacion
+    notificacion_preferencia "0..*" --> "1" usuario : id_usuario
+    notificacion_preferencia "0..*" --> "1" notificacion_tipo : tipo
+    objetivo "0..*" --> "1" proyecto : id_proyecto
+    perfil "0..*" --> "1" profesion : id_profesion
+    perfil "0..*" --> "0..1" imagen : foto_perfil
+    perfil "0..*" --> "1" usuario : id_usuario
+    perfil_tyc "0..*" --> "1" perfil : id_perfil
+    planificacion "0..*" --> "1" proyecto : id_proyecto
+    polaroid_perfil "0..*" --> "1" imagen : id_imagen
+    polaroid_perfil "0..*" --> "1" perfil : id_perfil
+    polaroid_perfil "0..*" --> "1" tipo_polaroid : id_tipo_polaroid
+    postulacion_actividad "0..*" --> "1" perfil : id_perfil
+    postulacion_actividad "0..*" --> "1" requerimiento_actividad : id_requerimiento_act
+    postulacion_gral "0..*" --> "1" perfil : id_perfil
+    postulacion_gral "0..*" --> "1" requerimiento_gral_proyecto : id_requerimiento_gral
+    provincia "0..*" --> "1" pais : id_pais
+    proyecto "0..*" --> "0..1" ubicacion : id_ubicacion
+    publicacion "0..*" --> "1" perfil : id_perfil
+    publicacion "0..*" --> "0..1" proyecto : id_proyecto
+    publicacion "0..*" --> "0..1" ubicacion : id_ubicacion
+    reemplazo "0..*" --> "1" proyecto : id_proyecto
+    reemplazo "0..*" --> "0..1" actividad : id_actividad
+    reemplazo "0..*" --> "0..1" requerimiento_actividad : id_requerimiento_act
+    reemplazo "0..*" --> "0..1" requerimiento_gral_proyecto : id_requerimiento_gral
+    reemplazo "0..*" --> "1" miembros_proyecto : id_miembro_baja
+    reemplazo "0..*" --> "1" perfil : id_perfil_baja
+    reemplazo "0..*" --> "0..1" miembros_proyecto : id_miembro_resultante
+    reemplazo "0..*" --> "0..1" asignacion_actividad : id_asignacion_resultante
+    reemplazo_candidato "0..*" --> "1" reemplazo : id_reemplazo
+    reemplazo_candidato "0..*" --> "1" proyecto : id_proyecto
+    reemplazo_candidato "0..*" --> "1" perfil : id_perfil
+    reemplazo_candidato "0..*" --> "1" usuario : id_usuario
+    reemplazo_candidato "0..*" --> "0..1" miembros_proyecto : id_miembro_creado
+    reemplazo_candidato "0..*" --> "0..1" asignacion_actividad : id_asignacion_creada
+    reporte "0..*" --> "1" usuario : id_usuario_autor
+    reporte "0..*" --> "1" perfil : id_perfil_autor
+    reporte "0..*" --> "0..1" perfil : id_perfil_reportado
+    reporte "0..*" --> "0..1" usuario : id_admin_revisor
+    requerimiento_act_caract "0..*" --> "1" requerimiento_actividad : id_requerimiento_act
+    requerimiento_act_caract "0..*" --> "1" caracteristica_tecnica : id_caracteristica
+    requerimiento_act_caract_valor "0..*" --> "1" requerimiento_act_caract : id_req_act_caract
+    requerimiento_act_caract_valor "0..*" --> "1" valor_caracteristica : id_valor,id_caracteristica
+    requerimiento_act_caract_valor "0..*" --> "1" requerimiento_act_caract : id_req_act_caract,id_caracteristica
+    requerimiento_act_habilidad "0..*" --> "1" requerimiento_actividad : id_requerimiento_act
+    requerimiento_act_habilidad "0..*" --> "1" habilidad : id_habilidad
+    requerimiento_actividad "0..*" --> "1" profesion : id_profesion
+    requerimiento_actividad "0..*" --> "1" actividad : id_actividad
+    requerimiento_gral_caract "0..*" --> "1" requerimiento_gral_proyecto : id_requerimiento_gral
+    requerimiento_gral_caract "0..*" --> "1" caracteristica_tecnica : id_caracteristica
+    requerimiento_gral_caract_valor "0..*" --> "1" valor_caracteristica : id_valor,id_caracteristica
+    requerimiento_gral_caract_valor "0..*" --> "1" requerimiento_gral_caract : id_req_gral_caract
+    requerimiento_gral_caract_valor "0..*" --> "1" requerimiento_gral_caract : id_req_gral_caract,id_caracteristica
+    requerimiento_gral_habilidad "0..*" --> "1" requerimiento_gral_proyecto : id_requerimiento_gral
+    requerimiento_gral_habilidad "0..*" --> "1" habilidad : id_habilidad
+    requerimiento_gral_proyecto "0..*" --> "1" proyecto : id_proyecto
+    requerimiento_gral_proyecto "0..*" --> "1" profesion : id_profesion
+    rol_global_permiso "0..*" --> "1" rol_global : id_rol_global
+    rol_global_permiso "0..*" --> "1" permiso_global : id_permiso_global
+    rol_proyecto_permiso "0..*" --> "1" rol_proyecto : id_rol_proyecto
+    rol_proyecto_permiso "0..*" --> "1" permiso_proyecto : id_permiso_proyecto
+    solicitud_colaboracion "0..*" --> "1" publicacion : id_publicacion
+    solicitud_colaboracion "0..*" --> "1" perfil : id_perfil_remitente
+    solicitud_colaboracion "0..*" --> "1" perfil : id_perfil_destinatario
+    solicitud_conexion "0..*" --> "1" perfil : id_perfil_remitente
+    solicitud_conexion "0..*" --> "1" perfil : id_perfil_destinatario
+    tipo_polaroid "0..*" --> "1" grupo_polaroid : id_grupo_polaroid
+    ubicacion "0..*" --> "1" ciudad : id_ciudad
+    usuario "0..*" --> "1" genero : id_genero
+    usuario "0..*" --> "1" rol_global : id_rol_global
+    usuario "0..*" --> "0..1" ubicacion : id_ubicacion
+    usuario_identidad "0..*" --> "1" usuario : id_usuario
+    valor_caracteristica "0..*" --> "1" caracteristica_tecnica : id_caracteristica

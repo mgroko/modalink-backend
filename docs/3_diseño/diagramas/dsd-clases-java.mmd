@@ -1,0 +1,923 @@
+classDiagram
+    %% Modelo de clases Java - org.mgroko.backend.modelo
+    %% Generado a partir de las entidades JPA, enums y claves embebidas.
+    %% PK = @Id / @EmbeddedId; FK = relacion JPA.
+
+    class Actividad {
+        <<entity>>
+        -Long idActividad PK
+        -Planificacion planificacion FK
+        -Ubicacion ubicacion FK
+        -EstadoActividad estado
+        -String nombre
+        -String descripcion
+        -Integer duracionMinutos
+    }
+
+    class Agenda {
+        <<entity>>
+        -Long idAgenda PK
+        -Usuario usuario FK
+        -Set~JornadaAgenda~ jornadas FK
+        -int MARGEN_ACTIVIDAD_MINUTOS_DEFECTO
+        -Integer margenActividadMinutos
+    }
+
+    class AsignacionActividad {
+        <<entity>>
+        -Long idAsignacionAct PK
+        -MiembroProyecto miembro FK
+        -Actividad actividad FK
+        -RequerimientoActividad requerimientoActividad FK
+    }
+
+    class Auditoria {
+        <<entity>>
+        -Long idAuditoria PK
+        -String usuarioBd
+        -String entidadAfectada
+        -String entidadClave
+        -Long idAfectado
+        -LocalDateTime fechaHora
+        -String ipUsuario
+    }
+
+    class BloqueoAgenda {
+        <<entity>>
+        -Long idBloqueo PK
+        -Agenda agenda FK
+        -LocalDateTime fechaHoraInicio
+        -LocalDateTime fechaHoraFin
+        -String motivo
+    }
+
+    class CalificacionPerfil {
+        <<entity>>
+        -Long idCalificacion PK
+        -Proyecto proyecto FK
+        -Perfil perfilEmisor FK
+        -Perfil perfilReceptor FK
+        -Integer valoracion
+        -String resenia
+        -LocalDateTime fechaRegistro
+    }
+
+    class CaracteristicaPerfil {
+        <<entity>>
+        -Long idCaracteristicaPerfil PK
+        -Perfil perfil FK
+        -CaracteristicaTecnica caracteristicaTecnica FK
+        -ValorCaracteristica valorCaracteristica FK
+        -String valor
+        -Long idValor
+        -LocalDateTime fechaRegistro
+    }
+
+    class CaracteristicaTecnica {
+        <<entity>>
+        -Long idCaracteristica PK
+        -Profesion profesion FK
+        -UnidadMedida unidadMedida FK
+        -List~ValorCaracteristica~ valores FK
+        -String TIPO_ENUMERADO
+        -String TIPO_TEXTO
+        -String TIPO_NUMERICO
+    }
+
+    class Ciudad {
+        <<entity>>
+        -Long idCiudad PK
+        -Provincia provincia FK
+        -String nombre
+        -String codigoPostal
+        -String idExterno
+        -String fuenteApi
+        -Boolean activo
+    }
+
+    class Comentario {
+        <<entity>>
+        -Long idComentario PK
+        -Publicacion publicacion FK
+        -Perfil perfil FK
+        -String texto
+        -LocalDateTime fechaComentario
+    }
+
+    class Conexion {
+        <<entity>>
+        -Long idConexion PK
+        -Perfil perfil1 FK
+        -Perfil perfil2 FK
+        -SolicitudConexion solicitudOrigen FK
+        -EstadoConexion estado
+        -LocalDateTime fechaInicioConexion
+        -LocalDateTime fechaFinConexion
+    }
+
+    class ConfiguracionSistema {
+        <<entity>>
+        -String clave PK
+        -String valor
+        -String descripcion
+    }
+
+    class Contrato {
+        <<entity>>
+        -Long idContrato PK
+        -Proyecto proyecto FK
+        -TipoAcuerdoContrato tipoAcuerdo FK
+        -MiembroProyecto miembroEmisor FK
+        -String nombre
+        -String descripcion
+        -String texto
+    }
+
+    class ContratoEvento {
+        <<entity>>
+        -Long idEvento PK
+        -Contrato contrato FK
+        -MiembroProyecto miembro FK
+        -Usuario usuario FK
+        -ContratoVersion contratoVersion FK
+        -TipoEventoContrato tipoEvento
+        -LocalDateTime fechaHora
+    }
+
+    class ContratoVersion {
+        <<entity>>
+        -Long idContratoVersion PK
+        -Contrato contrato FK
+        -Usuario usuario FK
+        -Integer version
+        -String texto
+        -LocalDateTime fechaCreacion
+    }
+
+    class Conversacion {
+        <<entity>>
+        -Long idConversacion PK
+        -Perfil perfil1 FK
+        -Perfil perfil2 FK
+        -LocalDateTime fechaCreacion
+        -LocalDateTime fechaUltimoMensaje
+    }
+
+    class DetalleAuditoria {
+        <<entity>>
+        -Long idDetalleAuditoria PK
+        -String campo
+        -String valorAnterior
+        -String valorNuevo
+        -Long idAuditoria
+    }
+
+    class EntidadReporte {
+        <<enumeration>>
+        PERFIL
+        PUBLICACION
+    }
+
+    class EstadoActividad {
+        <<enumeration>>
+        PENDIENTE
+        EN_CURSO
+        FINALIZADA
+        CANCELADA
+    }
+
+    class EstadoConexion {
+        <<enumeration>>
+        ACTIVA
+        ELIMINADA
+    }
+
+    class EstadoContrato {
+        <<enumeration>>
+        BORRADOR
+        PENDIENTE_FIRMA
+        ACTIVO
+        RECHAZADO_POR_PARTES
+        CANCELADO
+        ELIMINADO
+    }
+
+    class EstadoCronograma {
+        <<enumeration>>
+        NORMAL
+        ALERTA_DESBORDE
+        CONFLICTO
+        SIN_FECHA_ENTREGA
+    }
+
+    class EstadoFirmaContrato {
+        <<enumeration>>
+        PENDIENTE
+        FIRMADO
+        RECHAZADO
+        CANCELADA
+        INVALIDADA
+    }
+
+    class EstadoParticipacion {
+        <<enumeration>>
+        ACTIVO
+        BAJA_VOLUNTARIA
+        ELIMINADO
+    }
+
+    class EstadoPerfil {
+        <<enumeration>>
+        ACTIVO
+        DESHABILITADO
+        PENDIENTE_BAJA
+        BAJA
+    }
+
+    class EstadoProyecto {
+        <<enumeration>>
+        BORRADOR
+        PUBLICADO
+        CONFIRMADO
+        FINALIZADO
+        CANCELADO
+    }
+
+    class EstadoPublicacion {
+        <<enumeration>>
+        ACTIVA
+        OCULTA
+    }
+
+    class EstadoReporte {
+        <<enumeration>>
+    }
+
+    class EstadoSolicitud {
+        <<enumeration>>
+        PENDIENTE
+        ACEPTADA
+        RECHAZADA
+    }
+
+    class EstadoUsuario {
+        <<enumeration>>
+        ACTIVO
+        DESHABILITADO
+        PENDIENTE_BAJA
+        BAJA
+    }
+
+    class FirmaContrato {
+        <<entity>>
+        -Long idMiembro PK
+        -Long idContrato PK
+        -MiembroProyecto miembro FK
+        -Contrato contrato FK
+        -ContratoVersion contratoVersion FK
+        -RolParteContrato rolParte
+        -EstadoFirmaContrato estadoFirma
+    }
+
+    class FirmaContratoId {
+        <<embeddable>>
+        -long serialVersionUID
+        -Long idMiembro
+        -Long idContrato
+    }
+
+    class Genero {
+        <<entity>>
+        -Long idGenero PK
+        -String nombre
+        -String codigo
+    }
+
+    class GrupoPolaroid {
+        <<entity>>
+        -Long idGrupoPolaroid PK
+        -String codigo
+        -String nombre
+    }
+
+    class Habilidad {
+        <<entity>>
+        -Long idHabilidad PK
+        -String codigo
+        -String nombre
+        -String descripcion
+    }
+
+    class Hito {
+        <<entity>>
+        -Long idHito PK
+        -Proyecto proyecto FK
+    }
+
+    class Imagen {
+        <<entity>>
+        -Long idImagen PK
+        -String url
+        -String estado
+        -String nombreArchivo
+        -String tipoImagen
+        -Integer tamanoBytes
+        -LocalDateTime fechaSubida
+    }
+
+    class InvitacionActividad {
+        <<entity>>
+        -Long idInvitacion PK
+        -Perfil perfilRemitente FK
+        -Perfil perfilDestinatario FK
+        -RequerimientoActividad requerimiento FK
+        -String mensaje
+        -LocalDateTime fechaEnvio
+        -LocalDateTime fechaRechazo
+    }
+
+    class InvitacionGral {
+        <<entity>>
+        -Long idInvitacionGral PK
+        -Perfil perfilRemitente FK
+        -Perfil perfilDestinatario FK
+        -Proyecto proyecto FK
+        -RequerimientoGralProyecto requerimientoGral FK
+        -String mensaje
+        -LocalDateTime fechaEnvio
+    }
+
+    class JornadaAgenda {
+        <<entity>>
+        -Long idJornada PK
+        -Agenda agenda FK
+        -Integer diaSemana
+        -LocalTime horaInicioManana
+        -LocalTime horaFinManana
+        -LocalTime horaInicioTarde
+        -LocalTime horaFinTarde
+    }
+
+    class MeGusta {
+        <<entity>>
+        -MeGustaId id PK
+        -LocalDateTime fecha
+    }
+
+    class MeGustaId {
+        <<embeddable>>
+        -long serialVersionUID
+        -Long idPublicacion
+        -Long idPerfil
+    }
+
+    class Mensaje {
+        <<entity>>
+        -Long idMensaje PK
+        -Conversacion conversacion FK
+        -Perfil perfilEmisor FK
+        -String contenido
+        -LocalDateTime fechaEnvio
+        -Boolean leido
+        -LocalDateTime fechaLectura
+    }
+
+    class MensajeProyecto {
+        <<entity>>
+        -Long idMensajeProyecto PK
+        -Proyecto proyecto FK
+        -Perfil perfilEmisor FK
+        -String contenido
+        -LocalDateTime fechaEnvio
+    }
+
+    class MiembroProyecto {
+        <<entity>>
+        -Long idMiembro PK
+        -Proyecto proyecto FK
+        -Perfil perfil FK
+        -RolProyecto rolProyecto FK
+        -PerfilTyc tycAceptado FK
+        -RequerimientoGralProyecto requerimientoGral FK
+        -Perfil perfilAutorBaja FK
+    }
+
+    class Moodboard {
+        <<entity>>
+        -Long idMoodboard PK
+        -Proyecto proyecto FK
+        -LocalDateTime fechaCreacion
+        -String descripcion
+        -Set~Imagen~ imagenes
+    }
+
+    class MotivoReporte {
+        <<enumeration>>
+    }
+
+    class Notificacion {
+        <<entity>>
+        -Long idNotificacion PK
+        -Usuario usuarioDestino FK
+        -Perfil perfilContexto FK
+        -String tipo
+        -String mensaje
+        -String entidadTipo
+        -Long entidadId
+    }
+
+    class Objetivo {
+        <<entity>>
+        -Long idObjetivo PK
+        -Proyecto proyecto FK
+        -String nombre
+        -String descripcion
+    }
+
+    class OrigenInicio {
+        <<enumeration>>
+        PROYECTADA
+        CONFIRMADA
+        REAL
+    }
+
+    class Pais {
+        <<entity>>
+        -Long idPais PK
+        -String codigoIso
+        -String nombre
+        -Boolean activo
+    }
+
+    class Perfil {
+        <<entity>>
+        -Long idPerfil PK
+        -Usuario usuario FK
+        -Profesion profesion FK
+        -Imagen imagen FK
+        -Set~CaracteristicaPerfil~ caracteristicas FK
+        -String nombreArtistico
+        -String biografia
+    }
+
+    class PerfilTyc {
+        <<entity>>
+        -PerfilTycId id PK
+        -Perfil perfil FK
+        -String descripcion
+        -LocalDateTime fechaInicio
+        -LocalDateTime fechaFin
+    }
+
+    class PerfilTycId {
+        <<embeddable>>
+        -Long idPerfil
+        -Long idTyc
+    }
+
+    class PermisoGlobal {
+        <<entity>>
+        -Long idPermisoGlobal PK
+        -String nombre
+    }
+
+    class PermisoProyecto {
+        <<entity>>
+        -Long idPermisoProyecto PK
+        -String nombre
+    }
+
+    class Planificacion {
+        <<entity>>
+        -Long idPlanificacion PK
+        -Proyecto proyecto FK
+        -LocalDate fechaEntrega
+    }
+
+    class PolaroidPerfil {
+        <<entity>>
+        -Long idPolaroid PK
+        -Perfil perfil FK
+        -Imagen imagen FK
+        -TipoPolaroid tipoPolaroid FK
+        -Integer orden
+        -LocalDateTime fechaRegistro
+    }
+
+    class PostulacionActividad {
+        <<entity>>
+        -Long idPostulacion PK
+        -Perfil perfil FK
+        -RequerimientoActividad requerimiento FK
+        -LocalDateTime fechaPostulacion
+        -EstadoSolicitud estado
+    }
+
+    class PostulacionGral {
+        <<entity>>
+        -Long idPostulacionGral PK
+        -Perfil perfil FK
+        -RequerimientoGralProyecto requerimientoGral FK
+        -LocalDateTime fechaPostulacion
+        -EstadoSolicitud estado
+    }
+
+    class Privacidad {
+        <<enumeration>>
+        PUBLICO
+        PRIVADO
+    }
+
+    class Profesion {
+        <<entity>>
+        -Long idProfesion PK
+        -String codigo
+        -String nombre
+        -String descripcion
+    }
+
+    class ProveedorAuth {
+        <<enumeration>>
+        LOCAL
+        GOOGLE
+    }
+
+    class Provincia {
+        <<entity>>
+        -Long idProvincia PK
+        -Pais pais FK
+        -String nombre
+        -String idExterno
+        -String fuenteApi
+        -Boolean activo
+    }
+
+    class Proyecto {
+        <<entity>>
+        -Long idProyecto PK
+        -Ubicacion ubicacion FK
+        -String nombre
+        -String descripcion
+        -LocalDateTime fechaInicio
+        -LocalDateTime fechaFinalizacion
+        -LocalDateTime fechaCancelacion
+    }
+
+    class Publicacion {
+        <<entity>>
+        -Long idPublicacion PK
+        -Perfil perfil FK
+        -Proyecto proyecto FK
+        -Ubicacion ubicacion FK
+        -String titulo
+        -String descripcion
+        -LocalDateTime fechaPublicacion
+    }
+
+    class Reporte {
+        <<entity>>
+        -Long idReporte PK
+        -Usuario usuarioAutor FK
+        -Perfil perfilAutor FK
+        -Perfil perfilReportado FK
+        -Usuario adminRevisor FK
+        -EntidadReporte entidadTipo
+        -Long entidadId
+    }
+
+    class RequerimientoActCaract {
+        <<entity>>
+        -Long idReqActCaract PK
+        -RequerimientoActividad requerimientoActividad FK
+        -CaracteristicaTecnica caracteristica FK
+        -BigDecimal valorMin
+        -BigDecimal valorMax
+    }
+
+    class RequerimientoActCaractValor {
+        <<entity>>
+        -Long idReqActCaract PK
+        -Long idCaracteristica PK
+        -Long idValor PK
+    }
+
+    class RequerimientoActCaractValorId {
+        <<embeddable>>
+        -Long idReqActCaract
+        -Long idCaracteristica
+        -Long idValor
+    }
+
+    class RequerimientoActividad {
+        <<entity>>
+        -Long idRequerimiento PK
+        -Profesion profesion FK
+        -Actividad actividad FK
+        -List~RequerimientoActCaract~ caracteristicas FK
+        -Integer cantidad
+        -String descripcion
+        -LocalDateTime fechaArchivado
+    }
+
+    class RequerimientoGralCaract {
+        <<entity>>
+        -Long idReqGralCaract PK
+        -RequerimientoGralProyecto requerimientoGral FK
+        -CaracteristicaTecnica caracteristica FK
+        -BigDecimal valorMin
+        -BigDecimal valorMax
+    }
+
+    class RequerimientoGralCaractValor {
+        <<entity>>
+        -Long idValor PK
+        -Long idCaracteristica PK
+        -Long idReqGralCaract PK
+    }
+
+    class RequerimientoGralCaractValorId {
+        <<embeddable>>
+        -Long idValor
+        -Long idCaracteristica
+        -Long idReqGralCaract
+    }
+
+    class RequerimientoGralProyecto {
+        <<entity>>
+        -Long idRequerimientoGral PK
+        -Proyecto proyecto FK
+        -Profesion profesion FK
+        -List~RequerimientoGralCaract~ caracteristicas FK
+        -Integer cantidad
+        -String descripcion
+        -LocalDateTime fechaArchivado
+    }
+
+    class RolGlobal {
+        <<entity>>
+        -Long idRolGlobal PK
+        -String codigo
+        -String nombre
+        -Set~PermisoGlobal~ permisos
+    }
+
+    class RolParteContrato {
+        <<enumeration>>
+        DIRECTOR
+        DESTINATARIO
+        DIRECTOR_DESTINATARIO
+    }
+
+    class RolProyecto {
+        <<entity>>
+        -Long idRolProyecto PK
+        -String codigo
+        -String nombre
+        -Set~PermisoProyecto~ permisos
+    }
+
+    class RolProyectoUsuario {
+        <<enumeration>>
+        DIRECTOR
+        MIEMBRO
+    }
+
+    class SolicitudColaboracion {
+        <<entity>>
+        -Long idSolicitudColaboracion PK
+        -Publicacion publicacion FK
+        -Perfil perfilRemitente FK
+        -Perfil perfilDestinatario FK
+        -EstadoSolicitud estado
+        -LocalDateTime fechaEnvio
+        -LocalDateTime fechaRespuesta
+    }
+
+    class SolicitudConexion {
+        <<entity>>
+        -Long idSolicitudConexion PK
+        -Perfil perfilRemitente FK
+        -Perfil perfilDestinatario FK
+        -EstadoSolicitud estado
+        -LocalDateTime fechaEnvio
+        -LocalDateTime fechaRespuesta
+    }
+
+    class TipoAcuerdoContrato {
+        <<entity>>
+        -Long idTipoAcuerdo PK
+        -String codigo
+        -String nombre
+        -String descripcion
+        -String plantilla
+        -Boolean activo
+    }
+
+    class TipoEventoAuditoria {
+        <<entity>>
+        -String codigo PK
+        -String nombre
+        -String descripcion
+        -String modulo
+        -boolean activo
+    }
+
+    class TipoEventoContrato {
+        <<enumeration>>
+        CREADO
+        MODIFICADO
+        EMITIDO
+        FIRMADO
+        RECHAZADO
+        ACTIVADO
+        CANCELADO
+        ELIMINADO
+        FIRMA_CANCELADA
+        FIRMA_INVALIDADA
+        MIEMBRO_BAJA
+    }
+
+    class TipoEventoHistorial {
+        <<enumeration>>
+    }
+
+    class TipoPolaroid {
+        <<entity>>
+        -Long idTipoPolaroid PK
+        -GrupoPolaroid grupo FK
+        -String codigo
+        -String nombre
+    }
+
+    class Ubicacion {
+        <<entity>>
+        -Long idUbicacion PK
+        -Ciudad ciudad FK
+        -String direccion
+        -String codigoPostal
+        -BigDecimal latitud
+        -BigDecimal longitud
+    }
+
+    class UnidadMedida {
+        <<entity>>
+        -Long idUnidad PK
+        -String nombre
+        -String simbolo
+        -String tipoDatoPermitido
+    }
+
+    class Usuario {
+        <<entity>>
+        -Long idUsuario PK
+        -Ubicacion ubicacion FK
+        -RolGlobal rolGlobal FK
+        -Genero genero FK
+        -String nombre
+        -String apellido
+        -String dni
+    }
+
+    class UsuarioIdentidad {
+        <<entity>>
+        -Long idIdentidad PK
+        -Usuario usuario FK
+        -ProveedorAuth proveedor
+        -String idExterno
+        -String correo
+        -boolean correoVerificado
+        -LocalDateTime fechaVinculacion
+    }
+
+    class ValorCaracteristica {
+        <<entity>>
+        -ValorCaracteristicaId id PK
+        -CaracteristicaTecnica caracteristicaTecnica FK
+        -String etiqueta
+        -String colorHex
+    }
+
+    class ValorCaracteristicaId {
+        <<embeddable>>
+        -Long idValor
+        -Long idCaracteristica
+    }
+
+    %% Relaciones
+    Actividad "0..*" --> "0..1" Planificacion : planificacion
+    Actividad "0..*" --> "0..1" Ubicacion : ubicacion
+    Actividad "1" --> "0..*" Actividad : predecesoras
+    Actividad "1" --> "0..*" Actividad : sucesoras
+    Agenda "1" --> "1" Usuario : usuario
+    Agenda "1" --> "0..*" JornadaAgenda : jornadas
+    AsignacionActividad "0..*" --> "0..1" MiembroProyecto : miembro
+    AsignacionActividad "0..*" --> "0..1" Actividad : actividad
+    AsignacionActividad "0..*" --> "0..1" RequerimientoActividad : requerimientoActividad
+    BloqueoAgenda "0..*" --> "0..1" Agenda : agenda
+    CalificacionPerfil "0..*" --> "0..1" Proyecto : proyecto
+    CalificacionPerfil "0..*" --> "0..1" Perfil : perfilEmisor
+    CalificacionPerfil "0..*" --> "0..1" Perfil : perfilReceptor
+    CaracteristicaPerfil "0..*" --> "0..1" Perfil : perfil
+    CaracteristicaPerfil "0..*" --> "0..1" CaracteristicaTecnica : caracteristicaTecnica
+    CaracteristicaPerfil "0..*" --> "0..1" ValorCaracteristica : valorCaracteristica
+    CaracteristicaTecnica "0..*" --> "0..1" Profesion : profesion
+    CaracteristicaTecnica "0..*" --> "0..1" UnidadMedida : unidadMedida
+    CaracteristicaTecnica "1" --> "0..*" ValorCaracteristica : valores
+    Ciudad "0..*" --> "0..1" Provincia : provincia
+    Comentario "0..*" --> "0..1" Publicacion : publicacion
+    Comentario "0..*" --> "0..1" Perfil : perfil
+    Conexion "0..*" --> "0..1" Perfil : perfil1
+    Conexion "0..*" --> "0..1" Perfil : perfil2
+    Conexion "1" --> "1" SolicitudConexion : solicitudOrigen
+    Contrato "0..*" --> "0..1" Proyecto : proyecto
+    Contrato "0..*" --> "0..1" TipoAcuerdoContrato : tipoAcuerdo
+    Contrato "0..*" --> "0..1" MiembroProyecto : miembroEmisor
+    ContratoEvento "0..*" --> "0..1" Contrato : contrato
+    ContratoEvento "0..*" --> "0..1" MiembroProyecto : miembro
+    ContratoEvento "0..*" --> "0..1" Usuario : usuario
+    ContratoEvento "0..*" --> "0..1" ContratoVersion : contratoVersion
+    ContratoVersion "0..*" --> "0..1" Contrato : contrato
+    ContratoVersion "0..*" --> "0..1" Usuario : usuario
+    Conversacion "0..*" --> "0..1" Perfil : perfil1
+    Conversacion "0..*" --> "0..1" Perfil : perfil2
+    FirmaContrato "0..*" --> "0..1" MiembroProyecto : miembro
+    FirmaContrato "0..*" --> "0..1" Contrato : contrato
+    FirmaContrato "0..*" --> "0..1" ContratoVersion : contratoVersion
+    Hito "0..*" --> "0..1" Proyecto : proyecto
+    InvitacionActividad "0..*" --> "0..1" Perfil : perfilRemitente
+    InvitacionActividad "0..*" --> "0..1" Perfil : perfilDestinatario
+    InvitacionActividad "0..*" --> "0..1" RequerimientoActividad : requerimiento
+    InvitacionGral "0..*" --> "0..1" Perfil : perfilRemitente
+    InvitacionGral "0..*" --> "0..1" Perfil : perfilDestinatario
+    InvitacionGral "0..*" --> "0..1" Proyecto : proyecto
+    InvitacionGral "0..*" --> "0..1" RequerimientoGralProyecto : requerimientoGral
+    JornadaAgenda "0..*" --> "0..1" Agenda : agenda
+    MeGusta *-- MeGustaId : id
+    Mensaje "0..*" --> "0..1" Conversacion : conversacion
+    Mensaje "0..*" --> "0..1" Perfil : perfilEmisor
+    MensajeProyecto "0..*" --> "0..1" Proyecto : proyecto
+    MensajeProyecto "0..*" --> "0..1" Perfil : perfilEmisor
+    MiembroProyecto "0..*" --> "0..1" Proyecto : proyecto
+    MiembroProyecto "0..*" --> "0..1" Perfil : perfil
+    MiembroProyecto "0..*" --> "0..1" RolProyecto : rolProyecto
+    MiembroProyecto "0..*" --> "0..1" PerfilTyc : tycAceptado
+    MiembroProyecto "0..*" --> "0..1" RequerimientoGralProyecto : requerimientoGral
+    MiembroProyecto "0..*" --> "0..1" Perfil : perfilAutorBaja
+    Moodboard "1" --> "1" Proyecto : proyecto
+    Moodboard "1" --> "0..*" Imagen : imagenes
+    Notificacion "0..*" --> "0..1" Usuario : usuarioDestino
+    Notificacion "0..*" --> "0..1" Perfil : perfilContexto
+    Objetivo "0..*" --> "0..1" Proyecto : proyecto
+    Perfil "0..*" --> "0..1" Usuario : usuario
+    Perfil "0..*" --> "0..1" Profesion : profesion
+    Perfil "0..*" --> "0..1" Imagen : imagen
+    Perfil "1" --> "0..*" CaracteristicaPerfil : caracteristicas
+    Perfil "1" --> "0..*" Habilidad : habilidades
+    PerfilTyc *-- PerfilTycId : id
+    PerfilTyc "0..*" --> "0..1" Perfil : perfil
+    Planificacion "1" --> "1" Proyecto : proyecto
+    PolaroidPerfil "0..*" --> "0..1" Perfil : perfil
+    PolaroidPerfil "0..*" --> "0..1" Imagen : imagen
+    PolaroidPerfil "0..*" --> "0..1" TipoPolaroid : tipoPolaroid
+    PostulacionActividad "0..*" --> "0..1" Perfil : perfil
+    PostulacionActividad "0..*" --> "0..1" RequerimientoActividad : requerimiento
+    PostulacionGral "0..*" --> "0..1" Perfil : perfil
+    PostulacionGral "0..*" --> "0..1" RequerimientoGralProyecto : requerimientoGral
+    Provincia "0..*" --> "0..1" Pais : pais
+    Proyecto "0..*" --> "0..1" Ubicacion : ubicacion
+    Publicacion "0..*" --> "0..1" Perfil : perfil
+    Publicacion "0..*" --> "0..1" Proyecto : proyecto
+    Publicacion "0..*" --> "0..1" Ubicacion : ubicacion
+    Publicacion "1" --> "0..*" Imagen : imagenes
+    Publicacion "1" --> "0..*" Perfil : colaboradores
+    Reporte "0..*" --> "0..1" Usuario : usuarioAutor
+    Reporte "0..*" --> "0..1" Perfil : perfilAutor
+    Reporte "0..*" --> "0..1" Perfil : perfilReportado
+    Reporte "0..*" --> "0..1" Usuario : adminRevisor
+    RequerimientoActCaract "0..*" --> "0..1" RequerimientoActividad : requerimientoActividad
+    RequerimientoActCaract "0..*" --> "0..1" CaracteristicaTecnica : caracteristica
+    RequerimientoActividad "0..*" --> "0..1" Profesion : profesion
+    RequerimientoActividad "0..*" --> "0..1" Actividad : actividad
+    RequerimientoActividad "1" --> "0..*" Habilidad : habilidades
+    RequerimientoActividad "1" --> "0..*" RequerimientoActCaract : caracteristicas
+    RequerimientoGralCaract "0..*" --> "0..1" RequerimientoGralProyecto : requerimientoGral
+    RequerimientoGralCaract "0..*" --> "0..1" CaracteristicaTecnica : caracteristica
+    RequerimientoGralProyecto "0..*" --> "0..1" Proyecto : proyecto
+    RequerimientoGralProyecto "0..*" --> "0..1" Profesion : profesion
+    RequerimientoGralProyecto "1" --> "0..*" Habilidad : habilidades
+    RequerimientoGralProyecto "1" --> "0..*" RequerimientoGralCaract : caracteristicas
+    RolGlobal "1" --> "0..*" PermisoGlobal : permisos
+    RolProyecto "1" --> "0..*" PermisoProyecto : permisos
+    SolicitudColaboracion "0..*" --> "0..1" Publicacion : publicacion
+    SolicitudColaboracion "0..*" --> "0..1" Perfil : perfilRemitente
+    SolicitudColaboracion "0..*" --> "0..1" Perfil : perfilDestinatario
+    SolicitudConexion "0..*" --> "0..1" Perfil : perfilRemitente
+    SolicitudConexion "0..*" --> "0..1" Perfil : perfilDestinatario
+    TipoPolaroid "0..*" --> "0..1" GrupoPolaroid : grupo
+    Ubicacion "0..*" --> "0..1" Ciudad : ciudad
+    Usuario "0..*" --> "0..1" Ubicacion : ubicacion
+    Usuario "0..*" --> "0..1" RolGlobal : rolGlobal
+    Usuario "0..*" --> "0..1" Genero : genero
+    UsuarioIdentidad "0..*" --> "0..1" Usuario : usuario
+    ValorCaracteristica *-- ValorCaracteristicaId : id
+    ValorCaracteristica "0..*" --> "0..1" CaracteristicaTecnica : caracteristicaTecnica
