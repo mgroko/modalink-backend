@@ -86,6 +86,8 @@ import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExced
 import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionDuplicadaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.RangoFechasPublicacionInvalidoException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
@@ -442,6 +444,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePublicacionNoEncontrada(
             PublicacionNoEncontradaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionInvalida(
+            SolicitudColaboracionInvalidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionDuplicada(
+            SolicitudColaboracionDuplicadaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(RangoFechasPublicacionInvalidoException.class)

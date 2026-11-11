@@ -19,8 +19,9 @@ import java.time.LocalDateTime;
  * asociada a la notificación. Para {@code CALIFICACION_SOLICITADA} apunta a
  * {@code /proyectos/{idProyecto}/calificaciones}. Las notificaciones sociales
  * de conexiones apuntan a {@code /solicitudes-conexion} o
- * {@code /red-contactos} según el tipo. En el resto de los tipos es
- * {@code null}.</p>
+ * {@code /red-contactos} según el tipo. Las solicitudes de colaboración
+ * apuntan a {@code /publicaciones/{idPublicacion}}. En el resto de los tipos
+ * es {@code null}.</p>
  */
 public record NotificacionResponse(
         Long idNotificacion,

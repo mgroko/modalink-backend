@@ -72,4 +72,18 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     })
     Optional<Publicacion> findByIdPublicacionAndPerfilIdPerfil(
             Long idPublicacion, Long idPerfil);
+
+    /**
+     * UC-61: indica si un perfil ya es colaborador de la publicación.
+     */
+    @Query("""
+            SELECT COUNT(c) > 0
+            FROM Publicacion p
+            JOIN p.colaboradores c
+            WHERE p.idPublicacion = :idPublicacion
+              AND c.idPerfil = :idPerfil
+            """)
+    boolean existsColaborador(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil);
 }

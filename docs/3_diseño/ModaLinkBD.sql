@@ -2372,9 +2372,26 @@ CREATE TABLE solicitud_colaboracion(
     id_publicacion               int8           NOT NULL,
     id_perfil_remitente          int8           NOT NULL,
     id_perfil_destinatario       int8           NOT NULL,
-    CONSTRAINT "PK_solicitud_colaboracion" PRIMARY KEY (id_solicitud_colaboracion)
+    CONSTRAINT "PK_solicitud_colaboracion" PRIMARY KEY (id_solicitud_colaboracion),
+    CONSTRAINT chk_solicitud_colaboracion_estado
+        CHECK (estado IN ('PENDIENTE', 'ACEPTADA', 'RECHAZADA')),
+    CONSTRAINT chk_solicitud_colaboracion_no_auto
+        CHECK (id_perfil_remitente <> id_perfil_destinatario)
 )
 ;
+
+CREATE UNIQUE INDEX "UQ_solicitud_colaboracion_pendiente"
+    ON solicitud_colaboracion (id_publicacion, id_perfil_destinatario)
+    WHERE estado = 'PENDIENTE';
+
+CREATE INDEX "IDX_solicitud_colaboracion_publicacion"
+    ON solicitud_colaboracion (id_publicacion, estado, fecha_envio DESC);
+
+CREATE INDEX "IDX_solicitud_colaboracion_destinatario"
+    ON solicitud_colaboracion (id_perfil_destinatario, estado, fecha_envio DESC);
+
+CREATE INDEX "IDX_solicitud_colaboracion_remitente"
+    ON solicitud_colaboracion (id_perfil_remitente, estado, fecha_envio DESC);
 
 
 
@@ -8723,3 +8740,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS "UQ_notificacion_mensaje_grupal_no_leida"
     WHERE leida = false
       AND tipo = 'MENSAJE_GRUPAL_RECIBIDO'
       AND entidad_tipo = 'PROYECTO';
+
+-- ============================================================================
+-- UC-61 - Enviar solicitud de colaboracion
+-- ============================================================================
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
+    ('SOLICITUD_COLABORACION_RECIBIDA', 'Solicitud de colaboración recibida', 'SOCIAL', 'ALTA')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        categoria = EXCLUDED.categoria,
+        prioridad = EXCLUDED.prioridad,
+        activo = true;

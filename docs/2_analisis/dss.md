@@ -430,6 +430,23 @@
 
 ---
 
+### **UC-61: Enviar solicitud de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-16 Buscar perfil`.
+  2. El actor envía el mensaje `unPerfil = obtenerPerfil(idPerfilDestinatario)`.
+  3. El sistema retorna `mostrarPerfilYConfirmacion(unPerfil)`.
+  4. El actor envía el mensaje `enviarSolicitudColaboracion(idPublicacion, unPerfil)`.
+  5. **Bloque Alternativo (`alt`)**:
+     - `[publicación inexistente, ajena, no activa, destinatario fuera de la red, ya colaborador o solicitud pendiente duplicada]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `solicitudColaboracionCreada(unaSolicitud)`.
+       - El sistema retorna `notificarSolicitudColaboracion(unPerfil, idPublicacion)`.
+
+---
+
 ### **UC-36: Modificar proyecto**
 
 - **Actor:** Director de proyecto

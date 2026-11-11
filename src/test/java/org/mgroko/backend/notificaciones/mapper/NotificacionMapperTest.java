@@ -197,6 +197,18 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void solicitudColaboracionRecibida_incluyeLinkALaPublicacion() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_COLABORACION_RECIBIDA",
+                        "PUBLICACION", 99L, null),
+                null);
+
+        assertThat(response.link()).isEqualTo("/publicaciones/99");
+        assertThat(response.titulo())
+                .isEqualTo("Solicitud de colaboración recibida");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");

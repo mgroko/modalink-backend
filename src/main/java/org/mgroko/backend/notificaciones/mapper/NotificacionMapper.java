@@ -11,6 +11,7 @@ public final class NotificacionMapper {
     private static final String ENTIDAD_INVITACION_ACTIVIDAD = "INVITACION_ACTIVIDAD";
     private static final String ENTIDAD_CONEXION = "CONEXION";
     private static final String ENTIDAD_CONVERSACION = "CONVERSACION";
+    private static final String ENTIDAD_PUBLICACION = "PUBLICACION";
     private static final String TIPO_CALIFICACION_SOLICITADA =
             "CALIFICACION_SOLICITADA";
     private static final String TIPO_SOLICITUD_CONEXION_RECIBIDA =
@@ -25,6 +26,8 @@ public final class NotificacionMapper {
             "MENSAJE_PRIVADO_RECIBIDO";
     private static final String TIPO_MENSAJE_GRUPAL_RECIBIDO =
             "MENSAJE_GRUPAL_RECIBIDO";
+    private static final String TIPO_SOLICITUD_COLABORACION_RECIBIDA =
+            "SOLICITUD_COLABORACION_RECIBIDA";
 
     private NotificacionMapper() {
     }
@@ -90,6 +93,11 @@ public final class NotificacionMapper {
             case TIPO_MENSAJE_GRUPAL_RECIBIDO ->
                     idProyecto != null
                             ? "/proyectos/" + idProyecto + "/chat"
+                            : null;
+            case TIPO_SOLICITUD_COLABORACION_RECIBIDA ->
+                    ENTIDAD_PUBLICACION.equals(notificacion.getEntidadTipo())
+                            && notificacion.getEntidadId() != null
+                            ? "/publicaciones/" + notificacion.getEntidadId()
                             : null;
             default -> null;
         };
