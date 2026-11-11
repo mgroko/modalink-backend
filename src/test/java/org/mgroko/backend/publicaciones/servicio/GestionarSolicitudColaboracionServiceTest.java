@@ -127,6 +127,10 @@ class GestionarSolicitudColaboracionServiceTest {
                 .build();
 
         when(perfilActivoService.resolver(1L, 7L)).thenReturn(destinatario);
+        when(solicitudColaboracionRepository.findIdPublicacionBySolicitudId(50L))
+                .thenReturn(Optional.of(99L));
+        when(publicacionRepository.findByIdPublicacionForUpdate(99L))
+                .thenReturn(Optional.of(publicacion));
         when(solicitudColaboracionRepository.findByIdForUpdate(50L))
                 .thenReturn(Optional.of(solicitud));
         when(solicitudColaboracionRepository.saveAndFlush(any(SolicitudColaboracion.class)))
@@ -148,6 +152,7 @@ class GestionarSolicitudColaboracionServiceTest {
         assertEquals(EstadoSolicitud.ACEPTADA, solicitud.getEstado());
         assertEquals(LocalDateTime.of(2026, 11, 10, 23, 30), solicitud.getFechaRespuesta());
         assertTrue(publicacion.getColaboradores().contains(destinatario));
+        verify(publicacionRepository).findByIdPublicacionForUpdate(99L);
         verify(publicacionRepository).saveAndFlush(publicacion);
         verify(notificacionService).crear(
                 eq(usuarioRemitente),
@@ -180,6 +185,8 @@ class GestionarSolicitudColaboracionServiceTest {
 
     @Test
     void aceptar_solicitudInexistente_lanzaNoEncontrada() {
+        when(solicitudColaboracionRepository.findIdPublicacionBySolicitudId(50L))
+                .thenReturn(Optional.empty());
         when(solicitudColaboracionRepository.findByIdForUpdate(50L))
                 .thenReturn(Optional.empty());
 

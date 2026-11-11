@@ -10,6 +10,7 @@ import org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.EliminarPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
@@ -22,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 /**
- * UC-19 - Alta de publicación y lectura mínima del portfolio.
+ * UC-19/20/21/22 - Publicaciones del perfil.
  */
 @RestController
 @PreAuthorize("hasRole('USUARIO')")
@@ -46,6 +48,7 @@ public class PublicacionController {
     private final ObtenerPublicacionService obtenerPublicacionService;
     private final ObtenerPublicacionDetalleService obtenerPublicacionDetalleService;
     private final ModificarPublicacionService modificarPublicacionService;
+    private final EliminarPublicacionService eliminarPublicacionService;
 
     public PublicacionController(
             CrearPublicacionService crearPublicacionService,
@@ -54,7 +57,8 @@ public class PublicacionController {
             ListarFeedPublicacionesService listarFeedPublicacionesService,
             ObtenerPublicacionService obtenerPublicacionService,
             ObtenerPublicacionDetalleService obtenerPublicacionDetalleService,
-            ModificarPublicacionService modificarPublicacionService) {
+            ModificarPublicacionService modificarPublicacionService,
+            EliminarPublicacionService eliminarPublicacionService) {
         this.crearPublicacionService = crearPublicacionService;
         this.listarPublicacionesPerfilService = listarPublicacionesPerfilService;
         this.listarProyectosPublicacionesPerfilService = listarProyectosPublicacionesPerfilService;
@@ -62,6 +66,7 @@ public class PublicacionController {
         this.obtenerPublicacionService = obtenerPublicacionService;
         this.obtenerPublicacionDetalleService = obtenerPublicacionDetalleService;
         this.modificarPublicacionService = modificarPublicacionService;
+        this.eliminarPublicacionService = eliminarPublicacionService;
     }
 
     @PostMapping(value = "/publicaciones", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -126,6 +131,23 @@ public class PublicacionController {
                 request);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UC-20: si el perfil activo es el dueño, elimina la publicación de forma
+     * física. Si es colaborador, solo quita su etiqueta del perfil.
+     */
+    @DeleteMapping("/publicaciones/{idPublicacion}")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long idPublicacion,
+            Authentication authentication) {
+
+        eliminarPublicacionService.eliminar(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                idPublicacion);
+
+        return ResponseEntity.noContent().build();
     }
 
     /**

@@ -3,8 +3,10 @@ package org.mgroko.backend.publicaciones.controlador;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,12 +18,15 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.publicaciones.dto.AutorPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.ImagenPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.EliminarPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
@@ -69,6 +74,9 @@ class PublicacionControllerTest {
 
     @MockitoBean
     private ModificarPublicacionService modificarPublicacionService;
+
+    @MockitoBean
+    private EliminarPublicacionService eliminarPublicacionService;
 
     private static UsernamePasswordAuthenticationToken auth(Long idUsuario, Long idPerfilActivo) {
         var token = new UsernamePasswordAuthenticationToken(String.valueOf(idUsuario), null, List.of());
@@ -315,5 +323,44 @@ class PublicacionControllerTest {
         assertEquals(25L, captor.getValue().idProyecto());
         assertEquals("Editorial", captor.getValue().titulo());
         assertEquals("Otoño", captor.getValue().descripcion());
+    }
+
+    @Test
+    void eliminar_devuelve204() throws Exception {
+        mockMvc.perform(delete("/publicaciones/{idPublicacion}", 99L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarPublicacionService).eliminar(1L, 7L, 99L);
+    }
+
+    @Test
+    void eliminar_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(delete("/publicaciones/{idPublicacion}", 99L)
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
+
+        verify(eliminarPublicacionService, org.mockito.Mockito.never())
+                .eliminar(any(), any(), any());
+    }
+
+    @Test
+    void eliminar_publicacionAjena_devuelve404() throws Exception {
+        doThrow(new PublicacionNoEncontradaException(99L))
+                .when(eliminarPublicacionService).eliminar(1L, 7L, 99L);
+
+        mockMvc.perform(delete("/publicaciones/{idPublicacion}", 99L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void eliminar_perfilEnBaja_devuelve409() throws Exception {
+        doThrow(new PerfilEnBajaException("El perfil no se encuentra activo."))
+                .when(eliminarPublicacionService).eliminar(1L, 7L, 99L);
+
+        mockMvc.perform(delete("/publicaciones/{idPublicacion}", 99L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isConflict());
     }
 }

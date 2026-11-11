@@ -11,9 +11,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
         JpaSpecificationExecutor<Publicacion> {
@@ -163,4 +166,62 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
             @Param("idPublicacion") Long idPublicacion,
             @Param("idImagen") Long idImagen,
             @Param("orden") int orden);
+
+    /**
+     * UC-20: bloquea la publicación para que la baja no compita con la
+     * aceptación de una solicitud de colaboración ni con otra baja.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p
+            FROM Publicacion p
+            WHERE p.idPublicacion = :idPublicacion
+            """)
+    Optional<Publicacion> findByIdPublicacionForUpdate(
+            @Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM imagen_publicacion
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarImagenesPublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM colaborador_publicacion
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarColaboradoresPublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM colaborador_publicacion
+            WHERE id_publicacion = :idPublicacion
+              AND id_perfil = :idPerfil
+            """, nativeQuery = true)
+    int eliminarColaboradorPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM me_gusta
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarMeGustaDePublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM comentario
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarComentariosDePublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM publicacion
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarFisicamente(@Param("idPublicacion") Long idPublicacion);
 }

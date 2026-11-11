@@ -200,6 +200,23 @@ public class NotificacionService {
     }
 
     /**
+     * Elimina todas las notificaciones de una entidad concreta,
+     * independientemente de su tipo. UC-20 lo usa al dar de baja físicamente
+     * una publicación.
+     *
+     * @return cantidad de notificaciones eliminadas
+     */
+    @Transactional
+    public int eliminarPorEntidad(String entidadTipo, Long entidadId) {
+        if (entidadTipo == null || entidadId == null) {
+            return 0;
+        }
+
+        return notificacionRepository.deleteByEntidadTipoAndEntidadId(
+                entidadTipo, entidadId);
+    }
+
+    /**
      * Elimina las notificaciones de una entidad concreta para un usuario y
      * perfil de destino.
      *

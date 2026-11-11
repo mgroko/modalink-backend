@@ -62,7 +62,7 @@ el historial de git sirva de bitácora adicional.
 | UC    | Nombre                             | Estado      | Endpoint / clase | Tests | Notas             |
 | ----- | ---------------------------------- | ----------- | ---------------- | ----- | ----------------- |
 | UC-19 | Alta publicación | Implementado y testeado | `POST /publicaciones`, `GET /perfiles/{idPerfil}/publicaciones` | Sí (unitario + MVC; integración pendiente de Docker) | Imágenes 1-10 (10 MB), título obligatorio, descripción/ubicación/proyecto opcionales. Proyecto solo CONFIRMADO/FINALIZADO con membresía activa. Orden de imágenes, estado ACTIVA/OCULTA y exclusión por estado de perfil. |
-| UC-20 | Baja publicación                   | No iniciado |                  |       | Segunda iteracion |
+| UC-20 | Baja publicación | Implementado y testeado | `DELETE /publicaciones/{idPublicacion}` | Sí (unitario + MVC + integración + concurrencia) | Segunda iteración. Dueño: baja física de la publicación, imágenes, archivos, etiquetas, solicitudes y notificaciones. Colaborador: solo se elimina su etiqueta de `colaborador_publicacion`; la publicación, imágenes, archivos y solicitudes permanecen. Publicaciones `OCULTA` con las mismas reglas. Sin notificaciones, auditoría ni restauración. Lock pesimista de publicación para competir con UC-62. |
 | UC-21 | Modificar publicación | Implementado y testeado | `GET /publicaciones/{idPublicacion}`, `PUT /publicaciones/{idPublicacion}` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el perfil activo dueño. Edición atómica de título, descripción, proyecto, ubicación e imágenes (`multipart/form-data`). `imagenesConservadas` es obligatorio y define el orden; las no conservadas se borran (fila + archivo post-commit). Final 1-10 imágenes. Proyecto sin cambios no se revalida; proyecto nuevo debe estar `CONFIRMADO`/`FINALIZADO` y el perfil debe ser miembro activo. Colaboradores en modo lectura; la invitación sigue en UC-61. |
 | UC-22 | Buscar publicación | Implementado y testeado | `GET /perfiles/{idPerfil}/publicaciones` con filtros opcionales, `GET /perfiles/{idPerfil}/publicaciones/proyectos` y `GET /publicaciones/feed` | Sí (unitario + MVC; integración pendiente de Docker) | Filtros por rango de fechas, `idProyecto`, título y descripción, combinados con AND. Solo publicaciones `ACTIVA` de perfiles visibles; orden por fecha descendente; página vacía con 200. El feed incluye contactos activos y opcionalmente las publicaciones propias. |
 | UC-61 | Enviar solicitud de colaboración | Implementado y testeado | `POST /publicaciones/{idPublicacion}/solicitudes-colaboracion` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el perfil activo dueño de una publicación `ACTIVA`. El destinatario debe ser un contacto activo, no ser colaborador y no tener una solicitud `PENDIENTE` para esa publicación. Crea la solicitud en `PENDIENTE` y notifica al destinatario con `SOLICITUD_COLABORACION_RECIBIDA` (link a `/publicaciones/{id}`). Permite reenviar tras `RECHAZADA`. Índice único parcial para concurrencia. No agrega colaboradores ni audita; eso queda para UC-62/63/67. |
@@ -136,11 +136,11 @@ el historial de git sirva de bitácora adicional.
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
 | Gestión de usuarios y administración | 16     | 16                      | 0            | 0           | 0           |
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
-| Gestión de publicaciones           | 11       | 8                       | 0            | 0           | 3           |
+| Gestión de publicaciones           | 11       | 9                       | 0            | 0           | 2           |
 | Gestión de proyectos               | 26       | 26                      | 0            | 0           | 0           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
 | Gestión de conexiones y mensajería | 5        | 5                       | 0            | 0           | 0           |
-| **Total**                          | **76**   | **73**                  | **0**        | **0**       | **3**       |
+| **Total**                          | **76**   | **74**                  | **0**        | **0**       | **2**       |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -154,4 +154,4 @@ el historial de git sirva de bitácora adicional.
 > desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan sus filas en el
 > módulo correspondiente solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 73 de 76 casos de uso implementados y testeados = **96,1 %** del catálogo de requisitos.
+**Avance global:** 74 de 76 casos de uso implementados y testeados = **97,4 %** del catálogo de requisitos.

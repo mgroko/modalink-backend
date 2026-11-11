@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -91,6 +92,19 @@ public interface SolicitudColaboracionRepository
             @Param("estadoUsuario") EstadoUsuario estadoUsuario);
 
     /**
+     * UC-20/62: obtiene el ID de la publicación sin inicializar la asociación
+     * perezosa. Se usa para bloquear primero la publicación y evitar carreras
+     * con la baja física.
+     */
+    @Query("""
+            SELECT s.publicacion.idPublicacion
+            FROM SolicitudColaboracion s
+            WHERE s.idSolicitudColaboracion = :idSolicitudColaboracion
+            """)
+    Optional<Long> findIdPublicacionBySolicitudId(
+            @Param("idSolicitudColaboracion") Long idSolicitudColaboracion);
+
+    /**
      * UC-62/63/64: bloquea la solicitud para que aceptar, rechazar y eliminar
      * no compitan entre sí.
      */
@@ -102,4 +116,15 @@ public interface SolicitudColaboracionRepository
             """)
     Optional<SolicitudColaboracion> findByIdForUpdate(
             @Param("idSolicitudColaboracion") Long idSolicitudColaboracion);
+
+    /**
+     * UC-20: elimina todas las solicitudes asociadas a una publicación que se
+     * da de baja físicamente.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM SolicitudColaboracion s
+            WHERE s.publicacion.idPublicacion = :idPublicacion
+            """)
+    int eliminarPorPublicacion(@Param("idPublicacion") Long idPublicacion);
 }

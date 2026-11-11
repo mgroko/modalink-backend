@@ -58,10 +58,20 @@ public class GestionarSolicitudColaboracionService {
             Long idSolicitudColaboracion) {
 
         Perfil perfilActivo = perfilActivoService.resolver(idUsuario, idPerfilActivo);
+
+        // UC-20: se bloquea primero la publicación para que la aceptación no
+        // compita con una baja física. El orden publicación -> solicitud es el
+        // mismo que usa EliminarPublicacionService.
+        Long idPublicacion = solicitudColaboracionRepository
+                .findIdPublicacionBySolicitudId(idSolicitudColaboracion)
+                .orElseThrow(SolicitudColaboracionNoEncontradaException::new);
+
+        Publicacion publicacion = publicacionRepository
+                .findByIdPublicacionForUpdate(idPublicacion)
+                .orElseThrow(SolicitudColaboracionNoEncontradaException::new);
+
         SolicitudColaboracion solicitud = bloquearYValidar(
                 idSolicitudColaboracion, perfilActivo);
-
-        Publicacion publicacion = solicitud.getPublicacion();
         validarPublicacionDisponible(publicacion);
 
         if (publicacionRepository.existsColaborador(

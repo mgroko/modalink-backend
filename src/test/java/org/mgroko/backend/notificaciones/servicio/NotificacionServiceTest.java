@@ -281,4 +281,24 @@ class NotificacionServiceTest {
         verify(notificacionRepository, never())
                 .deleteByTipoAndEntidadTipoAndEntidadIdYPerfil(any(), any(), any(), any(), any());
     }
+
+    @Test
+    void eliminarPorEntidad_conParametrosValidos_delegaEnRepositorio() {
+        when(notificacionRepository.deleteByEntidadTipoAndEntidadId("PUBLICACION", 50L))
+                .thenReturn(2);
+
+        int eliminadas = notificacionService.eliminarPorEntidad("PUBLICACION", 50L);
+
+        assertThat(eliminadas).isEqualTo(2);
+        verify(notificacionRepository).deleteByEntidadTipoAndEntidadId("PUBLICACION", 50L);
+    }
+
+    @Test
+    void eliminarPorEntidad_conParametrosNulos_noElimina() {
+        int eliminadas = notificacionService.eliminarPorEntidad(null, 50L);
+
+        assertThat(eliminadas).isZero();
+        verify(notificacionRepository, never())
+                .deleteByEntidadTipoAndEntidadId(any(), any());
+    }
 }

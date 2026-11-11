@@ -71,6 +71,20 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
             @Param("idUsuarioDestino") Long idUsuarioDestino,
             @Param("idPerfilContexto") Long idPerfilContexto);
 
+    /**
+     * UC-20: elimina todas las notificaciones que apuntan a una entidad que se
+     * da de baja físicamente.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM Notificacion n
+             WHERE n.entidadTipo = :entidadTipo
+               AND n.entidadId = :entidadId
+            """)
+    int deleteByEntidadTipoAndEntidadId(
+            @Param("entidadTipo") String entidadTipo,
+            @Param("entidadId") Long entidadId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notificacion n
