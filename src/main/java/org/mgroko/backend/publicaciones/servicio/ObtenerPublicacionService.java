@@ -4,6 +4,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
 import org.mgroko.backend.publicaciones.mapper.PublicacionMapper;
 import org.mgroko.backend.repositorio.PublicacionRepository;
@@ -20,14 +21,17 @@ public class ObtenerPublicacionService {
     private final PublicacionRepository publicacionRepository;
     private final PublicacionDatosService publicacionDatosService;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
+    private final PublicacionInteraccionResumenService interaccionResumenService;
 
     public ObtenerPublicacionService(
             PublicacionRepository publicacionRepository,
             PublicacionDatosService publicacionDatosService,
-            ProyectoVisibilidadService proyectoVisibilidadService) {
+            ProyectoVisibilidadService proyectoVisibilidadService,
+            PublicacionInteraccionResumenService interaccionResumenService) {
         this.publicacionRepository = publicacionRepository;
         this.publicacionDatosService = publicacionDatosService;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
+        this.interaccionResumenService = interaccionResumenService;
     }
 
     @Transactional(readOnly = true)
@@ -42,6 +46,9 @@ public class ObtenerPublicacionService {
                 && proyectoVisibilidadService.puedeVer(
                         publicacion.getProyecto(), perfil.getIdPerfil());
 
-        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto);
+        ResumenInteraccionPublicacion resumen =
+                interaccionResumenService.resumirUna(idPublicacion, perfil.getIdPerfil());
+
+        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto, resumen);
     }
 }

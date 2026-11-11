@@ -15,6 +15,7 @@ import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
 import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
@@ -48,6 +49,7 @@ public class ModificarPublicacionService {
     private final StorageService storageService;
     private final BorradoArchivosDiferido borradoArchivosDiferido;
     private final EntityManager entityManager;
+    private final PublicacionInteraccionResumenService interaccionResumenService;
 
     public ModificarPublicacionService(
             PublicacionRepository publicacionRepository,
@@ -56,7 +58,8 @@ public class ModificarPublicacionService {
             ProyectoVisibilidadService proyectoVisibilidadService,
             StorageService storageService,
             BorradoArchivosDiferido borradoArchivosDiferido,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            PublicacionInteraccionResumenService interaccionResumenService) {
         this.publicacionRepository = publicacionRepository;
         this.imagenRepository = imagenRepository;
         this.publicacionDatosService = publicacionDatosService;
@@ -64,6 +67,7 @@ public class ModificarPublicacionService {
         this.storageService = storageService;
         this.borradoArchivosDiferido = borradoArchivosDiferido;
         this.entityManager = entityManager;
+        this.interaccionResumenService = interaccionResumenService;
     }
 
     @Transactional
@@ -102,7 +106,10 @@ public class ModificarPublicacionService {
                 && proyectoVisibilidadService.puedeVer(
                         publicacion.getProyecto(), perfil.getIdPerfil());
 
-        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto);
+        ResumenInteraccionPublicacion resumen =
+                interaccionResumenService.resumirUna(idPublicacion, perfil.getIdPerfil());
+
+        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto, resumen);
     }
 
     private void actualizarProyecto(Publicacion publicacion, Long idProyecto, Perfil perfil) {

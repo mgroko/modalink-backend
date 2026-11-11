@@ -102,7 +102,8 @@ class PublicacionControllerTest {
                 List.of(new ImagenPublicacionResponse(10L, "/uploads/publicaciones/a.webp", 0)),
                 List.of(),
                 0,
-                0);
+                0,
+                false);
     }
 
     @Test

@@ -46,6 +46,9 @@ class ObtenerPublicacionDetalleServiceTest {
     @Mock
     private VerPerfilService verPerfilService;
 
+    @Mock
+    private PublicacionInteraccionResumenService interaccionResumenService;
+
     private ObtenerPublicacionDetalleService servicio;
     private Perfil autor;
     private Publicacion publicacion;
@@ -56,7 +59,8 @@ class ObtenerPublicacionDetalleServiceTest {
                 publicacionRepository,
                 publicacionDatosService,
                 proyectoVisibilidadService,
-                verPerfilService);
+                verPerfilService,
+                interaccionResumenService);
 
         autor = Perfil.builder()
                 .idPerfil(7L)

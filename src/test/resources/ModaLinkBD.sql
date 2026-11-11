@@ -8847,3 +8847,18 @@ SELECT setval(pg_get_serial_sequence('grupo_polaroid', 'id_grupo_polaroid'),
               COALESCE(MAX(id_grupo_polaroid), 1)) FROM grupo_polaroid;
 SELECT setval(pg_get_serial_sequence('tipo_polaroid', 'id_tipo_polaroid'),
               COALESCE(MAX(id_tipo_polaroid), 1)) FROM tipo_polaroid;
+
+-- ============================================================================
+-- UC-66 - Interactuar con publicacion
+-- ============================================================================
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
+    ('PUBLICACION_MEGUSTA', 'Nueva interacción en publicación', 'SOCIAL', 'MEDIA'),
+    ('PUBLICACION_COMENTARIO', 'Nuevo comentario en publicación', 'SOCIAL', 'ALTA')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        categoria = EXCLUDED.categoria,
+        prioridad = EXCLUDED.prioridad,
+        activo = true;
+
+CREATE INDEX IF NOT EXISTS "IDX_comentario_publicacion_fecha"
+    ON comentario (id_publicacion, fecha_comentario, id_comentario);

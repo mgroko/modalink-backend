@@ -82,9 +82,10 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
 import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
+import org.mgroko.backend.publicaciones.exception.ComentarioInvalidoException;
+import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
 import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
-import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
 import org.mgroko.backend.publicaciones.exception.RangoFechasSolicitudColaboracionInvalidoException;
@@ -442,6 +443,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PublicacionInvalidaException.class)
     public ResponseEntity<Map<String, Object>> handlePublicacionInvalida(
             PublicacionInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ComentarioInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleComentarioInvalido(
+            ComentarioInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 

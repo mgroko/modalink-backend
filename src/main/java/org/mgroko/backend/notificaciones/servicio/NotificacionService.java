@@ -97,6 +97,10 @@ public class NotificacionService {
             "SOLICITUD_COLABORACION_ACEPTADA";
     public static final String TIPO_SOLICITUD_COLABORACION_RECHAZADA =
             "SOLICITUD_COLABORACION_RECHAZADA";
+    public static final String TIPO_PUBLICACION_MEGUSTA =
+            "PUBLICACION_MEGUSTA";
+    public static final String TIPO_PUBLICACION_COMENTARIO =
+            "PUBLICACION_COMENTARIO";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";

@@ -70,7 +70,7 @@ el historial de git sirva de bitácora adicional.
 | UC-63 | Rechazar solicitud de colaboración | Implementado y testeado | `POST /solicitudes-colaboracion/{idSolicitudColaboracion}/rechazar` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el destinatario, solicitud `PENDIENTE`. Permite rechazar aunque la publicación ya no esté visible. Guarda `fechaRespuesta`, no agrega colaborador y notifica al emisor con `SOLICITUD_COLABORACION_RECHAZADA`. |
 | UC-64 | Eliminar solicitud de colaboración | Implementado y testeado | `DELETE /solicitudes-colaboracion/{idSolicitudColaboracion}` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el perfil remitente, solicitud `PENDIENTE`. Baja física; elimina la notificación `SOLICITUD_COLABORACION_RECIBIDA` del destinatario de forma acotada por usuario, perfil y publicación; libera el índice único parcial para reenviar. Permite eliminar aunque la publicación no esté `ACTIVA`. Sin notificación al destinatario ni auditoría. |
 | UC-65 | Buscar solicitudes de colaboración | Implementado y testeado | `GET /solicitudes-colaboracion` | Sí (unitario + MVC + integración) | Segunda iteración. Búsqueda acotada al perfil activo (enviadas y recibidas). Filtros opcionales por dirección, `idPerfilEmisor`, `idPerfilReceptor`, estado (`PENDIENTE` por defecto; `todosLosEstados=true`), rango de fechas e `idPublicacion`. Oculta solicitudes cuya contraparte esté en baja o cuya publicación no esté `ACTIVA`. Devuelve la publicación con portada y flags `puedeAceptar`, `puedeRechazar` y `puedeEliminar`. |
-| UC-66 | Interactuar con publicación        | No iniciado |                  |       | Segunda iteracion |
+| UC-66 | Interactuar con publicación | Implementado y testeado | `POST/DELETE /publicaciones/{idPublicacion}/me-gusta`, `POST/GET /publicaciones/{idPublicacion}/comentarios` | Sí (unitario + MVC + integración) | Segunda iteración. Me gusta idempotente por perfil (PK `me_gusta`), con baja mediante `DELETE`. Comentarios obligatorios de hasta 1000 caracteres, listado paginado del más antiguo al más reciente. Notifica al perfil dueño y a los colaboradores activos, excluyendo al perfil que interactúa, con tipos `PUBLICACION_MEGUSTA` y `PUBLICACION_COMENTARIO`. `PublicacionResponse` expone contadores reales y `meGusta` para el perfil activo. |
 | UC-69 | Reportar publicación               | No iniciado |                  |       | Segunda iteracion |
 
 ## Gestión de proyectos (26 UC)
@@ -136,11 +136,11 @@ el historial de git sirva de bitácora adicional.
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
 | Gestión de usuarios y administración | 16     | 16                      | 0            | 0           | 0           |
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
-| Gestión de publicaciones           | 11       | 9                       | 0            | 0           | 2           |
+| Gestión de publicaciones           | 11       | 10                      | 0            | 0           | 1           |
 | Gestión de proyectos               | 26       | 26                      | 0            | 0           | 0           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
 | Gestión de conexiones y mensajería | 5        | 5                       | 0            | 0           | 0           |
-| **Total**                          | **76**   | **74**                  | **0**        | **0**       | **2**       |
+| **Total**                          | **76**   | **75**                  | **0**        | **0**       | **1**       |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -154,4 +154,4 @@ el historial de git sirva de bitácora adicional.
 > desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan sus filas en el
 > módulo correspondiente solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 74 de 76 casos de uso implementados y testeados = **97,4 %** del catálogo de requisitos.
+**Avance global:** 75 de 76 casos de uso implementados y testeados = **98,7 %** del catálogo de requisitos.

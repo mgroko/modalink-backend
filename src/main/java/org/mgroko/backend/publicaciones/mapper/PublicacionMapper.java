@@ -12,6 +12,7 @@ import org.mgroko.backend.publicaciones.dto.AutorPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ImagenPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
 import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 
 public final class PublicacionMapper {
@@ -25,7 +26,18 @@ public final class PublicacionMapper {
      * privados.
      */
     public static PublicacionResponse toResponse(Publicacion publicacion, boolean puedeVerProyecto) {
-        return toResponse(publicacion, puedeVerProyecto, false);
+        return toResponse(publicacion, puedeVerProyecto, ResumenInteraccionPublicacion.vacio());
+    }
+
+    /**
+     * UC-66: tarjeta de publicación con los contadores y el estado de Me gusta
+     * del perfil que consulta.
+     */
+    public static PublicacionResponse toResponse(
+            Publicacion publicacion,
+            boolean puedeVerProyecto,
+            ResumenInteraccionPublicacion resumen) {
+        return toResponse(publicacion, puedeVerProyecto, false, resumen);
     }
 
     /**
@@ -34,13 +46,26 @@ public final class PublicacionMapper {
      * tenga visibilidad sobre él, para que el formulario pueda conservarlo.
      */
     public static PublicacionResponse toResponsePropia(Publicacion publicacion, boolean puedeVerProyecto) {
-        return toResponse(publicacion, puedeVerProyecto, true);
+        return toResponsePropia(
+                publicacion, puedeVerProyecto, ResumenInteraccionPublicacion.vacio());
+    }
+
+    public static PublicacionResponse toResponsePropia(
+            Publicacion publicacion,
+            boolean puedeVerProyecto,
+            ResumenInteraccionPublicacion resumen) {
+        return toResponse(publicacion, puedeVerProyecto, true, resumen);
     }
 
     private static PublicacionResponse toResponse(
             Publicacion publicacion,
             boolean puedeVerProyecto,
-            boolean incluirProyectoNoVisible) {
+            boolean incluirProyectoNoVisible,
+            ResumenInteraccionPublicacion resumen) {
+
+        ResumenInteraccionPublicacion interaccion = resumen != null
+                ? resumen
+                : ResumenInteraccionPublicacion.vacio();
 
         Perfil perfil = publicacion.getPerfil();
         AutorPublicacionResponse autor = toAutor(perfil);
@@ -88,11 +113,12 @@ public final class PublicacionMapper {
                         : null,
                 imagenes,
                 colaboradores,
-                0,
-                0);
+                interaccion.cantidadMeGusta(),
+                interaccion.cantidadComentarios(),
+                interaccion.meGusta());
     }
 
-    private static AutorPublicacionResponse toAutor(Perfil perfil) {
+    public static AutorPublicacionResponse toAutor(Perfil perfil) {
         return new AutorPublicacionResponse(
                 perfil.getIdPerfil(),
                 perfil.getNombreArtistico(),

@@ -53,13 +53,22 @@ class ListarPublicacionesPerfilServiceTest {
     @Mock
     private ProyectoVisibilidadService proyectoVisibilidadService;
 
+    @Mock
+    private PublicacionInteraccionResumenService interaccionResumenService;
+
     private ListarPublicacionesPerfilService servicio;
     private Perfil perfil;
 
     @BeforeEach
     void setUp() {
         servicio = new ListarPublicacionesPerfilService(
-                verPerfilService, publicacionRepository, proyectoVisibilidadService);
+                verPerfilService,
+                publicacionRepository,
+                proyectoVisibilidadService,
+                interaccionResumenService);
+
+        when(interaccionResumenService.resumir(any(), any()))
+                .thenReturn(java.util.Map.of());
 
         perfil = Perfil.builder()
                 .idPerfil(7L)

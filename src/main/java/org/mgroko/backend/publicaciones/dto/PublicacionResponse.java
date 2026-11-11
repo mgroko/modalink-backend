@@ -17,6 +17,7 @@ public record PublicacionResponse(
         List<ImagenPublicacionResponse> imagenes,
         List<AutorPublicacionResponse> colaboradores,
         int cantidadMeGusta,
-        int cantidadComentarios
+        int cantidadComentarios,
+        boolean meGusta
 ) {
 }

@@ -528,3 +528,14 @@ Excepciones	No se encontró la conexión
 Salida	-
 Precondición	unaConexion existe en unaRedDeContactos
 Postcondición	Se eliminó unaConexion de unaRedDeContactos Se creó una Notificación a los perfiles involucrados
+
+## UC-66 - Interactuar con publicación
+
+| Operación | Responsabilidad | Salida | Excepciones |
+|---|---|---|---|
+| `darMeGusta(idPublicacion)` | Registra el Me gusta del perfil activo si no existía. | `MeGustaResponse` con `meGusta=true` y contador actualizado. | Publicación inexistente, oculta o de autor no visible; perfil activo en baja. |
+| `quitarMeGusta(idPublicacion)` | Elimina el Me gusta del perfil activo. | `MeGustaResponse` con `meGusta=false` y contador actualizado. | Publicación inexistente, oculta o de autor no visible; perfil activo en baja. |
+| `comentar(idPublicacion, texto)` | Registra un comentario de hasta 1000 caracteres. | `ComentarioResponse`. | Texto vacío, solo espacios o mayor a 1000 caracteres; publicación no disponible. |
+| `listarComentarios(idPublicacion, page, size)` | Lista los comentarios del más antiguo al más reciente. | `PaginaResponse<ComentarioResponse>`. | Publicación no disponible. |
+
+**Notificaciones:** se genera una notificación por cada perfil asociado a la publicación (dueño y colaboradores activos), excluyendo al perfil que interactúa. Tipos: `PUBLICACION_MEGUSTA` y `PUBLICACION_COMENTARIO`, con vínculo a `/publicaciones/{idPublicacion}`.

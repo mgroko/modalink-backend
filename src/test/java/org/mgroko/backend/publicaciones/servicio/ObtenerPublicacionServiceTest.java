@@ -57,6 +57,9 @@ class ObtenerPublicacionServiceTest {
     @Mock
     private UbicacionService ubicacionService;
 
+    @Mock
+    private PublicacionInteraccionResumenService interaccionResumenService;
+
     private ObtenerPublicacionService servicio;
     private Perfil perfil;
     private Publicacion publicacion;
@@ -69,7 +72,10 @@ class ObtenerPublicacionServiceTest {
                 proyectoVisibilidadService,
                 ubicacionService);
         servicio = new ObtenerPublicacionService(
-                publicacionRepository, datosService, proyectoVisibilidadService);
+                publicacionRepository,
+                datosService,
+                proyectoVisibilidadService,
+                interaccionResumenService);
 
         perfil = Perfil.builder()
                 .idPerfil(7L)

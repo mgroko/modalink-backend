@@ -2,6 +2,7 @@ package org.mgroko.backend.publicaciones.servicio;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Perfil;
@@ -12,6 +13,7 @@ import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
 import org.mgroko.backend.publicaciones.especificacion.PublicacionSpecifications;
 import org.mgroko.backend.publicaciones.mapper.PublicacionMapper;
 import org.mgroko.backend.repositorio.ConexionRepository;
@@ -38,16 +40,19 @@ public class ListarFeedPublicacionesService {
     private final ConexionRepository conexionRepository;
     private final PublicacionRepository publicacionRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
+    private final PublicacionInteraccionResumenService interaccionResumenService;
 
     public ListarFeedPublicacionesService(
             PerfilRepository perfilRepository,
             ConexionRepository conexionRepository,
             PublicacionRepository publicacionRepository,
-            ProyectoVisibilidadService proyectoVisibilidadService) {
+            ProyectoVisibilidadService proyectoVisibilidadService,
+            PublicacionInteraccionResumenService interaccionResumenService) {
         this.perfilRepository = perfilRepository;
         this.conexionRepository = conexionRepository;
         this.publicacionRepository = publicacionRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
+        this.interaccionResumenService = interaccionResumenService;
     }
 
     @Transactional(readOnly = true)
@@ -84,11 +89,23 @@ public class ListarFeedPublicacionesService {
                 PublicacionSpecifications.conPerfiles(idsPerfiles),
                 pageable);
 
+        Map<Long, ResumenInteraccionPublicacion> resumenes =
+                interaccionResumenService.resumir(
+                        publicaciones.getContent().stream()
+                                .map(Publicacion::getIdPublicacion)
+                                .toList(),
+                        idPerfilActivo);
+
         Page<PublicacionResponse> respuesta = publicaciones.map(publicacion -> {
             boolean puedeVerProyecto = publicacion.getProyecto() != null
                     && proyectoVisibilidadService.puedeVer(
                             publicacion.getProyecto(), idPerfilActivo);
-            return PublicacionMapper.toResponse(publicacion, puedeVerProyecto);
+            return PublicacionMapper.toResponse(
+                    publicacion,
+                    puedeVerProyecto,
+                    resumenes.getOrDefault(
+                            publicacion.getIdPublicacion(),
+                            ResumenInteraccionPublicacion.vacio()));
         });
 
         return PaginaResponse.fromPage(respuesta);

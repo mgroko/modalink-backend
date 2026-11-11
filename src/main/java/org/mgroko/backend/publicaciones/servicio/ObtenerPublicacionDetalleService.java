@@ -5,6 +5,7 @@ import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.perfiles.servicio.VerPerfilService;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
 import org.mgroko.backend.publicaciones.mapper.PublicacionMapper;
 import org.mgroko.backend.repositorio.PublicacionRepository;
@@ -25,16 +26,19 @@ public class ObtenerPublicacionDetalleService {
     private final PublicacionDatosService publicacionDatosService;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final VerPerfilService verPerfilService;
+    private final PublicacionInteraccionResumenService interaccionResumenService;
 
     public ObtenerPublicacionDetalleService(
             PublicacionRepository publicacionRepository,
             PublicacionDatosService publicacionDatosService,
             ProyectoVisibilidadService proyectoVisibilidadService,
-            VerPerfilService verPerfilService) {
+            VerPerfilService verPerfilService,
+            PublicacionInteraccionResumenService interaccionResumenService) {
         this.publicacionRepository = publicacionRepository;
         this.publicacionDatosService = publicacionDatosService;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.verPerfilService = verPerfilService;
+        this.interaccionResumenService = interaccionResumenService;
     }
 
     @Transactional(readOnly = true)
@@ -63,8 +67,11 @@ public class ObtenerPublicacionDetalleService {
                 && proyectoVisibilidadService.puedeVer(
                         publicacion.getProyecto(), idPerfilActivo);
 
+        ResumenInteraccionPublicacion resumen =
+                interaccionResumenService.resumirUna(idPublicacion, idPerfilActivo);
+
         return autor.esPropietario()
-                ? PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto)
-                : PublicacionMapper.toResponse(publicacion, puedeVerProyecto);
+                ? PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto, resumen)
+                : PublicacionMapper.toResponse(publicacion, puedeVerProyecto, resumen);
     }
 }
