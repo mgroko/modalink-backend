@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -107,4 +108,42 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     boolean existsColaborador(
             @Param("idPublicacion") Long idPublicacion,
             @Param("idPerfil") Long idPerfil);
+
+    /**
+     * UC-21: actualiza el orden de una imagen existente sin pasar por la
+     * colección {@code @OrderColumn}. Hibernate reordena actualizando
+     * {@code id_imagen} por posición, lo que viola la PK si se intercambian
+     * dos imágenes. Actualizar solo {@code orden} evita el conflicto.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE imagen_publicacion
+            SET orden = :orden
+            WHERE id_publicacion = :idPublicacion
+              AND id_imagen = :idImagen
+            """, nativeQuery = true)
+    int actualizarOrdenImagenPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idImagen") Long idImagen,
+            @Param("orden") int orden);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM imagen_publicacion
+            WHERE id_publicacion = :idPublicacion
+              AND id_imagen = :idImagen
+            """, nativeQuery = true)
+    int eliminarImagenPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idImagen") Long idImagen);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO imagen_publicacion (id_publicacion, id_imagen, orden)
+            VALUES (:idPublicacion, :idImagen, :orden)
+            """, nativeQuery = true)
+    int insertarImagenPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idImagen") Long idImagen,
+            @Param("orden") int orden);
 }

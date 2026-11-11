@@ -387,7 +387,7 @@ mvn verify
 Última ejecución completa de la suite:
 
 ```text
-2601 tests, 0 failures, 0 errors
+2602 tests, 0 failures, 0 errors
 ```
 
 > Los tests de integración requieren Docker disponible. Si Docker no está corriendo, los tests que extienden `AbstractPostgresIntegrationTest` fallan.

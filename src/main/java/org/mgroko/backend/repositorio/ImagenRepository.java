@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.mgroko.backend.modelo.Imagen;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -38,4 +39,14 @@ public interface ImagenRepository extends JpaRepository<Imagen, Long> {
               AND NOT EXISTS (SELECT 1 FROM polaroid_perfil po WHERE po.id_imagen = i.id_imagen)
             """, nativeQuery = true)
     List<Imagen> buscarHuerfanas(@Param("limite") LocalDateTime limite);
+
+    /**
+     * UC-21: elimina físicamente la fila de imagen sin pasar por el ciclo de
+     * vida JPA. Se usa después de quitar la fila de {@code imagen_publicacion}
+     * para que la colección {@code Publicacion.imagenes} no intente flushear
+     * una instancia transitoria.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(value = "DELETE FROM imagen WHERE id_imagen = :idImagen", nativeQuery = true)
+    int eliminarFisicamente(@Param("idImagen") Long idImagen);
 }

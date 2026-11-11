@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.persistence.EntityManager;
+
 /**
  * UC-21: modifica una publicación del perfil activo.
  *
@@ -45,6 +47,7 @@ public class ModificarPublicacionService {
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final StorageService storageService;
     private final BorradoArchivosDiferido borradoArchivosDiferido;
+    private final EntityManager entityManager;
 
     public ModificarPublicacionService(
             PublicacionRepository publicacionRepository,
@@ -52,13 +55,15 @@ public class ModificarPublicacionService {
             PublicacionDatosService publicacionDatosService,
             ProyectoVisibilidadService proyectoVisibilidadService,
             StorageService storageService,
-            BorradoArchivosDiferido borradoArchivosDiferido) {
+            BorradoArchivosDiferido borradoArchivosDiferido,
+            EntityManager entityManager) {
         this.publicacionRepository = publicacionRepository;
         this.imagenRepository = imagenRepository;
         this.publicacionDatosService = publicacionDatosService;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.storageService = storageService;
         this.borradoArchivosDiferido = borradoArchivosDiferido;
+        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -88,15 +93,16 @@ public class ModificarPublicacionService {
         publicacion.setUbicacion(publicacionDatosService.resolverUbicacion(
                 request.getLocalidadId(), request.getProvinciaId()));
 
+        // Se persisten los datos escalares antes de tocar las imágenes.
+        publicacion = publicacionRepository.saveAndFlush(publicacion);
+
         reconciliarImagenes(publicacion, imagenesConservadas, archivosNuevos);
 
-        Publicacion guardada = publicacionRepository.save(publicacion);
-
-        boolean puedeVerProyecto = guardada.getProyecto() != null
+        boolean puedeVerProyecto = publicacion.getProyecto() != null
                 && proyectoVisibilidadService.puedeVer(
-                        guardada.getProyecto(), perfil.getIdPerfil());
+                        publicacion.getProyecto(), perfil.getIdPerfil());
 
-        return PublicacionMapper.toResponsePropia(guardada, puedeVerProyecto);
+        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto);
     }
 
     private void actualizarProyecto(Publicacion publicacion, Long idProyecto, Perfil perfil) {
@@ -177,20 +183,31 @@ public class ModificarPublicacionService {
                 .filter(imagen -> !idsAConservar.contains(imagen.getIdImagen()))
                 .toList();
 
-        // Deja las conservadas en el orden solicitado y persiste la
-        // desasociación antes de borrar las filas de imagen.
-        if (publicacion.getImagenes() == null) {
-            publicacion.setImagenes(new ArrayList<>());
+        // Si no cambió el conjunto ni el orden, no hace falta reescribir la
+        // tabla de unión.
+        if (archivosNuevos.isEmpty() && aEliminar.isEmpty() && actuales.equals(conservadas)) {
+            return;
         }
-        publicacion.getImagenes().clear();
-        publicacion.getImagenes().addAll(conservadas);
-        publicacionRepository.saveAndFlush(publicacion);
+
+        Long idPublicacion = publicacion.getIdPublicacion();
+        int orden = 0;
+
+        // Se actualiza solo la columna orden. Hibernate, en cambio, reordena
+        // una lista @OrderColumn actualizando id_imagen por posición, lo que
+        // viola la PK si se intercambian dos imágenes.
+        for (Imagen imagen : conservadas) {
+            publicacionRepository.actualizarOrdenImagenPublicacion(
+                    idPublicacion, imagen.getIdImagen(), orden++);
+        }
 
         for (Imagen imagen : aEliminar) {
+            publicacionRepository.eliminarImagenPublicacion(
+                    idPublicacion, imagen.getIdImagen());
             borradoArchivosDiferido.registrarBorrados(null, imagen.getNombreArchivo());
-            imagenRepository.delete(imagen);
+            imagenRepository.eliminarFisicamente(imagen.getIdImagen());
         }
 
+        List<Imagen> nuevas = new ArrayList<>();
         for (MultipartFile archivo : archivosNuevos) {
             ArchivoAlmacenado almacenado = storageService.almacenarImagenPublicacion(archivo);
 
@@ -205,7 +222,30 @@ public class ModificarPublicacionService {
                     .estado(PublicacionDatosService.ESTADO_IMAGEN_ACTIVA)
                     .build());
 
-            publicacion.getImagenes().add(imagen);
+            publicacionRepository.insertarImagenPublicacion(
+                    idPublicacion, imagen.getIdImagen(), orden++);
+            nuevas.add(imagen);
         }
+
+        // Se fuerza el flush de los cambios escalares y de las imágenes
+        // eliminadas antes de modificar la colección en memoria.
+        entityManager.flush();
+
+        // La colección se actualiza solo para la respuesta. El contexto se
+        // limpia sin volver a flushear para que Hibernate no intente reordenar
+        // la lista @OrderColumn.
+        if (publicacion.getImagenes() == null) {
+            publicacion.setImagenes(new ArrayList<>());
+        }
+        publicacion.getImagenes().clear();
+        publicacion.getImagenes().addAll(conservadas);
+        publicacion.getImagenes().addAll(nuevas);
+
+        // Inicializa asociaciones perezosas que el mapper necesita después
+        // del clear.
+        if (publicacion.getColaboradores() != null) {
+            publicacion.getColaboradores().size();
+        }
+        entityManager.clear();
     }
 }

@@ -51,6 +51,8 @@ import org.mockito.quality.Strictness;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.persistence.EntityManager;
+
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ModificarPublicacionServiceTest {
@@ -79,6 +81,9 @@ class ModificarPublicacionServiceTest {
     @Mock
     private BorradoArchivosDiferido borradoArchivosDiferido;
 
+    @Mock
+    private EntityManager entityManager;
+
     private ModificarPublicacionService servicio;
     private Perfil perfil;
     private Publicacion publicacion;
@@ -99,7 +104,8 @@ class ModificarPublicacionServiceTest {
                 datosService,
                 proyectoVisibilidadService,
                 storageService,
-                borradoArchivosDiferido);
+                borradoArchivosDiferido,
+                entityManager);
 
         perfil = Perfil.builder()
                 .idPerfil(7L)
@@ -177,7 +183,7 @@ class ModificarPublicacionServiceTest {
         assertEquals(List.of(20L, 10L),
                 response.imagenes().stream().map(i -> i.idImagen()).toList());
         assertEquals("Editorial Primavera", publicacion.getTitulo());
-        verify(imagenRepository, never()).delete(any(Imagen.class));
+        verify(imagenRepository, never()).eliminarFisicamente(anyLong());
     }
 
     @Test
@@ -239,8 +245,8 @@ class ModificarPublicacionServiceTest {
 
         assertEquals(1, response.imagenes().size());
         verify(borradoArchivosDiferido).registrarBorrados(null, "publicacion_b.webp");
-        verify(imagenRepository).delete(imagen2);
-        verify(imagenRepository, never()).delete(imagen1);
+        verify(imagenRepository).eliminarFisicamente(imagen2.getIdImagen());
+        verify(imagenRepository, never()).eliminarFisicamente(imagen1.getIdImagen());
     }
 
     @Test

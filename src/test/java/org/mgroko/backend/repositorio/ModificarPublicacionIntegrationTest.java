@@ -88,6 +88,31 @@ class ModificarPublicacionIntegrationTest extends AbstractPostgresIntegrationTes
     }
 
     @Test
+    void modificar_reordenaImagenesExistentes() {
+        Escenario escenario = crearEscenario();
+        Publicacion publicacion = crearPublicacion(escenario.perfil(), null, 2);
+        Long primera = publicacion.getImagenes().get(0).getIdImagen();
+        Long segunda = publicacion.getImagenes().get(1).getIdImagen();
+        em.flush();
+
+        ModificarPublicacionRequest request = request(
+                "Editorial", "Descripción", List.of(segunda, primera));
+
+        PublicacionResponse response = modificarPublicacionService.modificar(
+                escenario.idUsuario(), escenario.idPerfil(), publicacion.getIdPublicacion(), request);
+
+        assertThat(response.imagenes()).extracting(imagen -> imagen.idImagen())
+                .containsExactly(segunda, primera);
+
+        em.flush();
+        em.clear();
+
+        Publicacion actualizada = em.find(Publicacion.class, publicacion.getIdPublicacion());
+        assertThat(actualizada.getImagenes()).extracting(Imagen::getIdImagen)
+                .containsExactly(segunda, primera);
+    }
+
+    @Test
     void modificar_desvinculaProyecto() {
         Escenario escenario = crearEscenario();
         Publicacion publicacion = crearPublicacion(escenario.perfil(), escenario.proyecto(), 1);

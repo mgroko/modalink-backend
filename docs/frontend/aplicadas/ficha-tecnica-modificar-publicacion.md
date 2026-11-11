@@ -108,6 +108,8 @@ Respuesta `200 OK`:
 - Si la transacción falla, los archivos nuevos se eliminan automáticamente.
 - El orden de `imagenesConservadas` define el orden de las imágenes que se
   mantienen. Las nuevas van después.
+- Reordenar imágenes existentes no crea imágenes nuevas ni cambia sus IDs:
+  se actualiza la columna `orden` de `imagen_publicacion`.
 
 ## 4. Reglas de negocio
 
