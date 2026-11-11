@@ -295,7 +295,9 @@ class EliminarPublicacionIntegrationTest extends AbstractPostgresIntegrationTest
         Usuario usuario = usuarioRepository.saveAndFlush(Usuario.builder()
                 .nombre("UC20")
                 .apellido("Test")
-                .dni("79" + String.format("%08d", correlativo))
+                // Prefijo exclusivo de esta clase: LimpiezaImagenesIntegrationTest
+                // usa "79" y no puede borrar sus usuarios por la FK de auditoría.
+                .dni("80" + String.format("%08d", correlativo))
                 .fechaNacimiento(LocalDate.now().minusYears(25))
                 .correo("uc20." + sufijo + "." + correlativo + "@example.com")
                 .rolGlobal(rol)
