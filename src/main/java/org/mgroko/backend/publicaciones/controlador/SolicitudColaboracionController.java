@@ -5,9 +5,11 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.publicaciones.dto.BuscarSolicitudesColaboracionFiltro;
 import org.mgroko.backend.publicaciones.dto.EnviarSolicitudColaboracionRequest;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
+import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionGestionadaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
+import org.mgroko.backend.publicaciones.servicio.GestionarSolicitudColaboracionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,12 +34,15 @@ public class SolicitudColaboracionController {
 
     private final EnviarSolicitudColaboracionService enviarSolicitudColaboracionService;
     private final BuscarSolicitudColaboracionService buscarSolicitudColaboracionService;
+    private final GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService;
 
     public SolicitudColaboracionController(
             EnviarSolicitudColaboracionService enviarSolicitudColaboracionService,
-            BuscarSolicitudColaboracionService buscarSolicitudColaboracionService) {
+            BuscarSolicitudColaboracionService buscarSolicitudColaboracionService,
+            GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService) {
         this.enviarSolicitudColaboracionService = enviarSolicitudColaboracionService;
         this.buscarSolicitudColaboracionService = buscarSolicitudColaboracionService;
+        this.gestionarSolicitudColaboracionService = gestionarSolicitudColaboracionService;
     }
 
     /**
@@ -55,6 +60,34 @@ public class SolicitudColaboracionController {
                         idPerfilActivoRequerido(authentication), filtro, page, size);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UC-62 - Aceptar una solicitud de colaboración recibida.
+     */
+    @PostMapping("/solicitudes-colaboracion/{idSolicitudColaboracion}/aceptar")
+    public ResponseEntity<SolicitudColaboracionGestionadaResponse> aceptar(
+            @PathVariable Long idSolicitudColaboracion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(gestionarSolicitudColaboracionService.aceptar(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                idSolicitudColaboracion));
+    }
+
+    /**
+     * UC-63 - Rechazar una solicitud de colaboración recibida.
+     */
+    @PostMapping("/solicitudes-colaboracion/{idSolicitudColaboracion}/rechazar")
+    public ResponseEntity<SolicitudColaboracionGestionadaResponse> rechazar(
+            @PathVariable Long idSolicitudColaboracion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(gestionarSolicitudColaboracionService.rechazar(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                idSolicitudColaboracion));
     }
 
     @PostMapping("/publicaciones/{idPublicacion}/solicitudes-colaboracion")

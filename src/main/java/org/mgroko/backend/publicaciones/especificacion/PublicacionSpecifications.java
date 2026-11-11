@@ -13,6 +13,8 @@ import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.springframework.data.jpa.domain.Specification;
 
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 /**
  * Filtros de UC-22 para el repositorio de publicaciones de un perfil.
@@ -29,7 +31,24 @@ public final class PublicacionSpecifications {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            predicates.add(cb.equal(root.get("perfil").get("idPerfil"), idPerfil));
+            Subquery<Long> colaborador = query.subquery(Long.class);
+            Root<Publicacion> publicacionColaborador = colaborador.from(Publicacion.class);
+            var colaboradores = publicacionColaborador.join("colaboradores");
+            colaborador.select(publicacionColaborador.<Long>get("idPublicacion"));
+            colaborador.where(
+                    cb.equal(
+                            publicacionColaborador.get("idPublicacion"),
+                            root.get("idPublicacion")),
+                    cb.equal(colaboradores.get("idPerfil"), idPerfil));
+
+            predicates.add(cb.or(
+                    cb.equal(root.get("perfil").get("idPerfil"), idPerfil),
+                    cb.and(
+                            cb.exists(colaborador),
+                            cb.equal(root.get("perfil").get("estado"), EstadoPerfil.ACTIVO),
+                            cb.equal(
+                                    root.get("perfil").get("usuario").get("estado"),
+                                    EstadoUsuario.ACTIVO))));
             predicates.add(cb.equal(root.get("estado"), EstadoPublicacion.ACTIVA));
 
             if (filtro != null) {

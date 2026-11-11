@@ -66,8 +66,8 @@ el historial de git sirva de bitácora adicional.
 | UC-21 | Modificar publicación | Implementado y testeado | `GET /publicaciones/{idPublicacion}`, `PUT /publicaciones/{idPublicacion}` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el perfil activo dueño. Edición atómica de título, descripción, proyecto, ubicación e imágenes (`multipart/form-data`). `imagenesConservadas` es obligatorio y define el orden; las no conservadas se borran (fila + archivo post-commit). Final 1-10 imágenes. Proyecto sin cambios no se revalida; proyecto nuevo debe estar `CONFIRMADO`/`FINALIZADO` y el perfil debe ser miembro activo. Colaboradores en modo lectura; la invitación sigue en UC-61. |
 | UC-22 | Buscar publicación | Implementado y testeado | `GET /perfiles/{idPerfil}/publicaciones` con filtros opcionales, `GET /perfiles/{idPerfil}/publicaciones/proyectos` y `GET /publicaciones/feed` | Sí (unitario + MVC; integración pendiente de Docker) | Filtros por rango de fechas, `idProyecto`, título y descripción, combinados con AND. Solo publicaciones `ACTIVA` de perfiles visibles; orden por fecha descendente; página vacía con 200. El feed incluye contactos activos y opcionalmente las publicaciones propias. |
 | UC-61 | Enviar solicitud de colaboración | Implementado y testeado | `POST /publicaciones/{idPublicacion}/solicitudes-colaboracion` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el perfil activo dueño de una publicación `ACTIVA`. El destinatario debe ser un contacto activo, no ser colaborador y no tener una solicitud `PENDIENTE` para esa publicación. Crea la solicitud en `PENDIENTE` y notifica al destinatario con `SOLICITUD_COLABORACION_RECIBIDA` (link a `/publicaciones/{id}`). Permite reenviar tras `RECHAZADA`. Índice único parcial para concurrencia. No agrega colaboradores ni audita; eso queda para UC-62/63/67. |
-| UC-62 | Aceptar solicitud de colaboración  | No iniciado |                  |       | Segunda iteracion |
-| UC-63 | Rechazar solicitud de colaboración | No iniciado |                  |       | Segunda iteracion |
+| UC-62 | Aceptar solicitud de colaboración | Implementado y testeado | `POST /solicitudes-colaboracion/{idSolicitudColaboracion}/aceptar` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el destinatario, solicitud `PENDIENTE`, publicación `ACTIVA` y emisor visible. Agrega el perfil a `colaborador_publicacion`, guarda `fechaRespuesta`, notifica al emisor con `SOLICITUD_COLABORACION_ACEPTADA` y hace que la publicación aparezca en el portfolio y selector de proyectos del colaborador. Lock pesimista + PK para concurrencia. |
+| UC-63 | Rechazar solicitud de colaboración | Implementado y testeado | `POST /solicitudes-colaboracion/{idSolicitudColaboracion}/rechazar` | Sí (unitario + MVC + integración) | Segunda iteración. Solo el destinatario, solicitud `PENDIENTE`. Permite rechazar aunque la publicación ya no esté visible. Guarda `fechaRespuesta`, no agrega colaborador y notifica al emisor con `SOLICITUD_COLABORACION_RECHAZADA`. |
 | UC-64 | Eliminar solicitud de colaboración | No iniciado |                  |       | Segunda iteracion |
 | UC-65 | Buscar solicitudes de colaboración | Implementado y testeado | `GET /solicitudes-colaboracion` | Sí (unitario + MVC + integración) | Segunda iteración. Búsqueda acotada al perfil activo (enviadas y recibidas). Filtros opcionales por dirección, `idPerfilEmisor`, `idPerfilReceptor`, estado (`PENDIENTE` por defecto; `todosLosEstados=true`), rango de fechas e `idPublicacion`. Oculta solicitudes cuya contraparte esté en baja o cuya publicación no esté `ACTIVA`. Devuelve la publicación con portada y flags `puedeAceptar`, `puedeRechazar` y `puedeEliminar`. |
 | UC-66 | Interactuar con publicación        | No iniciado |                  |       | Segunda iteracion |
@@ -136,11 +136,11 @@ el historial de git sirva de bitácora adicional.
 | ---------------------------------- | -------- | ----------------------- | ------------ | ----------- | ----------- |
 | Gestión de usuarios y administración | 16     | 16                      | 0            | 0           | 0           |
 | Gestión de perfiles y disponibilidad | 13     | 13                      | 0            | 0           | 0           |
-| Gestión de publicaciones           | 11       | 5                       | 0            | 0           | 6           |
+| Gestión de publicaciones           | 11       | 7                       | 0            | 0           | 4           |
 | Gestión de proyectos               | 26       | 26                      | 0            | 0           | 0           |
 | Gestión de contratos               | 5        | 5                       | 0            | 0           | 0           |
 | Gestión de conexiones y mensajería | 5        | 5                       | 0            | 0           | 0           |
-| **Total**                          | **76**   | **70**                  | **0**        | **0**       | **6**       |
+| **Total**                          | **76**   | **72**                  | **0**        | **0**       | **4**       |
 
 > **Nota sobre el total:** el catálogo formal de requisitos ([`casos_de_uso.md`](../1_requisitos/casos_de_uso.md))
 > comprende **75 casos de uso** (`UC-01` a `UC-75`). Con el avance del desarrollo se incorporaron
@@ -154,4 +154,4 @@ el historial de git sirva de bitácora adicional.
 > desarrollo (con ficha técnica propia) que no forman parte del catálogo numerado; se listan sus filas en el
 > módulo correspondiente solo a efectos de seguimiento y **no se computan** en el total ni en los porcentajes anteriores.
 
-**Avance global:** 70 de 76 casos de uso implementados y testeados = **92,1 %** del catálogo de requisitos.
+**Avance global:** 72 de 76 casos de uso implementados y testeados = **94,7 %** del catálogo de requisitos.

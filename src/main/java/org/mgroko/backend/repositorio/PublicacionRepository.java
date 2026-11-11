@@ -33,9 +33,23 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
             "ubicacion.ciudad.provincia",
             "ubicacion.ciudad.provincia.pais"
     })
+    @Query("""
+            SELECT p
+            FROM Publicacion p
+            WHERE p.estado = :estado
+              AND (
+                p.perfil.idPerfil = :idPerfil
+                OR (
+                  EXISTS (SELECT c FROM p.colaboradores c WHERE c.idPerfil = :idPerfil)
+                  AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+                  AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+                )
+              )
+            ORDER BY p.fechaPublicacion DESC, p.idPublicacion DESC
+            """)
     Page<Publicacion> findByPerfilIdPerfilAndEstadoOrderByFechaPublicacionDesc(
-            Long idPerfil,
-            EstadoPublicacion estado,
+            @Param("idPerfil") Long idPerfil,
+            @Param("estado") EstadoPublicacion estado,
             Pageable pageable);
 
     /**
@@ -45,9 +59,16 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @Query("""
             SELECT DISTINCT p.proyecto
             FROM Publicacion p
-            WHERE p.perfil.idPerfil = :idPerfil
-              AND p.estado = :estado
+            WHERE p.estado = :estado
               AND p.proyecto IS NOT NULL
+              AND (
+                p.perfil.idPerfil = :idPerfil
+                OR (
+                  EXISTS (SELECT c FROM p.colaboradores c WHERE c.idPerfil = :idPerfil)
+                  AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+                  AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+                )
+              )
             ORDER BY p.proyecto.nombre
             """)
     List<Proyecto> findProyectosConPublicaciones(

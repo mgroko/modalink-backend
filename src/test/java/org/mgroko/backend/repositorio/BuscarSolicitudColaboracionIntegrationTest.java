@@ -348,6 +348,9 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
                 .perfilDestinatario(destinatario)
                 .estado(estado)
                 .fechaEnvio(fechaEnvio)
+                .fechaRespuesta(estado == EstadoSolicitud.PENDIENTE
+                        ? null
+                        : fechaEnvio.plusHours(1))
                 .build();
         em.persist(solicitud);
         return solicitud;

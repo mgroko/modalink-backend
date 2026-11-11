@@ -63,4 +63,7 @@ public class SolicitudColaboracion {
     @Column(name = "fecha_envio", nullable = false)
     @Builder.Default
     private LocalDateTime fechaEnvio = LocalDateTime.now();
+
+    @Column(name = "fecha_respuesta")
+    private LocalDateTime fechaRespuesta;
 }

@@ -28,6 +28,10 @@ public final class NotificacionMapper {
             "MENSAJE_GRUPAL_RECIBIDO";
     private static final String TIPO_SOLICITUD_COLABORACION_RECIBIDA =
             "SOLICITUD_COLABORACION_RECIBIDA";
+    private static final String TIPO_SOLICITUD_COLABORACION_ACEPTADA =
+            "SOLICITUD_COLABORACION_ACEPTADA";
+    private static final String TIPO_SOLICITUD_COLABORACION_RECHAZADA =
+            "SOLICITUD_COLABORACION_RECHAZADA";
 
     private NotificacionMapper() {
     }
@@ -94,7 +98,9 @@ public final class NotificacionMapper {
                     idProyecto != null
                             ? "/proyectos/" + idProyecto + "/chat"
                             : null;
-            case TIPO_SOLICITUD_COLABORACION_RECIBIDA ->
+            case TIPO_SOLICITUD_COLABORACION_RECIBIDA,
+                 TIPO_SOLICITUD_COLABORACION_ACEPTADA,
+                 TIPO_SOLICITUD_COLABORACION_RECHAZADA ->
                     ENTIDAD_PUBLICACION.equals(notificacion.getEntidadTipo())
                             && notificacion.getEntidadId() != null
                             ? "/publicaciones/" + notificacion.getEntidadId()

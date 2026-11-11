@@ -12,6 +12,7 @@ public record SolicitudColaboracionBusquedaResponse(
         Long idSolicitudColaboracion,
         EstadoSolicitud estado,
         LocalDateTime fechaEnvio,
+        LocalDateTime fechaRespuesta,
         DireccionSolicitudColaboracion direccion,
         Long idPerfilRemitente,
         Long idPerfilDestinatario,

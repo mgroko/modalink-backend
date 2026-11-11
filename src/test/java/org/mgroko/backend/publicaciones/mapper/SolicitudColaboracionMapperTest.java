@@ -17,6 +17,7 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
+import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionGestionadaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 
 class SolicitudColaboracionMapperTest {
@@ -105,6 +106,7 @@ class SolicitudColaboracionMapperTest {
         assertTrue(recibida.puedeAceptar());
         assertTrue(recibida.puedeRechazar());
         assertFalse(recibida.puedeEliminar());
+        assertEquals(null, recibida.fechaRespuesta());
         assertEquals("/uploads/publicaciones/portada.webp", recibida.publicacion().portadaUrl());
         assertEquals("ACTIVA", recibida.publicacion().estado());
 
@@ -112,5 +114,38 @@ class SolicitudColaboracionMapperTest {
         assertFalse(enviada.puedeAceptar());
         assertFalse(enviada.puedeRechazar());
         assertTrue(enviada.puedeEliminar());
+    }
+
+    @Test
+    void toGestionadaResponse_mapeaEstadoFechaYColaboradorAgregado() {
+        Perfil remitente = Perfil.builder()
+                .idPerfil(7L)
+                .nombreArtistico("Luna Diseños")
+                .estado(EstadoPerfil.Activo)
+                .profesion(Profesion.builder().idProfesion(3L).nombre("Diseñadora").build())
+                .build();
+        Publicacion publicacion = Publicacion.builder()
+                .idPublicacion(99L)
+                .titulo("Editorial Otoño")
+                .perfil(remitente)
+                .build();
+        SolicitudColaboracion solicitud = SolicitudColaboracion.builder()
+                .idSolicitudColaboracion(50L)
+                .estado(EstadoSolicitud.ACEPTADA)
+                .fechaEnvio(LocalDateTime.of(2026, 11, 10, 20, 0))
+                .fechaRespuesta(LocalDateTime.of(2026, 11, 10, 21, 0))
+                .publicacion(publicacion)
+                .perfilRemitente(remitente)
+                .build();
+
+        SolicitudColaboracionGestionadaResponse response =
+                SolicitudColaboracionMapper.toGestionadaResponse(solicitud, true);
+
+        assertEquals(50L, response.idSolicitudColaboracion());
+        assertEquals(EstadoSolicitud.ACEPTADA, response.estado());
+        assertEquals(LocalDateTime.of(2026, 11, 10, 21, 0), response.fechaRespuesta());
+        assertEquals(99L, response.idPublicacion());
+        assertEquals("Editorial Otoño", response.tituloPublicacion());
+        assertTrue(response.colaboradorAgregado());
     }
 }

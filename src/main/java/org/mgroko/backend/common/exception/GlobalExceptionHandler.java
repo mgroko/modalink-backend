@@ -90,6 +90,9 @@ import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaExcepti
 import org.mgroko.backend.publicaciones.exception.RangoFechasSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionDuplicadaException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionInvalidaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoEncontradaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPendienteException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPermitidaException;
 import org.mgroko.backend.publicaciones.exception.RangoFechasPublicacionInvalidoException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
@@ -466,6 +469,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleFiltroSolicitudColaboracionInvalido(
             FiltroSolicitudColaboracionInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionNoEncontrada(
+            SolicitudColaboracionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionNoPermitida(
+            SolicitudColaboracionNoPermitidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionNoPendienteException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionNoPendiente(
+            SolicitudColaboracionNoPendienteException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(RangoFechasSolicitudColaboracionInvalidoException.class)

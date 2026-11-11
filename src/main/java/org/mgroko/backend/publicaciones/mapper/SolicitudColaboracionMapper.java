@@ -8,6 +8,7 @@ import org.mgroko.backend.publicaciones.dto.AutorPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
 import org.mgroko.backend.publicaciones.dto.PublicacionSolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
+import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionGestionadaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 
 public final class SolicitudColaboracionMapper {
@@ -44,6 +45,7 @@ public final class SolicitudColaboracionMapper {
                 solicitud.getIdSolicitudColaboracion(),
                 solicitud.getEstado(),
                 solicitud.getFechaEnvio(),
+                solicitud.getFechaRespuesta(),
                 enviada
                         ? DireccionSolicitudColaboracion.ENVIADA
                         : DireccionSolicitudColaboracion.RECIBIDA,
@@ -59,6 +61,19 @@ public final class SolicitudColaboracionMapper {
                 pendiente && !enviada,
                 pendiente && !enviada,
                 pendiente && enviada);
+    }
+
+    public static SolicitudColaboracionGestionadaResponse toGestionadaResponse(
+            SolicitudColaboracion solicitud,
+            boolean colaboradorAgregado) {
+
+        return new SolicitudColaboracionGestionadaResponse(
+                solicitud.getIdSolicitudColaboracion(),
+                solicitud.getEstado(),
+                solicitud.getFechaRespuesta(),
+                solicitud.getPublicacion().getIdPublicacion(),
+                solicitud.getPublicacion().getTitulo(),
+                colaboradorAgregado);
     }
 
     private static AutorPublicacionResponse toAutor(Perfil perfil) {

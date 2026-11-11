@@ -93,6 +93,10 @@ public class NotificacionService {
             "MENSAJE_GRUPAL_RECIBIDO";
     public static final String TIPO_SOLICITUD_COLABORACION_RECIBIDA =
             "SOLICITUD_COLABORACION_RECIBIDA";
+    public static final String TIPO_SOLICITUD_COLABORACION_ACEPTADA =
+            "SOLICITUD_COLABORACION_ACEPTADA";
+    public static final String TIPO_SOLICITUD_COLABORACION_RECHAZADA =
+            "SOLICITUD_COLABORACION_RECHAZADA";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";

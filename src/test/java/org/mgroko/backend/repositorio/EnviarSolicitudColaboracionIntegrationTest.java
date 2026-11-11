@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -170,6 +171,7 @@ class EnviarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
         SolicitudColaboracion rechazada = em.find(
                 SolicitudColaboracion.class, primera.idSolicitudColaboracion());
         rechazada.setEstado(EstadoSolicitud.RECHAZADA);
+        rechazada.setFechaRespuesta(LocalDateTime.now());
         em.flush();
 
         SolicitudColaboracionResponse segunda = enviarSolicitudColaboracionService.enviar(

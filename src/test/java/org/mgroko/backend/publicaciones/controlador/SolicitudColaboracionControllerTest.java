@@ -22,12 +22,15 @@ import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
 import org.mgroko.backend.publicaciones.dto.EnviarSolicitudColaboracionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionSolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
+import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionGestionadaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionDuplicadaException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionInvalidaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPermitidaException;
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
+import org.mgroko.backend.publicaciones.servicio.GestionarSolicitudColaboracionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
@@ -53,6 +56,9 @@ class SolicitudColaboracionControllerTest {
 
     @MockitoBean
     private BuscarSolicitudColaboracionService buscarSolicitudColaboracionService;
+
+    @MockitoBean
+    private GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService;
 
     private static UsernamePasswordAuthenticationToken auth(Long idUsuario, Long idPerfilActivo) {
         var token = new UsernamePasswordAuthenticationToken(String.valueOf(idUsuario), null, List.of());
@@ -147,6 +153,7 @@ class SolicitudColaboracionControllerTest {
                 50L,
                 EstadoSolicitud.PENDIENTE,
                 LocalDateTime.of(2026, 11, 10, 20, 30),
+                null,
                 DireccionSolicitudColaboracion.RECIBIDA,
                 7L,
                 8L,
@@ -235,5 +242,61 @@ class SolicitudColaboracionControllerTest {
                         .param("estado", "PENDIENTE")
                         .principal(auth(1L, 7L)))
                 .andExpect(status().isBadRequest());
+    }
+
+    private static SolicitudColaboracionGestionadaResponse gestionada(
+            EstadoSolicitud estado, boolean colaboradorAgregado) {
+        return new SolicitudColaboracionGestionadaResponse(
+                50L,
+                estado,
+                LocalDateTime.of(2026, 11, 10, 21, 0),
+                99L,
+                "Editorial Otoño",
+                colaboradorAgregado);
+    }
+
+    @Test
+    void aceptar_devuelve200ConLaSolicitudAceptada() throws Exception {
+        when(gestionarSolicitudColaboracionService.aceptar(1L, 7L, 50L))
+                .thenReturn(gestionada(EstadoSolicitud.ACEPTADA, true));
+
+        mockMvc.perform(post("/solicitudes-colaboracion/{id}/aceptar", 50L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idSolicitudColaboracion").value(50L))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"))
+                .andExpect(jsonPath("$.colaboradorAgregado").value(true));
+    }
+
+    @Test
+    void rechazar_devuelve200ConLaSolicitudRechazada() throws Exception {
+        when(gestionarSolicitudColaboracionService.rechazar(1L, 7L, 50L))
+                .thenReturn(gestionada(EstadoSolicitud.RECHAZADA, false));
+
+        mockMvc.perform(post("/solicitudes-colaboracion/{id}/rechazar", 50L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idSolicitudColaboracion").value(50L))
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"))
+                .andExpect(jsonPath("$.colaboradorAgregado").value(false));
+    }
+
+    @Test
+    void aceptar_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(post("/solicitudes-colaboracion/{id}/aceptar", 50L)
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void aceptar_solicitudAjena_devuelve403() throws Exception {
+        when(gestionarSolicitudColaboracionService.aceptar(1L, 7L, 50L))
+                .thenThrow(new SolicitudColaboracionNoPermitidaException(
+                        "Solo el perfil destinatario puede gestionar la solicitud."));
+
+        mockMvc.perform(post("/solicitudes-colaboracion/{id}/aceptar", 50L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_COLABORACION_NO_PERMITIDA"));
     }
 }
