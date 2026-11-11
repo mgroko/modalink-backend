@@ -30,7 +30,11 @@ class AdminUsuarioMapperTest {
                 .motivoDeshabilitacion("Incumplimiento de normas")
                 .fechaHastaDeshabilitacion(fechaHasta)
                 .rolGlobal(RolGlobal.builder().nombre("USUARIO").build())
-                .genero(Genero.builder().codigo("mujer").build())
+                .genero(Genero.builder()
+                        .idGenero(5L)
+                        .nombre("Mujer")
+                        .codigo("mujer")
+                        .build())
                 .build();
 
         var response = AdminUsuarioMapper.toResponse(usuario);
@@ -46,7 +50,9 @@ class AdminUsuarioMapperTest {
         assertEquals(fechaBaja, response.fechaSolicitudBaja());
         assertEquals("Incumplimiento de normas", response.motivoDeshabilitacion());
         assertEquals(fechaHasta, response.fechaHastaDeshabilitacion());
-        assertEquals("mujer", response.genero().getCodigo());
+        assertEquals(5L, response.genero().idGenero());
+        assertEquals("Mujer", response.genero().nombre());
+        assertEquals("mujer", response.genero().codigo());
     }
 
     @Test

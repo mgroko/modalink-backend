@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.dto.AdminUsuarioResponse;
 import org.mgroko.backend.admin.dto.DeshabilitarUsuarioRequest;
+import org.mgroko.backend.admin.dto.GeneroResponse;
 import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
@@ -45,9 +46,12 @@ class AdminUsuarioControllerTest {
     private AdminUsuarioService adminUsuarioService;
 
     private AdminUsuarioResponse response(Genero genero, String estado) {
+        GeneroResponse generoResponse = genero != null
+                ? new GeneroResponse(genero.getIdGenero(), genero.getNombre(), genero.getCodigo())
+                : null;
         return new AdminUsuarioResponse(
                 2L, "Maria", "Flores", "maria@test.com",
-                estado, "USUARIO", null, "12345678", null, null, null, genero);
+                estado, "USUARIO", null, "12345678", null, null, null, generoResponse);
     }
 
     @Test
@@ -61,7 +65,10 @@ class AdminUsuarioControllerTest {
                         .principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idUsuario").value(2))
-                .andExpect(jsonPath("$.estado").value("Activo"));
+                .andExpect(jsonPath("$.estado").value("Activo"))
+                .andExpect(jsonPath("$.genero.idGenero").value(1L))
+                .andExpect(jsonPath("$.genero.nombre").value("Mujer"))
+                .andExpect(jsonPath("$.genero.codigo").value("MUJER"));
     }
 
     @Test
