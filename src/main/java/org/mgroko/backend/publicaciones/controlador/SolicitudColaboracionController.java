@@ -1,15 +1,20 @@
 package org.mgroko.backend.publicaciones.controlador;
 
+import java.util.List;
+
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.publicaciones.dto.BuscarSolicitudesColaboracionFiltro;
+import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
 import org.mgroko.backend.publicaciones.dto.EnviarSolicitudColaboracionRequest;
+import org.mgroko.backend.publicaciones.dto.PublicacionSolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionGestionadaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.GestionarSolicitudColaboracionService;
+import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesSolicitudColaboracionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,14 +40,20 @@ public class SolicitudColaboracionController {
     private final EnviarSolicitudColaboracionService enviarSolicitudColaboracionService;
     private final BuscarSolicitudColaboracionService buscarSolicitudColaboracionService;
     private final GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService;
+    private final ListarPublicacionesSolicitudColaboracionService
+            listarPublicacionesSolicitudColaboracionService;
 
     public SolicitudColaboracionController(
             EnviarSolicitudColaboracionService enviarSolicitudColaboracionService,
             BuscarSolicitudColaboracionService buscarSolicitudColaboracionService,
-            GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService) {
+            GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService,
+            ListarPublicacionesSolicitudColaboracionService
+                    listarPublicacionesSolicitudColaboracionService) {
         this.enviarSolicitudColaboracionService = enviarSolicitudColaboracionService;
         this.buscarSolicitudColaboracionService = buscarSolicitudColaboracionService;
         this.gestionarSolicitudColaboracionService = gestionarSolicitudColaboracionService;
+        this.listarPublicacionesSolicitudColaboracionService =
+                listarPublicacionesSolicitudColaboracionService;
     }
 
     /**
@@ -60,6 +71,21 @@ public class SolicitudColaboracionController {
                         idPerfilActivoRequerido(authentication), filtro, page, size);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UC-65 - Publicaciones disponibles para el selector del filtro. En
+     * "Enviadas" devuelve publicaciones propias; en "Recibidas", las de los
+     * perfiles remitentes.
+     */
+    @GetMapping("/solicitudes-colaboracion/publicaciones")
+    public ResponseEntity<List<PublicacionSolicitudColaboracionResponse>> listarPublicaciones(
+            @RequestParam(required = false) DireccionSolicitudColaboracion direccion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                listarPublicacionesSolicitudColaboracionService.listar(
+                        idPerfilActivoRequerido(authentication), direccion));
     }
 
     /**

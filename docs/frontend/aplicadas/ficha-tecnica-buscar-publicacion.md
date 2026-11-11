@@ -29,6 +29,28 @@ Parámetros opcionales:
 
 Todos los filtros son opcionales y se combinan con `AND`.
 
+### 2.1 Detalle por ID para notificaciones
+
+```http
+GET /publicaciones/{idPublicacion}/detalle
+```
+
+Devuelve el detalle de una publicación visible para el perfil activo, sin
+exigir que sea propia. Es el endpoint que debe usar el frontend al abrir la
+ruta `/publicaciones/{id}` desde una notificación.
+
+- Requiere sesión y rol `USUARIO`; no es anónimo.
+- Devuelve `PublicacionResponse`.
+- Si la publicación es propia, mantiene el mismo payload que
+  `GET /publicaciones/{id}`.
+- Si es de otro perfil, solo la devuelve si está `ACTIVA` y el autor es
+  visible según UC-14.
+- El proyecto asociado se incluye solo si el viewer puede verlo.
+- Si la publicación no existe, no está `ACTIVA` o el autor no es visible,
+  devuelve `404`.
+- `GET /publicaciones/{id}` sigue siendo exclusivo del dueño y se mantiene
+  para el formulario de edición de UC-21.
+
 ## 3. Opciones de proyecto para el selector
 
 ```http
@@ -131,6 +153,8 @@ Se mantiene `PaginaResponse<PublicacionResponse>`.
 - Enviar los filtros como query params.
 - Mantener los filtros en la URL.
 - Reutilizar la tarjeta de publicación de UC-19.
+- Para abrir una publicación por ID desde una notificación, usar
+  `GET /publicaciones/{idPublicacion}/detalle`.
 - Mostrar estado vacío:
   > “No se encontraron publicaciones con esos filtros.”
 - Mostrar error bajo el rango si el backend responde `400`.

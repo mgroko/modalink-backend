@@ -36,11 +36,6 @@ public final class SolicitudColaboracionMapper {
         boolean pendiente = solicitud.getEstado() == EstadoSolicitud.PENDIENTE;
         Publicacion publicacion = solicitud.getPublicacion();
 
-        String portadaUrl = publicacion.getImagenes() != null
-                && !publicacion.getImagenes().isEmpty()
-                        ? publicacion.getImagenes().get(0).getUrl()
-                        : null;
-
         return new SolicitudColaboracionBusquedaResponse(
                 solicitud.getIdSolicitudColaboracion(),
                 solicitud.getEstado(),
@@ -53,11 +48,7 @@ public final class SolicitudColaboracionMapper {
                 solicitud.getPerfilDestinatario().getIdPerfil(),
                 toAutor(solicitud.getPerfilRemitente()),
                 toAutor(solicitud.getPerfilDestinatario()),
-                new PublicacionSolicitudColaboracionResponse(
-                        publicacion.getIdPublicacion(),
-                        publicacion.getTitulo(),
-                        portadaUrl,
-                        publicacion.getEstado().name()),
+                toPublicacionResumen(publicacion),
                 pendiente && !enviada,
                 pendiente && !enviada,
                 pendiente && enviada);
@@ -74,6 +65,25 @@ public final class SolicitudColaboracionMapper {
                 solicitud.getPublicacion().getIdPublicacion(),
                 solicitud.getPublicacion().getTitulo(),
                 colaboradorAgregado);
+    }
+
+    /**
+     * Resumen de publicación reutilizado por UC-65 y por el selector de
+     * publicaciones del filtro.
+     */
+    public static PublicacionSolicitudColaboracionResponse toPublicacionResumen(
+            Publicacion publicacion) {
+
+        String portadaUrl = publicacion.getImagenes() != null
+                && !publicacion.getImagenes().isEmpty()
+                        ? publicacion.getImagenes().get(0).getUrl()
+                        : null;
+
+        return new PublicacionSolicitudColaboracionResponse(
+                publicacion.getIdPublicacion(),
+                publicacion.getTitulo(),
+                portadaUrl,
+                publicacion.getEstado().name());
     }
 
     private static AutorPublicacionResponse toAutor(Perfil perfil) {

@@ -23,9 +23,11 @@ import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.publicaciones.dto.BuscarSolicitudesColaboracionFiltro;
 import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
+import org.mgroko.backend.publicaciones.dto.PublicacionSolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
 import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
+import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesSolicitudColaboracionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,10 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
     private BuscarSolicitudColaboracionService buscarSolicitudColaboracionService;
 
     @Autowired
+    private ListarPublicacionesSolicitudColaboracionService
+            listarPublicacionesSolicitudColaboracionService;
+
+    @Autowired
     private UsuarioRepository usuarioRepository;
 
     @Autowired
@@ -54,6 +60,8 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
 
     private Escenario escenario;
     private Long pubAId;
+    private Long pubBId;
+    private Long pubCId;
     private Long idR1;
     private Long idR2;
     private Long idR3;
@@ -103,6 +111,8 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
 
         em.flush();
         pubAId = pubA.getIdPublicacion();
+        pubBId = pubB.getIdPublicacion();
+        pubCId = pubC.getIdPublicacion();
         em.clear();
     }
 
@@ -184,6 +194,45 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
         assertThat(pagina.contenido()).allSatisfy(item ->
                 assertThat(item.publicacion().idPublicacion())
                         .isEqualTo(pubAId));
+    }
+
+    @Test
+    void listarPublicacionesFiltro_recibidasDevuelvePublicacionesDeRemitentesVisibles() {
+        List<PublicacionSolicitudColaboracionResponse> publicaciones =
+                listarPublicacionesSolicitudColaboracionService.listar(
+                        escenario.idPerfilA(),
+                        DireccionSolicitudColaboracion.RECIBIDA);
+
+        assertThat(publicaciones)
+                .extracting(PublicacionSolicitudColaboracionResponse::idPublicacion)
+                .containsExactly(pubBId, pubCId);
+        assertThat(publicaciones).allSatisfy(publicacion -> {
+            assertThat(publicacion.estado()).isEqualTo("ACTIVA");
+            assertThat(publicacion.portadaUrl()).isNotBlank();
+        });
+    }
+
+    @Test
+    void listarPublicacionesFiltro_enviadasDevuelveSoloPublicacionesPropias() {
+        List<PublicacionSolicitudColaboracionResponse> publicaciones =
+                listarPublicacionesSolicitudColaboracionService.listar(
+                        escenario.idPerfilA(),
+                        DireccionSolicitudColaboracion.ENVIADA);
+
+        assertThat(publicaciones)
+                .extracting(PublicacionSolicitudColaboracionResponse::idPublicacion)
+                .containsExactly(pubAId);
+    }
+
+    @Test
+    void listarPublicacionesFiltro_sinDireccionUneRecibidasYEnviadas() {
+        List<PublicacionSolicitudColaboracionResponse> publicaciones =
+                listarPublicacionesSolicitudColaboracionService.listar(
+                        escenario.idPerfilA(), null);
+
+        assertThat(publicaciones)
+                .extracting(PublicacionSolicitudColaboracionResponse::idPublicacion)
+                .containsExactly(pubAId, pubBId, pubCId);
     }
 
     @Test

@@ -152,6 +152,8 @@ public class SecurityConfig {
                         "/invitaciones/**",
                         "/reemplazos/**",
                         "/solicitudes-conexion/**",
+                        "/solicitudes-colaboracion",
+                        "/solicitudes-colaboracion/**",
                         "/conexiones/**",
                         "/presencia",
                         "/presencia/**",

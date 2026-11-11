@@ -34,6 +34,38 @@ Parámetros opcionales:
 La búsqueda siempre se limita al perfil activo: solicitudes enviadas por él o
 recibidas por él.
 
+### 2.1 Publicaciones para el selector del filtro
+
+```http
+GET /solicitudes-colaboracion/publicaciones?direccion=RECIBIDA|ENVIADA
+```
+
+Devuelve las publicaciones distintas que tienen solicitudes del perfil activo
+en la dirección indicada, sin paginar. Es la fuente recomendada para el
+selector de `idPublicacion`:
+
+- `direccion` es opcional; si se omite, devuelve ambas.
+- En `ENVIADA` devuelve publicaciones propias.
+- En `RECIBIDA` devuelve publicaciones de los perfiles remitentes.
+- Solo incluye publicaciones `ACTIVA` y aplica las mismas reglas de
+  visibilidad que la búsqueda.
+- No depende de `estado` ni de fechas, para que las opciones no desaparezcan
+  al aplicar otros filtros.
+- Orden: título ascendente y luego `idPublicacion` ascendente.
+
+```json
+[
+  {
+    "idPublicacion": 99,
+    "titulo": "Editorial Otoño",
+    "portadaUrl": "/uploads/publicaciones/portada.webp",
+    "estado": "ACTIVA"
+  }
+]
+```
+
+Sin resultados devuelve `200 []`. Sin perfil activo devuelve `404`.
+
 Combinaciones inválidas:
 
 - `todosLosEstados=true` junto con `estado` → `400`.
@@ -131,6 +163,9 @@ Sin resultados devuelve `200` con `contenido: []`.
 - Por defecto, consultar sin `estado` para ver las pendientes.
 - Para ver el historial completo, enviar `todosLosEstados=true`.
 - Usar `direccion` para las pestañas “Recibidas” / “Enviadas”.
+- Poblar el selector de publicación con
+  `GET /solicitudes-colaboracion/publicaciones?direccion=...` usando la misma
+  dirección de la pestaña activa.
 - Los filtros de perfil son por ID; usar el buscador de perfiles o la red de
   contactos para obtenerlos.
 - Mostrar la portada de la publicación y los datos de la contraparte.

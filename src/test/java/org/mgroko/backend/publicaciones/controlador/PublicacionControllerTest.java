@@ -26,6 +26,7 @@ import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ModificarPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionDetalleService;
 import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,9 @@ class PublicacionControllerTest {
 
     @MockitoBean
     private ObtenerPublicacionService obtenerPublicacionService;
+
+    @MockitoBean
+    private ObtenerPublicacionDetalleService obtenerPublicacionDetalleService;
 
     @MockitoBean
     private ModificarPublicacionService modificarPublicacionService;
@@ -160,6 +164,25 @@ class PublicacionControllerTest {
 
         mockMvc.perform(get("/publicaciones/{idPublicacion}", 99L)
                         .principal(auth(1L, 7L)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void obtenerDetalle_devuelveLaPublicacionVisible() throws Exception {
+        when(obtenerPublicacionDetalleService.obtener(1L, 7L, 99L))
+                .thenReturn(response());
+
+        mockMvc.perform(get("/publicaciones/{idPublicacion}/detalle", 99L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPublicacion").value(99L))
+                .andExpect(jsonPath("$.titulo").value("Editorial"));
+    }
+
+    @Test
+    void obtenerDetalle_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(get("/publicaciones/{idPublicacion}/detalle", 99L)
+                        .principal(auth(1L, null)))
                 .andExpect(status().isNotFound());
     }
 

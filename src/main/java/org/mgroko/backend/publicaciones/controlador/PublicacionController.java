@@ -14,6 +14,7 @@ import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ModificarPublicacionService;
+import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionDetalleService;
 import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
@@ -43,6 +44,7 @@ public class PublicacionController {
     private final ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService;
     private final ListarFeedPublicacionesService listarFeedPublicacionesService;
     private final ObtenerPublicacionService obtenerPublicacionService;
+    private final ObtenerPublicacionDetalleService obtenerPublicacionDetalleService;
     private final ModificarPublicacionService modificarPublicacionService;
 
     public PublicacionController(
@@ -51,12 +53,14 @@ public class PublicacionController {
             ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService,
             ListarFeedPublicacionesService listarFeedPublicacionesService,
             ObtenerPublicacionService obtenerPublicacionService,
+            ObtenerPublicacionDetalleService obtenerPublicacionDetalleService,
             ModificarPublicacionService modificarPublicacionService) {
         this.crearPublicacionService = crearPublicacionService;
         this.listarPublicacionesPerfilService = listarPublicacionesPerfilService;
         this.listarProyectosPublicacionesPerfilService = listarProyectosPublicacionesPerfilService;
         this.listarFeedPublicacionesService = listarFeedPublicacionesService;
         this.obtenerPublicacionService = obtenerPublicacionService;
+        this.obtenerPublicacionDetalleService = obtenerPublicacionDetalleService;
         this.modificarPublicacionService = modificarPublicacionService;
     }
 
@@ -81,6 +85,23 @@ public class PublicacionController {
             Authentication authentication) {
 
         PublicacionResponse response = obtenerPublicacionService.obtener(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                idPublicacion);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Detalle de una publicación visible para el perfil activo. Se usa para
+     * abrir publicaciones ajenas desde notificaciones; no habilita edición.
+     */
+    @GetMapping("/publicaciones/{idPublicacion}/detalle")
+    public ResponseEntity<PublicacionResponse> obtenerDetalle(
+            @PathVariable Long idPublicacion,
+            Authentication authentication) {
+
+        PublicacionResponse response = obtenerPublicacionDetalleService.obtener(
                 idUsuario(authentication),
                 idPerfilActivoRequerido(authentication),
                 idPublicacion);

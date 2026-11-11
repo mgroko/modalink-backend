@@ -31,6 +31,7 @@ import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPermiti
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.GestionarSolicitudColaboracionService;
+import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesSolicitudColaboracionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
@@ -59,6 +60,10 @@ class SolicitudColaboracionControllerTest {
 
     @MockitoBean
     private GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService;
+
+    @MockitoBean
+    private ListarPublicacionesSolicitudColaboracionService
+            listarPublicacionesSolicitudColaboracionService;
 
     private static UsernamePasswordAuthenticationToken auth(Long idUsuario, Long idPerfilActivo) {
         var token = new UsernamePasswordAuthenticationToken(String.valueOf(idUsuario), null, List.of());
@@ -226,6 +231,29 @@ class SolicitudColaboracionControllerTest {
     @Test
     void buscar_sinPerfilActivo_devuelve404() throws Exception {
         mockMvc.perform(get("/solicitudes-colaboracion")
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listarPublicaciones_devuelveOpcionesDelFiltro() throws Exception {
+        when(listarPublicacionesSolicitudColaboracionService.listar(
+                eq(7L), eq(DireccionSolicitudColaboracion.RECIBIDA)))
+                .thenReturn(List.of(new PublicacionSolicitudColaboracionResponse(
+                        99L, "Editorial Otoño", "/uploads/publicaciones/a.webp", "ACTIVA")));
+
+        mockMvc.perform(get("/solicitudes-colaboracion/publicaciones")
+                        .param("direccion", "RECIBIDA")
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].idPublicacion").value(99L))
+                .andExpect(jsonPath("$[0].titulo").value("Editorial Otoño"));
+    }
+
+    @Test
+    void listarPublicaciones_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(get("/solicitudes-colaboracion/publicaciones")
                         .principal(auth(1L, null)))
                 .andExpect(status().isNotFound());
     }

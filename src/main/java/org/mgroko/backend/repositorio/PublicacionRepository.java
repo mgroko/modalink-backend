@@ -96,6 +96,23 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
             Long idPublicacion, Long idPerfil);
 
     /**
+     * Detalle de una publicación visible para el perfil activo, sin acotar al
+     * dueño. Carga las asociaciones necesarias para la tarjeta de detalle.
+     */
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.usuario",
+            "perfil.profesion",
+            "perfil.imagen",
+            "proyecto",
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    Optional<Publicacion> findByIdPublicacion(Long idPublicacion);
+
+    /**
      * UC-61: indica si un perfil ya es colaborador de la publicación.
      */
     @Query("""

@@ -4,8 +4,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.SolicitudColaboracion;
+import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -49,6 +53,42 @@ public interface SolicitudColaboracionRepository
             """)
     List<SolicitudColaboracion> findAllByIdInWithDetalle(
             @Param("ids") Collection<Long> ids);
+
+    /**
+     * UC-65: publicaciones distintas que tienen solicitudes en la dirección
+     * indicada para el perfil activo, aplicando las mismas reglas de
+     * visibilidad que la búsqueda. Se usa para poblar el selector de
+     * publicaciones del filtro.
+     */
+    @Query("""
+            SELECT DISTINCT p
+            FROM SolicitudColaboracion s
+            JOIN s.publicacion p
+            JOIN s.perfilRemitente remitente
+            JOIN remitente.usuario usuarioRemitente
+            JOIN s.perfilDestinatario destinatario
+            JOIN destinatario.usuario usuarioDestinatario
+            WHERE p.estado = :estadoPublicacion
+              AND (
+                (:incluirRecibidas = TRUE
+                  AND destinatario.idPerfil = :idPerfilActivo
+                  AND remitente.estado = :estadoPerfil
+                  AND usuarioRemitente.estado = :estadoUsuario)
+                OR
+                (:incluirEnviadas = TRUE
+                  AND remitente.idPerfil = :idPerfilActivo
+                  AND destinatario.estado = :estadoPerfil
+                  AND usuarioDestinatario.estado = :estadoUsuario)
+              )
+            ORDER BY p.titulo ASC, p.idPublicacion ASC
+            """)
+    List<Publicacion> findPublicacionesDistintasParaFiltro(
+            @Param("idPerfilActivo") Long idPerfilActivo,
+            @Param("incluirRecibidas") boolean incluirRecibidas,
+            @Param("incluirEnviadas") boolean incluirEnviadas,
+            @Param("estadoPublicacion") EstadoPublicacion estadoPublicacion,
+            @Param("estadoPerfil") EstadoPerfil estadoPerfil,
+            @Param("estadoUsuario") EstadoUsuario estadoUsuario);
 
     /**
      * UC-62/63: bloquea la solicitud para que aceptar y rechazar no compitan

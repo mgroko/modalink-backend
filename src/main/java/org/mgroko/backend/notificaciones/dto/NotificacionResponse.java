@@ -20,8 +20,9 @@ import java.time.LocalDateTime;
  * {@code /proyectos/{idProyecto}/calificaciones}. Las notificaciones sociales
  * de conexiones apuntan a {@code /solicitudes-conexion} o
  * {@code /red-contactos} según el tipo. Las solicitudes de colaboración
- * apuntan a {@code /publicaciones/{idPublicacion}}. En el resto de los tipos
- * es {@code null}.</p>
+ * apuntan a {@code /publicaciones/{idPublicacion}}; esa ruta del frontend debe
+ * resolver el detalle con {@code GET /publicaciones/{idPublicacion}/detalle}.
+ * En el resto de los tipos es {@code null}.</p>
  */
 public record NotificacionResponse(
         Long idNotificacion,
