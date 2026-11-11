@@ -8851,9 +8851,13 @@ SELECT setval(pg_get_serial_sequence('tipo_polaroid', 'id_tipo_polaroid'),
 -- ============================================================================
 -- UC-66 - Interactuar con publicacion
 -- ============================================================================
+-- ============================================================================
+-- UC-69 - Reportar publicacion
+-- ============================================================================
 INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('PUBLICACION_MEGUSTA', 'Nueva interacción en publicación', 'SOCIAL', 'MEDIA'),
-    ('PUBLICACION_COMENTARIO', 'Nuevo comentario en publicación', 'SOCIAL', 'ALTA')
+    ('PUBLICACION_COMENTARIO', 'Nuevo comentario en publicación', 'SOCIAL', 'ALTA'),
+    ('PUBLICACION_REPORTADA', 'Publicación reportada', 'ADMINISTRACION', 'ALTA')
 ON CONFLICT (codigo) DO UPDATE
     SET nombre = EXCLUDED.nombre,
         categoria = EXCLUDED.categoria,
@@ -8862,3 +8866,7 @@ ON CONFLICT (codigo) DO UPDATE
 
 CREATE INDEX IF NOT EXISTS "IDX_comentario_publicacion_fecha"
     ON comentario (id_publicacion, fecha_comentario, id_comentario);
+
+CREATE INDEX IF NOT EXISTS "IDX_reporte_publicacion_estado_fecha"
+    ON reporte (estado, fecha_reporte DESC)
+    WHERE entidad_tipo = 'PUBLICACION';

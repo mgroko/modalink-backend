@@ -1,5 +1,6 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -114,6 +115,23 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
             "ubicacion.ciudad.provincia.pais"
     })
     Optional<Publicacion> findByIdPublicacion(Long idPublicacion);
+
+    /**
+     * UC-69: carga en lote las publicaciones reportadas junto con las
+     * asociaciones necesarias para armar la bandeja administrativa.
+     */
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.usuario",
+            "perfil.profesion",
+            "proyecto",
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    @Query("SELECT p FROM Publicacion p WHERE p.idPublicacion IN :ids")
+    List<Publicacion> findDetallePorIds(@Param("ids") Collection<Long> ids);
 
     /**
      * UC-61: indica si un perfil ya es colaborador de la publicación.

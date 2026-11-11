@@ -1538,6 +1538,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.AutoreportePublicacionException.class)
+    public ResponseEntity<Map<String, Object>> handleAutoreportePublicacion(
+            org.mgroko.backend.reportes.exception.AutoreportePublicacionException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.reportes.exception.ReportePendienteExistenteException.class)
     public ResponseEntity<Map<String, Object>> handleReportePendienteExistente(
             org.mgroko.backend.reportes.exception.ReportePendienteExistenteException ex) {
