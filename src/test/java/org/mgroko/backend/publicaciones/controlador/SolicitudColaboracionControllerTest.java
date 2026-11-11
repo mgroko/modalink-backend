@@ -2,8 +2,10 @@ package org.mgroko.backend.publicaciones.controlador;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,8 +29,11 @@ import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionDuplicadaException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionInvalidaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoEncontradaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPendienteException;
 import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPermitidaException;
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
+import org.mgroko.backend.publicaciones.servicio.EliminarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.GestionarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesSolicitudColaboracionService;
@@ -60,6 +65,9 @@ class SolicitudColaboracionControllerTest {
 
     @MockitoBean
     private GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService;
+
+    @MockitoBean
+    private EliminarSolicitudColaboracionService eliminarSolicitudColaboracionService;
 
     @MockitoBean
     private ListarPublicacionesSolicitudColaboracionService
@@ -326,5 +334,58 @@ class SolicitudColaboracionControllerTest {
                         .principal(auth(1L, 7L)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_COLABORACION_NO_PERMITIDA"));
+    }
+
+    @Test
+    void eliminar_solicitudPropiaPendiente_devuelve204() throws Exception {
+        mockMvc.perform(delete("/solicitudes-colaboracion/{id}", 50L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isNoContent());
+
+        verify(eliminarSolicitudColaboracionService).eliminar(1L, 7L, 50L);
+    }
+
+    @Test
+    void eliminar_sinPerfilActivo_devuelve404() throws Exception {
+        mockMvc.perform(delete("/solicitudes-colaboracion/{id}", 50L)
+                        .principal(auth(1L, null)))
+                .andExpect(status().isNotFound());
+
+        verify(eliminarSolicitudColaboracionService, org.mockito.Mockito.never())
+                .eliminar(any(), any(), any());
+    }
+
+    @Test
+    void eliminar_solicitudAjena_devuelve403ConCodigo() throws Exception {
+        doThrow(new SolicitudColaboracionNoPermitidaException(
+                "Solo el perfil remitente puede eliminar la solicitud de colaboración."))
+                .when(eliminarSolicitudColaboracionService).eliminar(1L, 7L, 50L);
+
+        mockMvc.perform(delete("/solicitudes-colaboracion/{id}", 50L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_COLABORACION_NO_PERMITIDA"));
+    }
+
+    @Test
+    void eliminar_solicitudNoPendiente_devuelve409ConCodigo() throws Exception {
+        doThrow(new SolicitudColaboracionNoPendienteException(
+                "Sólo se pueden eliminar solicitudes de colaboración pendientes."))
+                .when(eliminarSolicitudColaboracionService).eliminar(1L, 7L, 50L);
+
+        mockMvc.perform(delete("/solicitudes-colaboracion/{id}", 50L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_COLABORACION_NO_PENDIENTE"));
+    }
+
+    @Test
+    void eliminar_solicitudInexistente_devuelve404() throws Exception {
+        doThrow(new SolicitudColaboracionNoEncontradaException())
+                .when(eliminarSolicitudColaboracionService).eliminar(1L, 7L, 50L);
+
+        mockMvc.perform(delete("/solicitudes-colaboracion/{id}", 50L)
+                        .principal(auth(1L, 7L)))
+                .andExpect(status().isNotFound());
     }
 }

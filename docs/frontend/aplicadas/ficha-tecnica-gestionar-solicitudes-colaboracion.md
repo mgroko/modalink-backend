@@ -1,7 +1,8 @@
 # Ficha técnica — Aceptar y rechazar solicitudes de colaboración (UC-62 / UC-63)
 
 > **Estado:** backend implementado.
-> **Casos de uso relacionados:** UC-61 (envío), UC-62, UC-63, UC-65 (búsqueda) y UC-22 (portfolio).
+> **Casos de uso relacionados:** UC-61 (envío), UC-62, UC-63, UC-64 (eliminar),
+> UC-65 (búsqueda) y UC-22 (portfolio).
 
 ## 1. Objetivo
 
@@ -117,3 +118,5 @@ activo o si la publicación no está `ACTIVA`.
 - Mostrar el `fechaRespuesta` en el historial.
 - Si el backend responde `409`, volver a consultar la solicitud: pudo haber
   sido gestionada en otra sesión.
+- La eliminación de solicitudes enviadas corresponde a UC-64
+  ([`ficha-tecnica-eliminar-solicitud-colaboracion.md`](ficha-tecnica-eliminar-solicitud-colaboracion.md)).

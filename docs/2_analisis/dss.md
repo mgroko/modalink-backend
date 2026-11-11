@@ -481,6 +481,22 @@
 
 ---
 
+### **UC-64: Eliminar solicitud de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-65 Buscar solicitudes de colaboración`.
+  2. El actor envía el mensaje `eliminarSolicitudColaboracion(idSolicitudColaboracion)`.
+  3. El sistema valida que el perfil activo sea el remitente y que la solicitud esté pendiente.
+  4. **Bloque Alternativo (`alt`)**:
+     - `[solicitud inexistente, ajena o ya gestionada]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `solicitudColaboracionEliminada(idSolicitudColaboracion)`.
+       - El sistema retorna `eliminarNotificacionSolicitudColaboracion(alDestinatario)`.
+
+---
+
 ### **UC-65: Buscar solicitudes de colaboración**
 
 - **Actor:** Usuario

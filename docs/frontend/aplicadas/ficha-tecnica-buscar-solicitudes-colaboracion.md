@@ -1,7 +1,8 @@
 # Ficha técnica — Buscar solicitudes de colaboración (UC-65)
 
 > **Estado:** backend implementado.
-> **Casos de uso relacionados:** UC-61 (envío), UC-62/63/64 (acciones pendientes), UC-22 (publicaciones) y UC-14 (visibilidad de perfiles).
+> **Casos de uso relacionados:** UC-61 (envío), UC-62/63 (aceptar/rechazar),
+> UC-64 (eliminar), UC-22 (publicaciones) y UC-14 (visibilidad de perfiles).
 
 ## 1. Objetivo
 
@@ -171,3 +172,17 @@ Sin resultados devuelve `200` con `contenido: []`.
 - Mostrar la portada de la publicación y los datos de la contraparte.
 - Habilitar las acciones de UC-62/63/64 según los flags.
 - Si la página llega vacía, mostrar el estado vacío sin reintentar.
+
+## 8. Eliminar solicitud (UC-64)
+
+Cuando `puedeEliminar` sea `true`, habilitar la acción “Eliminar” y pedir
+confirmación antes de ejecutar:
+
+```http
+DELETE /solicitudes-colaboracion/{idSolicitudColaboracion}
+```
+
+La operación devuelve `204 No Content`, elimina la solicitud y borra la
+notificación de solicitud recibida del destinatario. Si responde `409`,
+refrescar la búsqueda: la solicitud ya fue aceptada o rechazada. Ver
+[`ficha-tecnica-eliminar-solicitud-colaboracion.md`](ficha-tecnica-eliminar-solicitud-colaboracion.md).

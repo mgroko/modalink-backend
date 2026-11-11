@@ -1,7 +1,9 @@
 # Ficha técnica — Enviar solicitud de colaboración (UC-61)
 
 > **Estado:** backend implementado.
-> **Casos de uso relacionados:** UC-61, UC-62/63 (aceptar/rechazar, pendientes), UC-65 (buscar solicitudes, pendiente) y UC-19/21 (publicaciones).
+> **Casos de uso relacionados:** UC-61, UC-62/63 (aceptar/rechazar),
+> UC-64 (eliminar solicitud enviada), UC-65 (buscar solicitudes) y
+> UC-19/21 (publicaciones).
 
 ## 1. Objetivo
 
@@ -147,3 +149,7 @@ No se agrega `fecha_respuesta` en esta iteración. Queda para UC-62/63.
   solicitud enviada.
 - La notificación del destinatario navega a `/publicaciones/{idPublicacion}`.
 - La pantalla de solicitudes recibidas/enviadas corresponde a UC-65.
+- Mientras la solicitud siga `PENDIENTE`, el remitente puede eliminarla con
+  `DELETE /solicitudes-colaboracion/{id}` (UC-64,
+  [`ficha-tecnica-eliminar-solicitud-colaboracion.md`](ficha-tecnica-eliminar-solicitud-colaboracion.md)).
+  Tras eliminarla, puede volver a invitar al mismo perfil.

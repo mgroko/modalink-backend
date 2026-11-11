@@ -12,6 +12,7 @@ import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaRespons
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionGestionadaResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
+import org.mgroko.backend.publicaciones.servicio.EliminarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.EnviarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.GestionarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesSolicitudColaboracionService;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 /**
- * UC-61 - Enviar solicitud de colaboración.
+ * UC-61/62/63/64/65 - Solicitudes de colaboración sobre publicaciones.
  */
 @RestController
 @PreAuthorize("hasRole('USUARIO')")
@@ -40,6 +42,7 @@ public class SolicitudColaboracionController {
     private final EnviarSolicitudColaboracionService enviarSolicitudColaboracionService;
     private final BuscarSolicitudColaboracionService buscarSolicitudColaboracionService;
     private final GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService;
+    private final EliminarSolicitudColaboracionService eliminarSolicitudColaboracionService;
     private final ListarPublicacionesSolicitudColaboracionService
             listarPublicacionesSolicitudColaboracionService;
 
@@ -47,11 +50,13 @@ public class SolicitudColaboracionController {
             EnviarSolicitudColaboracionService enviarSolicitudColaboracionService,
             BuscarSolicitudColaboracionService buscarSolicitudColaboracionService,
             GestionarSolicitudColaboracionService gestionarSolicitudColaboracionService,
+            EliminarSolicitudColaboracionService eliminarSolicitudColaboracionService,
             ListarPublicacionesSolicitudColaboracionService
                     listarPublicacionesSolicitudColaboracionService) {
         this.enviarSolicitudColaboracionService = enviarSolicitudColaboracionService;
         this.buscarSolicitudColaboracionService = buscarSolicitudColaboracionService;
         this.gestionarSolicitudColaboracionService = gestionarSolicitudColaboracionService;
+        this.eliminarSolicitudColaboracionService = eliminarSolicitudColaboracionService;
         this.listarPublicacionesSolicitudColaboracionService =
                 listarPublicacionesSolicitudColaboracionService;
     }
@@ -114,6 +119,22 @@ public class SolicitudColaboracionController {
                 idUsuario(authentication),
                 idPerfilActivoRequerido(authentication),
                 idSolicitudColaboracion));
+    }
+
+    /**
+     * UC-64 - Eliminar una solicitud de colaboración enviada.
+     */
+    @DeleteMapping("/solicitudes-colaboracion/{idSolicitudColaboracion}")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long idSolicitudColaboracion,
+            Authentication authentication) {
+
+        eliminarSolicitudColaboracionService.eliminar(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                idSolicitudColaboracion);
+
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/publicaciones/{idPublicacion}/solicitudes-colaboracion")

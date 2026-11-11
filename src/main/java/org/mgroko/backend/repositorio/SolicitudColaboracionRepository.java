@@ -91,8 +91,8 @@ public interface SolicitudColaboracionRepository
             @Param("estadoUsuario") EstadoUsuario estadoUsuario);
 
     /**
-     * UC-62/63: bloquea la solicitud para que aceptar y rechazar no compitan
-     * entre sí.
+     * UC-62/63/64: bloquea la solicitud para que aceptar, rechazar y eliminar
+     * no compitan entre sí.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

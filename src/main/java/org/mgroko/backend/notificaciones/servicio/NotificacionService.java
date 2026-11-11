@@ -199,6 +199,38 @@ public class NotificacionService {
                 tipo, entidadTipo, entidadId);
     }
 
+    /**
+     * Elimina las notificaciones de una entidad concreta para un usuario y
+     * perfil de destino.
+     *
+     * <p>UC-64 lo usa para retirar únicamente la notificación del destinatario
+     * de una solicitud de colaboración eliminada, sin afectar a otros
+     * destinatarios de la misma publicación.</p>
+     *
+     * @return cantidad de notificaciones eliminadas
+     */
+    @Transactional
+    public int eliminarPorEntidadYPerfil(
+            String tipo,
+            String entidadTipo,
+            Long entidadId,
+            Long idUsuarioDestino,
+            Long idPerfilContexto) {
+
+        if (tipo == null || entidadTipo == null || entidadId == null
+                || idUsuarioDestino == null || idPerfilContexto == null) {
+            return 0;
+        }
+
+        return notificacionRepository
+                .deleteByTipoAndEntidadTipoAndEntidadIdYPerfil(
+                        tipo,
+                        entidadTipo,
+                        entidadId,
+                        idUsuarioDestino,
+                        idPerfilContexto);
+    }
+
     @Transactional(readOnly = true)
     public PaginaResponse<NotificacionResponse> listar(
             Long idUsuario,

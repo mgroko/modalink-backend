@@ -26,8 +26,10 @@ import lombok.Setter;
  * perfil de su red de contactos.
  *
  * <p>UC-61 crea la solicitud en estado {@code PENDIENTE}. UC-62/63 la pasan a
- * {@code ACEPTADA} o {@code RECHAZADA}. La aceptación agrega al perfil a
- * {@code colaborador_publicacion}; UC-61 no lo hace.</p>
+ * {@code ACEPTADA} o {@code RECHAZADA}. UC-64 elimina físicamente las
+ * solicitudes {@code PENDIENTES} enviadas por el perfil remitente. La
+ * aceptación agrega al perfil a {@code colaborador_publicacion}; UC-61 no lo
+ * hace.</p>
  */
 @Entity
 @Table(name = "solicitud_colaboracion")
