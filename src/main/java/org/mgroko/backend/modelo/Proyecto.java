@@ -29,6 +29,9 @@ public class Proyecto {
     @Column(name = "fecha_finalizacion")
     private LocalDateTime fechaFinalizacion;
 
+    @Column(name = "fecha_cancelacion")
+    private LocalDateTime fechaCancelacion;
+
     @Column(name = "finalizacion_prematura", nullable = false)
     @Builder.Default
     private Boolean finalizacionPrematura = false;

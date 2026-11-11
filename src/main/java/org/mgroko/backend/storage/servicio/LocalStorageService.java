@@ -37,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <li>{@code perfiles/}</li>
  * <li>{@code moodboard/}</li>
  * <li>{@code publicaciones/}</li>
+ * <li>{@code polaroids/}</li>
  * </ul>
  *
  * <p>El borrado por nombre busca en todos los directorios gestionados para
@@ -58,14 +59,17 @@ public class LocalStorageService implements StorageService {
     private static final String PREFIJO_NOMBRE_PERFIL = "perfil_";
     private static final String PREFIJO_NOMBRE_MOODBOARD = "moodboard_";
     private static final String PREFIJO_NOMBRE_PUBLICACION = "publicacion_";
+    private static final String PREFIJO_NOMBRE_POLAROID = "polaroid_";
 
     private final Path perfilesPath;
     private final Path moodboardPath;
     private final Path publicacionesPath;
+    private final Path polaroidsPath;
     private final String uploadDir;
     private final String perfilesSubdir;
     private final String moodboardSubdir;
     private final String publicacionesSubdir;
+    private final String polaroidsSubdir;
     private final ProcesadorImagen procesadorImagen;
 
     public LocalStorageService(
@@ -73,16 +77,19 @@ public class LocalStorageService implements StorageService {
             @Value("${app.storage.perfiles-dir:perfiles}") String perfilesSubdir,
             @Value("${app.storage.moodboard-dir:moodboard}") String moodboardSubdir,
             @Value("${app.storage.publicaciones-dir:publicaciones}") String publicacionesSubdir,
+            @Value("${app.storage.polaroids-dir:polaroids}") String polaroidsSubdir,
             ProcesadorImagen procesadorImagen) {
         this.uploadDir = uploadDir;
         this.perfilesSubdir = perfilesSubdir;
         this.moodboardSubdir = moodboardSubdir;
         this.publicacionesSubdir = publicacionesSubdir;
+        this.polaroidsSubdir = polaroidsSubdir;
         this.procesadorImagen = procesadorImagen;
 
         this.perfilesPath = prepararDirectorio(uploadDir, perfilesSubdir);
         this.moodboardPath = prepararDirectorio(uploadDir, moodboardSubdir);
         this.publicacionesPath = prepararDirectorio(uploadDir, publicacionesSubdir);
+        this.polaroidsPath = prepararDirectorio(uploadDir, polaroidsSubdir);
     }
 
     @Override
@@ -98,6 +105,12 @@ public class LocalStorageService implements StorageService {
     @Override
     public ArchivoAlmacenado almacenarImagenPublicacion(MultipartFile archivo) {
         return almacenar(publicacionesSubdir, publicacionesPath, PREFIJO_NOMBRE_PUBLICACION, archivo, true);
+    }
+
+    @Override
+    public ArchivoAlmacenado almacenarImagenPolaroid(MultipartFile archivo) {
+        // Las polaroids tampoco se recortan: se conserva la relación de aspecto.
+        return almacenar(polaroidsSubdir, polaroidsPath, PREFIJO_NOMBRE_POLAROID, archivo, true);
     }
 
     private ArchivoAlmacenado almacenar(
@@ -160,7 +173,7 @@ public class LocalStorageService implements StorageService {
         }
 
         String nombreSimple = Paths.get(nombreArchivo).getFileName().toString();
-        for (Path directorio : List.of(perfilesPath, moodboardPath, publicacionesPath)) {
+        for (Path directorio : List.of(perfilesPath, moodboardPath, publicacionesPath, polaroidsPath)) {
             Path archivoPath = directorio.resolve(nombreSimple).normalize();
             if (!archivoPath.startsWith(directorio) || !Files.exists(archivoPath)) {
                 continue;
@@ -200,6 +213,7 @@ public class LocalStorageService implements StorageService {
         archivos.addAll(listarDirectorio(perfilesSubdir, perfilesPath));
         archivos.addAll(listarDirectorio(moodboardSubdir, moodboardPath));
         archivos.addAll(listarDirectorio(publicacionesSubdir, publicacionesPath));
+        archivos.addAll(listarDirectorio(polaroidsSubdir, polaroidsPath));
         archivos.sort(Comparator
                 .comparing(ArchivoEnDisco::subdirectorio)
                 .thenComparing(ArchivoEnDisco::nombreArchivo));
@@ -257,6 +271,9 @@ public class LocalStorageService implements StorageService {
         }
         if (publicacionesSubdir.equals(subdirectorio)) {
             return publicacionesPath;
+        }
+        if (polaroidsSubdir.equals(subdirectorio)) {
+            return polaroidsPath;
         }
         throw new ErrorAlmacenamientoException(
                 "Directorio de almacenamiento desconocido: " + subdirectorio, null);

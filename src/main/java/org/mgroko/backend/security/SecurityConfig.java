@@ -142,6 +142,7 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/home/**",
                         "/perfiles/**",
+                        "/polaroids/**",
                         "/publicaciones/**",
                         "/usuarios/me/**",
                         "/proyectos/**",

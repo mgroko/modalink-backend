@@ -151,6 +151,7 @@ public final class ProyectoMapper {
                 postulacionesPendientes,
                 contexto.puedeDarseDeBaja(),
                 proyecto.getFechaFinalizacion(),
+                proyecto.getFechaCancelacion(),
                 Boolean.TRUE.equals(proyecto.getFinalizacionPrematura())
         );
     }

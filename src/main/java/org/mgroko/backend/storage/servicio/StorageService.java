@@ -36,8 +36,18 @@ public interface StorageService {
     ArchivoAlmacenado almacenarImagenPublicacion(MultipartFile archivo);
 
     /**
+     * Procesa, valida y almacena una imagen de polaroid respetando su relación
+     * de aspecto.
+     *
+     * @param archivo archivo multipart recibido
+     * @return detalles del archivo almacenado
+     */
+    ArchivoAlmacenado almacenarImagenPolaroid(MultipartFile archivo);
+
+    /**
      * Elimina el archivo de almacenamiento según su nombre, buscándolo en todos
-     * los directorios gestionados (perfiles, moodboard y publicaciones).
+     * los directorios gestionados (perfiles, moodboard, publicaciones y
+     * polaroids).
      *
      * @param nombreArchivo nombre del archivo a eliminar
      * @throws org.mgroko.backend.storage.exception.ErrorAlmacenamientoException
@@ -70,7 +80,7 @@ public interface StorageService {
      * subdirectorio y fecha de modificación. Es la fuente que usa el job de
      * limpieza para reconciliar disco y base de datos.
      *
-     * @return archivos encontrados en perfiles, moodboard y publicaciones
+     * @return archivos encontrados en perfiles, moodboard, publicaciones y polaroids
      */
     List<ArchivoEnDisco> listarArchivos();
 }

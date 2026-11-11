@@ -1633,4 +1633,40 @@ public class GlobalExceptionHandler {
                 ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.PolaroidsSoloParaModelosException.class)
+    public ResponseEntity<Map<String, Object>> handlePolaroidsSoloParaModelos(
+            org.mgroko.backend.polaroids.exception.PolaroidsSoloParaModelosException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.LimitePolaroidsExcedidoException.class)
+    public ResponseEntity<Map<String, Object>> handleLimitePolaroidsExcedido(
+            org.mgroko.backend.polaroids.exception.LimitePolaroidsExcedidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.PolaroidNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handlePolaroidNoEncontrada(
+            org.mgroko.backend.polaroids.exception.PolaroidNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.TipoPolaroidNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoPolaroidNoEncontrado(
+            org.mgroko.backend.polaroids.exception.TipoPolaroidNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.PolaroidInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePolaroidInvalida(
+            org.mgroko.backend.polaroids.exception.PolaroidInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.ReordenamientoPolaroidsInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleReordenamientoPolaroidsInvalido(
+            org.mgroko.backend.polaroids.exception.ReordenamientoPolaroidsInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
 }
