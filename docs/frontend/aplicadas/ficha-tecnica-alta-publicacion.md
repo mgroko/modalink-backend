@@ -73,7 +73,8 @@ Respuesta `201 Created`:
   ],
   "colaboradores": [],
   "cantidadMeGusta": 0,
-  "cantidadComentarios": 0
+  "cantidadComentarios": 0,
+  "meGusta": false
 }
 ```
 

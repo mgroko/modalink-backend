@@ -112,7 +112,8 @@ Se mantiene `PaginaResponse<PublicacionResponse>`.
       "imagenes": [ "..." ],
       "colaboradores": [],
       "cantidadMeGusta": 0,
-      "cantidadComentarios": 0
+      "cantidadComentarios": 0,
+      "meGusta": false
     }
   ],
   "paginaActual": 0,

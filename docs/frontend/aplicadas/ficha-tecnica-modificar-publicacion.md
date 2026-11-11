@@ -92,7 +92,8 @@ Respuesta `200 OK`:
   ],
   "colaboradores": [],
   "cantidadMeGusta": 0,
-  "cantidadComentarios": 0
+  "cantidadComentarios": 0,
+  "meGusta": false
 }
 ```
 
