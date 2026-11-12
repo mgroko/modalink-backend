@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
@@ -18,10 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Regla única de protección de un requerimiento general de proyecto.
  *
- * <p>Un requerimiento se protege únicamente cuando tiene un miembro
- * {@code ACTIVO} vinculado o una postulación/invitación {@code PENDIENTE}.
- * Los miembros históricos y las aceptaciones de perfiles inactivos no
- * bloquean.</p>
+ * <p>Un requerimiento se protege cuando tiene un miembro {@code ACTIVO}
+ * vinculado, una postulación/invitación {@code PENDIENTE} o un reemplazo
+ * abierto. El reemplazo deja de proteger cuando se cierra, porque en ese
+ * momento pasa a apuntar a un snapshot histórico.</p>
  */
 @Service
 public class RequerimientoGralProteccionService {
@@ -29,14 +30,17 @@ public class RequerimientoGralProteccionService {
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final PostulacionGralRepository postulacionGralRepository;
     private final InvitacionGralRepository invitacionGralRepository;
+    private final ReemplazoRepository reemplazoRepository;
 
     public RequerimientoGralProteccionService(
             MiembroProyectoRepository miembroProyectoRepository,
             PostulacionGralRepository postulacionGralRepository,
-            InvitacionGralRepository invitacionGralRepository) {
+            InvitacionGralRepository invitacionGralRepository,
+            ReemplazoRepository reemplazoRepository) {
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.postulacionGralRepository = postulacionGralRepository;
         this.invitacionGralRepository = invitacionGralRepository;
+        this.reemplazoRepository = reemplazoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +59,9 @@ public class RequerimientoGralProteccionService {
                                 idRequerimiento, EstadoSolicitud.PENDIENTE)
                 || invitacionGralRepository
                         .existsByRequerimientoGral_IdRequerimientoGralAndEstado(
-                                idRequerimiento, EstadoSolicitud.PENDIENTE);
+                                idRequerimiento, EstadoSolicitud.PENDIENTE)
+                || reemplazoRepository
+                        .existsByRequerimientoGral_IdRequerimientoGral(idRequerimiento);
     }
 
     /**
@@ -90,10 +96,14 @@ public class RequerimientoGralProteccionService {
         conPendientes.addAll(invitacionGralRepository
                 .findIdsRequerimientoGralPorEstado(ids, EstadoSolicitud.PENDIENTE));
 
+        Set<Long> conReemplazos = new HashSet<>(
+                reemplazoRepository.findIdsRequerimientoGralConReemplazos(ids));
+
         Map<Long, Boolean> resultado = new HashMap<>();
         for (Long id : ids) {
             resultado.put(id, conMiembrosActivos.contains(id)
-                    || conPendientes.contains(id));
+                    || conPendientes.contains(id)
+                    || conReemplazos.contains(id));
         }
         return resultado;
     }

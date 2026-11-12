@@ -252,10 +252,18 @@ public class GenerarReemplazosService {
                 : catalogoRequisitoService.cargarGeneral(
                         reemplazo.getRequerimientoGral().getIdRequerimientoGral());
 
+        Set<Long> perfilesExistentes = new HashSet<>(
+                reemplazoCandidatoRepository.findIdsPerfilByReemplazo(
+                        reemplazo.getIdReemplazo()));
+
         List<CandidatoEvaluado> evaluados = candidatoMatchingService.buscar(
                 reemplazo,
                 requisito,
-                limiteCandidatos);
+                limiteCandidatos)
+                .stream()
+                .filter(evaluado -> !perfilesExistentes.contains(
+                        evaluado.perfil().idPerfil()))
+                .toList();
 
         if (evaluados.isEmpty()) {
             reemplazo.setEstado(EstadoReemplazo.SIN_CANDIDATOS);
@@ -268,7 +276,8 @@ public class GenerarReemplazosService {
         }
 
         List<ReemplazoCandidato> candidatos = new ArrayList<>();
-        int orden = 1;
+        int orden = reemplazoCandidatoRepository
+                .findMaxOrdenRankingByReemplazo(reemplazo.getIdReemplazo()) + 1;
         for (CandidatoEvaluado evaluado : evaluados) {
             candidatos.add(ReemplazoCandidato.builder()
                     .reemplazo(reemplazo)

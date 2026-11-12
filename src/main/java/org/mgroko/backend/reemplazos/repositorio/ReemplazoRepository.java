@@ -53,4 +53,43 @@ public interface ReemplazoRepository extends JpaRepository<Reemplazo, Long> {
     List<Reemplazo> findActivosPorActividad(
             @Param("idActividad") Long idActividad,
             @Param("estadosFinales") Collection<EstadoReemplazo> estadosFinales);
+
+    @Query("""
+            SELECT r FROM Reemplazo r
+            WHERE r.tipo = org.mgroko.backend.reemplazos.enums.TipoReemplazo.ACTIVIDAD
+              AND r.requerimientoActividad.idRequerimiento = :idRequerimiento
+              AND r.estado NOT IN :estadosFinales
+            ORDER BY r.idReemplazo ASC
+            """)
+    List<Reemplazo> findActivosPorRequerimientoActividad(
+            @Param("idRequerimiento") Long idRequerimiento,
+            @Param("estadosFinales") Collection<EstadoReemplazo> estadosFinales);
+
+    @Query("""
+            SELECT r FROM Reemplazo r
+            WHERE r.tipo = org.mgroko.backend.reemplazos.enums.TipoReemplazo.GENERAL
+              AND r.requerimientoGral.idRequerimientoGral = :idRequerimientoGral
+              AND r.estado NOT IN :estadosFinales
+            ORDER BY r.idReemplazo ASC
+            """)
+    List<Reemplazo> findActivosPorRequerimientoGral(
+            @Param("idRequerimientoGral") Long idRequerimientoGral,
+            @Param("estadosFinales") Collection<EstadoReemplazo> estadosFinales);
+
+    boolean existsByRequerimientoActividad_IdRequerimiento(
+            Long idRequerimiento);
+
+    boolean existsByRequerimientoGral_IdRequerimientoGral(
+            Long idRequerimientoGral);
+
+    boolean existsByActividad_IdActividad(
+            Long idActividad);
+
+    @Query("""
+            SELECT DISTINCT r.requerimientoGral.idRequerimientoGral
+            FROM Reemplazo r
+            WHERE r.requerimientoGral.idRequerimientoGral IN :idsRequerimientos
+            """)
+    List<Long> findIdsRequerimientoGralConReemplazos(
+            @Param("idsRequerimientos") Collection<Long> idsRequerimientos);
 }

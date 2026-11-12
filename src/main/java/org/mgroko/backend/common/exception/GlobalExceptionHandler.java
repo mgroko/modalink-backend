@@ -1372,6 +1372,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadConReemplazosException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadConReemplazos(
+            org.mgroko.backend.actividades.exception.ActividadConReemplazosException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoProyectoNoPermiteEliminarActividades(
             org.mgroko.backend.actividades.exception.EstadoProyectoNoPermiteEliminarActividadesException ex) {

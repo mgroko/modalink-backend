@@ -28,6 +28,7 @@ import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoActividadModificadoEvent;
 import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
@@ -218,6 +219,12 @@ public class AsignarActividadService {
                         .actividad(actividad)
                         .requerimientoActividad(requerimiento)
                         .build());
+
+        if (requerimiento != null) {
+            eventPublisher.publishEvent(
+                    new CupoRequerimientoActividadModificadoEvent(
+                            requerimiento.getIdRequerimiento()));
+        }
 
         if (proyecto.getEstado() != null
                 && proyecto.getEstado().permiteReprogramacion()) {

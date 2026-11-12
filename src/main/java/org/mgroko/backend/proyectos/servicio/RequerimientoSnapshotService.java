@@ -187,9 +187,10 @@ public class RequerimientoSnapshotService {
                 .findFirstByIdRequerimientoOrigenOrderByFechaArchivadoDesc(
                         activo.getIdRequerimientoGral())
                 .filter(candidato -> mismosDatos(activo, candidato))
-                .filter(candidato -> !postulacionGralRepository
-                        .existsByRequerimientoGral_IdRequerimientoGralAndPerfil_IdPerfil(
-                                candidato.getIdRequerimientoGral(), idPerfil))
+                .filter(candidato -> idPerfil == null
+                        || !postulacionGralRepository
+                                .existsByRequerimientoGral_IdRequerimientoGralAndPerfil_IdPerfil(
+                                        candidato.getIdRequerimientoGral(), idPerfil))
                 .orElse(null);
 
         if (reutilizable != null) {
@@ -255,9 +256,10 @@ public class RequerimientoSnapshotService {
                 .findFirstByIdRequerimientoOrigenOrderByFechaArchivadoDesc(
                         activo.getIdRequerimiento())
                 .filter(candidato -> mismosDatos(activo, candidato))
-                .filter(candidato -> !postulacionActividadRepository
-                        .existsByRequerimiento_IdRequerimientoAndPerfil_IdPerfil(
-                                candidato.getIdRequerimiento(), idPerfil))
+                .filter(candidato -> idPerfil == null
+                        || !postulacionActividadRepository
+                                .existsByRequerimiento_IdRequerimientoAndPerfil_IdPerfil(
+                                        candidato.getIdRequerimiento(), idPerfil))
                 .orElse(null);
 
         if (reutilizable != null) {
@@ -312,6 +314,47 @@ public class RequerimientoSnapshotService {
         }
 
         return snapshot;
+    }
+
+    /**
+     * Devuelve un snapshot archivado del requerimiento general para vincular
+     * procesos de reemplazo ya cerrados.
+     *
+     * <p>Al cerrar un reemplazo, su requerimiento activo deja de estar
+     * referenciado por el historial del módulo. Así el requerimiento activo
+     * puede modificarse o eliminarse sin romper las FKs ni perder
+     * trazabilidad.</p>
+     */
+    @Transactional
+    public RequerimientoGralProyecto snapshotParaReemplazo(
+            RequerimientoGralProyecto activo,
+            LocalDateTime fecha) {
+
+        if (activo == null || activo.getIdRequerimientoGral() == null) {
+            return activo;
+        }
+        if (activo.getFechaArchivado() != null) {
+            return activo;
+        }
+        return snapshotGeneral(activo, null, fecha);
+    }
+
+    /**
+     * Devuelve un snapshot archivado del requerimiento de actividad para
+     * vincular procesos de reemplazo ya cerrados.
+     */
+    @Transactional
+    public RequerimientoActividad snapshotParaReemplazo(
+            RequerimientoActividad activo,
+            LocalDateTime fecha) {
+
+        if (activo == null || activo.getIdRequerimiento() == null) {
+            return activo;
+        }
+        if (activo.getFechaArchivado() != null) {
+            return activo;
+        }
+        return snapshotActividad(activo, null, fecha);
     }
 
     /**

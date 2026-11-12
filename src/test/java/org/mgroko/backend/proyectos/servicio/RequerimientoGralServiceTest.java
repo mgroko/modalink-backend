@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,6 +57,9 @@ class RequerimientoGralServiceTest {
 
     @Mock
     private RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private RequerimientoGralService requerimientoGralService;

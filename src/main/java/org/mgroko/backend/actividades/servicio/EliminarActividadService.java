@@ -16,6 +16,7 @@ import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent.InvitacionA
 import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent.PostulacionAfectada;
 import org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException;
 import org.mgroko.backend.actividades.exception.ActividadNoEliminableException;
+import org.mgroko.backend.actividades.exception.ActividadConReemplazosException;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
 import org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException;
 import org.mgroko.backend.actividades.exception.EliminacionIntegranteNoPermitidaException;
@@ -79,6 +80,7 @@ public class EliminarActividadService {
     private final EliminarIntegranteService eliminarIntegranteService;
     private final CronogramaService cronogramaService;
     private final ReprogramarProyectoService reprogramarProyectoService;
+    private final org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository reemplazoRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public EliminarActividadService(
@@ -96,6 +98,7 @@ public class EliminarActividadService {
             EliminarIntegranteService eliminarIntegranteService,
             CronogramaService cronogramaService,
             ReprogramarProyectoService reprogramarProyectoService,
+            org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository reemplazoRepository,
             ApplicationEventPublisher eventPublisher) {
         this.actividadRepository = actividadRepository;
         this.proyectoRepository = proyectoRepository;
@@ -111,6 +114,7 @@ public class EliminarActividadService {
         this.eliminarIntegranteService = eliminarIntegranteService;
         this.cronogramaService = cronogramaService;
         this.reprogramarProyectoService = reprogramarProyectoService;
+        this.reemplazoRepository = reemplazoRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -152,6 +156,10 @@ public class EliminarActividadService {
         validarEstadoActividad(proyecto, actividad);
         String motivoNormalizado = normalizarMotivo(
                 request != null ? request.motivo() : null);
+
+        if (reemplazoRepository.existsByActividad_IdActividad(idActividad)) {
+            throw new ActividadConReemplazosException(idActividad);
+        }
 
         List<MiembroExclusivoResponse> exclusivos =
                 miembrosActividadService.listarExclusivos(

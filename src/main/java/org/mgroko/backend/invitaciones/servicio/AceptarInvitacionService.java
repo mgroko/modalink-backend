@@ -39,6 +39,8 @@ import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoExcep
 import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoActividadModificadoEvent;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoGralModificadoEvent;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
@@ -154,6 +156,11 @@ public class AceptarInvitacionService {
 
         MiembroProyecto miembro = crearMiembro(
                 proyecto, perfil, requerimiento, invitacion.getIdTycAceptado());
+
+        if (requerimiento != null) {
+            eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
+                    requerimiento.getIdRequerimientoGral()));
+        }
 
         invitacion.setEstado(EstadoSolicitud.ACEPTADA);
         invitacionGralRepository.saveAndFlush(invitacion);
@@ -295,6 +302,11 @@ public class AceptarInvitacionService {
         } catch (DataIntegrityViolationException ex) {
             throw new InvitacionNoPermitidaException(
                     "El perfil ya está asignado a esta actividad.");
+        }
+
+        if (requerimiento != null) {
+            eventPublisher.publishEvent(new CupoRequerimientoActividadModificadoEvent(
+                    requerimiento.getIdRequerimiento()));
         }
 
         invitacion.setEstado(EstadoSolicitud.ACEPTADA);
