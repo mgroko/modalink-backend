@@ -24,6 +24,7 @@ Proyecto final de la carrera **Analista en Sistemas de Computación**, desarroll
 | Hashing de contraseñas | BCrypt |
 | Imágenes | Thumbnailator, TwelveMonkeys (JPEG/WebP) y WebP ImageIO |
 | Exportación PDF | OpenPDF |
+| Email | Spring Boot Mail (SMTP) + Mailpit en desarrollo |
 | Testing | JUnit Jupiter, Mockito, MockMvc, Spring Security Test, Testcontainers (PostgreSQL 17), JaCoCo |
 | Build | Maven 3.9+ |
 | Frontend relacionado | [modalink-frontend](https://github.com/mgroko/modalink-frontend) (Vue 3 + Vite) |
@@ -104,6 +105,10 @@ Variables de entorno principales:
 | `ADMIN_EMAIL` | Correo del administrador inicial | `admin@modalink.com` |
 | `ADMIN_PASSWORD` | Contraseña del administrador inicial | `admin123` |
 | `ADMIN_DNI` | DNI del administrador inicial | `00000000` |
+| `NOTIFICACIONES_EMAIL_HABILITADO` | Activa el scheduler de emails | `false` |
+| `NOTIFICACIONES_EMAIL_REMITENTE` | Remitente de los emails | `no-responder@modalink.local` |
+| `MAIL_HOST` | Host SMTP (Mailpit en desarrollo) | `localhost` |
+| `MAIL_PORT` | Puerto SMTP (Mailpit en desarrollo) | `1025` |
 | `DB_API_USER` | Usuario restringido para auditoría en producción | Comentado |
 | `DB_API_PASSWORD` | Password del usuario restringido | Comentado |
 
@@ -150,6 +155,49 @@ mvn spring-boot:run
 ```
 
 La API queda disponible en `http://localhost:8080`.
+
+### 3. Mailpit (solo desarrollo/testing)
+
+Las notificaciones de prioridad ALTA se envían por email. En desarrollo se
+capturan con [Mailpit](https://mailpit.axllent.org/), que no entrega correos
+reales: los muestra en una UI web.
+
+```bash
+docker compose --profile mail up -d
+```
+
+- SMTP: `localhost:1025`
+- UI: `http://localhost:8025`
+
+Luego levantar el backend con el scheduler habilitado:
+
+```bash
+NOTIFICACIONES_EMAIL_HABILITADO=true mvn spring-boot:run
+```
+
+En PowerShell:
+
+```powershell
+$env:NOTIFICACIONES_EMAIL_HABILITADO="true"; mvn spring-boot:run
+```
+
+Variables opcionales:
+
+```properties
+MAIL_HOST=localhost
+MAIL_PORT=1025
+NOTIFICACIONES_EMAIL_REMITENTE=no-responder@modalink.local
+```
+
+El scheduler está deshabilitado por defecto. La política actual envía solo
+notificaciones de prioridad `ALTA`; los tipos `MEDIA` y `BAJA` quedan solo
+in-app. Las entregas se persisten en `notificacion_entrega` y los reintentos se
+configuran con `NOTIFICACION_EMAIL_REINTENTOS_MAX` y
+`NOTIFICACION_EMAIL_BACKOFF_MINUTOS` en `configuracion_sistema`.
+
+Cada email incluye un token de un solo uso (60 minutos) que auto-inicia sesión
+al abrir el enlace. El token viaja en el fragmento de la URL del frontend y se
+intercambia en `POST /auth/email/validar`.
 
 Verificación rápida:
 

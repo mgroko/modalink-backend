@@ -22,6 +22,17 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     Optional<Notificacion> findByIdNotificacionAndUsuarioDestino_IdUsuario(
             Long idNotificacion, Long idUsuario);
 
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM notificacion_tipo nt
+                WHERE nt.codigo = :tipo
+                  AND nt.activo = true
+                  AND nt.prioridad = 'ALTA'
+            )
+            """, nativeQuery = true)
+    boolean esTipoEmailPrioridadAlta(@Param("tipo") String tipo);
+
     long countByUsuarioDestino_IdUsuario(Long idUsuario);
 
     long countByUsuarioDestino_IdUsuarioAndLeidaFalse(Long idUsuario);

@@ -46,6 +46,18 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS = "IMAGEN_LIMPIEZA_INTERVALO_HORAS";
     public static final String CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS = "IMAGEN_LIMPIEZA_GRACIA_MINUTOS";
     public static final String CLAVE_PERFIL_TYC_PLANTILLA = "PERFIL_TYC_PLANTILLA";
+    public static final String CLAVE_NOTIFICACION_EMAIL_REINTENTOS_MAX =
+            "NOTIFICACION_EMAIL_REINTENTOS_MAX";
+    public static final String CLAVE_NOTIFICACION_EMAIL_BACKOFF_MINUTOS =
+            "NOTIFICACION_EMAIL_BACKOFF_MINUTOS";
+    public static final String CLAVE_NOTIFICACION_EMAIL_LOTE =
+            "NOTIFICACION_EMAIL_LOTE";
+    public static final String CLAVE_NOTIFICACION_EMAIL_INTERVALO_SEGUNDOS =
+            "NOTIFICACION_EMAIL_INTERVALO_SEGUNDOS";
+    public static final String CLAVE_NOTIFICACION_EMAIL_TOKEN_TTL_MINUTOS =
+            "NOTIFICACION_EMAIL_TOKEN_TTL_MINUTOS";
+    public static final String CLAVE_NOTIFICACION_EMAIL_TOKEN_LIMPIEZA_DIAS =
+            "NOTIFICACION_EMAIL_TOKEN_LIMPIEZA_DIAS";
 
     public static final int PERFIL_TYC_MAX_CARACTERES = 5000;
 
@@ -84,6 +96,12 @@ Mis condiciones de trabajo
     private static final int DEFAULT_AUDITORIA_EXPORT_MAX_REGISTROS = 10_000;
     private static final int DEFAULT_AUDITORIA_PAGINA_MAX = 100;
     private static final int DEFAULT_AUDITORIA_PDF_MAX_CAMBIOS = 5;
+    private static final int DEFAULT_NOTIFICACION_EMAIL_REINTENTOS_MAX = 5;
+    private static final int DEFAULT_NOTIFICACION_EMAIL_BACKOFF_MINUTOS = 15;
+    private static final int DEFAULT_NOTIFICACION_EMAIL_LOTE = 50;
+    private static final int DEFAULT_NOTIFICACION_EMAIL_INTERVALO_SEGUNDOS = 30;
+    private static final int DEFAULT_NOTIFICACION_EMAIL_TOKEN_TTL_MINUTOS = 60;
+    private static final int DEFAULT_NOTIFICACION_EMAIL_TOKEN_LIMPIEZA_DIAS = 7;
 
     private final ConfiguracionSistemaRepository configuracionSistemaRepository;
     private final ExpirarDeshabilitacionService expirarDeshabilitacionService;
@@ -413,6 +431,54 @@ Mis condiciones de trabajo
                         : String.format("Se dieron de baja %d cuenta(s) y %d perfil(es).",
                                 cuentasExpiradas, perfilesExpirados)
         );
+    }
+
+    @Transactional(readOnly = true)
+    public int obtenerReintentosMaximosEmail() {
+        int valor = obtenerValorEntero(
+                CLAVE_NOTIFICACION_EMAIL_REINTENTOS_MAX,
+                DEFAULT_NOTIFICACION_EMAIL_REINTENTOS_MAX);
+        return valor > 0 ? valor : DEFAULT_NOTIFICACION_EMAIL_REINTENTOS_MAX;
+    }
+
+    @Transactional(readOnly = true)
+    public int obtenerBackoffMinutosEmail() {
+        int valor = obtenerValorEntero(
+                CLAVE_NOTIFICACION_EMAIL_BACKOFF_MINUTOS,
+                DEFAULT_NOTIFICACION_EMAIL_BACKOFF_MINUTOS);
+        return valor > 0 ? valor : DEFAULT_NOTIFICACION_EMAIL_BACKOFF_MINUTOS;
+    }
+
+    @Transactional(readOnly = true)
+    public int obtenerLoteEmail() {
+        int valor = obtenerValorEntero(
+                CLAVE_NOTIFICACION_EMAIL_LOTE,
+                DEFAULT_NOTIFICACION_EMAIL_LOTE);
+        return valor > 0 ? valor : DEFAULT_NOTIFICACION_EMAIL_LOTE;
+    }
+
+    @Transactional(readOnly = true)
+    public int obtenerIntervaloEmailSegundos() {
+        int valor = obtenerValorEntero(
+                CLAVE_NOTIFICACION_EMAIL_INTERVALO_SEGUNDOS,
+                DEFAULT_NOTIFICACION_EMAIL_INTERVALO_SEGUNDOS);
+        return valor > 0 ? valor : DEFAULT_NOTIFICACION_EMAIL_INTERVALO_SEGUNDOS;
+    }
+
+    @Transactional(readOnly = true)
+    public int obtenerTtlTokenEmailMinutos() {
+        int valor = obtenerValorEntero(
+                CLAVE_NOTIFICACION_EMAIL_TOKEN_TTL_MINUTOS,
+                DEFAULT_NOTIFICACION_EMAIL_TOKEN_TTL_MINUTOS);
+        return valor > 0 ? valor : DEFAULT_NOTIFICACION_EMAIL_TOKEN_TTL_MINUTOS;
+    }
+
+    @Transactional(readOnly = true)
+    public int obtenerDiasLimpiezaTokenEmail() {
+        int valor = obtenerValorEntero(
+                CLAVE_NOTIFICACION_EMAIL_TOKEN_LIMPIEZA_DIAS,
+                DEFAULT_NOTIFICACION_EMAIL_TOKEN_LIMPIEZA_DIAS);
+        return valor > 0 ? valor : DEFAULT_NOTIFICACION_EMAIL_TOKEN_LIMPIEZA_DIAS;
     }
 
     private int obtenerValorEntero(String clave, int valorDefecto) {
