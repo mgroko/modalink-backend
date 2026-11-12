@@ -46,6 +46,13 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
                 p.perfil.idPerfil = :idPerfil
                 OR (
                   EXISTS (SELECT c FROM p.colaboradores c WHERE c.idPerfil = :idPerfil)
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM ColaboradorPublicacionOrigen o
+                    WHERE o.idPublicacion = p.idPublicacion
+                      AND o.idPerfil = :idPerfil
+                      AND o.origen = org.mgroko.backend.modelo.enums.OrigenColaboracion.AUTOMATICA
+                  )
                   AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
                   AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
                 )
@@ -70,6 +77,13 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
                 p.perfil.idPerfil = :idPerfil
                 OR (
                   EXISTS (SELECT c FROM p.colaboradores c WHERE c.idPerfil = :idPerfil)
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM ColaboradorPublicacionOrigen o
+                    WHERE o.idPublicacion = p.idPublicacion
+                      AND o.idPerfil = :idPerfil
+                      AND o.origen = org.mgroko.backend.modelo.enums.OrigenColaboracion.AUTOMATICA
+                  )
                   AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
                   AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
                 )

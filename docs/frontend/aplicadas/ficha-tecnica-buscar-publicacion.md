@@ -129,6 +129,12 @@ Se mantiene `PaginaResponse<PublicacionResponse>`.
 
 - Solo devuelve publicaciones `ACTIVA`.
 - Aplica las reglas de visibilidad del perfil de UC-14.
+- En el portfolio, si el perfil consultado aparece como colaborador
+  `AUTOMATICA` de otra publicación, esa publicación no se incluye. Solo se
+  incluyen colaboraciones `MANUAL` o `AMBOS`.
+- Cada colaborador de la respuesta incluye `origen`
+  (`MANUAL`, `AUTOMATICA` o `AMBOS`). El autor de la publicación tiene
+  `origen: null`.
 - Orden: `fechaPublicacion` descendente y luego `idPublicacion` descendente.
 - Si el viewer no puede ver el proyecto, `proyecto` se devuelve `null`.
 - Si no hay resultados, devuelve `200` con `contenido: []`.

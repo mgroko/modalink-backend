@@ -50,5 +50,6 @@ public class ColaboradorPublicacionOrigen {
     private Long idColaboracionAutomatica;
 
     @Column(name = "fecha_alta", nullable = false)
-    private LocalDateTime fechaAlta;
+    @Builder.Default
+    private LocalDateTime fechaAlta = LocalDateTime.now();
 }

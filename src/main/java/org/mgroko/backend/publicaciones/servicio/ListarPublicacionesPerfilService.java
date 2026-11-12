@@ -5,6 +5,7 @@ import java.util.Map;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.perfiles.servicio.VerPerfilService;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
@@ -30,16 +31,19 @@ public class ListarPublicacionesPerfilService {
     private final PublicacionRepository publicacionRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final PublicacionInteraccionResumenService interaccionResumenService;
+    private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
 
     public ListarPublicacionesPerfilService(
             VerPerfilService verPerfilService,
             PublicacionRepository publicacionRepository,
             ProyectoVisibilidadService proyectoVisibilidadService,
-            PublicacionInteraccionResumenService interaccionResumenService) {
+            PublicacionInteraccionResumenService interaccionResumenService,
+            ColaboradorPublicacionOrigenService colaboradorOrigenService) {
         this.verPerfilService = verPerfilService;
         this.publicacionRepository = publicacionRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.interaccionResumenService = interaccionResumenService;
+        this.colaboradorOrigenService = colaboradorOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -98,6 +102,12 @@ public class ListarPublicacionesPerfilService {
                                 .toList(),
                         idPerfilActivo);
 
+        Map<Long, Map<Long, OrigenColaboracion>> origenes =
+                colaboradorOrigenService.obtenerOrigenes(
+                        publicaciones.getContent().stream()
+                                .map(Publicacion::getIdPublicacion)
+                                .toList());
+
         Page<PublicacionResponse> respuesta = publicaciones.map(publicacion -> {
             boolean puedeVerProyecto = publicacion.getProyecto() != null
                     && proyectoVisibilidadService.puedeVer(publicacion.getProyecto(), idPerfilActivo);
@@ -106,7 +116,8 @@ public class ListarPublicacionesPerfilService {
                     puedeVerProyecto,
                     resumenes.getOrDefault(
                             publicacion.getIdPublicacion(),
-                            ResumenInteraccionPublicacion.vacio()));
+                            ResumenInteraccionPublicacion.vacio()),
+                    origenes.getOrDefault(publicacion.getIdPublicacion(), Map.of()));
         });
 
         return PaginaResponse.fromPage(respuesta);

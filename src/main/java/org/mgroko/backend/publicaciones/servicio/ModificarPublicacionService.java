@@ -13,6 +13,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
@@ -54,6 +55,7 @@ public class ModificarPublicacionService {
     private final PublicacionInteraccionResumenService interaccionResumenService;
     private final DetectarColaboracionAutomaticaService detectorColaboracionService;
     private final ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
+    private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
 
     public ModificarPublicacionService(
             PublicacionRepository publicacionRepository,
@@ -65,7 +67,8 @@ public class ModificarPublicacionService {
             EntityManager entityManager,
             PublicacionInteraccionResumenService interaccionResumenService,
             DetectarColaboracionAutomaticaService detectorColaboracionService,
-            ColaboracionAutomaticaLifecycleService colaboracionLifecycleService) {
+            ColaboracionAutomaticaLifecycleService colaboracionLifecycleService,
+            ColaboradorPublicacionOrigenService colaboradorOrigenService) {
         this.publicacionRepository = publicacionRepository;
         this.imagenRepository = imagenRepository;
         this.publicacionDatosService = publicacionDatosService;
@@ -76,6 +79,7 @@ public class ModificarPublicacionService {
         this.interaccionResumenService = interaccionResumenService;
         this.detectorColaboracionService = detectorColaboracionService;
         this.colaboracionLifecycleService = colaboracionLifecycleService;
+        this.colaboradorOrigenService = colaboradorOrigenService;
     }
 
     @Transactional
@@ -121,7 +125,12 @@ public class ModificarPublicacionService {
         ResumenInteraccionPublicacion resumen =
                 interaccionResumenService.resumirUna(idPublicacion, perfil.getIdPerfil());
 
-        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto, resumen);
+        Map<Long, OrigenColaboracion> origenes = colaboradorOrigenService
+                .obtenerOrigenes(List.of(publicacion.getIdPublicacion()))
+                .getOrDefault(publicacion.getIdPublicacion(), Map.of());
+
+        return PublicacionMapper.toResponsePropia(
+                publicacion, puedeVerProyecto, resumen, origenes);
     }
 
     private void actualizarProyecto(Publicacion publicacion, Long idProyecto, Perfil perfil) {

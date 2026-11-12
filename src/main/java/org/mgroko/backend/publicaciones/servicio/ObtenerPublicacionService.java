@@ -1,8 +1,11 @@
 package org.mgroko.backend.publicaciones.servicio;
 
+import java.util.Map;
+
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
@@ -23,16 +26,19 @@ public class ObtenerPublicacionService {
     private final PublicacionDatosService publicacionDatosService;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final PublicacionInteraccionResumenService interaccionResumenService;
+    private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
 
     public ObtenerPublicacionService(
             PublicacionRepository publicacionRepository,
             PublicacionDatosService publicacionDatosService,
             ProyectoVisibilidadService proyectoVisibilidadService,
-            PublicacionInteraccionResumenService interaccionResumenService) {
+            PublicacionInteraccionResumenService interaccionResumenService,
+            ColaboradorPublicacionOrigenService colaboradorOrigenService) {
         this.publicacionRepository = publicacionRepository;
         this.publicacionDatosService = publicacionDatosService;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.interaccionResumenService = interaccionResumenService;
+        this.colaboradorOrigenService = colaboradorOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -54,6 +60,11 @@ public class ObtenerPublicacionService {
         ResumenInteraccionPublicacion resumen =
                 interaccionResumenService.resumirUna(idPublicacion, perfil.getIdPerfil());
 
-        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto, resumen);
+        Map<Long, OrigenColaboracion> origenes = colaboradorOrigenService
+                .obtenerOrigenes(java.util.List.of(idPublicacion))
+                .getOrDefault(idPublicacion, Map.of());
+
+        return PublicacionMapper.toResponsePropia(
+                publicacion, puedeVerProyecto, resumen, origenes);
     }
 }

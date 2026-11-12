@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.modelo.ColaboradorPublicacionOrigen;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
@@ -21,15 +22,20 @@ import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.publicaciones.dto.BuscarSolicitudesColaboracionFiltro;
 import org.mgroko.backend.publicaciones.dto.DireccionSolicitudColaboracion;
 import org.mgroko.backend.publicaciones.dto.PublicacionSolicitudColaboracionResponse;
 import org.mgroko.backend.publicaciones.dto.SolicitudColaboracionBusquedaResponse;
+import org.mgroko.backend.publicaciones.especificacion.PublicacionSpecifications;
 import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
 import org.mgroko.backend.publicaciones.servicio.BuscarSolicitudColaboracionService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesSolicitudColaboracionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
@@ -60,6 +66,9 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
 
     @Autowired
     private PublicacionRepository publicacionRepository;
+
+    @Autowired
+    private ColaboradorPublicacionOrigenRepository colaboradorOrigenRepository;
 
     private Escenario escenario;
     private Long pubAId;
@@ -229,6 +238,76 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
                 .extracting(fila -> fila.getIdPublicacion())
                 .containsExactly(pubBId);
         assertThat(perceptuales.get(0).getDistancia()).isZero();
+    }
+
+    @Test
+    void portfolio_excluyeColaboracionAutomaticaEIncluyeManualYAmbos() {
+        Publicacion pubA = em.find(Publicacion.class, pubAId);
+        Publicacion pubB = em.find(Publicacion.class, pubBId);
+        Perfil perfilA = em.find(Perfil.class, escenario.idPerfilA());
+        Perfil perfilB = em.find(Perfil.class, escenario.idPerfilB());
+        pubB.getColaboradores().add(perfilA);
+        pubA.getColaboradores().add(perfilB);
+        em.flush();
+
+        ColaboradorPublicacionOrigen origen = colaboradorOrigenRepository
+                .saveAndFlush(ColaboradorPublicacionOrigen.builder()
+                        .idPublicacion(pubBId)
+                        .idPerfil(escenario.idPerfilA())
+                        .origen(OrigenColaboracion.AUTOMATICA)
+                        .build());
+        colaboradorOrigenRepository.saveAndFlush(ColaboradorPublicacionOrigen.builder()
+                .idPublicacion(pubAId)
+                .idPerfil(escenario.idPerfilB())
+                .origen(OrigenColaboracion.AUTOMATICA)
+                .build());
+
+        Pageable pageable = PageRequest.of(
+                0, 20, Sort.by(Sort.Order.desc("fechaPublicacion")));
+
+        List<Long> automaticas = publicacionRepository
+                .findByPerfilIdPerfilAndEstadoOrderByFechaPublicacionDesc(
+                        escenario.idPerfilA(), EstadoPublicacion.ACTIVA, pageable)
+                .getContent().stream()
+                .map(Publicacion::getIdPublicacion)
+                .toList();
+        assertThat(automaticas).contains(pubAId).doesNotContain(pubBId);
+
+        List<Long> automaticasB = publicacionRepository
+                .findByPerfilIdPerfilAndEstadoOrderByFechaPublicacionDesc(
+                        escenario.idPerfilB(), EstadoPublicacion.ACTIVA, pageable)
+                .getContent().stream()
+                .map(Publicacion::getIdPublicacion)
+                .toList();
+        assertThat(automaticasB).contains(pubBId).doesNotContain(pubAId);
+
+        List<Long> automaticasUc22 = publicacionRepository.findAll(
+                PublicacionSpecifications.conFiltros(escenario.idPerfilA(), null),
+                pageable).getContent().stream()
+                .map(Publicacion::getIdPublicacion)
+                .toList();
+        assertThat(automaticasUc22).contains(pubAId).doesNotContain(pubBId);
+
+        origen.setOrigen(OrigenColaboracion.MANUAL);
+        colaboradorOrigenRepository.saveAndFlush(origen);
+
+        List<Long> manuales = publicacionRepository
+                .findByPerfilIdPerfilAndEstadoOrderByFechaPublicacionDesc(
+                        escenario.idPerfilA(), EstadoPublicacion.ACTIVA, pageable)
+                .getContent().stream()
+                .map(Publicacion::getIdPublicacion)
+                .toList();
+        assertThat(manuales).contains(pubAId, pubBId);
+
+        origen.setOrigen(OrigenColaboracion.AMBOS);
+        colaboradorOrigenRepository.saveAndFlush(origen);
+
+        List<Long> ambos = publicacionRepository.findAll(
+                PublicacionSpecifications.conFiltros(escenario.idPerfilA(), null),
+                pageable).getContent().stream()
+                .map(Publicacion::getIdPublicacion)
+                .toList();
+        assertThat(ambos).contains(pubAId, pubBId);
     }
 
     @Test

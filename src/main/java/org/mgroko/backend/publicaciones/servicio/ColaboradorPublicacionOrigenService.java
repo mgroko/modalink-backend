@@ -2,6 +2,9 @@ package org.mgroko.backend.publicaciones.servicio;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.mgroko.backend.modelo.ColaboradorPublicacionOrigen;
@@ -31,6 +34,25 @@ public class ColaboradorPublicacionOrigenService {
             Long idPublicacion,
             Long idPerfil) {
         return repository.findByIdPublicacionAndIdPerfil(idPublicacion, idPerfil);
+    }
+
+    /**
+     * Devuelve, por publicación, el origen de cada etiqueta de colaborador.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Map<Long, OrigenColaboracion>> obtenerOrigenes(
+            Collection<Long> idsPublicacion) {
+
+        if (idsPublicacion == null || idsPublicacion.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Map<Long, OrigenColaboracion>> resultado = new HashMap<>();
+        for (ColaboradorPublicacionOrigen origen : repository.findByIdPublicacionIn(idsPublicacion)) {
+            resultado.computeIfAbsent(origen.getIdPublicacion(), id -> new HashMap<>())
+                    .put(origen.getIdPerfil(), origen.getOrigen());
+        }
+        return resultado;
     }
 
     @Transactional

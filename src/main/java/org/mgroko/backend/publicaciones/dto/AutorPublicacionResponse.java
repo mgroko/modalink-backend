@@ -4,6 +4,18 @@ public record AutorPublicacionResponse(
         Long idPerfil,
         String nombreArtistico,
         String profesion,
-        String fotoUrl
+        String fotoUrl,
+        String origen
 ) {
+
+    /**
+     * Constructor de compatibilidad para autores y respuestas históricas.
+     */
+    public AutorPublicacionResponse(
+            Long idPerfil,
+            String nombreArtistico,
+            String profesion,
+            String fotoUrl) {
+        this(idPerfil, nombreArtistico, profesion, fotoUrl, null);
+    }
 }

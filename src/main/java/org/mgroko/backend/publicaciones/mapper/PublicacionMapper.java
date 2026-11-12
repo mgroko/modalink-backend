@@ -2,12 +2,14 @@ package org.mgroko.backend.publicaciones.mapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.publicaciones.dto.AutorPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ImagenPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionResponse;
@@ -26,7 +28,8 @@ public final class PublicacionMapper {
      * privados.
      */
     public static PublicacionResponse toResponse(Publicacion publicacion, boolean puedeVerProyecto) {
-        return toResponse(publicacion, puedeVerProyecto, ResumenInteraccionPublicacion.vacio());
+        return toResponse(
+                publicacion, puedeVerProyecto, ResumenInteraccionPublicacion.vacio(), Map.of());
     }
 
     /**
@@ -37,7 +40,15 @@ public final class PublicacionMapper {
             Publicacion publicacion,
             boolean puedeVerProyecto,
             ResumenInteraccionPublicacion resumen) {
-        return toResponse(publicacion, puedeVerProyecto, false, resumen);
+        return toResponse(publicacion, puedeVerProyecto, resumen, Map.of());
+    }
+
+    public static PublicacionResponse toResponse(
+            Publicacion publicacion,
+            boolean puedeVerProyecto,
+            ResumenInteraccionPublicacion resumen,
+            Map<Long, OrigenColaboracion> origenesColaboradores) {
+        return toResponse(publicacion, puedeVerProyecto, false, resumen, origenesColaboradores);
     }
 
     /**
@@ -47,21 +58,31 @@ public final class PublicacionMapper {
      */
     public static PublicacionResponse toResponsePropia(Publicacion publicacion, boolean puedeVerProyecto) {
         return toResponsePropia(
-                publicacion, puedeVerProyecto, ResumenInteraccionPublicacion.vacio());
+                publicacion, puedeVerProyecto, ResumenInteraccionPublicacion.vacio(), Map.of());
     }
 
     public static PublicacionResponse toResponsePropia(
             Publicacion publicacion,
             boolean puedeVerProyecto,
             ResumenInteraccionPublicacion resumen) {
-        return toResponse(publicacion, puedeVerProyecto, true, resumen);
+        return toResponsePropia(publicacion, puedeVerProyecto, resumen, Map.of());
+    }
+
+    public static PublicacionResponse toResponsePropia(
+            Publicacion publicacion,
+            boolean puedeVerProyecto,
+            ResumenInteraccionPublicacion resumen,
+            Map<Long, OrigenColaboracion> origenesColaboradores) {
+        return toResponse(
+                publicacion, puedeVerProyecto, true, resumen, origenesColaboradores);
     }
 
     private static PublicacionResponse toResponse(
             Publicacion publicacion,
             boolean puedeVerProyecto,
             boolean incluirProyectoNoVisible,
-            ResumenInteraccionPublicacion resumen) {
+            ResumenInteraccionPublicacion resumen,
+            Map<Long, OrigenColaboracion> origenesColaboradores) {
 
         ResumenInteraccionPublicacion interaccion = resumen != null
                 ? resumen
@@ -95,7 +116,11 @@ public final class PublicacionMapper {
             for (Perfil colaborador : publicacion.getColaboradores()) {
                 // Los perfiles en baja no se exponen, igual que en UC-14.
                 if (colaborador.getEstado() == EstadoPerfil.Activo) {
-                    colaboradores.add(toAutor(colaborador));
+                    colaboradores.add(toAutor(
+                            colaborador,
+                            origenesColaboradores != null
+                                    ? origenesColaboradores.get(colaborador.getIdPerfil())
+                                    : null));
                 }
             }
         }
@@ -119,10 +144,17 @@ public final class PublicacionMapper {
     }
 
     public static AutorPublicacionResponse toAutor(Perfil perfil) {
+        return toAutor(perfil, null);
+    }
+
+    public static AutorPublicacionResponse toAutor(
+            Perfil perfil,
+            OrigenColaboracion origen) {
         return new AutorPublicacionResponse(
                 perfil.getIdPerfil(),
                 perfil.getNombreArtistico(),
                 perfil.getProfesion().getNombre(),
-                perfil.getImagen() != null ? perfil.getImagen().getUrl() : null);
+                perfil.getImagen() != null ? perfil.getImagen().getUrl() : null,
+                origen != null ? origen.name() : null);
     }
 }

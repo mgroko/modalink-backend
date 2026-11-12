@@ -3,7 +3,9 @@ package org.mgroko.backend.publicaciones.servicio;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -49,6 +51,9 @@ class ObtenerPublicacionDetalleServiceTest {
     @Mock
     private PublicacionInteraccionResumenService interaccionResumenService;
 
+    @Mock
+    private ColaboradorPublicacionOrigenService colaboradorOrigenService;
+
     private ObtenerPublicacionDetalleService servicio;
     private Perfil autor;
     private Publicacion publicacion;
@@ -60,7 +65,11 @@ class ObtenerPublicacionDetalleServiceTest {
                 publicacionDatosService,
                 proyectoVisibilidadService,
                 verPerfilService,
-                interaccionResumenService);
+                interaccionResumenService,
+                colaboradorOrigenService);
+
+        lenient().when(colaboradorOrigenService.obtenerOrigenes(any()))
+                .thenReturn(java.util.Map.of());
 
         autor = Perfil.builder()
                 .idPerfil(7L)

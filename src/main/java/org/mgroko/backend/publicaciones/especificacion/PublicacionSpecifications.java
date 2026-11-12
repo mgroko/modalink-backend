@@ -5,10 +5,12 @@ import java.util.Collection;
 import java.util.List;
 
 import org.mgroko.backend.common.util.LikePatrones;
+import org.mgroko.backend.modelo.ColaboradorPublicacionOrigen;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -41,10 +43,20 @@ public final class PublicacionSpecifications {
                             root.get("idPublicacion")),
                     cb.equal(colaboradores.get("idPerfil"), idPerfil));
 
+            Subquery<Long> origenAutomatico = query.subquery(Long.class);
+            Root<ColaboradorPublicacionOrigen> origen =
+                    origenAutomatico.from(ColaboradorPublicacionOrigen.class);
+            origenAutomatico.select(origen.get("idPublicacion"));
+            origenAutomatico.where(
+                    cb.equal(origen.get("idPublicacion"), root.get("idPublicacion")),
+                    cb.equal(origen.get("idPerfil"), idPerfil),
+                    cb.equal(origen.get("origen"), OrigenColaboracion.AUTOMATICA));
+
             predicates.add(cb.or(
                     cb.equal(root.get("perfil").get("idPerfil"), idPerfil),
                     cb.and(
                             cb.exists(colaborador),
+                            cb.not(cb.exists(origenAutomatico)),
                             cb.equal(root.get("perfil").get("estado"), EstadoPerfil.ACTIVO),
                             cb.equal(
                                     root.get("perfil").get("usuario").get("estado"),

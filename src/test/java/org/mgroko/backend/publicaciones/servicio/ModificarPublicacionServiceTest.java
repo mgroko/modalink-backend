@@ -93,6 +93,9 @@ class ModificarPublicacionServiceTest {
     @Mock
     private ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
 
+    @Mock
+    private ColaboradorPublicacionOrigenService colaboradorOrigenService;
+
     private ModificarPublicacionService servicio;
     private Perfil perfil;
     private Publicacion publicacion;
@@ -117,7 +120,11 @@ class ModificarPublicacionServiceTest {
                 entityManager,
                 interaccionResumenService,
                 detectorColaboracionService,
-                colaboracionLifecycleService);
+                colaboracionLifecycleService,
+                colaboradorOrigenService);
+
+        when(colaboradorOrigenService.obtenerOrigenes(any()))
+                .thenReturn(java.util.Map.of());
 
         perfil = Perfil.builder()
                 .idPerfil(7L)

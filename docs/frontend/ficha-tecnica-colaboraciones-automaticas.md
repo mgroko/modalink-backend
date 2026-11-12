@@ -131,7 +131,20 @@ POST /colaboraciones-automaticas/{id}/rechazar
 - No agrega colaboradores.
 - Notifica a ambos.
 
-## 4. Ciclo de vida
+## 4. Portfolio
+
+Las etiquetas automáticas no hacen que la publicación del otro perfil aparezca
+en el portfolio propio. El filtro se aplica en el backend:
+
+- publicaciones propias: siempre se incluyen;
+- colaboraciones `MANUAL`: se incluyen;
+- colaboraciones `AMBOS`: se incluyen;
+- colaboraciones solo `AUTOMATICA`: se excluyen del portfolio.
+
+La etiqueta del colaborador sigue apareciendo dentro de la publicación del otro
+perfil, con su `origen`.
+
+## 5. Ciclo de vida
 
 | Situación | Resultado |
 |---|---|
