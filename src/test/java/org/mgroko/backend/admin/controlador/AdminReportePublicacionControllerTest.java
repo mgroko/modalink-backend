@@ -17,6 +17,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.dto.ActualizarEstadoReporteRequest;
+import org.mgroko.backend.admin.dto.AdminPublicacionResponse;
 import org.mgroko.backend.admin.dto.AdminReportePublicacionDetalleResponse;
 import org.mgroko.backend.admin.dto.AdminReportePublicacionResumenResponse;
 import org.mgroko.backend.admin.dto.BuscarReportesPublicacionFiltro;
@@ -179,22 +180,36 @@ class AdminReportePublicacionControllerTest {
                 EstadoReporte.PENDIENTE,
                 LocalDateTime.of(2026, 11, 11, 10, 0),
                 false,
-                new AdminReportePublicacionDetalleResponse.PublicacionResponse(
-                        30L,
-                        "Publicación de prueba",
-                        "Contenido",
-                        LocalDateTime.of(2026, 11, 10, 9, 0),
-                        EstadoPublicacion.ACTIVA,
-                        20L,
-                        "Perfil Dueño",
-                        2L,
-                        "Ana Gómez"),
+                publicacion(),
                 new AdminReportePublicacionDetalleResponse.AutorResponse(
                         1L, "Luna", "Pérez", "luna@example.com",
                         10L, "Luna Diseños"),
                 null,
                 null,
                 null);
+    }
+
+    private AdminPublicacionResponse publicacion() {
+        return new AdminPublicacionResponse(
+                30L,
+                "Publicación de prueba",
+                "Contenido",
+                LocalDateTime.of(2026, 11, 10, 9, 0),
+                EstadoPublicacion.ACTIVA,
+                20L,
+                "Perfil Dueño",
+                2L,
+                "Ana Gómez",
+                List.of(),
+                null,
+                null,
+                List.of(),
+                0,
+                0,
+                2L,
+                1L,
+                true,
+                false);
     }
 
     private AdminReportePublicacionDetalleResponse detalleResuelto() {
@@ -209,16 +224,7 @@ class AdminReportePublicacionControllerTest {
                 EstadoReporte.RESUELTO,
                 LocalDateTime.of(2026, 11, 11, 10, 0),
                 false,
-                new AdminReportePublicacionDetalleResponse.PublicacionResponse(
-                        30L,
-                        "Publicación de prueba",
-                        "Contenido",
-                        LocalDateTime.of(2026, 11, 10, 9, 0),
-                        EstadoPublicacion.ACTIVA,
-                        20L,
-                        "Perfil Dueño",
-                        2L,
-                        "Ana Gómez"),
+                publicacion(),
                 new AdminReportePublicacionDetalleResponse.AutorResponse(
                         1L, "Luna", "Pérez", "luna@example.com",
                         10L, "Luna Diseños"),

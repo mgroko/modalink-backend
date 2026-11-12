@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.Reporte;
 import org.mgroko.backend.modelo.enums.EntidadReporte;
+import org.mgroko.backend.modelo.enums.EstadoReporte;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -51,6 +52,13 @@ public interface ReporteRepository
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Reporte r WHERE r.idReporte = :idReporte")
     Optional<Reporte> findByIdParaActualizar(@Param("idReporte") Long idReporte);
+
+    long countByEntidadTipoAndEntidadId(EntidadReporte entidadTipo, Long entidadId);
+
+    long countByEntidadTipoAndEntidadIdAndEstado(
+            EntidadReporte entidadTipo,
+            Long entidadId,
+            EstadoReporte estado);
 
     @Override
     @EntityGraph(attributePaths = {

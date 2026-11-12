@@ -36,6 +36,8 @@ public final class NotificacionMapper {
             "PUBLICACION_MEGUSTA";
     private static final String TIPO_PUBLICACION_COMENTARIO =
             "PUBLICACION_COMENTARIO";
+    private static final String TIPO_PUBLICACION_REACTIVADA =
+            "PUBLICACION_REACTIVADA";
 
     private NotificacionMapper() {
     }
@@ -106,7 +108,8 @@ public final class NotificacionMapper {
                  TIPO_SOLICITUD_COLABORACION_ACEPTADA,
                  TIPO_SOLICITUD_COLABORACION_RECHAZADA,
                  TIPO_PUBLICACION_MEGUSTA,
-                 TIPO_PUBLICACION_COMENTARIO ->
+                 TIPO_PUBLICACION_COMENTARIO,
+                 TIPO_PUBLICACION_REACTIVADA ->
                     ENTIDAD_PUBLICACION.equals(notificacion.getEntidadTipo())
                             && notificacion.getEntidadId() != null
                             ? "/publicaciones/" + notificacion.getEntidadId()

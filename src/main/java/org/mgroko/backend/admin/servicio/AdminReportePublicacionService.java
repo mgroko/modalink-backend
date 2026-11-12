@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.mgroko.backend.admin.dto.ActualizarEstadoReporteRequest;
+import org.mgroko.backend.admin.dto.AdminPublicacionResponse;
 import org.mgroko.backend.admin.dto.AdminReportePublicacionDetalleResponse;
 import org.mgroko.backend.admin.dto.AdminReportePublicacionResumenResponse;
 import org.mgroko.backend.admin.dto.BuscarReportesPublicacionFiltro;
@@ -46,16 +47,19 @@ public class AdminReportePublicacionService {
     private final ReporteRepository reporteRepository;
     private final PublicacionRepository publicacionRepository;
     private final UsuarioRepository usuarioRepository;
+    private final AdminPublicacionService adminPublicacionService;
     private final Clock reloj;
 
     public AdminReportePublicacionService(
             ReporteRepository reporteRepository,
             PublicacionRepository publicacionRepository,
             UsuarioRepository usuarioRepository,
+            AdminPublicacionService adminPublicacionService,
             Clock reloj) {
         this.reporteRepository = reporteRepository;
         this.publicacionRepository = publicacionRepository;
         this.usuarioRepository = usuarioRepository;
+        this.adminPublicacionService = adminPublicacionService;
         this.reloj = reloj;
     }
 
@@ -203,35 +207,12 @@ public class AdminReportePublicacionService {
             Reporte reporte,
             Publicacion publicacion) {
 
-        Perfil perfilPublicacion = publicacion != null ? publicacion.getPerfil() : null;
-        Usuario usuarioPublicacion = perfilPublicacion != null
-                ? perfilPublicacion.getUsuario()
-                : null;
         Usuario autor = reporte.getUsuarioAutor();
         Perfil perfilAutor = reporte.getPerfilAutor();
         Usuario admin = reporte.getAdminRevisor();
 
-        AdminReportePublicacionDetalleResponse.PublicacionResponse publicacionResponse =
-                publicacion == null
-                        ? null
-                        : new AdminReportePublicacionDetalleResponse.PublicacionResponse(
-                                publicacion.getIdPublicacion(),
-                                publicacion.getTitulo(),
-                                publicacion.getDescripcion(),
-                                publicacion.getFechaPublicacion(),
-                                publicacion.getEstado(),
-                                perfilPublicacion != null
-                                        ? perfilPublicacion.getIdPerfil()
-                                        : null,
-                                perfilPublicacion != null
-                                        ? perfilPublicacion.getNombreArtistico()
-                                        : null,
-                                usuarioPublicacion != null
-                                        ? usuarioPublicacion.getIdUsuario()
-                                        : null,
-                                usuarioPublicacion != null
-                                        ? nombreCompleto(usuarioPublicacion)
-                                        : null);
+        AdminPublicacionResponse publicacionResponse =
+                adminPublicacionService.toResponse(publicacion);
 
         AdminReportePublicacionDetalleResponse.AutorResponse autorResponse =
                 autor == null

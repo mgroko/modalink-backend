@@ -8,11 +8,13 @@ import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.CrearPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
+import org.mgroko.backend.publicaciones.dto.PublicacionOcultadaResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.EliminarPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
+import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesOcultasService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ModificarPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionDetalleService;
@@ -45,6 +47,7 @@ public class PublicacionController {
     private final ListarPublicacionesPerfilService listarPublicacionesPerfilService;
     private final ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService;
     private final ListarFeedPublicacionesService listarFeedPublicacionesService;
+    private final ListarPublicacionesOcultasService listarPublicacionesOcultasService;
     private final ObtenerPublicacionService obtenerPublicacionService;
     private final ObtenerPublicacionDetalleService obtenerPublicacionDetalleService;
     private final ModificarPublicacionService modificarPublicacionService;
@@ -55,6 +58,7 @@ public class PublicacionController {
             ListarPublicacionesPerfilService listarPublicacionesPerfilService,
             ListarProyectosPublicacionesPerfilService listarProyectosPublicacionesPerfilService,
             ListarFeedPublicacionesService listarFeedPublicacionesService,
+            ListarPublicacionesOcultasService listarPublicacionesOcultasService,
             ObtenerPublicacionService obtenerPublicacionService,
             ObtenerPublicacionDetalleService obtenerPublicacionDetalleService,
             ModificarPublicacionService modificarPublicacionService,
@@ -63,6 +67,7 @@ public class PublicacionController {
         this.listarPublicacionesPerfilService = listarPublicacionesPerfilService;
         this.listarProyectosPublicacionesPerfilService = listarProyectosPublicacionesPerfilService;
         this.listarFeedPublicacionesService = listarFeedPublicacionesService;
+        this.listarPublicacionesOcultasService = listarPublicacionesOcultasService;
         this.obtenerPublicacionService = obtenerPublicacionService;
         this.obtenerPublicacionDetalleService = obtenerPublicacionDetalleService;
         this.modificarPublicacionService = modificarPublicacionService;
@@ -187,6 +192,25 @@ public class PublicacionController {
                         idPerfilActivo(authentication));
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UC-69: búsqueda específica de publicaciones ocultas del perfil activo.
+     * Solo el dueño puede usar esta vista y únicamente permite eliminar.
+     */
+    @GetMapping("/publicaciones/ocultas")
+    public ResponseEntity<PaginaResponse<PublicacionOcultadaResponse>> listarOcultas(
+            @RequestParam(required = false) String texto,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(listarPublicacionesOcultasService.listar(
+                idUsuario(authentication),
+                idPerfilActivoRequerido(authentication),
+                texto,
+                page,
+                size));
     }
 
     @GetMapping("/perfiles/{idPerfil}/publicaciones")

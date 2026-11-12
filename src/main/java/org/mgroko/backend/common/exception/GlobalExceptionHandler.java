@@ -458,6 +458,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.EstadoPublicacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoPublicacionInvalido(
+            org.mgroko.backend.publicaciones.exception.EstadoPublicacionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(SolicitudColaboracionInvalidaException.class)
     public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionInvalida(
             SolicitudColaboracionInvalidaException ex) {

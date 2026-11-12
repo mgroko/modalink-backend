@@ -23,12 +23,14 @@ import org.mgroko.backend.publicaciones.dto.AutorPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.BuscarPublicacionesFiltro;
 import org.mgroko.backend.publicaciones.dto.ImagenPublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ProyectoPublicacionFiltroResponse;
+import org.mgroko.backend.publicaciones.dto.PublicacionOcultadaResponse;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
 import org.mgroko.backend.publicaciones.servicio.CrearPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.EliminarPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ListarFeedPublicacionesService;
 import org.mgroko.backend.publicaciones.servicio.ListarProyectosPublicacionesPerfilService;
+import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesOcultasService;
 import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesPerfilService;
 import org.mgroko.backend.publicaciones.servicio.ModificarPublicacionService;
 import org.mgroko.backend.publicaciones.servicio.ObtenerPublicacionDetalleService;
@@ -65,6 +67,9 @@ class PublicacionControllerTest {
 
     @MockitoBean
     private ListarFeedPublicacionesService listarFeedPublicacionesService;
+
+    @MockitoBean
+    private ListarPublicacionesOcultasService listarPublicacionesOcultasService;
 
     @MockitoBean
     private ObtenerPublicacionService obtenerPublicacionService;
@@ -261,6 +266,30 @@ class PublicacionControllerTest {
                 .andExpect(jsonPath("$.contenido.length()").value(1))
                 .andExpect(jsonPath("$.contenido[0].titulo").value("Editorial"))
                 .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void listarOcultas_devuelveTituloYDescripcion() throws Exception {
+        PaginaResponse<PublicacionOcultadaResponse> pagina = new PaginaResponse<>(
+                List.of(new PublicacionOcultadaResponse(
+                        99L,
+                        "Editorial oculta",
+                        "Descripción oculta",
+                        LocalDateTime.of(2026, 11, 10, 12, 0),
+                        org.mgroko.backend.modelo.enums.EstadoPublicacion.OCULTA)),
+                0, 10, 1, 1, true, true);
+
+        when(listarPublicacionesOcultasService.listar(1L, 7L, "Editorial", 0, 10))
+                .thenReturn(pagina);
+
+        mockMvc.perform(get("/publicaciones/ocultas")
+                        .principal(auth(1L, 7L))
+                        .param("texto", "Editorial"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido.length()").value(1))
+                .andExpect(jsonPath("$.contenido[0].titulo").value("Editorial oculta"))
+                .andExpect(jsonPath("$.contenido[0].descripcion").value("Descripción oculta"))
+                .andExpect(jsonPath("$.contenido[0].estado").value("OCULTA"));
     }
 
     @Test

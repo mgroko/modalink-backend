@@ -12,6 +12,7 @@ import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
+import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
@@ -82,6 +83,10 @@ public class ModificarPublicacionService {
         Publicacion publicacion = publicacionRepository
                 .findByIdPublicacionAndPerfilIdPerfil(idPublicacion, perfil.getIdPerfil())
                 .orElseThrow(() -> new PublicacionNoEncontradaException(idPublicacion));
+
+        if (publicacion.getEstado() != EstadoPublicacion.ACTIVA) {
+            throw new PublicacionNoEncontradaException(idPublicacion);
+        }
 
         String titulo = publicacionDatosService.normalizarTitulo(request.getTitulo());
         String descripcion = publicacionDatosService.normalizarDescripcion(request.getDescripcion());

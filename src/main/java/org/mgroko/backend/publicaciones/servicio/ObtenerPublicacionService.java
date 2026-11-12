@@ -2,6 +2,7 @@ package org.mgroko.backend.publicaciones.servicio;
 
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Publicacion;
+import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
@@ -41,6 +42,10 @@ public class ObtenerPublicacionService {
         Publicacion publicacion = publicacionRepository
                 .findByIdPublicacionAndPerfilIdPerfil(idPublicacion, perfil.getIdPerfil())
                 .orElseThrow(() -> new PublicacionNoEncontradaException(idPublicacion));
+
+        if (publicacion.getEstado() != EstadoPublicacion.ACTIVA) {
+            throw new PublicacionNoEncontradaException(idPublicacion);
+        }
 
         boolean puedeVerProyecto = publicacion.getProyecto() != null
                 && proyectoVisibilidadService.puedeVer(

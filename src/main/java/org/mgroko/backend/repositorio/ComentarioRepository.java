@@ -36,4 +36,11 @@ public interface ComentarioRepository extends JpaRepository<Comentario, Long> {
             """)
     List<ConteoPorPublicacion> contarPorPublicaciones(
             @Param("idsPublicaciones") Collection<Long> idsPublicaciones);
+
+    @Query("""
+            SELECT COUNT(c)
+            FROM Comentario c
+            WHERE c.publicacion.idPublicacion = :idPublicacion
+            """)
+    long contarPorPublicacion(@Param("idPublicacion") Long idPublicacion);
 }

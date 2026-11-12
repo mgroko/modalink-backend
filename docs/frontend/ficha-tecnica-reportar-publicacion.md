@@ -9,9 +9,16 @@ Permitir que un usuario autenticado, con perfil activo, reporte una publicación
 de otro usuario indicando un motivo y, opcionalmente, una descripción. El
 reporte queda en estado `PENDIENTE` y genera una alerta para los administradores.
 
-El administrador puede consultar los reportes de publicación, ver el detalle y
-resolverlos o descartarlos. Resolver un reporte **no oculta ni elimina** la
-publicación automáticamente: solo cambia el estado del reporte.
+El administrador puede consultar los reportes de publicación, ver el detalle,
+resolverlos o descartarlos y, de forma independiente, ocultar o reactivar la
+publicación. Resolver un reporte **no oculta ni elimina** la publicación
+automáticamente: solo cambia el estado del reporte. La moderación de la
+publicación es una acción separada.
+
+El dueño de una publicación oculta recibe una notificación sin link. Puede
+volver a ver únicamente el título y la descripción desde la búsqueda específica
+de publicaciones ocultas de su perfil, donde la única acción disponible es
+eliminarla.
 
 ## 2. Alcance
 
@@ -22,13 +29,16 @@ Incluye:
 - Bandeja administrativa de reportes de publicación.
 - Detalle del reporte para el administrador.
 - Acciones administrativas `Resolver` y `Descartar`.
+- Acciones administrativas `Ocultar` y `Reactivar` publicación.
+- Búsqueda específica de publicaciones ocultas para su dueño.
 - Alerta in-app para administradores.
 
 No incluye:
 
 - Listado de “mis reportes” para el usuario.
-- Notificación al usuario que reporta ni al dueño de la publicación.
 - Moderación automática de la publicación.
+- Eliminación física de la publicación desde el panel admin.
+- Reactivación por parte del dueño.
 - Edición o eliminación de reportes por parte del administrador.
 - Reapertura de reportes resueltos o descartados.
 - Adjuntos, imágenes o evidencia adicional en el reporte.
@@ -311,7 +321,33 @@ Después de un `PATCH` exitoso:
 - Si el listado estaba filtrado por `PENDIENTE`, quitar la fila o refrescar.
 - Mostrar toast: “Reporte resuelto.” o “Reporte descartado.”
 
-### 6.5 Publicación eliminada
+### 6.5 Moderación de la publicación
+
+La moderación es independiente del estado del reporte. Para una publicación:
+
+- Si `publicacion.estado = ACTIVA`, mostrar **“Ocultar publicación”**.
+- Si `publicacion.estado = OCULTA`, mostrar **“Reactivar publicación”**.
+- Si `publicacionEliminada = true`, no mostrar ninguna de las dos.
+
+Al ocultar:
+
+- Pedir un motivo obligatorio, máximo 200 caracteres.
+- Mostrar confirmación.
+- Enviar `PATCH /admin/publicaciones/{idPublicacion}/estado` con
+  `{ "estado": "OCULTA", "motivo": "..." }`.
+- Al confirmar, la publicación deja de ser visible para todos los usuarios.
+- El dueño recibe una notificación sin link.
+
+Al reactivar:
+
+- Enviar `PATCH /admin/publicaciones/{idPublicacion}/estado` con
+  `{ "estado": "ACTIVA", "motivo": "..." }`.
+- El motivo es opcional.
+- El dueño recibe una notificación con link a `/publicaciones/{idPublicacion}`.
+
+En ambos casos, actualizar el detalle con la respuesta y refrescar el listado.
+
+### 6.6 Publicación eliminada
 
 Si `publicacionEliminada = true`:
 
@@ -326,7 +362,7 @@ Si la publicación sigue existiendo pero su estado es `OCULTA`:
 - No tratarla como eliminada.
 - No habilitar un enlace público si el flujo de usuario no permite verla.
 
-### 6.6 Notificaciones de admin
+### 6.7 Notificaciones de admin
 
 Cuando llega una notificación:
 
@@ -560,6 +596,68 @@ Errores:
 | `409` | Se intenta volver a `PENDIENTE` | `Solo se puede pasar de PENDIENTE a RESUELTO o DESCARTADO.` |
 | `409` | El reporte ya fue gestionado | `El reporte ya fue gestionado y no admite nuevas transiciones.` |
 
+### 8.4 Ocultar o reactivar publicación
+
+```http
+PATCH /admin/publicaciones/{idPublicacion}/estado
+Content-Type: application/json
+```
+
+Body para ocultar:
+
+```json
+{
+  "estado": "OCULTA",
+  "motivo": "Contenido inapropiado confirmado"
+}
+```
+
+Body para reactivar:
+
+```json
+{
+  "estado": "ACTIVA",
+  "motivo": "Apelación aceptada"
+}
+```
+
+Reglas:
+
+- `estado` es obligatorio y solo admite `ACTIVA` u `OCULTA`.
+- `motivo` es obligatorio al ocultar y opcional al reactivar.
+- `motivo` máximo 200 caracteres.
+- El motivo se registra únicamente en auditoría.
+- No se puede ocultar una publicación ya oculta ni reactivar una ya activa.
+
+Respuesta `200 OK`: la publicación administrativa actualizada. Incluye
+`estado`, `puedeOcultar`, `puedeReactivar`, `cantidadReportes` y
+`cantidadReportesPendientes`.
+
+Errores:
+
+| HTTP | Caso |
+|---|---|
+| `400` | Falta `estado` o falta `motivo` al ocultar |
+| `403` | Sin rol `ADMINISTRADOR` |
+| `404` | Publicación inexistente |
+| `409` | La publicación ya está en el estado solicitado |
+
+### 8.5 Búsqueda de publicaciones ocultas del dueño
+
+```http
+GET /publicaciones/ocultas?texto=editorial&page=0&size=10
+```
+
+Solo devuelve publicaciones `OCULTA` del perfil activo. La respuesta expone
+únicamente `idPublicacion`, `titulo`, `descripcion`, `fechaPublicacion` y
+`estado`. No incluye imágenes, proyecto, ubicación ni interacciones.
+
+El dueño solo puede eliminar cada publicación con el endpoint existente:
+
+```http
+DELETE /publicaciones/{idPublicacion}
+```
+
 ## 9. Tipos TypeScript sugeridos
 
 ```ts
@@ -633,6 +731,21 @@ export interface AdminReportePublicacionDetalle {
     nombreArtistico: string;
     idUsuario: number;
     nombreUsuario: string;
+    imagenes: { idImagen: number; url: string; orden: number }[];
+    proyecto: { idProyecto: number; nombre: string; puedeVerProyecto: boolean } | null;
+    ubicacion: unknown | null;
+    colaboradores: {
+      idPerfil: number;
+      nombreArtistico: string;
+      profesion: string | null;
+      fotoUrl: string | null;
+    }[];
+    cantidadMeGusta: number;
+    cantidadComentarios: number;
+    cantidadReportes: number;
+    cantidadReportesPendientes: number;
+    puedeOcultar: boolean;
+    puedeReactivar: boolean;
   } | null;
   autor: {
     idUsuario: number;
@@ -804,6 +917,9 @@ async function actualizarEstadoReporte(
 - [ ] Manejar `400`, `403`, `404` y `409`.
 - [ ] Mostrar éxito sin ocultar la publicación.
 - [ ] Redirigir al selector de perfil si no hay perfil activo.
+- [ ] Implementar búsqueda específica de publicaciones ocultas.
+- [ ] Mostrar solo título y descripción, con ícono de error y leyenda.
+- [ ] Ofrecer únicamente la acción “Eliminar”.
 
 ### Admin
 
@@ -817,6 +933,10 @@ async function actualizarEstadoReporte(
 - [ ] Implementar acciones “Resolver” y “Descartar” con confirmación.
 - [ ] Deshabilitar acciones si el reporte no está `PENDIENTE`.
 - [ ] Actualizar la UI con la respuesta del `PATCH`.
+- [ ] Implementar acciones “Ocultar” y “Reactivar” publicación.
+- [ ] Pedir motivo obligatorio al ocultar.
+- [ ] Mostrar imágenes, proyecto, ubicación y contadores de la publicación.
+- [ ] Mostrar total y pendientes de reportes de la publicación.
 - [ ] Manejar `400`, `403`, `404` y `409`.
 - [ ] Navegar desde la notificación `PUBLICACION_REPORTADA` a `/admin/reportes-publicacion/{entidadId}`.
 - [ ] Marcar la notificación como leída al abrirla.
@@ -826,10 +946,11 @@ async function actualizarEstadoReporte(
 
 - No hay endpoint para que el usuario consulte sus reportes.
 - No se notifica al usuario que reporta.
-- No se notifica al dueño de la publicación.
+- El dueño recibe notificación de ocultamiento (sin link) y de reactivación (con link).
 - No hay endpoint para eliminar un reporte.
 - No hay reapertura de reportes.
 - No se adjuntan imágenes ni archivos.
 - La descripción no admite HTML enriquecido.
-- El backend registra auditoría del alta y de la resolución; el front no debe enviar datos de auditoría.
-- Si se necesita moderar la publicación (ocultarla o darla de baja), debe hacerse desde el flujo administrativo correspondiente, no desde este reporte.
+- El backend registra auditoría del alta, de la resolución y de la moderación; el front no debe enviar datos de auditoría.
+- Ocultar y resolver el reporte son acciones independientes. El front no debe asumir que una dispara la otra.
+- La publicación oculta no se elimina: se conserva para auditoría y para una posible reactivación.

@@ -136,6 +136,14 @@ class ObtenerPublicacionServiceTest {
     }
 
     @Test
+    void obtener_publicacionOculta_lanzaNoEncontrada() {
+        publicacion.setEstado(org.mgroko.backend.modelo.enums.EstadoPublicacion.OCULTA);
+
+        assertThrows(PublicacionNoEncontradaException.class,
+                () -> servicio.obtener(1L, 7L, 99L));
+    }
+
+    @Test
     void obtener_proyectoNoVisible_loIncluyeParaPoderConservarlo() {
         Proyecto proyecto = Proyecto.builder()
                 .idProyecto(25L)

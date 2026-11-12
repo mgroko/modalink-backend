@@ -8870,3 +8870,24 @@ CREATE INDEX IF NOT EXISTS "IDX_comentario_publicacion_fecha"
 CREATE INDEX IF NOT EXISTS "IDX_reporte_publicacion_estado_fecha"
     ON reporte (estado, fecha_reporte DESC)
     WHERE entidad_tipo = 'PUBLICACION';
+
+-- ============================================================================
+-- UC-69 - Moderar publicacion
+-- ============================================================================
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
+    ('PUBLICACION_OCULTADA', 'Publicacion ocultada', 'ADMINISTRACION', 'MEDIA'),
+    ('PUBLICACION_REACTIVADA', 'Publicacion reactivada', 'ADMINISTRACION', 'MEDIA')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        categoria = EXCLUDED.categoria,
+        prioridad = EXCLUDED.prioridad,
+        activo = true;
+
+INSERT INTO tipo_evento_auditoria (codigo, nombre, descripcion, modulo) VALUES
+    ('PUBLICACION_OCULTADA', 'Ocultamiento de publicacion', 'Publicacion ocultada por moderacion administrativa', 'PUBLICACIONES'),
+    ('PUBLICACION_REACTIVADA', 'Reactivacion de publicacion', 'Publicacion reactivada por moderacion administrativa', 'PUBLICACIONES')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        descripcion = EXCLUDED.descripcion,
+        modulo = EXCLUDED.modulo,
+        activo = true;

@@ -34,6 +34,8 @@ public final class NotificacionTitulos {
             Map.entry("HITO_CUMPLIDO", "Hito cumplido"),
             Map.entry("PERFIL_REPORTADO", "Perfil reportado"),
             Map.entry("PUBLICACION_REPORTADA", "Publicación reportada"),
+            Map.entry("PUBLICACION_OCULTADA", "Publicación ocultada"),
+            Map.entry("PUBLICACION_REACTIVADA", "Publicación reactivada"),
             Map.entry("HABILIDAD_MODIFICADA", "Habilidad modificada"),
             Map.entry("HABILIDAD_ELIMINADA", "Habilidad eliminada"),
             Map.entry("INTEGRANTE_ELIMINADO", "Integrante eliminado"),

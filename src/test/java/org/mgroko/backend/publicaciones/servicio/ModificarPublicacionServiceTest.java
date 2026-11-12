@@ -235,6 +235,14 @@ class ModificarPublicacionServiceTest {
     }
 
     @Test
+    void modificar_publicacionOculta_lanzaNoEncontrada() {
+        publicacion.setEstado(org.mgroko.backend.modelo.enums.EstadoPublicacion.OCULTA);
+
+        assertThrows(PublicacionNoEncontradaException.class,
+                () -> servicio.modificar(1L, 7L, 99L, request("Editorial", List.of(10L))));
+    }
+
+    @Test
     void modificar_sinImagenesFinales_lanzaExcepcion() {
         ModificarPublicacionRequest request = request("Editorial", List.of());
 

@@ -13,6 +13,8 @@ import org.mgroko.backend.admin.dto.ActualizarEstadoReporteRequest;
 import org.mgroko.backend.admin.dto.AdminReportePublicacionDetalleResponse;
 import org.mgroko.backend.admin.dto.AdminReportePublicacionResumenResponse;
 import org.mgroko.backend.admin.dto.BuscarReportesPublicacionFiltro;
+import org.mgroko.backend.admin.dto.ModerarPublicacionRequest;
+import org.mgroko.backend.admin.servicio.AdminPublicacionService;
 import org.mgroko.backend.admin.servicio.AdminReportePublicacionService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Genero;
@@ -25,8 +27,11 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.modelo.enums.EstadoReporte;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.notificaciones.dto.NotificacionResponse;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
+import org.mgroko.backend.publicaciones.dto.PublicacionOcultadaResponse;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
+import org.mgroko.backend.publicaciones.servicio.ListarPublicacionesOcultasService;
 import org.mgroko.backend.reportes.dto.CrearReportePublicacionRequest;
 import org.mgroko.backend.reportes.enums.MotivoReportePublicacion;
 import org.mgroko.backend.reportes.exception.ReportePendienteExistenteException;
@@ -53,6 +58,12 @@ class ReportePublicacionIntegrationTest extends AbstractPostgresIntegrationTest 
     private ReportarPublicacionService reportarPublicacionService;
     @Autowired
     private AdminReportePublicacionService adminReportePublicacionService;
+    @Autowired
+    private AdminPublicacionService adminPublicacionService;
+    @Autowired
+    private ListarPublicacionesOcultasService listarPublicacionesOcultasService;
+    @Autowired
+    private NotificacionService notificacionService;
     @Autowired
     private UsuarioRepository usuarioRepository;
     @Autowired
@@ -349,6 +360,158 @@ class ReportePublicacionIntegrationTest extends AbstractPostgresIntegrationTest 
                     assertThat(fila.publicacionEliminada()).isTrue();
                     assertThat(fila.tituloPublicacion()).isNull();
                 });
+    }
+
+    @Test
+    void moderarPublicacion_ocultaNotificaAuditaYApareceEnLaBusquedaDelDuenio() {
+        Escenario escenario = crearEscenario(EstadoPublicacion.ACTIVA);
+
+        reportarPublicacionService.reportar(
+                escenario.idUsuarioAutor(),
+                escenario.idPerfilAutor(),
+                escenario.idPublicacion(),
+                new CrearReportePublicacionRequest(
+                        MotivoReportePublicacion.CONTENIDO_INAPROPIADO,
+                        "Contenido ofensivo"));
+
+        Long idReporte = jdbcTemplate.queryForObject("""
+                SELECT id_reporte FROM reporte
+                WHERE id_perfil_autor = ? ORDER BY id_reporte DESC LIMIT 1
+                """, Long.class, escenario.idPerfilAutor());
+
+        try {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(
+                            String.valueOf(escenario.idUsuarioAdmin()), null, List.of()));
+
+            var response = adminPublicacionService.moderar(
+                    escenario.idPublicacion(),
+                    escenario.idUsuarioAdmin(),
+                    new ModerarPublicacionRequest(
+                            EstadoPublicacion.OCULTA,
+                            "  Contenido inapropiado confirmado  "));
+
+            assertThat(response.estado()).isEqualTo(EstadoPublicacion.OCULTA);
+            assertThat(response.cantidadReportes()).isEqualTo(1L);
+            assertThat(response.cantidadReportesPendientes()).isEqualTo(1L);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        String estado = jdbcTemplate.queryForObject("""
+                SELECT estado FROM publicacion WHERE id_publicacion = ?
+                """, String.class, escenario.idPublicacion());
+        assertThat(estado).isEqualTo("OCULTA");
+
+        Long auditorias = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM auditoria
+                WHERE entidad_afectada = 'publicacion'
+                  AND id_afectado = ?
+                  AND id_usuario = ?
+                  AND tipo_evento_original = 'PUBLICACION_OCULTADA'
+                """, Long.class, escenario.idPublicacion(), escenario.idUsuarioAdmin());
+        assertThat(auditorias).isEqualTo(1L);
+
+        String motivoAuditado = jdbcTemplate.queryForObject("""
+                SELECT d.valor_nuevo
+                FROM detalle_auditoria d
+                JOIN auditoria a ON a.id_auditoria = d.id_auditoria
+                WHERE a.entidad_afectada = 'publicacion'
+                  AND a.id_afectado = ?
+                  AND a.tipo_evento_original = 'PUBLICACION_OCULTADA'
+                  AND d.campo = 'motivo'
+                """, String.class, escenario.idPublicacion());
+        assertThat(motivoAuditado).isEqualTo("Contenido inapropiado confirmado");
+
+        Map<String, Object> notificacion = jdbcTemplate.queryForMap("""
+                SELECT tipo, mensaje, entidad_tipo, entidad_id
+                FROM notificacion
+                WHERE id_usuario_destino = ?
+                ORDER BY id_notificacion DESC
+                LIMIT 1
+                """, escenario.idUsuarioDuenio());
+        assertThat(notificacion.get("tipo")).isEqualTo("PUBLICACION_OCULTADA");
+        assertThat(notificacion.get("mensaje").toString())
+                .contains("Se ocultó la publicación")
+                .contains("normas de la comunidad");
+        assertThat(notificacion.get("entidad_tipo")).isEqualTo("PUBLICACION");
+        assertThat(((Number) notificacion.get("entidad_id")).longValue())
+                .isEqualTo(escenario.idPublicacion());
+
+        PaginaResponse<NotificacionResponse> notificacionesDuenio =
+                notificacionService.listar(
+                        escenario.idUsuarioDuenio(),
+                        escenario.idPerfilDuenio(),
+                        0,
+                        50);
+        assertThat(notificacionesDuenio.contenido())
+                .filteredOn(item -> "PUBLICACION_OCULTADA".equals(item.tipo()))
+                .singleElement()
+                .satisfies(item -> assertThat(item.link()).isNull());
+
+        PaginaResponse<PublicacionOcultadaResponse> ocultas =
+                listarPublicacionesOcultasService.listar(
+                        escenario.idUsuarioDuenio(),
+                        escenario.idPerfilDuenio(),
+                        null,
+                        0,
+                        10);
+        assertThat(ocultas.contenido())
+                .filteredOn(item -> item.idPublicacion().equals(escenario.idPublicacion()))
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.titulo()).startsWith("Publicacion UC69");
+                    assertThat(item.descripcion())
+                            .isEqualTo("Contenido de la publicacion UC69.");
+                });
+
+        AdminReportePublicacionDetalleResponse detalle =
+                adminReportePublicacionService.obtenerDetalle(idReporte);
+        assertThat(detalle.publicacion()).isNotNull();
+        assertThat(detalle.publicacion().estado()).isEqualTo(EstadoPublicacion.OCULTA);
+        assertThat(detalle.publicacion().cantidadReportes()).isEqualTo(1L);
+        assertThat(detalle.publicacion().cantidadReportesPendientes()).isEqualTo(1L);
+        assertThat(detalle.publicacion().puedeReactivar()).isTrue();
+
+        try {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(
+                            String.valueOf(escenario.idUsuarioAdmin()), null, List.of()));
+
+            adminPublicacionService.moderar(
+                    escenario.idPublicacion(),
+                    escenario.idUsuarioAdmin(),
+                    new ModerarPublicacionRequest(EstadoPublicacion.ACTIVA, null));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        String estadoReactivado = jdbcTemplate.queryForObject("""
+                SELECT estado FROM publicacion WHERE id_publicacion = ?
+                """, String.class, escenario.idPublicacion());
+        assertThat(estadoReactivado).isEqualTo("ACTIVA");
+
+        PaginaResponse<NotificacionResponse> notificacionesReactivacion =
+                notificacionService.listar(
+                        escenario.idUsuarioDuenio(),
+                        escenario.idPerfilDuenio(),
+                        0,
+                        50);
+        assertThat(notificacionesReactivacion.contenido())
+                .filteredOn(item -> "PUBLICACION_REACTIVADA".equals(item.tipo()))
+                .singleElement()
+                .satisfies(item -> assertThat(item.link())
+                        .isEqualTo("/publicaciones/" + escenario.idPublicacion()));
+
+        PaginaResponse<PublicacionOcultadaResponse> ocultasLuegoDeReactivar =
+                listarPublicacionesOcultasService.listar(
+                        escenario.idUsuarioDuenio(),
+                        escenario.idPerfilDuenio(),
+                        null,
+                        0,
+                        10);
+        assertThat(ocultasLuegoDeReactivar.contenido())
+                .noneMatch(item -> item.idPublicacion().equals(escenario.idPublicacion()));
     }
 
     private Escenario crearEscenario(EstadoPublicacion estadoPublicacion) {

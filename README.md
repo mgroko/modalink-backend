@@ -361,6 +361,8 @@ Reglas generales de mensajería:
 | `POST` | `/perfiles/{idPerfil}/reportes` | Reportar perfil |
 | `GET` | `/admin/reportes-perfil` | Bandeja de reportes de perfil |
 | `PATCH` | `/admin/reportes-perfil/{id}/estado` | Resolver o descartar reporte |
+| `PATCH` | `/admin/publicaciones/{idPublicacion}/estado` | Ocultar o reactivar publicación reportada |
+| `GET` | `/publicaciones/ocultas` | Búsqueda específica de publicaciones ocultas del perfil activo |
 
 Catálogos administrativos:
 

@@ -106,6 +106,36 @@ public final class PublicacionSpecifications {
         };
     }
 
+    /**
+     * UC-69: publicaciones ocultas del propio perfil. Solo se incluyen las que
+     * pertenecen al perfil indicado, nunca las que solo tiene como colaborador.
+     */
+    public static Specification<Publicacion> conFiltrosOcultas(
+            Long idPerfil,
+            String texto) {
+
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("perfil").get("idPerfil"), idPerfil));
+            predicates.add(cb.equal(root.get("estado"), EstadoPublicacion.OCULTA));
+
+            if (tieneTexto(texto)) {
+                String patron = LikePatrones.contiene(texto);
+                predicates.add(cb.or(
+                        cb.like(
+                                cb.lower(root.get("titulo")),
+                                patron,
+                                LikePatrones.CARACTER_ESCAPE),
+                        cb.like(
+                                cb.lower(root.get("descripcion")),
+                                patron,
+                                LikePatrones.CARACTER_ESCAPE)));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
     private static boolean tieneTexto(String valor) {
         return valor != null && !valor.isBlank();
     }

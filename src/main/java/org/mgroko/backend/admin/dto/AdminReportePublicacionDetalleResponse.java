@@ -3,7 +3,6 @@ package org.mgroko.backend.admin.dto;
 import java.time.LocalDateTime;
 
 import org.mgroko.backend.modelo.enums.EntidadReporte;
-import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.modelo.enums.EstadoReporte;
 import org.mgroko.backend.modelo.enums.MotivoReporte;
 import org.mgroko.backend.reportes.enums.MotivoReportePublicacion;
@@ -23,24 +22,12 @@ public record AdminReportePublicacionDetalleResponse(
         EstadoReporte estado,
         LocalDateTime fechaReporte,
         boolean publicacionEliminada,
-        PublicacionResponse publicacion,
+        AdminPublicacionResponse publicacion,
         AutorResponse autor,
         Long idAdminRevisor,
         String nombreAdminRevisor,
         LocalDateTime fechaResolucion
 ) {
-
-    public record PublicacionResponse(
-            Long idPublicacion,
-            String titulo,
-            String descripcion,
-            LocalDateTime fechaPublicacion,
-            EstadoPublicacion estado,
-            Long idPerfil,
-            String nombreArtistico,
-            Long idUsuario,
-            String nombreUsuario
-    ) {}
 
     public record AutorResponse(
             Long idUsuario,

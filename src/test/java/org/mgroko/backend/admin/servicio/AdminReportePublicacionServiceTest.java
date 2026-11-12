@@ -43,6 +43,8 @@ class AdminReportePublicacionServiceTest {
     private PublicacionRepository publicacionRepository;
     @Mock
     private UsuarioRepository usuarioRepository;
+    @Mock
+    private AdminPublicacionService adminPublicacionService;
 
     private AdminReportePublicacionService service;
 
@@ -52,7 +54,11 @@ class AdminReportePublicacionServiceTest {
                 Instant.parse("2026-11-11T12:00:00Z"),
                 ZoneId.of("America/Argentina/Buenos_Aires"));
         service = new AdminReportePublicacionService(
-                reporteRepository, publicacionRepository, usuarioRepository, reloj);
+                reporteRepository,
+                publicacionRepository,
+                usuarioRepository,
+                adminPublicacionService,
+                reloj);
     }
 
     @Test
