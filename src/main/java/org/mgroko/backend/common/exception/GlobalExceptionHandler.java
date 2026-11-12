@@ -37,6 +37,7 @@ import org.mgroko.backend.auth.exception.IdentidadGoogleConflictoException;
 import org.mgroko.backend.auth.exception.RegistroConSesionActivaException;
 import org.mgroko.backend.auth.exception.RegistroPendienteInvalidoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
+import org.mgroko.backend.auth.exception.TokenEmailException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.calendario.exception.AgendaNoEncontradaException;
@@ -148,6 +149,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<Map<String, Object>> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(TokenEmailException.class)
+    public ResponseEntity<Map<String, Object>> handleTokenEmail(TokenEmailException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("codigo", ex.getCodigo());
+        response.put("message", ex.getMessage());
+        response.put("httpStatus", ex.getHttpStatus().value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, ex.getHttpStatus());
     }
 
     @ExceptionHandler(RegistroPendienteInvalidoException.class)

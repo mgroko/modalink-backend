@@ -116,6 +116,8 @@ public class SecurityConfig {
                         "/auth/logout",
                         "/auth/google",
                         "/auth/google/**",
+                        "/auth/email",
+                        "/auth/email/**",
                         "/oauth2/**",
                         "/login/oauth2/**",
                         "/error",
@@ -211,7 +213,7 @@ public class SecurityConfig {
                 // XSRF-TOKEN antes del callback. El logout también se exonera:
                 // es idempotente y debe limpiar la cookie aun cuando la sesión
                 // ya no sea válida o falte el token CSRF.
-                .ignoringRequestMatchers("/auth/google/**", "/auth/logout")
+                .ignoringRequestMatchers("/auth/google/**", "/auth/logout", "/auth/email/**")
             )
             .addFilterAfter(new CsrfCookieFilter(csrfTokenRepository), UsernamePasswordAuthenticationFilter.class)
 
