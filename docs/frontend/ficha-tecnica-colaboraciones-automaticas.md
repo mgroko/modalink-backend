@@ -21,6 +21,10 @@ Si después quieren ser conexión, deben usar el flujo manual de UC-43.
 
 Se ejecuta al crear una publicación o al agregar imágenes nuevas con UC-21.
 
+La detección corre de forma **asíncrona después del commit** de la transacción
+de subida, en un executor dedicado. El request no espera la decodificación, ORB
+ni el multi-recorte: publica un evento con los IDs y responde.
+
 - Solo considera imágenes de publicaciones.
 - Solo considera publicaciones `ACTIVA`, perfiles `ACTIVO` y usuarios `ACTIVO`.
 - Excluye:
@@ -58,6 +62,13 @@ app.colaboracion-automatica.orb-max-distancia-inliers=40
 app.colaboracion-automatica.multicrop-distancia-maxima=8
 app.colaboracion-automatica.multicrop-grid=3
 app.colaboracion-automatica.multicrop-escalas=90,80,70
+
+# Detección asíncrona después del commit
+app.colaboracion-automatica.async.core-pool-size=2
+app.colaboracion-automatica.async.max-pool-size=4
+app.colaboracion-automatica.async.queue-capacity=100
+app.colaboracion-automatica.async.thread-name-prefix=colab-auto-
+app.colaboracion-automatica.async.await-termination-seconds=60
 ```
 
 La propuesta guarda la evidencia de la verificación:
@@ -231,4 +242,4 @@ Link del frontend:
 
 Las publicaciones existentes se pueden procesar desde el panel administrador
 para completar huellas y generar propuestas. Ver
-`docs/3_diseño/ficha-tecnica-colaboraciones-automaticas-historicas.md`.
+`docs/frontend/ficha-tecnica-colaboraciones-automaticas-historicas.md`.
