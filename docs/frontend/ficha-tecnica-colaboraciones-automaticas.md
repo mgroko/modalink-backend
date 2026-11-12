@@ -226,3 +226,9 @@ Link del frontend:
 - Mostrar `puedeConfirmar` y `puedeRechazar`.
 - Si una publicación está eliminada, mostrar “Publicación eliminada” sin imagen.
 - Al confirmar o rechazar, refrescar el listado y el resumen de notificaciones.
+
+## 9. Publicaciones históricas
+
+Las publicaciones existentes se pueden procesar desde el panel administrador
+para completar huellas y generar propuestas. Ver
+`docs/3_diseño/ficha-tecnica-colaboraciones-automaticas-historicas.md`.
