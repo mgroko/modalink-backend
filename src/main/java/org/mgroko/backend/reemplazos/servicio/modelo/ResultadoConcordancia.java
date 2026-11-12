@@ -13,9 +13,20 @@ import java.util.List;
 public record ResultadoConcordancia(
         BigDecimal puntaje,
         boolean alternativo,
-        List<String> faltantes) {
+        List<String> faltantes,
+        int requisitosCumplidos,
+        int requisitosTotales,
+        boolean cumpleTodo,
+        List<HabilidadEvaluada> habilidadesEvaluadas,
+        List<CaracteristicaEvaluada> caracteristicasEvaluadas) {
 
     public ResultadoConcordancia {
         faltantes = faltantes == null ? List.of() : List.copyOf(faltantes);
+        habilidadesEvaluadas = habilidadesEvaluadas == null
+                ? List.of()
+                : List.copyOf(habilidadesEvaluadas);
+        caracteristicasEvaluadas = caracteristicasEvaluadas == null
+                ? List.of()
+                : List.copyOf(caracteristicasEvaluadas);
     }
 }

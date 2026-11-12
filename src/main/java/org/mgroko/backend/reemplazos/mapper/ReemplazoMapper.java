@@ -1,8 +1,14 @@
 package org.mgroko.backend.reemplazos.mapper;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.Habilidad;
@@ -10,12 +16,16 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.ValorCaracteristica;
-import org.mgroko.backend.perfiles.dto.CaracteristicaResponse;
 import org.mgroko.backend.reemplazos.dto.CandidatoReemplazoResponse;
+import org.mgroko.backend.reemplazos.dto.CaracteristicaEvaluadaResponse;
+import org.mgroko.backend.reemplazos.dto.HabilidadEvaluadaResponse;
 import org.mgroko.backend.reemplazos.dto.InvitacionReemplazoResponse;
 import org.mgroko.backend.reemplazos.dto.ReemplazoResumenResponse;
 import org.mgroko.backend.reemplazos.modelo.Reemplazo;
 import org.mgroko.backend.reemplazos.modelo.ReemplazoCandidato;
+import org.mgroko.backend.reemplazos.servicio.modelo.CaracteristicaEvaluada;
+import org.mgroko.backend.reemplazos.servicio.modelo.HabilidadEvaluada;
+import org.mgroko.backend.reemplazos.servicio.modelo.ResultadoConcordancia;
 import org.mgroko.backend.ubicacion.mapper.UbicacionMapper;
 
 public final class ReemplazoMapper {
@@ -66,6 +76,13 @@ public final class ReemplazoMapper {
     }
 
     public static CandidatoReemplazoResponse toCandidato(ReemplazoCandidato candidato) {
+        return toCandidato(candidato, null);
+    }
+
+    public static CandidatoReemplazoResponse toCandidato(
+            ReemplazoCandidato candidato,
+            ResultadoConcordancia evaluacion) {
+
         Perfil perfil = candidato.getPerfil();
         var usuario = perfil != null ? perfil.getUsuario() : null;
         var ubicacion = usuario != null ? usuario.getUbicacion() : null;
@@ -73,20 +90,25 @@ public final class ReemplazoMapper {
 
         List<String> habilidades = perfil != null && perfil.getHabilidades() != null
                 ? perfil.getHabilidades().stream()
-                        .filter(java.util.Objects::nonNull)
-                        .sorted(Comparator.comparing(Habilidad::getNombre))
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparing(
+                                Habilidad::getNombre,
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                         .map(Habilidad::getNombre)
                         .toList()
                 : List.of();
 
-        List<CaracteristicaResponse> caracteristicas = perfil != null
-                && perfil.getCaracteristicas() != null
-                        ? perfil.getCaracteristicas().stream()
-                                .sorted(Comparator.comparing(
-                                        c -> c.getCaracteristicaTecnica().getCodigo()))
-                                .map(ReemplazoMapper::toCaracteristica)
-                                .toList()
-                        : List.of();
+        List<HabilidadEvaluadaResponse> habilidadesEvaluadas = evaluacion != null
+                ? toHabilidadesEvaluadas(
+                        perfil,
+                        evaluacion.habilidadesEvaluadas())
+                : null;
+
+        List<CaracteristicaEvaluadaResponse> caracteristicas = evaluacion != null
+                ? toCaracteristicasEvaluadas(
+                        perfil,
+                        evaluacion.caracteristicasEvaluadas())
+                : toCaracteristicasSinEvaluar(perfil);
 
         return new CandidatoReemplazoResponse(
                 candidato.getIdCandidato(),
@@ -117,7 +139,11 @@ public final class ReemplazoMapper {
                 candidato.getFechaRespuesta(),
                 candidato.getFechaDecision(),
                 candidato.getMotivoDecision(),
-                candidato.getIdTycAceptado());
+                candidato.getIdTycAceptado(),
+                habilidadesEvaluadas,
+                evaluacion != null ? evaluacion.requisitosCumplidos() : null,
+                evaluacion != null ? evaluacion.requisitosTotales() : null,
+                evaluacion != null ? evaluacion.cumpleTodo() : null);
     }
 
     public static InvitacionReemplazoResponse toInvitacion(ReemplazoCandidato candidato) {
@@ -148,15 +174,186 @@ public final class ReemplazoMapper {
                 candidato.getMotivoRespuesta());
     }
 
-    private static CaracteristicaResponse toCaracteristica(CaracteristicaPerfil caracteristica) {
+    /**
+     * Combina las habilidades del perfil con las que pidió la vacante.
+     *
+     * <p>Las requeridas quedan primero (cumplidas o faltantes) y el resto se
+     * muestra como información adicional sin estado de requisito.</p>
+     */
+    private static List<HabilidadEvaluadaResponse> toHabilidadesEvaluadas(
+            Perfil perfil,
+            List<HabilidadEvaluada> requeridas) {
+
+        Map<Long, HabilidadEvaluada> porId = new HashMap<>();
+        for (HabilidadEvaluada requerida : requeridas) {
+            if (requerida.idHabilidad() != null) {
+                porId.put(requerida.idHabilidad(), requerida);
+            }
+        }
+
+        List<HabilidadEvaluadaResponse> resultado = new ArrayList<>();
+        Set<Long> agregadas = new HashSet<>();
+
+        if (perfil != null && perfil.getHabilidades() != null) {
+            perfil.getHabilidades().stream()
+                    .filter(Objects::nonNull)
+                    .sorted(Comparator.comparing(
+                            Habilidad::getNombre,
+                            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                    .forEach(habilidad -> {
+                        Long id = habilidad.getIdHabilidad();
+                        HabilidadEvaluada requerida = porId.get(id);
+                        resultado.add(new HabilidadEvaluadaResponse(
+                                id,
+                                habilidad.getNombre(),
+                                requerida != null,
+                                requerida != null ? requerida.cumple() : null));
+                        if (id != null) {
+                            agregadas.add(id);
+                        }
+                    });
+        }
+
+        for (HabilidadEvaluada requerida : requeridas) {
+            if (requerida.idHabilidad() != null
+                    && agregadas.contains(requerida.idHabilidad())) {
+                continue;
+            }
+            resultado.add(new HabilidadEvaluadaResponse(
+                    requerida.idHabilidad(),
+                    requerida.nombre(),
+                    Boolean.TRUE,
+                    Boolean.FALSE));
+        }
+
+        resultado.sort(Comparator
+                .comparing((HabilidadEvaluadaResponse habilidad) ->
+                        !Boolean.TRUE.equals(habilidad.requerida()))
+                .thenComparing(
+                        habilidad -> habilidad.nombre(),
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        return resultado;
+    }
+
+    /**
+     * Combina las características del perfil con las que pidió la vacante.
+     * Las requeridas que el perfil no declaró se agregan como faltantes para
+     * que la UI pueda mostrarlas en naranja con el valor pedido.
+     */
+    private static List<CaracteristicaEvaluadaResponse> toCaracteristicasEvaluadas(
+            Perfil perfil,
+            List<CaracteristicaEvaluada> requeridas) {
+
+        Map<Long, CaracteristicaEvaluada> porId = new HashMap<>();
+        for (CaracteristicaEvaluada requerida : requeridas) {
+            if (requerida.idCaracteristica() != null) {
+                porId.put(requerida.idCaracteristica(), requerida);
+            }
+        }
+
+        List<CaracteristicaEvaluadaResponse> resultado = new ArrayList<>();
+        Set<Long> agregadas = new HashSet<>();
+
+        if (perfil != null && perfil.getCaracteristicas() != null) {
+            perfil.getCaracteristicas().stream()
+                    .filter(Objects::nonNull)
+                    .filter(caracteristica ->
+                            caracteristica.getCaracteristicaTecnica() != null)
+                    .sorted(Comparator.comparing(
+                            caracteristica -> caracteristica
+                                    .getCaracteristicaTecnica().getCodigo(),
+                            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                    .forEach(caracteristica -> {
+                        Long id = caracteristica.getCaracteristicaTecnica()
+                                .getIdCaracteristica();
+                        resultado.add(toCaracteristicaEvaluada(
+                                caracteristica,
+                                porId.get(id)));
+                        if (id != null) {
+                            agregadas.add(id);
+                        }
+                    });
+        }
+
+        for (CaracteristicaEvaluada requerida : requeridas) {
+            if (requerida.idCaracteristica() != null
+                    && agregadas.contains(requerida.idCaracteristica())) {
+                continue;
+            }
+            resultado.add(new CaracteristicaEvaluadaResponse(
+                    requerida.idCaracteristica(),
+                    requerida.codigo(),
+                    requerida.nombre(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    requerida.valorPedido(),
+                    Boolean.TRUE,
+                    Boolean.FALSE));
+        }
+
+        resultado.sort(Comparator
+                .comparing((CaracteristicaEvaluadaResponse caracteristica) ->
+                        !Boolean.TRUE.equals(caracteristica.requerida()))
+                .thenComparing(
+                        caracteristica -> caracteristica.codigo(),
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        return resultado;
+    }
+
+    private static List<CaracteristicaEvaluadaResponse> toCaracteristicasSinEvaluar(
+            Perfil perfil) {
+
+        if (perfil == null || perfil.getCaracteristicas() == null) {
+            return List.of();
+        }
+
+        return perfil.getCaracteristicas().stream()
+                .filter(Objects::nonNull)
+                .filter(caracteristica ->
+                        caracteristica.getCaracteristicaTecnica() != null)
+                .sorted(Comparator.comparing(
+                        caracteristica -> caracteristica
+                                .getCaracteristicaTecnica().getCodigo(),
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .map(ReemplazoMapper::toCaracteristicaSinEvaluar)
+                .toList();
+    }
+
+    private static CaracteristicaEvaluadaResponse toCaracteristicaEvaluada(
+            CaracteristicaPerfil caracteristica,
+            CaracteristicaEvaluada requerida) {
+
         ValorCaracteristica valor = caracteristica.getValorCaracteristica();
-        return new CaracteristicaResponse(
+        return new CaracteristicaEvaluadaResponse(
                 caracteristica.getCaracteristicaTecnica().getIdCaracteristica(),
                 caracteristica.getCaracteristicaTecnica().getCodigo(),
+                caracteristica.getCaracteristicaTecnica().getNombre(),
                 caracteristica.getValor(),
                 valor != null ? valor.getIdValor() : null,
                 valor != null ? valor.getEtiqueta() : null,
-                valor != null ? valor.getColorHex() : null);
+                valor != null ? valor.getColorHex() : null,
+                requerida != null ? requerida.valorPedido() : null,
+                requerida != null,
+                requerida != null ? requerida.cumple() : null);
+    }
+
+    private static CaracteristicaEvaluadaResponse toCaracteristicaSinEvaluar(
+            CaracteristicaPerfil caracteristica) {
+
+        ValorCaracteristica valor = caracteristica.getValorCaracteristica();
+        return new CaracteristicaEvaluadaResponse(
+                caracteristica.getCaracteristicaTecnica().getIdCaracteristica(),
+                caracteristica.getCaracteristicaTecnica().getCodigo(),
+                caracteristica.getCaracteristicaTecnica().getNombre(),
+                caracteristica.getValor(),
+                valor != null ? valor.getIdValor() : null,
+                valor != null ? valor.getEtiqueta() : null,
+                valor != null ? valor.getColorHex() : null,
+                null,
+                null,
+                null);
     }
 
     private static List<String> separarFaltantes(String detalle) {

@@ -87,6 +87,62 @@ class EvaluadorConcordanciaTest {
                 .anyMatch(texto -> texto.contains("Posing"));
     }
 
+    @Test
+    void informaRequisitosCumplidosYValorPedidoDeLaVacante() {
+        Long idHabilidad = 10L;
+        Long idColor = 2L;
+        RequisitoReemplazo requisito = new RequisitoReemplazo(
+                1L,
+                "Modelo",
+                Set.of(idHabilidad),
+                Map.of(idHabilidad, "Desfile en Pasarela"),
+                List.of(new CaracteristicaRequerida(
+                        idColor,
+                        "COLOR_CABELLO",
+                        "Color de cabello",
+                        CaracteristicaTecnica.TIPO_ENUMERADO,
+                        null,
+                        null,
+                        Set.of(99L),
+                        Map.of(99L, "Pelirrojo"))));
+
+        CandidatoPerfil candidato = new CandidatoPerfil(
+                1L,
+                1L,
+                "Abril",
+                "Abril",
+                "Pérez",
+                1L,
+                "Modelo",
+                null,
+                10L,
+                20L,
+                "Posadas",
+                "Misiones",
+                Set.of(idHabilidad),
+                Map.of(idColor, new ValorPerfil("Castaño", 50L)));
+
+        var resultado = EvaluadorConcordancia.evaluar(requisito, candidato);
+
+        assertThat(resultado.requisitosTotales()).isEqualTo(2);
+        assertThat(resultado.requisitosCumplidos()).isEqualTo(1);
+        assertThat(resultado.cumpleTodo()).isFalse();
+        assertThat(resultado.habilidadesEvaluadas())
+                .anySatisfy(habilidad -> {
+                    assertThat(habilidad.nombre())
+                            .isEqualTo("Desfile en Pasarela");
+                    assertThat(habilidad.cumple()).isTrue();
+                });
+        assertThat(resultado.caracteristicasEvaluadas())
+                .anySatisfy(caracteristica -> {
+                    assertThat(caracteristica.codigo())
+                            .isEqualTo("COLOR_CABELLO");
+                    assertThat(caracteristica.cumple()).isFalse();
+                    assertThat(caracteristica.valorPedido())
+                            .isEqualTo("Pelirrojo");
+                });
+    }
+
     private RequisitoReemplazo requisitoAltura(String min, String max) {
         return new RequisitoReemplazo(
                 1L,
@@ -100,7 +156,8 @@ class EvaluadorConcordanciaTest {
                         CaracteristicaTecnica.TIPO_NUMERICO,
                         new BigDecimal(min),
                         new BigDecimal(max),
-                        Set.of())));
+                        Set.of(),
+                        Map.of())));
     }
 
     private CandidatoPerfil candidato(ValorPerfil altura) {

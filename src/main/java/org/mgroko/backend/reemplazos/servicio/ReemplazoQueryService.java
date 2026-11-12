@@ -14,12 +14,17 @@ import org.mgroko.backend.reemplazos.dto.InvitacionReemplazoResponse;
 import org.mgroko.backend.reemplazos.dto.ReemplazoDetalleResponse;
 import org.mgroko.backend.reemplazos.dto.ReemplazoResumenResponse;
 import org.mgroko.backend.reemplazos.enums.EstadoCandidatoReemplazo;
+import org.mgroko.backend.reemplazos.enums.TipoReemplazo;
+import org.mgroko.backend.reemplazos.exception.ReemplazoNoGestionableException;
 import org.mgroko.backend.reemplazos.exception.ReemplazoNoEncontradoException;
 import org.mgroko.backend.reemplazos.mapper.ReemplazoMapper;
 import org.mgroko.backend.reemplazos.modelo.Reemplazo;
 import org.mgroko.backend.reemplazos.modelo.ReemplazoCandidato;
 import org.mgroko.backend.reemplazos.repositorio.ReemplazoCandidatoRepository;
 import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
+import org.mgroko.backend.reemplazos.servicio.modelo.CandidatoPerfil;
+import org.mgroko.backend.reemplazos.servicio.modelo.RequisitoReemplazo;
+import org.mgroko.backend.reemplazos.servicio.modelo.ResultadoConcordancia;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,16 +52,22 @@ public class ReemplazoQueryService {
     private final ReemplazoCandidatoRepository reemplazoCandidatoRepository;
     private final PerfilRepository perfilRepository;
     private final ProyectoSecurityService proyectoSecurityService;
+    private final CatalogoRequisitoService catalogoRequisitoService;
+    private final CandidatoMatchingService candidatoMatchingService;
 
     public ReemplazoQueryService(
             ReemplazoRepository reemplazoRepository,
             ReemplazoCandidatoRepository reemplazoCandidatoRepository,
             PerfilRepository perfilRepository,
-            ProyectoSecurityService proyectoSecurityService) {
+            ProyectoSecurityService proyectoSecurityService,
+            CatalogoRequisitoService catalogoRequisitoService,
+            CandidatoMatchingService candidatoMatchingService) {
         this.reemplazoRepository = reemplazoRepository;
         this.reemplazoCandidatoRepository = reemplazoCandidatoRepository;
         this.perfilRepository = perfilRepository;
         this.proyectoSecurityService = proyectoSecurityService;
+        this.catalogoRequisitoService = catalogoRequisitoService;
+        this.candidatoMatchingService = candidatoMatchingService;
     }
 
     @Transactional(readOnly = true)
@@ -89,13 +100,78 @@ public class ReemplazoQueryService {
                 .filter(r -> r.getProyecto().getIdProyecto().equals(idProyecto))
                 .orElseThrow(() -> new ReemplazoNoEncontradoException(idReemplazo));
 
+        RequisitoReemplazo requisito = cargarRequisito(reemplazo);
+
         List<CandidatoReemplazoResponse> candidatos = reemplazoCandidatoRepository
                 .findConDetalleByReemplazo(idReemplazo)
                 .stream()
-                .map(ReemplazoMapper::toCandidato)
+                .map(candidato -> ReemplazoMapper.toCandidato(
+                        candidato,
+                        evaluarCandidato(candidato, requisito)))
                 .toList();
 
         return new ReemplazoDetalleResponse(toResumen(reemplazo), candidatos);
+    }
+
+    /**
+     * Intenta reconstruir el requisito de la vacante para enriquecer la
+     * respuesta con el detalle de cada habilidad y característica.
+     *
+     * <p>Si el requerimiento ya no está activo (por ejemplo, un proceso
+     * cerrado con snapshot histórico), se devuelve {@code null} y el mapper
+     * mantiene el contrato anterior. La UI sigue funcionando con su
+     * fallback.</p>
+     */
+    private RequisitoReemplazo cargarRequisito(Reemplazo reemplazo) {
+        try {
+            if (reemplazo.getTipo() == TipoReemplazo.ACTIVIDAD
+                    && reemplazo.getRequerimientoActividad() != null) {
+                Long idRequerimiento = reemplazo.getRequerimientoActividad()
+                        .getFechaArchivado() != null
+                        && reemplazo.getRequerimientoActividad()
+                                .getIdRequerimientoOrigen() != null
+                                        ? reemplazo.getRequerimientoActividad()
+                                                .getIdRequerimientoOrigen()
+                                        : reemplazo.getRequerimientoActividad()
+                                                .getIdRequerimiento();
+                if (idRequerimiento != null) {
+                    return catalogoRequisitoService.cargarActividad(
+                            idRequerimiento);
+                }
+            }
+            if (reemplazo.getRequerimientoGral() != null) {
+                Long idRequerimiento = reemplazo.getRequerimientoGral()
+                        .getFechaArchivado() != null
+                        && reemplazo.getRequerimientoGral()
+                                .getIdRequerimientoOrigen() != null
+                                        ? reemplazo.getRequerimientoGral()
+                                                .getIdRequerimientoOrigen()
+                                        : reemplazo.getRequerimientoGral()
+                                                .getIdRequerimientoGral();
+                if (idRequerimiento != null) {
+                    return catalogoRequisitoService.cargarGeneral(
+                            idRequerimiento);
+                }
+            }
+        } catch (ReemplazoNoGestionableException ex) {
+            return null;
+        }
+        return null;
+    }
+
+    private ResultadoConcordancia evaluarCandidato(
+            ReemplazoCandidato candidato,
+            RequisitoReemplazo requisito) {
+
+        if (requisito == null
+                || candidato.getPerfil() == null
+                || candidato.getPerfil().getUsuario() == null) {
+            return null;
+        }
+
+        CandidatoPerfil perfil = candidatoMatchingService
+                .toCandidatoPerfil(candidato.getPerfil());
+        return EvaluadorConcordancia.evaluar(requisito, perfil);
     }
 
     @Transactional(readOnly = true)

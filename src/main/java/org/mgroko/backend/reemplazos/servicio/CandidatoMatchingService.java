@@ -121,7 +121,7 @@ public class CandidatoMatchingService {
                         Comparator.nullsLast(Long::compareTo));
     }
 
-    private CandidatoPerfil toCandidatoPerfil(Perfil perfil) {
+    public CandidatoPerfil toCandidatoPerfil(Perfil perfil) {
         var usuario = perfil.getUsuario();
         var ubicacion = usuario.getUbicacion();
         var ciudad = ubicacion != null ? ubicacion.getCiudad() : null;
