@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,7 +51,9 @@ import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -97,6 +100,8 @@ class CrearPostulacionServiceTest {
     private NotificacionService notificacionService;
     @Mock
     private EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
+    @Mock
+    private ProyectoVisibilidadService proyectoVisibilidadService;
 
     private CrearPostulacionService servicio;
 
@@ -113,6 +118,7 @@ class CrearPostulacionServiceTest {
                 cupoRequerimientoService,
                 notificacionService,
                 evaluarDisponibilidadActividadService,
+                proyectoVisibilidadService,
                 RELOJ);
     }
 
@@ -193,6 +199,25 @@ class CrearPostulacionServiceTest {
         assertThatThrownBy(() -> servicio.darDeAltaPostulacionGeneral(
                 ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL))
                 .isInstanceOf(PostulacionNoPermitidaException.class);
+
+        verify(postulacionGralRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void general_sinAccesoAlProyecto_lanzaAccesoDenegado() {
+        RequerimientoGralProyecto requerimiento = requerimientoGral(proyectoPublicado(true));
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
+                .thenReturn(Optional.of(requerimiento));
+        doThrow(new AccesoDenegadoProyectoException("No tienes acceso a este proyecto."))
+                .when(proyectoVisibilidadService)
+                .validarAcceso(any(Proyecto.class), eq(ID_PERFIL));
+
+        assertThatThrownBy(() -> servicio.darDeAltaPostulacionGeneral(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL))
+                .isInstanceOf(AccesoDenegadoProyectoException.class);
 
         verify(postulacionGralRepository, never()).saveAndFlush(any());
     }

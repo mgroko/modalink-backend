@@ -35,6 +35,36 @@ public interface ConexionRepository
     boolean existsActivaEntre(@Param("idPerfilA") Long idPerfilA,
             @Param("idPerfilB") Long idPerfilB);
 
+    /**
+     * Indica si el perfil consultante es contacto de algún director activo del
+     * proyecto. Un proyecto privado se expone a la red de contactos de sus
+     * directores (unión de todos los directores activos).
+     *
+     * @param idPerfil   perfil activo que consulta
+     * @param idProyecto proyecto cuyo director se evalúa
+     * @return true si existe una conexión ACTIVA con al menos un director activo
+     */
+    @Query("""
+        SELECT COUNT(c) > 0
+        FROM Conexion c, MiembroProyecto mp
+        WHERE c.estado = org.mgroko.backend.modelo.enums.EstadoConexion.ACTIVA
+          AND mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+          AND mp.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+          AND (
+            LOWER(mp.rolProyecto.codigo) = 'director'
+            OR LOWER(mp.rolProyecto.nombre) LIKE 'director%'
+          )
+          AND (
+            (c.perfil1.idPerfil = :idPerfil AND c.perfil2.idPerfil = mp.perfil.idPerfil)
+            OR
+            (c.perfil2.idPerfil = :idPerfil AND c.perfil1.idPerfil = mp.perfil.idPerfil)
+          )
+    """)
+    boolean existeContactoActivoConDirectorDeProyecto(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idProyecto") Long idProyecto);
+
     @Query("""
         SELECT c
         FROM Conexion c

@@ -44,6 +44,9 @@ public class NotificacionService {
     public static final String TIPO_INVITACION_RECHAZADA = "INVITACION_RECHAZADA";
     public static final String TIPO_HITO_CUMPLIDO = "HITO_CUMPLIDO";
     public static final String TIPO_PERFIL_REPORTADO = "PERFIL_REPORTADO";
+    public static final String TIPO_PUBLICACION_REPORTADA = "PUBLICACION_REPORTADA";
+    public static final String TIPO_PUBLICACION_OCULTADA = "PUBLICACION_OCULTADA";
+    public static final String TIPO_PUBLICACION_REACTIVADA = "PUBLICACION_REACTIVADA";
     public static final String TIPO_HABILIDAD_MODIFICADA = "HABILIDAD_MODIFICADA";
     public static final String TIPO_HABILIDAD_ELIMINADA = "HABILIDAD_ELIMINADA";
     public static final String TIPO_INTEGRANTE_ELIMINADO = "INTEGRANTE_ELIMINADO";
@@ -91,11 +94,22 @@ public class NotificacionService {
             "MENSAJE_PRIVADO_RECIBIDO";
     public static final String TIPO_MENSAJE_GRUPAL_RECIBIDO =
             "MENSAJE_GRUPAL_RECIBIDO";
+    public static final String TIPO_SOLICITUD_COLABORACION_RECIBIDA =
+            "SOLICITUD_COLABORACION_RECIBIDA";
+    public static final String TIPO_SOLICITUD_COLABORACION_ACEPTADA =
+            "SOLICITUD_COLABORACION_ACEPTADA";
+    public static final String TIPO_SOLICITUD_COLABORACION_RECHAZADA =
+            "SOLICITUD_COLABORACION_RECHAZADA";
+    public static final String TIPO_PUBLICACION_MEGUSTA =
+            "PUBLICACION_MEGUSTA";
+    public static final String TIPO_PUBLICACION_COMENTARIO =
+            "PUBLICACION_COMENTARIO";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";
     public static final String ENTIDAD_CONVERSACION = "CONVERSACION";
     public static final String ENTIDAD_PROYECTO = "PROYECTO";
+    public static final String ENTIDAD_PUBLICACION = "PUBLICACION";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;
@@ -190,6 +204,55 @@ public class NotificacionService {
 
         return notificacionRepository.deleteByTipoAndEntidadTipoAndEntidadId(
                 tipo, entidadTipo, entidadId);
+    }
+
+    /**
+     * Elimina todas las notificaciones de una entidad concreta,
+     * independientemente de su tipo. UC-20 lo usa al dar de baja físicamente
+     * una publicación.
+     *
+     * @return cantidad de notificaciones eliminadas
+     */
+    @Transactional
+    public int eliminarPorEntidad(String entidadTipo, Long entidadId) {
+        if (entidadTipo == null || entidadId == null) {
+            return 0;
+        }
+
+        return notificacionRepository.deleteByEntidadTipoAndEntidadId(
+                entidadTipo, entidadId);
+    }
+
+    /**
+     * Elimina las notificaciones de una entidad concreta para un usuario y
+     * perfil de destino.
+     *
+     * <p>UC-64 lo usa para retirar únicamente la notificación del destinatario
+     * de una solicitud de colaboración eliminada, sin afectar a otros
+     * destinatarios de la misma publicación.</p>
+     *
+     * @return cantidad de notificaciones eliminadas
+     */
+    @Transactional
+    public int eliminarPorEntidadYPerfil(
+            String tipo,
+            String entidadTipo,
+            Long entidadId,
+            Long idUsuarioDestino,
+            Long idPerfilContexto) {
+
+        if (tipo == null || entidadTipo == null || entidadId == null
+                || idUsuarioDestino == null || idPerfilContexto == null) {
+            return 0;
+        }
+
+        return notificacionRepository
+                .deleteByTipoAndEntidadTipoAndEntidadIdYPerfil(
+                        tipo,
+                        entidadTipo,
+                        entidadId,
+                        idUsuarioDestino,
+                        idPerfilContexto);
     }
 
     @Transactional(readOnly = true)

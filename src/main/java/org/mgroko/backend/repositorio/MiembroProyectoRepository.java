@@ -6,8 +6,11 @@ import java.util.Optional;
 
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.mgroko.backend.repositorio.proyeccion.MiembroProyectoRolProyeccion;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -265,6 +268,35 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     List<Long> findIdsRequerimientoGralConMiembrosActivos(
             @Param("ids") Collection<Long> ids);
+
+    /**
+     * Proyectos finalizados o cancelados que forman parte del historial del
+     * perfil. Solo considera membresías activas; una baja voluntaria o una
+     * eliminación antes del cierre no forman parte del historial.
+     */
+    @Query(value = """
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.proyecto p
+        JOIN FETCH mp.perfil perfil
+        JOIN FETCH perfil.profesion profesionPerfil
+        JOIN FETCH mp.rolProyecto r
+        LEFT JOIN FETCH mp.requerimientoGral rg
+        LEFT JOIN FETCH rg.profesion profesionRequerimiento
+        WHERE mp.perfil.idPerfil = :idPerfil
+          AND p.estado IN :estadosProyecto
+          AND mp.estadoParticipacion = :estadoParticipacion
+        ORDER BY COALESCE(p.fechaFinalizacion, p.fechaCancelacion) DESC, p.idProyecto DESC
+    """, countQuery = """
+        SELECT COUNT(mp) FROM MiembroProyecto mp
+        WHERE mp.perfil.idPerfil = :idPerfil
+          AND mp.proyecto.estado IN :estadosProyecto
+          AND mp.estadoParticipacion = :estadoParticipacion
+    """)
+    Page<MiembroProyecto> buscarHistorialProyectosDePerfil(
+            @Param("idPerfil") Long idPerfil,
+            @Param("estadosProyecto") Collection<EstadoProyecto> estadosProyecto,
+            @Param("estadoParticipacion") EstadoParticipacion estadoParticipacion,
+            Pageable pageable);
 
     /**
      * Membresías históricas del proyecto para la auditoría de bajas.

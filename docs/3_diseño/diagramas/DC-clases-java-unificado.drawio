@@ -1,0 +1,643 @@
+<mxfile host="app.diagrams.net" modified="2026-11-11T12:38:30" agent="OpenCode" version="24.7.17" type="device">
+  <diagram id="java-01" name="Modelo de clases Java — Vista unificada">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="2420" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p1_title" value="Modelo de clases Java — Vista unificada" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="2200" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_subtitle" value="Paquete org.mgroko.backend.modelo · 92 clases · Página 1 de 1" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="2200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Actividad" value="&lt;b&gt;Actividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idActividad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK planificacion &lt;font color=&quot;#666666&quot;&gt;: Planificacion&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoActividad&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Agenda" value="&lt;b&gt;Agenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idAgenda &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK jornadas &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;JornadaAgenda&amp;gt;&lt;/font&gt;&lt;br&gt;MARGEN_ACTIVIDAD_MINUTOS_DEFECTO &lt;font color=&quot;#666666&quot;&gt;: int&lt;/font&gt;&lt;br&gt;margenActividadMinutos &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_AsignacionActividad" value="&lt;b&gt;AsignacionActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idAsignacionAct &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK miembro &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;FK actividad &lt;font color=&quot;#666666&quot;&gt;: Actividad&lt;/font&gt;&lt;br&gt;FK requerimientoActividad &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Auditoria" value="&lt;b&gt;Auditoria&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idAuditoria &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;usuarioBd &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;entidadAfectada &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;entidadClave &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idAfectado &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_BloqueoAgenda" value="&lt;b&gt;BloqueoAgenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idBloqueo &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK agenda &lt;font color=&quot;#666666&quot;&gt;: Agenda&lt;/font&gt;&lt;br&gt;fechaHoraInicio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaHoraFin &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;motivo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_CalificacionPerfil" value="&lt;b&gt;CalificacionPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCalificacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK perfilEmisor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilReceptor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;valoracion &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_CaracteristicaPerfil" value="&lt;b&gt;CaracteristicaPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCaracteristicaPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK caracteristicaTecnica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;FK valorCaracteristica &lt;font color=&quot;#666666&quot;&gt;: ValorCaracteristica&lt;/font&gt;&lt;br&gt;valor &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_CaracteristicaTecnica" value="&lt;b&gt;CaracteristicaTecnica&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK unidadMedida &lt;font color=&quot;#666666&quot;&gt;: UnidadMedida&lt;/font&gt;&lt;br&gt;FK valores &lt;font color=&quot;#666666&quot;&gt;: List&amp;lt;ValorCaracteristica&amp;gt;&lt;/font&gt;&lt;br&gt;TIPO_ENUMERADO &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="100" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Ciudad" value="&lt;b&gt;Ciudad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCiudad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK provincia &lt;font color=&quot;#666666&quot;&gt;: Provincia&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;codigoPostal &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idExterno &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Comentario" value="&lt;b&gt;Comentario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idComentario &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK publicacion &lt;font color=&quot;#666666&quot;&gt;: Publicacion&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;texto &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaComentario &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Conexion" value="&lt;b&gt;Conexion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idConexion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil1 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfil2 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK solicitudOrigen &lt;font color=&quot;#666666&quot;&gt;: SolicitudConexion&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoConexion&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_ConfiguracionSistema" value="&lt;b&gt;ConfiguracionSistema&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK clave &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;valor &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Contrato" value="&lt;b&gt;Contrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idContrato &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK tipoAcuerdo &lt;font color=&quot;#666666&quot;&gt;: TipoAcuerdoContrato&lt;/font&gt;&lt;br&gt;FK miembroEmisor &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_ContratoEvento" value="&lt;b&gt;ContratoEvento&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idEvento &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK contrato &lt;font color=&quot;#666666&quot;&gt;: Contrato&lt;/font&gt;&lt;br&gt;FK miembro &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK contratoVersion &lt;font color=&quot;#666666&quot;&gt;: ContratoVersion&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_ContratoVersion" value="&lt;b&gt;ContratoVersion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idContratoVersion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK contrato &lt;font color=&quot;#666666&quot;&gt;: Contrato&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;version &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;texto &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Conversacion" value="&lt;b&gt;Conversacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idConversacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil1 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfil2 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;fechaCreacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaUltimoMensaje &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="290" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_DetalleAuditoria" value="&lt;b&gt;DetalleAuditoria&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idDetalleAuditoria &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;campo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;valorAnterior &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;valorNuevo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idAuditoria &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EntidadReporte" value="&lt;b&gt;EntidadReporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PERFIL&lt;br&gt;PUBLICACION" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoActividad" value="&lt;b&gt;EstadoActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PENDIENTE&lt;br&gt;EN_CURSO&lt;br&gt;FINALIZADA&lt;br&gt;CANCELADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoConexion" value="&lt;b&gt;EstadoConexion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVA&lt;br&gt;ELIMINADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoContrato" value="&lt;b&gt;EstadoContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;BORRADOR&lt;br&gt;PENDIENTE_FIRMA&lt;br&gt;ACTIVO&lt;br&gt;RECHAZADO_POR_PARTES&lt;br&gt;CANCELADO&lt;br&gt;…" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoCronograma" value="&lt;b&gt;EstadoCronograma&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;NORMAL&lt;br&gt;ALERTA_DESBORDE&lt;br&gt;CONFLICTO&lt;br&gt;SIN_FECHA_ENTREGA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoFirmaContrato" value="&lt;b&gt;EstadoFirmaContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PENDIENTE&lt;br&gt;FIRMADO&lt;br&gt;RECHAZADO&lt;br&gt;CANCELADA&lt;br&gt;INVALIDADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoParticipacion" value="&lt;b&gt;EstadoParticipacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVO&lt;br&gt;BAJA_VOLUNTARIA&lt;br&gt;ELIMINADO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="480" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoPerfil" value="&lt;b&gt;EstadoPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVO&lt;br&gt;DESHABILITADO&lt;br&gt;PENDIENTE_BAJA&lt;br&gt;BAJA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoProyecto" value="&lt;b&gt;EstadoProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;BORRADOR&lt;br&gt;PUBLICADO&lt;br&gt;CONFIRMADO&lt;br&gt;FINALIZADO&lt;br&gt;CANCELADO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoPublicacion" value="&lt;b&gt;EstadoPublicacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVA&lt;br&gt;OCULTA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoReporte" value="&lt;b&gt;EstadoReporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoSolicitud" value="&lt;b&gt;EstadoSolicitud&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PENDIENTE&lt;br&gt;ACEPTADA&lt;br&gt;RECHAZADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_EstadoUsuario" value="&lt;b&gt;EstadoUsuario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVO&lt;br&gt;DESHABILITADO&lt;br&gt;PENDIENTE_BAJA&lt;br&gt;BAJA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_FirmaContrato" value="&lt;b&gt;FirmaContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMiembro &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idContrato &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK miembro &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;FK contrato &lt;font color=&quot;#666666&quot;&gt;: Contrato&lt;/font&gt;&lt;br&gt;FK contratoVersion &lt;font color=&quot;#666666&quot;&gt;: ContratoVersion&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_FirmaContratoId" value="&lt;b&gt;FirmaContratoId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;serialVersionUID &lt;font color=&quot;#666666&quot;&gt;: long&lt;/font&gt;&lt;br&gt;idMiembro &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idContrato &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="670" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Genero" value="&lt;b&gt;Genero&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idGenero &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_GrupoPolaroid" value="&lt;b&gt;GrupoPolaroid&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idGrupoPolaroid &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Habilidad" value="&lt;b&gt;Habilidad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idHabilidad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Hito" value="&lt;b&gt;Hito&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idHito &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Imagen" value="&lt;b&gt;Imagen&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idImagen &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;url &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombreArchivo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;tipoImagen &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_InvitacionActividad" value="&lt;b&gt;InvitacionActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idInvitacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK requerimiento &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;&lt;br&gt;mensaje &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_InvitacionGral" value="&lt;b&gt;InvitacionGral&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idInvitacionGral &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK requerimientoGral &lt;font color=&quot;#666666&quot;&gt;: RequerimientoGralProyecto&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_JornadaAgenda" value="&lt;b&gt;JornadaAgenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idJornada &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK agenda &lt;font color=&quot;#666666&quot;&gt;: Agenda&lt;/font&gt;&lt;br&gt;diaSemana &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;horaInicioManana &lt;font color=&quot;#666666&quot;&gt;: LocalTime&lt;/font&gt;&lt;br&gt;horaFinManana &lt;font color=&quot;#666666&quot;&gt;: LocalTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="860" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_MeGusta" value="&lt;b&gt;MeGusta&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK id &lt;font color=&quot;#666666&quot;&gt;: MeGustaId&lt;/font&gt;&lt;br&gt;fecha &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_MeGustaId" value="&lt;b&gt;MeGustaId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;serialVersionUID &lt;font color=&quot;#666666&quot;&gt;: long&lt;/font&gt;&lt;br&gt;idPublicacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Mensaje" value="&lt;b&gt;Mensaje&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMensaje &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK conversacion &lt;font color=&quot;#666666&quot;&gt;: Conversacion&lt;/font&gt;&lt;br&gt;FK perfilEmisor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;contenido &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_MensajeProyecto" value="&lt;b&gt;MensajeProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMensajeProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK perfilEmisor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;contenido &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_MiembroProyecto" value="&lt;b&gt;MiembroProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMiembro &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK rolProyecto &lt;font color=&quot;#666666&quot;&gt;: RolProyecto&lt;/font&gt;&lt;br&gt;FK tycAceptado &lt;font color=&quot;#666666&quot;&gt;: PerfilTyc&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Moodboard" value="&lt;b&gt;Moodboard&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMoodboard &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;fechaCreacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;imagenes &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;Imagen&amp;gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_MotivoReporte" value="&lt;b&gt;MotivoReporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Notificacion" value="&lt;b&gt;Notificacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idNotificacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuarioDestino &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK perfilContexto &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;tipo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;mensaje &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="1050" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Objetivo" value="&lt;b&gt;Objetivo&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idObjetivo &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_OrigenInicio" value="&lt;b&gt;OrigenInicio&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PROYECTADA&lt;br&gt;CONFIRMADA&lt;br&gt;REAL" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Pais" value="&lt;b&gt;Pais&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPais &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigoIso &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;activo &lt;font color=&quot;#666666&quot;&gt;: Boolean&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Perfil" value="&lt;b&gt;Perfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK imagen &lt;font color=&quot;#666666&quot;&gt;: Imagen&lt;/font&gt;&lt;br&gt;FK caracteristicas &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;CaracteristicaPerfil&amp;gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PerfilTyc" value="&lt;b&gt;PerfilTyc&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK id &lt;font color=&quot;#666666&quot;&gt;: PerfilTycId&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaInicio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaFin &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PerfilTycId" value="&lt;b&gt;PerfilTycId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idTyc &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PermisoGlobal" value="&lt;b&gt;PermisoGlobal&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPermisoGlobal &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PermisoProyecto" value="&lt;b&gt;PermisoProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPermisoProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="1240" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Planificacion" value="&lt;b&gt;Planificacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPlanificacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;fechaEntrega &lt;font color=&quot;#666666&quot;&gt;: LocalDate&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PolaroidPerfil" value="&lt;b&gt;PolaroidPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPolaroid &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK imagen &lt;font color=&quot;#666666&quot;&gt;: Imagen&lt;/font&gt;&lt;br&gt;FK tipoPolaroid &lt;font color=&quot;#666666&quot;&gt;: TipoPolaroid&lt;/font&gt;&lt;br&gt;orden &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PostulacionActividad" value="&lt;b&gt;PostulacionActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPostulacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK requerimiento &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;&lt;br&gt;fechaPostulacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PostulacionGral" value="&lt;b&gt;PostulacionGral&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPostulacionGral &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK requerimientoGral &lt;font color=&quot;#666666&quot;&gt;: RequerimientoGralProyecto&lt;/font&gt;&lt;br&gt;fechaPostulacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Privacidad" value="&lt;b&gt;Privacidad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PUBLICO&lt;br&gt;PRIVADO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Profesion" value="&lt;b&gt;Profesion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idProfesion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_ProveedorAuth" value="&lt;b&gt;ProveedorAuth&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;LOCAL&lt;br&gt;GOOGLE" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Provincia" value="&lt;b&gt;Provincia&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idProvincia &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK pais &lt;font color=&quot;#666666&quot;&gt;: Pais&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idExterno &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fuenteApi &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="1430" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Proyecto" value="&lt;b&gt;Proyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaInicio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Publicacion" value="&lt;b&gt;Publicacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPublicacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;titulo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Reporte" value="&lt;b&gt;Reporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReporte &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuarioAutor &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK perfilAutor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilReportado &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK adminRevisor &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoActCaract" value="&lt;b&gt;RequerimientoActCaract&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReqActCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK requerimientoActividad &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;&lt;br&gt;FK caracteristica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;valorMin &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;&lt;br&gt;valorMax &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoActCaractValor" value="&lt;b&gt;RequerimientoActCaractValor&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReqActCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoActCaractValorId" value="&lt;b&gt;RequerimientoActCaractValorId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idReqActCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoActividad" value="&lt;b&gt;RequerimientoActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRequerimiento &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK actividad &lt;font color=&quot;#666666&quot;&gt;: Actividad&lt;/font&gt;&lt;br&gt;FK caracteristicas &lt;font color=&quot;#666666&quot;&gt;: List&amp;lt;RequerimientoActCaract&amp;gt;&lt;/font&gt;&lt;br&gt;cantidad &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoGralCaract" value="&lt;b&gt;RequerimientoGralCaract&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReqGralCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK requerimientoGral &lt;font color=&quot;#666666&quot;&gt;: RequerimientoGralProyecto&lt;/font&gt;&lt;br&gt;FK caracteristica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;valorMin &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;&lt;br&gt;valorMax &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="1620" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoGralCaractValor" value="&lt;b&gt;RequerimientoGralCaractValor&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idReqGralCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoGralCaractValorId" value="&lt;b&gt;RequerimientoGralCaractValorId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idReqGralCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RequerimientoGralProyecto" value="&lt;b&gt;RequerimientoGralProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRequerimientoGral &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK caracteristicas &lt;font color=&quot;#666666&quot;&gt;: List&amp;lt;RequerimientoGralCaract&amp;gt;&lt;/font&gt;&lt;br&gt;cantidad &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RolGlobal" value="&lt;b&gt;RolGlobal&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRolGlobal &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;permisos &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;PermisoGlobal&amp;gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RolParteContrato" value="&lt;b&gt;RolParteContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;DIRECTOR&lt;br&gt;DESTINATARIO&lt;br&gt;DIRECTOR_DESTINATARIO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RolProyecto" value="&lt;b&gt;RolProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRolProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;permisos &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;PermisoProyecto&amp;gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RolProyectoUsuario" value="&lt;b&gt;RolProyectoUsuario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;DIRECTOR&lt;br&gt;MIEMBRO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_SolicitudColaboracion" value="&lt;b&gt;SolicitudColaboracion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idSolicitudColaboracion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK publicacion &lt;font color=&quot;#666666&quot;&gt;: Publicacion&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="1810" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_SolicitudConexion" value="&lt;b&gt;SolicitudConexion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idSolicitudConexion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_TipoAcuerdoContrato" value="&lt;b&gt;TipoAcuerdoContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idTipoAcuerdo &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;plantilla &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_TipoEventoAuditoria" value="&lt;b&gt;TipoEventoAuditoria&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;modulo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;activo &lt;font color=&quot;#666666&quot;&gt;: boolean&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_TipoEventoContrato" value="&lt;b&gt;TipoEventoContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;CREADO&lt;br&gt;MODIFICADO&lt;br&gt;EMITIDO&lt;br&gt;FIRMADO&lt;br&gt;RECHAZADO&lt;br&gt;…" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_TipoEventoHistorial" value="&lt;b&gt;TipoEventoHistorial&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_TipoPolaroid" value="&lt;b&gt;TipoPolaroid&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idTipoPolaroid &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK grupo &lt;font color=&quot;#666666&quot;&gt;: GrupoPolaroid&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Ubicacion" value="&lt;b&gt;Ubicacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idUbicacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK ciudad &lt;font color=&quot;#666666&quot;&gt;: Ciudad&lt;/font&gt;&lt;br&gt;direccion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;codigoPostal &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;latitud &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_UnidadMedida" value="&lt;b&gt;UnidadMedida&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idUnidad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;simbolo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;tipoDatoPermitido &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="2000" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Usuario" value="&lt;b&gt;Usuario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idUsuario &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;FK rolGlobal &lt;font color=&quot;#666666&quot;&gt;: RolGlobal&lt;/font&gt;&lt;br&gt;FK genero &lt;font color=&quot;#666666&quot;&gt;: Genero&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="2190" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_UsuarioIdentidad" value="&lt;b&gt;UsuarioIdentidad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idIdentidad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;proveedor &lt;font color=&quot;#666666&quot;&gt;: ProveedorAuth&lt;/font&gt;&lt;br&gt;idExterno &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;correo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="330" y="2190" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_ValorCaracteristica" value="&lt;b&gt;ValorCaracteristica&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK id &lt;font color=&quot;#666666&quot;&gt;: ValorCaracteristicaId&lt;/font&gt;&lt;br&gt;FK caracteristicaTecnica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;etiqueta &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;colorHex &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="2190" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_ValorCaracteristicaId" value="&lt;b&gt;ValorCaracteristicaId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="890" y="2190" width="240" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel0" value="planificacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Actividad" target="p1_class_Planificacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel1" value="ubicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Actividad" target="p1_class_Ubicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel2" value="predecesoras  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Actividad" target="p1_class_Actividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel3" value="sucesoras  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Actividad" target="p1_class_Actividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel4" value="usuario  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Agenda" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel5" value="jornadas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Agenda" target="p1_class_JornadaAgenda">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel6" value="miembro  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_AsignacionActividad" target="p1_class_MiembroProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel7" value="actividad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_AsignacionActividad" target="p1_class_Actividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel8" value="requerimientoActividad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_AsignacionActividad" target="p1_class_RequerimientoActividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel9" value="agenda  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_BloqueoAgenda" target="p1_class_Agenda">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel10" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CalificacionPerfil" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel11" value="perfilEmisor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CalificacionPerfil" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel12" value="perfilReceptor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CalificacionPerfil" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel13" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CaracteristicaPerfil" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel14" value="caracteristicaTecnica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CaracteristicaPerfil" target="p1_class_CaracteristicaTecnica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel15" value="valorCaracteristica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CaracteristicaPerfil" target="p1_class_ValorCaracteristica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel16" value="profesion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CaracteristicaTecnica" target="p1_class_Profesion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel17" value="unidadMedida  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CaracteristicaTecnica" target="p1_class_UnidadMedida">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel18" value="valores  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_CaracteristicaTecnica" target="p1_class_ValorCaracteristica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel19" value="provincia  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Ciudad" target="p1_class_Provincia">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel20" value="publicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Comentario" target="p1_class_Publicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel21" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Comentario" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel22" value="perfil1  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Conexion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel23" value="perfil2  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Conexion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel24" value="solicitudOrigen  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Conexion" target="p1_class_SolicitudConexion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel25" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Contrato" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel26" value="tipoAcuerdo  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Contrato" target="p1_class_TipoAcuerdoContrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel27" value="miembroEmisor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Contrato" target="p1_class_MiembroProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel28" value="contrato  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ContratoEvento" target="p1_class_Contrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel29" value="miembro  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ContratoEvento" target="p1_class_MiembroProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel30" value="usuario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ContratoEvento" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel31" value="contratoVersion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ContratoEvento" target="p1_class_ContratoVersion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel32" value="contrato  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ContratoVersion" target="p1_class_Contrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel33" value="usuario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ContratoVersion" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel34" value="perfil1  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Conversacion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel35" value="perfil2  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Conversacion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel36" value="miembro  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_FirmaContrato" target="p1_class_MiembroProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel37" value="contrato  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_FirmaContrato" target="p1_class_Contrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel38" value="contratoVersion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_FirmaContrato" target="p1_class_ContratoVersion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel39" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Hito" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel40" value="perfilRemitente  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_InvitacionActividad" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel41" value="perfilDestinatario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_InvitacionActividad" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel42" value="requerimiento  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_InvitacionActividad" target="p1_class_RequerimientoActividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel43" value="perfilRemitente  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_InvitacionGral" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel44" value="perfilDestinatario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_InvitacionGral" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel45" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_InvitacionGral" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel46" value="requerimientoGral  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_InvitacionGral" target="p1_class_RequerimientoGralProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel47" value="agenda  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_JornadaAgenda" target="p1_class_Agenda">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel48" value="id  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MeGusta" target="p1_class_MeGustaId">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel49" value="conversacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Mensaje" target="p1_class_Conversacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel50" value="perfilEmisor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Mensaje" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel51" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MensajeProyecto" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel52" value="perfilEmisor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MensajeProyecto" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel53" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MiembroProyecto" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel54" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MiembroProyecto" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel55" value="rolProyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MiembroProyecto" target="p1_class_RolProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel56" value="tycAceptado  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MiembroProyecto" target="p1_class_PerfilTyc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel57" value="requerimientoGral  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MiembroProyecto" target="p1_class_RequerimientoGralProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel58" value="perfilAutorBaja  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_MiembroProyecto" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel59" value="proyecto  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Moodboard" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel60" value="imagenes  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Moodboard" target="p1_class_Imagen">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel61" value="usuarioDestino  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Notificacion" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel62" value="perfilContexto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Notificacion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel63" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Objetivo" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel64" value="usuario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Perfil" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel65" value="profesion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Perfil" target="p1_class_Profesion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel66" value="imagen  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Perfil" target="p1_class_Imagen">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel67" value="caracteristicas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Perfil" target="p1_class_CaracteristicaPerfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel68" value="habilidades  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Perfil" target="p1_class_Habilidad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel69" value="id  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PerfilTyc" target="p1_class_PerfilTycId">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel70" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PerfilTyc" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel71" value="proyecto  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Planificacion" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel72" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PolaroidPerfil" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel73" value="imagen  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PolaroidPerfil" target="p1_class_Imagen">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel74" value="tipoPolaroid  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PolaroidPerfil" target="p1_class_TipoPolaroid">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel75" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PostulacionActividad" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel76" value="requerimiento  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PostulacionActividad" target="p1_class_RequerimientoActividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel77" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PostulacionGral" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel78" value="requerimientoGral  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_PostulacionGral" target="p1_class_RequerimientoGralProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel79" value="pais  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Provincia" target="p1_class_Pais">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel80" value="ubicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Proyecto" target="p1_class_Ubicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel81" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Publicacion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel82" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Publicacion" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel83" value="ubicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Publicacion" target="p1_class_Ubicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel84" value="imagenes  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Publicacion" target="p1_class_Imagen">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel85" value="colaboradores  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Publicacion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel86" value="usuarioAutor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Reporte" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel87" value="perfilAutor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Reporte" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel88" value="perfilReportado  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Reporte" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel89" value="adminRevisor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Reporte" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel90" value="requerimientoActividad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoActCaract" target="p1_class_RequerimientoActividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel91" value="caracteristica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoActCaract" target="p1_class_CaracteristicaTecnica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel92" value="profesion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoActividad" target="p1_class_Profesion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel93" value="actividad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoActividad" target="p1_class_Actividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel94" value="habilidades  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoActividad" target="p1_class_Habilidad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel95" value="caracteristicas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoActividad" target="p1_class_RequerimientoActCaract">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel96" value="requerimientoGral  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoGralCaract" target="p1_class_RequerimientoGralProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel97" value="caracteristica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoGralCaract" target="p1_class_CaracteristicaTecnica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel98" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoGralProyecto" target="p1_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel99" value="profesion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoGralProyecto" target="p1_class_Profesion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel100" value="habilidades  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoGralProyecto" target="p1_class_Habilidad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel101" value="caracteristicas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RequerimientoGralProyecto" target="p1_class_RequerimientoGralCaract">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel102" value="permisos  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RolGlobal" target="p1_class_PermisoGlobal">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel103" value="permisos  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RolProyecto" target="p1_class_PermisoProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel104" value="publicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_SolicitudColaboracion" target="p1_class_Publicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel105" value="perfilRemitente  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_SolicitudColaboracion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel106" value="perfilDestinatario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_SolicitudColaboracion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel107" value="perfilRemitente  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_SolicitudConexion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel108" value="perfilDestinatario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_SolicitudConexion" target="p1_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel109" value="grupo  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_TipoPolaroid" target="p1_class_GrupoPolaroid">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel110" value="ciudad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Ubicacion" target="p1_class_Ciudad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel111" value="ubicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Usuario" target="p1_class_Ubicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel112" value="rolGlobal  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Usuario" target="p1_class_RolGlobal">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel113" value="genero  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Usuario" target="p1_class_Genero">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel114" value="usuario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_UsuarioIdentidad" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel115" value="id  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ValorCaracteristica" target="p1_class_ValorCaracteristicaId">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel116" value="caracteristicaTecnica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_ValorCaracteristica" target="p1_class_CaracteristicaTecnica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

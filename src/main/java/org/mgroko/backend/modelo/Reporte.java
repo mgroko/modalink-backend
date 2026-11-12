@@ -26,9 +26,11 @@ import lombok.Setter;
 /**
  * UC-15: reporte emitido por un perfil contra otra entidad de la plataforma.
  *
- * <p>El modelo es genérico ({@code entidadTipo + entidadId}) para reutilizarlo
- * en UC-69. Para reportes de perfil se completa además
- * {@link #perfilReportado}, que mantiene la FK real con {@code perfil}.</p>
+ * <p>El modelo es genérico ({@code entidadTipo + entidadId}) y lo comparten
+ * UC-15 (perfil) y UC-69 (publicación). Para reportes de perfil se completa
+ * además {@link #perfilReportado}, que mantiene la FK real con {@code perfil};
+ * para publicaciones queda en {@code null} y la entidad se resuelve por
+ * {@code entidadId}.</p>
  */
 @Entity
 @Table(name = "reporte")

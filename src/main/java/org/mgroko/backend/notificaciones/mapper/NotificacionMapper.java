@@ -11,6 +11,7 @@ public final class NotificacionMapper {
     private static final String ENTIDAD_INVITACION_ACTIVIDAD = "INVITACION_ACTIVIDAD";
     private static final String ENTIDAD_CONEXION = "CONEXION";
     private static final String ENTIDAD_CONVERSACION = "CONVERSACION";
+    private static final String ENTIDAD_PUBLICACION = "PUBLICACION";
     private static final String TIPO_CALIFICACION_SOLICITADA =
             "CALIFICACION_SOLICITADA";
     private static final String TIPO_SOLICITUD_CONEXION_RECIBIDA =
@@ -25,6 +26,18 @@ public final class NotificacionMapper {
             "MENSAJE_PRIVADO_RECIBIDO";
     private static final String TIPO_MENSAJE_GRUPAL_RECIBIDO =
             "MENSAJE_GRUPAL_RECIBIDO";
+    private static final String TIPO_SOLICITUD_COLABORACION_RECIBIDA =
+            "SOLICITUD_COLABORACION_RECIBIDA";
+    private static final String TIPO_SOLICITUD_COLABORACION_ACEPTADA =
+            "SOLICITUD_COLABORACION_ACEPTADA";
+    private static final String TIPO_SOLICITUD_COLABORACION_RECHAZADA =
+            "SOLICITUD_COLABORACION_RECHAZADA";
+    private static final String TIPO_PUBLICACION_MEGUSTA =
+            "PUBLICACION_MEGUSTA";
+    private static final String TIPO_PUBLICACION_COMENTARIO =
+            "PUBLICACION_COMENTARIO";
+    private static final String TIPO_PUBLICACION_REACTIVADA =
+            "PUBLICACION_REACTIVADA";
 
     private NotificacionMapper() {
     }
@@ -90,6 +103,16 @@ public final class NotificacionMapper {
             case TIPO_MENSAJE_GRUPAL_RECIBIDO ->
                     idProyecto != null
                             ? "/proyectos/" + idProyecto + "/chat"
+                            : null;
+            case TIPO_SOLICITUD_COLABORACION_RECIBIDA,
+                 TIPO_SOLICITUD_COLABORACION_ACEPTADA,
+                 TIPO_SOLICITUD_COLABORACION_RECHAZADA,
+                 TIPO_PUBLICACION_MEGUSTA,
+                 TIPO_PUBLICACION_COMENTARIO,
+                 TIPO_PUBLICACION_REACTIVADA ->
+                    ENTIDAD_PUBLICACION.equals(notificacion.getEntidadTipo())
+                            && notificacion.getEntidadId() != null
+                            ? "/publicaciones/" + notificacion.getEntidadId()
                             : null;
             default -> null;
         };

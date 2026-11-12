@@ -4,8 +4,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Imagen;
@@ -13,13 +14,17 @@ import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.perfiles.servicio.EliminarImagenesPerfilService;
 import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
+import org.mgroko.backend.storage.dto.ArchivoEnDisco;
+import org.mgroko.backend.storage.exception.LimpiezaImagenesEnCursoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Job de reconciliaci&oacute;n de im&aacute;genes: en cada ciclo deja el directorio de
- * fotos y la tabla {@code imagen} &uacute;nicamente con lo que los perfiles que no
+ * Job de reconciliaci&oacute;n de im&aacute;genes: en cada ciclo deja los directorios
+ * de im&aacute;genes ({@code perfiles}, {@code moodboard}, {@code publicaciones} y
+ * {@code polaroids}) y
+ * la tabla {@code imagen} &uacute;nicamente con lo que los perfiles que no
  * est&aacute;n dados de baja necesitan.
  * <p>
  * Los pasos son, todos con la gracia de
@@ -31,8 +36,8 @@ import org.springframework.stereotype.Service;
  * borra la fila y el archivo;</li>
  * <li>im&aacute;genes a&uacute;n referenciadas por perfiles en {@code BAJA} (borrados
  * anteriores que fallaron) &rarr; se eliminan con el m&eacute;todo dedicado;</li>
- * <li>archivos del directorio de perfiles sin fila en {@code imagen} y
- * antiguos &rarr; se borra el archivo.</li>
+ * <li>archivos de cualquiera de los directorios gestionados sin fila en
+ * {@code imagen} y antiguos &rarr; se borra el archivo.</li>
  * </ol>
  * Un fallo en un elemento se registra y no aborta el resto; al final se
  * registran los totales.
@@ -47,6 +52,12 @@ public class LimpiezaImagenesService {
     private final StorageService storageService;
     private final EliminarImagenesPerfilService eliminarImagenesPerfilService;
     private final ConfiguracionSistemaService configuracionSistemaService;
+
+    /**
+     * Evita que el job programado y el botón manual de administración se
+     * ejecuten en paralelo y compitan por los mismos archivos.
+     */
+    private final ReentrantLock ejecucionLock = new ReentrantLock();
 
     public LimpiezaImagenesService(
             ImagenRepository imagenRepository,
@@ -67,23 +78,31 @@ public class LimpiezaImagenesService {
      * @return totales de lo que se elimin&oacute; y de los fallos
      */
     public Resultado ejecutar() {
-        int graciaMinutos = configuracionSistemaService.obtenerGraciaLimpiezaImagenesMinutos();
-        LocalDateTime limiteAntiguedad = LocalDateTime.now().minusMinutes(graciaMinutos);
+        if (!ejecucionLock.tryLock()) {
+            throw new LimpiezaImagenesEnCursoException();
+        }
 
-        Conteo huerfanas = borrarImagenesHuerfanas(limiteAntiguedad);
-        Conteo perfilesBaja = borrarImagenesDePerfilesEnBaja();
-        Conteo archivos = borrarArchivosSinFila(limiteAntiguedad);
+        try {
+            int graciaMinutos = configuracionSistemaService.obtenerGraciaLimpiezaImagenesMinutos();
+            LocalDateTime limiteAntiguedad = LocalDateTime.now().minusMinutes(graciaMinutos);
 
-        int errores = huerfanas.errores() + perfilesBaja.errores() + archivos.errores();
-        int nombresConFila = imagenRepository.listarNombresArchivos().size();
+            Conteo huerfanas = borrarImagenesHuerfanas(limiteAntiguedad);
+            Conteo perfilesBaja = borrarImagenesDePerfilesEnBaja();
+            Conteo archivos = borrarArchivosSinFila(limiteAntiguedad);
 
-        LOG.info("Limpieza de imágenes finalizada: {} archivo(s) huérfano(s) borrado(s), "
-                        + "{} imagen(es) sin referencia, {} imagen(es) de perfil en baja, "
-                        + "{} error(es). Quedan {} nombre(s) de archivo con fila.",
-                archivos.borrados(), huerfanas.borrados(), perfilesBaja.borrados(),
-                errores, nombresConFila);
+            int errores = huerfanas.errores() + perfilesBaja.errores() + archivos.errores();
+            int nombresConFila = imagenRepository.listarNombresArchivos().size();
 
-        return new Resultado(archivos.borrados(), huerfanas.borrados(), perfilesBaja.borrados(), errores);
+            LOG.info("Limpieza de imágenes finalizada: {} archivo(s) huérfano(s) borrado(s), "
+                            + "{} imagen(es) sin referencia, {} imagen(es) de perfil en baja, "
+                            + "{} error(es). Quedan {} nombre(s) de archivo con fila.",
+                    archivos.borrados(), huerfanas.borrados(), perfilesBaja.borrados(),
+                    errores, nombresConFila);
+
+            return new Resultado(archivos.borrados(), huerfanas.borrados(), perfilesBaja.borrados(), errores);
+        } finally {
+            ejecucionLock.unlock();
+        }
     }
 
     private Conteo borrarImagenesHuerfanas(LocalDateTime limiteAntiguedad) {
@@ -123,20 +142,21 @@ public class LimpiezaImagenesService {
         int borrados = 0;
         int errores = 0;
         Set<String> nombresConFila = new HashSet<>(imagenRepository.listarNombresArchivos());
-        Map<String, Instant> fotosEnDisco = storageService.listarFotografiasDePerfil();
+        List<ArchivoEnDisco> archivosEnDisco = storageService.listarArchivos();
         Instant limiteArchivo = limiteAntiguedad.atZone(ZoneId.systemDefault()).toInstant();
 
-        for (Map.Entry<String, Instant> foto : fotosEnDisco.entrySet()) {
-            String nombre = foto.getKey();
-            if (nombresConFila.contains(nombre) || foto.getValue().isAfter(limiteArchivo)) {
+        for (ArchivoEnDisco archivo : archivosEnDisco) {
+            if (nombresConFila.contains(archivo.nombreArchivo())
+                    || archivo.fechaModificacion().isAfter(limiteArchivo)) {
                 continue;
             }
             try {
-                storageService.eliminarFotoPerfil(nombre);
+                storageService.eliminarArchivo(archivo.subdirectorio(), archivo.nombreArchivo());
                 borrados++;
             } catch (Exception e) {
                 errores++;
-                LOG.warn("No se pudo eliminar el archivo huérfano '{}'; se continúa con el resto.", nombre, e);
+                LOG.warn("No se pudo eliminar el archivo huérfano '{}/{}'; se continúa con el resto.",
+                        archivo.subdirectorio(), archivo.nombreArchivo(), e);
             }
         }
         return new Conteo(borrados, errores);

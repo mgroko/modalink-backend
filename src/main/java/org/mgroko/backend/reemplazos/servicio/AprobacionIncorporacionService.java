@@ -17,6 +17,8 @@ import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoActividadModificadoEvent;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoGralModificadoEvent;
 import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
@@ -56,12 +58,6 @@ public class AprobacionIncorporacionService {
     private static final String MOTIVO_VACANTE_CUBIERTA =
             "Vacante cubierta por otro candidato";
 
-    private static final List<EstadoCandidatoReemplazo> ESTADOS_ACEPTADOS =
-            List.of(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
-
-    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITADOS =
-            List.of(EstadoCandidatoReemplazo.INVITADO);
-
     private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITACION_ACTIVA =
             List.of(
                     EstadoCandidatoReemplazo.PROPUESTO,
@@ -81,6 +77,8 @@ public class AprobacionIncorporacionService {
     private final ReemplazoNotificacionService notificacionService;
     private final ApplicationEventPublisher eventPublisher;
     private final GestionTerminosCondicionesService gestionTerminosCondicionesService;
+    private final EstadoReemplazoCalculator estadoCalculator;
+    private final ReemplazoSnapshotService reemplazoSnapshotService;
     private final Clock reloj;
 
     public AprobacionIncorporacionService(
@@ -97,6 +95,8 @@ public class AprobacionIncorporacionService {
             ReemplazoNotificacionService notificacionService,
             ApplicationEventPublisher eventPublisher,
             GestionTerminosCondicionesService gestionTerminosCondicionesService,
+            EstadoReemplazoCalculator estadoCalculator,
+            ReemplazoSnapshotService reemplazoSnapshotService,
             Clock reloj) {
         this.reemplazoRepository = reemplazoRepository;
         this.candidatoRepository = candidatoRepository;
@@ -111,6 +111,8 @@ public class AprobacionIncorporacionService {
         this.notificacionService = notificacionService;
         this.eventPublisher = eventPublisher;
         this.gestionTerminosCondicionesService = gestionTerminosCondicionesService;
+        this.estadoCalculator = estadoCalculator;
+        this.reemplazoSnapshotService = reemplazoSnapshotService;
         this.reloj = reloj;
     }
 
@@ -225,10 +227,37 @@ public class AprobacionIncorporacionService {
         candidato.setIdTycAceptado(idTycRegistrado);
         candidatoRepository.saveAndFlush(candidato);
 
+        Long idRequerimientoActividadActivo =
+                reemplazo.getTipo() == TipoReemplazo.ACTIVIDAD
+                        && reemplazo.getRequerimientoActividad() != null
+                                ? reemplazo.getRequerimientoActividad().getIdRequerimiento()
+                                : null;
+        Long idRequerimientoGralActivo =
+                reemplazo.getTipo() == TipoReemplazo.GENERAL
+                        && reemplazo.getRequerimientoGral() != null
+                                ? reemplazo.getRequerimientoGral().getIdRequerimientoGral()
+                                : null;
+
         reemplazo.setEstado(EstadoReemplazo.CUBIERTO);
         reemplazo.setFechaCierre(ahora);
         reemplazo.setIdMiembroResultante(idMiembro);
         reemplazo.setIdAsignacionResultante(idAsignacion);
+        reemplazoRepository.saveAndFlush(reemplazo);
+
+        // El proceso propio ya está CUBIERTO y queda excluido. Si existe otro
+        // reemplazo abierto para el mismo requerimiento, la vacante también
+        // dejó de existir para él.
+        if (idRequerimientoActividadActivo != null) {
+            eventPublisher.publishEvent(new CupoRequerimientoActividadModificadoEvent(
+                    idRequerimientoActividadActivo));
+        } else if (idRequerimientoGralActivo != null) {
+            eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
+                    idRequerimientoGralActivo));
+        }
+
+        // El proceso cerrado deja de apuntar al requerimiento activo. Así el
+        // requerimiento puede modificarse o eliminarse sin romper las FKs.
+        reemplazoSnapshotService.repuntarAlCerrar(reemplazo, ahora);
         reemplazoRepository.saveAndFlush(reemplazo);
 
         // El candidato aprobado cubre la vacante: las demás invitaciones
@@ -377,20 +406,8 @@ public class AprobacionIncorporacionService {
      * {@code SIN_CANDIDATOS}.</p>
      */
     private void actualizarEstadoTrasRechazo(Reemplazo reemplazo) {
-        long aceptados = candidatoRepository
-                .countByReemplazoIdReemplazoAndEstadoIn(
-                        reemplazo.getIdReemplazo(),
-                        ESTADOS_ACEPTADOS);
-        long invitados = candidatoRepository
-                .countByReemplazoIdReemplazoAndEstadoIn(
-                        reemplazo.getIdReemplazo(),
-                        ESTADOS_INVITADOS);
-
-        EstadoReemplazo nuevoEstado = aceptados > 0
-                ? EstadoReemplazo.PENDIENTE_APROBACION
-                : invitados > 0
-                        ? EstadoReemplazo.INVITACIONES_ENVIADAS
-                        : EstadoReemplazo.SIN_CANDIDATOS;
+        EstadoReemplazo nuevoEstado = estadoCalculator.calcular(
+                reemplazo.getIdReemplazo());
 
         if (reemplazo.getEstado() != nuevoEstado) {
             reemplazo.setEstado(nuevoEstado);

@@ -38,6 +38,11 @@ public class ConfirmarReemplazoService {
             EstadoCandidatoReemplazo.INVITADO,
             EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
 
+    private static final List<EstadoReemplazo> ESTADOS_CON_INVITACION_POSIBLE = List.of(
+            EstadoReemplazo.PENDIENTE_CONFIRMACION_DIRECTOR,
+            EstadoReemplazo.INVITACIONES_ENVIADAS,
+            EstadoReemplazo.PENDIENTE_APROBACION);
+
     private final ReemplazoRepository reemplazoRepository;
     private final ReemplazoCandidatoRepository candidatoRepository;
     private final ProyectoSecurityService proyectoSecurityService;
@@ -47,6 +52,7 @@ public class ConfirmarReemplazoService {
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final ReemplazoNotificacionService notificacionService;
     private final GenerarReemplazosService generarReemplazosService;
+    private final EstadoReemplazoCalculator estadoCalculator;
     private final Clock reloj;
 
     public ConfirmarReemplazoService(
@@ -59,6 +65,7 @@ public class ConfirmarReemplazoService {
             MiembroProyectoRepository miembroProyectoRepository,
             ReemplazoNotificacionService notificacionService,
             GenerarReemplazosService generarReemplazosService,
+            EstadoReemplazoCalculator estadoCalculator,
             Clock reloj) {
         this.reemplazoRepository = reemplazoRepository;
         this.candidatoRepository = candidatoRepository;
@@ -69,6 +76,7 @@ public class ConfirmarReemplazoService {
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.notificacionService = notificacionService;
         this.generarReemplazosService = generarReemplazosService;
+        this.estadoCalculator = estadoCalculator;
         this.reloj = reloj;
     }
 
@@ -120,9 +128,9 @@ public class ConfirmarReemplazoService {
                 .filter(r -> r.getProyecto().getIdProyecto().equals(idProyecto))
                 .orElseThrow(() -> new ReemplazoNoEncontradoException(idReemplazo));
 
-        if (reemplazo.getEstado() != EstadoReemplazo.PENDIENTE_CONFIRMACION_DIRECTOR) {
+        if (!ESTADOS_CON_INVITACION_POSIBLE.contains(reemplazo.getEstado())) {
             throw new ReemplazoNoGestionableException(
-                    "El reemplazo no está pendiente de confirmación.",
+                    "El reemplazo no admite nuevas invitaciones.",
                     "REEMPLAZO_NO_PENDIENTE_CONFIRMACION");
         }
 
@@ -154,11 +162,14 @@ public class ConfirmarReemplazoService {
             candidato.setEstado(EstadoCandidatoReemplazo.INVITADO);
             candidato.setFechaInvitacion(ahora);
             candidato.setMensaje(mensaje);
-            candidatoRepository.save(candidato);
         }
+        candidatoRepository.saveAllAndFlush(seleccionados);
 
-        reemplazo.setEstado(EstadoReemplazo.INVITACIONES_ENVIADAS);
-        reemplazoRepository.saveAndFlush(reemplazo);
+        EstadoReemplazo nuevoEstado = estadoCalculator.calcular(idReemplazo);
+        if (reemplazo.getEstado() != nuevoEstado) {
+            reemplazo.setEstado(nuevoEstado);
+            reemplazoRepository.saveAndFlush(reemplazo);
+        }
 
         for (ReemplazoCandidato candidato : seleccionados) {
             notificacionService.notificarCandidato(

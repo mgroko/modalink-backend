@@ -109,7 +109,9 @@ public class ObtenerProyectoService {
      * Reglas de visibilidad:
      * - Miembro activo: ve cualquier proyecto.
      * - Exmiembro: ve el detalle de proyectos CANCELADOS (historial).
-     * - No miembro: solo ve proyectos PUBLICO que no estén en BORRADOR ni CANCELADO.
+     * - No miembro: ve proyectos Públicos no borradores ni cancelados, y
+     *   proyectos Privados no borradores ni cancelados si es contacto de algún
+     *   director activo del proyecto.
      */
     @Transactional(readOnly = true)
     public ProyectoResponse obtener(Long idUsuario, Long idPerfilActivo, Long idProyecto) {
@@ -135,7 +137,7 @@ public class ObtenerProyectoService {
                 && proyectoVisibilidadService.esExMiembroDeProyectoCancelado(proyecto, idPerfilActivo);
 
         if (miembroActivo.isEmpty() && !exMiembroDeProyectoCancelado
-                && !proyectoVisibilidadService.esVisibleParaNoMiembro(proyecto)) {
+                && !proyectoVisibilidadService.esVisiblePorPrivacidad(proyecto, idPerfilActivo)) {
             throw new AccesoDenegadoProyectoException(
                     "No tienes acceso a este proyecto.");
         }

@@ -1,0 +1,245 @@
+package org.mgroko.backend.repositorio;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.Publicacion;
+import org.mgroko.backend.modelo.enums.EstadoPublicacion;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
+
+public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
+        JpaSpecificationExecutor<Publicacion> {
+
+    /**
+     * Publicaciones de un perfil en el estado indicado, más recientes primero.
+     * Se inicializan las asociaciones necesarias para armar la tarjeta sin
+     * provocar N+1; las imágenes se cargan en lote por {@code @BatchSize}.
+     */
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.usuario",
+            "perfil.profesion",
+            "perfil.imagen",
+            "proyecto",
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    @Query("""
+            SELECT p
+            FROM Publicacion p
+            WHERE p.estado = :estado
+              AND (
+                p.perfil.idPerfil = :idPerfil
+                OR (
+                  EXISTS (SELECT c FROM p.colaboradores c WHERE c.idPerfil = :idPerfil)
+                  AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+                  AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+                )
+              )
+            ORDER BY p.fechaPublicacion DESC, p.idPublicacion DESC
+            """)
+    Page<Publicacion> findByPerfilIdPerfilAndEstadoOrderByFechaPublicacionDesc(
+            @Param("idPerfil") Long idPerfil,
+            @Param("estado") EstadoPublicacion estado,
+            Pageable pageable);
+
+    /**
+     * Proyectos distintos asociados a publicaciones activas del perfil.
+     * Se usan para poblar el selector de proyecto de UC-22.
+     */
+    @Query("""
+            SELECT DISTINCT p.proyecto
+            FROM Publicacion p
+            WHERE p.estado = :estado
+              AND p.proyecto IS NOT NULL
+              AND (
+                p.perfil.idPerfil = :idPerfil
+                OR (
+                  EXISTS (SELECT c FROM p.colaboradores c WHERE c.idPerfil = :idPerfil)
+                  AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+                  AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+                )
+              )
+            ORDER BY p.proyecto.nombre
+            """)
+    List<Proyecto> findProyectosConPublicaciones(
+            @Param("idPerfil") Long idPerfil,
+            @Param("estado") EstadoPublicacion estado);
+
+    /**
+     * UC-21: publicación propia con las asociaciones que necesita el
+     * formulario de edición. Las colecciones ({@code imagenes} y
+     * {@code colaboradores}) se cargan en lote para no armar un producto
+     * cartesiano ni romper la paginación de los listados.
+     */
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.profesion",
+            "perfil.imagen",
+            "proyecto",
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    Optional<Publicacion> findByIdPublicacionAndPerfilIdPerfil(
+            Long idPublicacion, Long idPerfil);
+
+    /**
+     * Detalle de una publicación visible para el perfil activo, sin acotar al
+     * dueño. Carga las asociaciones necesarias para la tarjeta de detalle.
+     */
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.usuario",
+            "perfil.profesion",
+            "perfil.imagen",
+            "proyecto",
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    Optional<Publicacion> findByIdPublicacion(Long idPublicacion);
+
+    /**
+     * UC-69: carga en lote las publicaciones reportadas junto con las
+     * asociaciones necesarias para armar la bandeja administrativa.
+     */
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.usuario",
+            "perfil.profesion",
+            "proyecto",
+            "ubicacion",
+            "ubicacion.ciudad",
+            "ubicacion.ciudad.provincia",
+            "ubicacion.ciudad.provincia.pais"
+    })
+    @Query("SELECT p FROM Publicacion p WHERE p.idPublicacion IN :ids")
+    List<Publicacion> findDetallePorIds(@Param("ids") Collection<Long> ids);
+
+    /**
+     * UC-61: indica si un perfil ya es colaborador de la publicación.
+     */
+    @Query("""
+            SELECT COUNT(c) > 0
+            FROM Publicacion p
+            JOIN p.colaboradores c
+            WHERE p.idPublicacion = :idPublicacion
+              AND c.idPerfil = :idPerfil
+            """)
+    boolean existsColaborador(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil);
+
+    /**
+     * UC-21: actualiza el orden de una imagen existente sin pasar por la
+     * colección {@code @OrderColumn}. Hibernate reordena actualizando
+     * {@code id_imagen} por posición, lo que viola la PK si se intercambian
+     * dos imágenes. Actualizar solo {@code orden} evita el conflicto.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE imagen_publicacion
+            SET orden = :orden
+            WHERE id_publicacion = :idPublicacion
+              AND id_imagen = :idImagen
+            """, nativeQuery = true)
+    int actualizarOrdenImagenPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idImagen") Long idImagen,
+            @Param("orden") int orden);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM imagen_publicacion
+            WHERE id_publicacion = :idPublicacion
+              AND id_imagen = :idImagen
+            """, nativeQuery = true)
+    int eliminarImagenPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idImagen") Long idImagen);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO imagen_publicacion (id_publicacion, id_imagen, orden)
+            VALUES (:idPublicacion, :idImagen, :orden)
+            """, nativeQuery = true)
+    int insertarImagenPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idImagen") Long idImagen,
+            @Param("orden") int orden);
+
+    /**
+     * UC-20: bloquea la publicación para que la baja no compita con la
+     * aceptación de una solicitud de colaboración ni con otra baja.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p
+            FROM Publicacion p
+            WHERE p.idPublicacion = :idPublicacion
+            """)
+    Optional<Publicacion> findByIdPublicacionForUpdate(
+            @Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM imagen_publicacion
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarImagenesPublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM colaborador_publicacion
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarColaboradoresPublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM colaborador_publicacion
+            WHERE id_publicacion = :idPublicacion
+              AND id_perfil = :idPerfil
+            """, nativeQuery = true)
+    int eliminarColaboradorPublicacion(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM me_gusta
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarMeGustaDePublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM comentario
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarComentariosDePublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM publicacion
+            WHERE id_publicacion = :idPublicacion
+            """, nativeQuery = true)
+    int eliminarFisicamente(@Param("idPublicacion") Long idPublicacion);
+}

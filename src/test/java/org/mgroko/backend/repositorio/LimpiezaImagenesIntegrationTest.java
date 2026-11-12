@@ -24,9 +24,11 @@ import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EliminarImagenesPerfilService;
@@ -49,7 +51,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(properties = "app.storage.upload-dir=target/uploads-limpieza-fase5")
 class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
 
-    private static final Path DIRECTORIO_SUBIDAS = Path.of("target", "uploads-limpieza-fase5", "perfiles");
+    private static final Path DIRECTORIO_SUBIDAS = Path.of("target", "uploads-limpieza-fase5");
+    private static final Path DIRECTORIO_PERFILES = DIRECTORIO_SUBIDAS.resolve("perfiles");
+    private static final Path DIRECTORIO_MOODBOARD = DIRECTORIO_SUBIDAS.resolve("moodboard");
+    private static final Path DIRECTORIO_PUBLICACIONES = DIRECTORIO_SUBIDAS.resolve("publicaciones");
     private static final AtomicInteger SECUENCIA = new AtomicInteger();
 
     @Autowired
@@ -83,10 +88,14 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
     private AgendaRepository agendaRepository;
 
     @Autowired
+    private PublicacionRepository publicacionRepository;
+
+    @Autowired
     private PlatformTransactionManager transactionManager;
 
     private Long idUsuario;
     private Long idPerfil;
+    private final List<Long> idsPublicacion = new ArrayList<>();
     private final List<Long> idsImagen = new ArrayList<>();
     private final List<Path> archivos = new ArrayList<>();
 
@@ -116,6 +125,11 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @AfterEach
     void limpiar() throws Exception {
+        for (Long idPublicacion : idsPublicacion) {
+            publicacionRepository.findById(idPublicacion).ifPresent(publicacionRepository::delete);
+        }
+        idsPublicacion.clear();
+
         // El perfil se borra primero: su columna foto_perfil apunta a la imagen
         if (idPerfil != null) {
             perfilRepository.findById(idPerfil).ifPresent(perfilRepository::delete);
@@ -141,6 +155,61 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
         assertEquals(0, resultado.errores());
         assertFalse(Files.exists(huerfanoViejo), "El archivo huÃ©rfano fuera de la gracia debe borrarse");
         assertTrue(Files.exists(huerfanoReciente), "El archivo reciente estÃ¡ en gracia y se conserva");
+    }
+
+    @Test
+    void archivosSinFila_enMoodboardYPublicaciones_seBorran() throws Exception {
+        Path huerfanoMoodboard = crearArchivoEn(DIRECTORIO_MOODBOARD, "moodboard-huerfano.webp", 180);
+        Path huerfanoPublicacion = crearArchivoEn(DIRECTORIO_PUBLICACIONES, "publicacion-huerfana.webp", 180);
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(2, resultado.archivosHuerfanos());
+        assertEquals(0, resultado.errores());
+        assertFalse(Files.exists(huerfanoMoodboard));
+        assertFalse(Files.exists(huerfanoPublicacion));
+    }
+
+    @Test
+    void imagenSinReferenciaEnMoodboard_seBorraLaFilaYElArchivoDeSuCarpeta() throws Exception {
+        Path archivo = crearArchivoEn(DIRECTORIO_MOODBOARD, "moodboard-huerfana.webp", 180);
+        Long idImagen = crearImagen("moodboard", "moodboard-huerfana.webp", LocalDateTime.now().minusHours(3));
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(1, resultado.imagenesHuerfanas());
+        assertEquals(0, resultado.errores());
+        assertFalse(imagenRepository.findById(idImagen).isPresent());
+        assertFalse(Files.exists(archivo));
+    }
+
+    @Test
+    void imagenSinReferenciaEnPublicaciones_seBorraLaFilaYElArchivoDeSuCarpeta() throws Exception {
+        Path archivo = crearArchivoEn(DIRECTORIO_PUBLICACIONES, "publicacion-huerfana.webp", 180);
+        Long idImagen = crearImagen("publicaciones", "publicacion-huerfana.webp", LocalDateTime.now().minusHours(3));
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(1, resultado.imagenesHuerfanas());
+        assertEquals(0, resultado.errores());
+        assertFalse(imagenRepository.findById(idImagen).isPresent());
+        assertFalse(Files.exists(archivo));
+    }
+
+    @Test
+    void imagenReferenciadaPorPublicacion_noSeBorra() throws Exception {
+        Path archivo = crearArchivoEn(DIRECTORIO_PUBLICACIONES, "publicacion-referenciada.webp", 180);
+        Long idImagen = crearImagen("publicaciones", "publicacion-referenciada.webp",
+                LocalDateTime.now().minusHours(3));
+        Long idPublicacion = crearPublicacionConImagen(idImagen);
+        idsPublicacion.add(idPublicacion);
+
+        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+
+        assertEquals(0, resultado.imagenesHuerfanas());
+        assertEquals(0, resultado.archivosHuerfanos());
+        assertTrue(imagenRepository.findById(idImagen).isPresent());
+        assertTrue(Files.exists(archivo));
     }
 
     @Test
@@ -187,7 +256,7 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void falloAlBorrarUnaImagen_noAbortaElResto() throws Exception {
-        Path directorioBloqueado = DIRECTORIO_SUBIDAS.resolve("bloqueada.webp");
+        Path directorioBloqueado = DIRECTORIO_PERFILES.resolve("bloqueada.webp");
         Files.createDirectories(directorioBloqueado);
         Files.write(directorioBloqueado.resolve("interno.bin"), "dummy".getBytes());
         archivos.add(directorioBloqueado.resolve("interno.bin"));
@@ -213,8 +282,12 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private Path crearArchivo(String nombre, long minutosDeAntiguedad) throws IOException {
-        Files.createDirectories(DIRECTORIO_SUBIDAS);
-        Path ruta = DIRECTORIO_SUBIDAS.resolve(nombre);
+        return crearArchivoEn(DIRECTORIO_PERFILES, nombre, minutosDeAntiguedad);
+    }
+
+    private Path crearArchivoEn(Path directorio, String nombre, long minutosDeAntiguedad) throws IOException {
+        Files.createDirectories(directorio);
+        Path ruta = directorio.resolve(nombre);
         Files.write(ruta, "dummy".getBytes());
         Files.setLastModifiedTime(ruta, FileTime.from(Instant.now().minusSeconds(minutosDeAntiguedad * 60)));
         archivos.add(ruta);
@@ -222,8 +295,12 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private Long crearImagen(String nombreArchivo, LocalDateTime fechaSubida) {
+        return crearImagen("perfiles", nombreArchivo, fechaSubida);
+    }
+
+    private Long crearImagen(String subdirectorio, String nombreArchivo, LocalDateTime fechaSubida) {
         Imagen imagen = imagenRepository.saveAndFlush(Imagen.builder()
-                .url("/uploads/perfiles/" + nombreArchivo)
+                .url("/uploads/" + subdirectorio + "/" + nombreArchivo)
                 .estado("Activa")
                 .nombreArchivo(nombreArchivo)
                 .tipoImagen("image/webp")
@@ -232,6 +309,21 @@ class LimpiezaImagenesIntegrationTest extends AbstractPostgresIntegrationTest {
                 .build());
         idsImagen.add(imagen.getIdImagen());
         return imagen.getIdImagen();
+    }
+
+    private Long crearPublicacionConImagen(Long idImagen) {
+        return new TransactionTemplate(transactionManager).execute(estado -> {
+            Perfil perfil = perfilRepository.findById(idPerfil).orElseThrow();
+            Imagen imagen = imagenRepository.findById(idImagen).orElseThrow();
+            Publicacion publicacion = Publicacion.builder()
+                    .titulo("Publicación de prueba")
+                    .fechaPublicacion(LocalDateTime.now())
+                    .estado(EstadoPublicacion.ACTIVA)
+                    .perfil(perfil)
+                    .imagenes(new ArrayList<>(List.of(imagen)))
+                    .build();
+            return publicacionRepository.saveAndFlush(publicacion).getIdPublicacion();
+        });
     }
 
     private void asociarFotoAlPerfil(Long idImagen) {

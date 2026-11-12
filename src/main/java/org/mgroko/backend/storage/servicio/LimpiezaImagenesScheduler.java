@@ -2,8 +2,10 @@ package org.mgroko.backend.storage.servicio;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
+import org.mgroko.backend.storage.exception.LimpiezaImagenesEnCursoException;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
@@ -25,6 +27,9 @@ public class LimpiezaImagenesScheduler implements SchedulingConfigurer {
 
     private final LimpiezaImagenesService limpiezaImagenesService;
     private final ConfiguracionSistemaService configuracionSistemaService;
+
+    private volatile LocalDateTime ultimaEjecucion;
+    private volatile LocalDateTime ultimaEjecucionProgramada;
 
     public LimpiezaImagenesScheduler(
             LimpiezaImagenesService limpiezaImagenesService,
@@ -53,13 +58,51 @@ public class LimpiezaImagenesScheduler implements SchedulingConfigurer {
         };
     }
 
+    /**
+     * Próxima ejecución programada según el intervalo configurado. Si todavía
+     * no hubo una ejecución programada, se calcula desde ahora.
+     *
+     * @return fecha y hora estimada de la próxima ejecución
+     */
+    public LocalDateTime proximaEjecucion() {
+        int horas = configuracionSistemaService.obtenerIntervaloLimpiezaImagenesHoras();
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime base = ultimaEjecucionProgramada != null ? ultimaEjecucionProgramada : ahora;
+        LocalDateTime proxima = base.plusHours(horas);
+        return proxima.isBefore(ahora) ? ahora : proxima;
+    }
+
+    /**
+     * Última ejecución, programada o manual.
+     *
+     * @return fecha y hora de la última ejecución, o {@code null}
+     */
+    public LocalDateTime ultimaEjecucion() {
+        return ultimaEjecucion;
+    }
+
+    /**
+     * Registra una ejecución manual para que el panel de administración pueda
+     * mostrarla. No altera el cálculo de la próxima ejecución programada.
+     */
+    public void marcarEjecucionManual() {
+        this.ultimaEjecucion = LocalDateTime.now();
+    }
+
     private void limpiar() {
-        LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
-        log.info("Limpieza de imágenes programada: {} archivo(s) huérfano(s), "
-                        + "{} imagen(es) sin referencia, {} imagen(es) de perfil en baja, {} error(es).",
-                resultado.archivosHuerfanos(),
-                resultado.imagenesHuerfanas(),
-                resultado.imagenesPerfilesBaja(),
-                resultado.errores());
+        try {
+            LimpiezaImagenesService.Resultado resultado = limpiezaImagenesService.ejecutar();
+            LocalDateTime ahora = LocalDateTime.now();
+            this.ultimaEjecucion = ahora;
+            this.ultimaEjecucionProgramada = ahora;
+            log.info("Limpieza de imágenes programada: {} archivo(s) huérfano(s), "
+                            + "{} imagen(es) sin referencia, {} imagen(es) de perfil en baja, {} error(es).",
+                    resultado.archivosHuerfanos(),
+                    resultado.imagenesHuerfanas(),
+                    resultado.imagenesPerfilesBaja(),
+                    resultado.errores());
+        } catch (LimpiezaImagenesEnCursoException e) {
+            log.warn("Se omitió la limpieza programada porque ya hay una ejecución en curso.");
+        }
     }
 }

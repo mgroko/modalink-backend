@@ -39,16 +39,19 @@ public class CancelarReemplazosPorActividadService {
     private final ReemplazoRepository reemplazoRepository;
     private final ReemplazoCandidatoRepository candidatoRepository;
     private final ReemplazoNotificacionService notificacionService;
+    private final ReemplazoSnapshotService reemplazoSnapshotService;
     private final Clock reloj;
 
     public CancelarReemplazosPorActividadService(
             ReemplazoRepository reemplazoRepository,
             ReemplazoCandidatoRepository candidatoRepository,
             ReemplazoNotificacionService notificacionService,
+            ReemplazoSnapshotService reemplazoSnapshotService,
             Clock reloj) {
         this.reemplazoRepository = reemplazoRepository;
         this.candidatoRepository = candidatoRepository;
         this.notificacionService = notificacionService;
+        this.reemplazoSnapshotService = reemplazoSnapshotService;
         this.reloj = reloj;
     }
 
@@ -89,6 +92,7 @@ public class CancelarReemplazosPorActividadService {
             reemplazo.setEstado(EstadoReemplazo.CANCELADO);
             reemplazo.setFechaCierre(ahora);
             reemplazo.setMotivoCierre(MOTIVO_CIERRE);
+            reemplazoSnapshotService.repuntarAlCerrar(reemplazo, ahora);
             reemplazoRepository.saveAndFlush(reemplazo);
 
             for (ReemplazoCandidato candidato : candidatos) {

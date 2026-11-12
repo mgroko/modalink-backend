@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.Ciudad;
+import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Perfil;
@@ -42,11 +44,13 @@ import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
+import org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException;
 import org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException;
 import org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException;
 import org.mgroko.backend.repositorio.ActividadRepository;
+import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.MoodboardRepository;
@@ -58,11 +62,13 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
+import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.mgroko.backend.ubicacion.dto.UbicacionRequest;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
@@ -139,6 +145,12 @@ class ModificarProyectoServiceTest {
 
     @Mock
     private RequerimientoSnapshotService requerimientoSnapshotService;
+
+    @Mock
+    private ImagenRepository imagenRepository;
+
+    @Mock
+    private BorradoArchivosDiferido borradoArchivosDiferido;
 
     @Mock
     private Clock reloj;
@@ -593,5 +605,100 @@ class ModificarProyectoServiceTest {
 
         assertThat(moodboard.getDescripcion()).isEqualTo("Nueva paleta");
         verify(moodboardRepository).save(moodboard);
+    }
+
+    private Imagen imagen(Long id, String nombreArchivo) {
+        return Imagen.builder()
+                .idImagen(id)
+                .nombreArchivo(nombreArchivo)
+                .url("/uploads/moodboard/" + nombreArchivo)
+                .build();
+    }
+
+    private ModificarProyectoRequest requestConMoodboard(CrearMoodboardRequest moodboardRequest) {
+        return new ModificarProyectoRequest(
+                "Desc", Privacidad.PUBLICO, false, null, null, null, null, moodboardRequest);
+    }
+
+    @Test
+    void modificar_moodboardConservadasNull_noTocaImagenes() {
+        Imagen imagen = imagen(1L, "moodboard_1.webp");
+        moodboard.setImagenes(new HashSet<>(Set.of(imagen)));
+
+        modificarProyectoService.modificar(1L, 10L, 100L,
+                requestConMoodboard(new CrearMoodboardRequest("Nueva paleta")));
+
+        assertThat(moodboard.getImagenes()).containsExactly(imagen);
+        verify(imagenRepository, never()).delete(any());
+        verify(borradoArchivosDiferido, never()).registrarBorrados(any(), any());
+    }
+
+    @Test
+    void modificar_moodboardConservadasVacias_eliminaTodasLasImagenes() {
+        Imagen primera = imagen(1L, "moodboard_1.webp");
+        Imagen segunda = imagen(2L, "moodboard_2.webp");
+        moodboard.setImagenes(new HashSet<>(Set.of(primera, segunda)));
+
+        modificarProyectoService.modificar(1L, 10L, 100L,
+                requestConMoodboard(new CrearMoodboardRequest("Desc", List.of())));
+
+        assertThat(moodboard.getImagenes()).isEmpty();
+        verify(moodboardRepository).saveAndFlush(moodboard);
+        verify(borradoArchivosDiferido).registrarBorrados(null, "moodboard_1.webp");
+        verify(borradoArchivosDiferido).registrarBorrados(null, "moodboard_2.webp");
+        verify(imagenRepository).delete(primera);
+        verify(imagenRepository).delete(segunda);
+    }
+
+    @Test
+    void modificar_moodboardConservadasParcial_eliminaSoloLasNoConservadas() {
+        Imagen conservada = imagen(1L, "moodboard_1.webp");
+        Imagen eliminada = imagen(2L, "moodboard_2.webp");
+        moodboard.setImagenes(new HashSet<>(Set.of(conservada, eliminada)));
+
+        modificarProyectoService.modificar(1L, 10L, 100L,
+                requestConMoodboard(new CrearMoodboardRequest("Desc", List.of(1L))));
+
+        assertThat(moodboard.getImagenes()).containsExactly(conservada);
+        verify(imagenRepository, never()).delete(conservada);
+        verify(imagenRepository).delete(eliminada);
+        verify(borradoArchivosDiferido).registrarBorrados(null, "moodboard_2.webp");
+    }
+
+    @Test
+    void modificar_moodboardConservadasDeOtroMoodboard_lanzaNoEncontrada() {
+        Imagen existente = imagen(1L, "moodboard_1.webp");
+        moodboard.setImagenes(new HashSet<>(Set.of(existente)));
+
+        assertThatThrownBy(() -> modificarProyectoService.modificar(1L, 10L, 100L,
+                requestConMoodboard(new CrearMoodboardRequest("Desc", List.of(99L)))))
+                .isInstanceOf(ImagenMoodboardNoEncontradaException.class)
+                .hasMessageContaining("99");
+
+        verify(imagenRepository, never()).delete(any());
+    }
+
+    @Test
+    void modificar_sinMoodboardConImagenesConservadas_lanzaNoEncontrada() {
+        when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> modificarProyectoService.modificar(1L, 10L, 100L,
+                requestConMoodboard(new CrearMoodboardRequest("Desc", List.of(1L)))))
+                .isInstanceOf(ImagenMoodboardNoEncontradaException.class);
+
+        verify(moodboardRepository, never()).save(any(Moodboard.class));
+    }
+
+    @Test
+    void modificar_sinMoodboardConDescripcion_creaMoodboard() {
+        when(moodboardRepository.findByProyectoIdProyecto(100L)).thenReturn(Optional.empty());
+
+        modificarProyectoService.modificar(1L, 10L, 100L,
+                requestConMoodboard(new CrearMoodboardRequest("Nueva paleta")));
+
+        ArgumentCaptor<Moodboard> captor = ArgumentCaptor.forClass(Moodboard.class);
+        verify(moodboardRepository).save(captor.capture());
+        assertThat(captor.getValue().getDescripcion()).isEqualTo("Nueva paleta");
+        assertThat(captor.getValue().getProyecto()).isEqualTo(proyecto);
     }
 }

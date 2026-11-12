@@ -24,7 +24,10 @@ import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.actividades.servicio.AsignarActividadService;
 import org.mgroko.backend.actividades.servicio.CambiarEstadoActividadService;
+import org.mgroko.backend.actividades.servicio.RequerimientoProteccionService;
+import org.mgroko.backend.actividades.dto.AsignarActividadRequest;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -44,6 +47,7 @@ import org.mgroko.backend.reemplazos.modelo.ReemplazoCandidato;
 import org.mgroko.backend.reemplazos.repositorio.ReemplazoCandidatoRepository;
 import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
 import org.mgroko.backend.reemplazos.servicio.AprobacionIncorporacionService;
+import org.mgroko.backend.reemplazos.servicio.CancelarReemplazoService;
 import org.mgroko.backend.reemplazos.servicio.ConfirmarReemplazoService;
 import org.mgroko.backend.reemplazos.servicio.GenerarReemplazosService;
 import org.mgroko.backend.reemplazos.servicio.InvitacionReemplazoService;
@@ -96,6 +100,15 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private CambiarEstadoActividadService cambiarEstadoActividadService;
+
+    @Autowired
+    private AsignarActividadService asignarActividadService;
+
+    @Autowired
+    private CancelarReemplazoService cancelarReemplazoService;
+
+    @Autowired
+    private RequerimientoProteccionService requerimientoProteccionService;
 
     @Autowired
     private ReemplazoQueryService reemplazoQueryService;
@@ -607,6 +620,242 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(respuesta.idTycAceptado()).isEqualTo(idTyc);
     }
 
+    @Test
+    @Transactional
+    void alRechazarLaUnicaInvitacionVuelveAPermitirInvitarAOtrosPropuestos() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+        ReemplazoCandidato primero = candidatosDe(reemplazo).getFirst();
+        ReemplazoCandidato segundo = agregarCandidatoAdicional(reemplazo, escenario);
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(List.of(primero.getIdCandidato()), "Primera ronda"));
+
+        invitacionReemplazoService.rechazar(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato(),
+                primero.getIdCandidato(),
+                "No puedo cubrir la vacante");
+
+        assertThat(candidato(primero.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.RECHAZADO);
+        assertThat(candidato(segundo.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.PROPUESTO);
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.PENDIENTE_CONFIRMACION_DIRECTOR);
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(List.of(segundo.getIdCandidato()), "Segunda ronda"));
+
+        assertThat(candidato(segundo.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.INVITADO);
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.INVITACIONES_ENVIADAS);
+    }
+
+    @Test
+    @Transactional
+    void alAsignarDirectamenteAlProfesionalSeCancelaElReemplazoCubierto() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+        ReemplazoCandidato candidato = candidatosDe(reemplazo).getFirst();
+
+        Proyecto proyecto = em.find(Proyecto.class, escenario.idProyecto());
+        Perfil perfil = em.find(Perfil.class, escenario.idPerfilCandidato());
+        RolProyecto rolMiembro = em.createQuery(
+                "SELECT r FROM RolProyecto r WHERE r.codigo = 'MIEMBRO'", RolProyecto.class)
+                .getSingleResult();
+        crearMiembro(proyecto, perfil, rolMiembro, null);
+        em.flush();
+
+        asignarActividadService.asignar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                escenario.idActividad(),
+                new AsignarActividadRequest(escenario.idPerfilCandidato()));
+
+        Reemplazo cancelado = reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow();
+        assertThat(cancelado.getEstado()).isEqualTo(EstadoReemplazo.CANCELADO);
+        assertThat(cancelado.getMotivoCierre()).isEqualTo("Requerimiento cubierto");
+        assertThat(cancelado.getFechaCierre()).isNotNull();
+        assertThat(candidato(candidato.getIdCandidato()).getEstado())
+                .isEqualTo(EstadoCandidatoReemplazo.CANCELADO);
+    }
+
+    @Test
+    @Transactional
+    void alCancelarElReemplazoSeRepuntaAUnSnapshotYLiberaElRequerimiento() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+        Long idRequerimientoActivo =
+                reemplazo.getRequerimientoActividad().getIdRequerimiento();
+
+        assertThat(requerimientoProteccionService.estaProtegido(
+                idRequerimientoActivo)).isTrue();
+
+        cancelarReemplazoService.cancelar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                "Ya no hace falta cubrir la vacante");
+
+        Reemplazo cancelado = reemplazoRepository.findById(
+                reemplazo.getIdReemplazo()).orElseThrow();
+
+        assertThat(cancelado.getEstado()).isEqualTo(EstadoReemplazo.CANCELADO);
+        assertThat(cancelado.getRequerimientoActividad().getIdRequerimiento())
+                .isNotEqualTo(idRequerimientoActivo);
+        assertThat(cancelado.getRequerimientoActividad().getFechaArchivado())
+                .isNotNull();
+        assertThat(cancelado.getRequerimientoActividad().getIdRequerimientoOrigen())
+                .isEqualTo(idRequerimientoActivo);
+        assertThat(requerimientoProteccionService.estaProtegido(
+                idRequerimientoActivo)).isFalse();
+    }
+
+    @Test
+    @Transactional
+    void noCancelaElReemplazoMientrasElRequerimientoTengaFaltantes() {
+        Escenario escenario = crearEscenario();
+        RequerimientoActividad requerimiento = requerimientoActividadDe(escenario);
+        requerimiento.setCantidad(2);
+        em.flush();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+
+        Proyecto proyecto = em.find(Proyecto.class, escenario.idProyecto());
+        RolProyecto rolMiembro = em.createQuery(
+                "SELECT r FROM RolProyecto r WHERE r.codigo = 'MIEMBRO'", RolProyecto.class)
+                .getSingleResult();
+
+        Perfil primerPerfil = em.find(Perfil.class, escenario.idPerfilCandidato());
+        crearMiembro(proyecto, primerPerfil, rolMiembro, null);
+        em.flush();
+        asignarActividadService.asignar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                escenario.idActividad(),
+                new AsignarActividadRequest(primerPerfil.getIdPerfil()));
+
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.PENDIENTE_CONFIRMACION_DIRECTOR);
+
+        ReemplazoCandidato segundo = agregarCandidatoAdicional(reemplazo, escenario);
+        crearMiembro(proyecto, segundo.getPerfil(), rolMiembro, null);
+        em.flush();
+        asignarActividadService.asignar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                escenario.idActividad(),
+                new AsignarActividadRequest(segundo.getPerfil().getIdPerfil()));
+
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.CANCELADO);
+    }
+
+    @Test
+    @Transactional
+    void regenerarNoDuplicaCandidatosYaExistentes() {
+        Escenario escenario = crearEscenario();
+
+        generarReemplazosService.generar(new ReemplazoNecesarioEvent(
+                escenario.idProyecto(),
+                escenario.idMiembroBaja(),
+                escenario.idPerfilBaja(),
+                OrigenReemplazo.BAJA_VOLUNTARIA));
+
+        Reemplazo reemplazo = reemplazoActividad(escenario);
+        ReemplazoCandidato primero = candidatosDe(reemplazo).getFirst();
+        ReemplazoCandidato segundo = agregarCandidatoAdicional(reemplazo, escenario);
+
+        confirmarReemplazoService.confirmar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo(),
+                new ConfirmarReemplazoRequest(
+                        List.of(primero.getIdCandidato(), segundo.getIdCandidato()),
+                        "Invitación inicial"));
+
+        invitacionReemplazoService.rechazar(
+                escenario.idUsuarioCandidato(),
+                escenario.idPerfilCandidato(),
+                primero.getIdCandidato(),
+                "No puedo");
+        invitacionReemplazoService.rechazar(
+                segundo.getUsuario().getIdUsuario(),
+                segundo.getPerfil().getIdPerfil(),
+                segundo.getIdCandidato(),
+                "No puedo");
+
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.SIN_CANDIDATOS);
+
+        int candidatosAntes = candidatosDe(reemplazo).size();
+
+        confirmarReemplazoService.regenerar(
+                escenario.idUsuarioDirector(),
+                escenario.idPerfilDirector(),
+                escenario.idProyecto(),
+                reemplazo.getIdReemplazo());
+
+        assertThat(reemplazoRepository.findById(reemplazo.getIdReemplazo())
+                .orElseThrow()
+                .getEstado())
+                .isEqualTo(EstadoReemplazo.SIN_CANDIDATOS);
+        assertThat(candidatosDe(reemplazo)).hasSize(candidatosAntes);
+    }
+
     private Reemplazo reemplazoActividad(Escenario escenario) {
         return reemplazoRepository
                 .findByProyectoIdProyectoOrderByFechaCreacionDesc(escenario.idProyecto())
@@ -614,6 +863,15 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
                 .filter(r -> r.getTipo().name().equals("ACTIVIDAD"))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private RequerimientoActividad requerimientoActividadDe(Escenario escenario) {
+        return em.createQuery("""
+                SELECT r FROM RequerimientoActividad r
+                WHERE r.actividad.idActividad = :idActividad
+                """, RequerimientoActividad.class)
+                .setParameter("idActividad", escenario.idActividad())
+                .getSingleResult();
     }
 
     private List<ReemplazoCandidato> candidatosDe(Reemplazo reemplazo) {

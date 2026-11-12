@@ -2,7 +2,6 @@ package org.mgroko.backend.reemplazos.servicio;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import org.mgroko.backend.modelo.enums.EstadoActividad;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -30,18 +29,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InvitacionReemplazoService {
 
-    private static final List<EstadoCandidatoReemplazo> ESTADOS_ACEPTADOS =
-            List.of(EstadoCandidatoReemplazo.ACEPTADO_PENDIENTE_APROBACION);
-
-    private static final List<EstadoCandidatoReemplazo> ESTADOS_INVITADOS =
-            List.of(EstadoCandidatoReemplazo.INVITADO);
-
     private final ReemplazoRepository reemplazoRepository;
     private final ReemplazoCandidatoRepository candidatoRepository;
     private final ReemplazoQueryService queryService;
     private final CupoRequerimientoService cupoRequerimientoService;
     private final CandidatoDisponibilidadService disponibilidadService;
     private final ReemplazoNotificacionService notificacionService;
+    private final EstadoReemplazoCalculator estadoCalculator;
     private final Clock reloj;
 
     public InvitacionReemplazoService(
@@ -51,6 +45,7 @@ public class InvitacionReemplazoService {
             CupoRequerimientoService cupoRequerimientoService,
             CandidatoDisponibilidadService disponibilidadService,
             ReemplazoNotificacionService notificacionService,
+            EstadoReemplazoCalculator estadoCalculator,
             Clock reloj) {
         this.reemplazoRepository = reemplazoRepository;
         this.candidatoRepository = candidatoRepository;
@@ -58,6 +53,7 @@ public class InvitacionReemplazoService {
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.disponibilidadService = disponibilidadService;
         this.notificacionService = notificacionService;
+        this.estadoCalculator = estadoCalculator;
         this.reloj = reloj;
     }
 
@@ -196,18 +192,8 @@ public class InvitacionReemplazoService {
             return;
         }
 
-        long aceptados = candidatoRepository.countByReemplazoIdReemplazoAndEstadoIn(
-                reemplazo.getIdReemplazo(),
-                ESTADOS_ACEPTADOS);
-        long invitados = candidatoRepository.countByReemplazoIdReemplazoAndEstadoIn(
-                reemplazo.getIdReemplazo(),
-                ESTADOS_INVITADOS);
-
-        EstadoReemplazo nuevoEstado = aceptados > 0
-                ? EstadoReemplazo.PENDIENTE_APROBACION
-                : invitados > 0
-                        ? EstadoReemplazo.INVITACIONES_ENVIADAS
-                        : EstadoReemplazo.SIN_CANDIDATOS;
+        EstadoReemplazo nuevoEstado = estadoCalculator.calcular(
+                reemplazo.getIdReemplazo());
 
         if (reemplazo.getEstado() != nuevoEstado) {
             reemplazo.setEstado(nuevoEstado);

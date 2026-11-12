@@ -30,6 +30,7 @@ import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoExce
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoActividadModificadoEvent;
 import org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
@@ -41,6 +42,7 @@ import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -55,6 +57,7 @@ public class RequerimientoActividadService {
     private final CupoRequerimientoService cupoRequerimientoService;
     private final PerfilRepository perfilRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RequerimientoActividadService(
             ProfesionRepository profesionRepository,
@@ -65,7 +68,8 @@ public class RequerimientoActividadService {
             RequerimientoActCaractValorRepository requerimientoActCaractValorRepository,
             CupoRequerimientoService cupoRequerimientoService,
             PerfilRepository perfilRepository,
-            MiembroProyectoRepository miembroProyectoRepository) {
+            MiembroProyectoRepository miembroProyectoRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.profesionRepository = profesionRepository;
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.valorCaracteristicaRepository = valorCaracteristicaRepository;
@@ -75,6 +79,7 @@ public class RequerimientoActividadService {
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.perfilRepository = perfilRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public RequerimientoActividadResponse persistir(
@@ -147,6 +152,9 @@ public class RequerimientoActividadService {
 
         RequerimientoActividad guardado = requerimientoActividadRepository
                 .saveAndFlush(requerimiento);
+
+        eventPublisher.publishEvent(new CupoRequerimientoActividadModificadoEvent(
+                guardado.getIdRequerimiento()));
 
         persistirValoresCaracteristicas(
                 requerimiento.getCaracteristicas(), idsValoresPorCaracteristica);

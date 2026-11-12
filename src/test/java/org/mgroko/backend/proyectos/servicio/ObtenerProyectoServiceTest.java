@@ -252,7 +252,7 @@ class ObtenerProyectoServiceTest {
     void obtener_noMiembroProyectoPublicadoPermitido() {
         prepararPerfil();
         when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
-        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
+        when(proyectoVisibilidadService.esVisiblePorPrivacidad(proyectoPublicado, 10L)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
         when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
@@ -269,6 +269,27 @@ class ObtenerProyectoServiceTest {
         assertThat(response.esMiembro()).isFalse();
         assertThat(response.permisos()).isEmpty();
         assertThat(response.elegibleParaPostularse()).isFalse();
+    }
+
+    @Test
+    void obtener_contactoDeDirectorProyectoPrivadoPermitido() {
+        proyectoPublicado.setPrivacidad(Privacidad.PRIVADO);
+        prepararPerfil();
+        when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
+        when(proyectoVisibilidadService.esVisiblePorPrivacidad(proyectoPublicado, 10L)).thenReturn(true);
+        when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
+                .thenReturn(Optional.empty());
+        when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
+        when(planificacionRepository.findByProyectoIdProyecto(200L)).thenReturn(Optional.empty());
+        when(objetivoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
+        when(requerimientoGralProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
+        when(moodboardRepository.findByProyectoIdProyecto(200L)).thenReturn(Optional.empty());
+
+        ProyectoResponse response = obtenerProyectoService.obtener(1L, 10L, 200L);
+
+        assertThat(response.idProyecto()).isEqualTo(200L);
+        assertThat(response.esMiembro()).isFalse();
+        assertThat(response.permisos()).isEmpty();
     }
 
     @Test
@@ -382,7 +403,7 @@ class ObtenerProyectoServiceTest {
 
         prepararPerfil();
         when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
-        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
+        when(proyectoVisibilidadService.esVisiblePorPrivacidad(proyectoPublicado, 10L)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
         when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
@@ -415,7 +436,7 @@ class ObtenerProyectoServiceTest {
 
         prepararPerfil();
         when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
-        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
+        when(proyectoVisibilidadService.esVisiblePorPrivacidad(proyectoPublicado, 10L)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
         when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());
@@ -559,7 +580,7 @@ class ObtenerProyectoServiceTest {
 
         prepararPerfil();
         when(proyectoRepository.findByIdConUbicacion(200L)).thenReturn(Optional.of(proyectoPublicado));
-        when(proyectoVisibilidadService.esVisibleParaNoMiembro(proyectoPublicado)).thenReturn(true);
+        when(proyectoVisibilidadService.esVisiblePorPrivacidad(proyectoPublicado, 10L)).thenReturn(true);
         when(miembroProyectoRepository.findMiembroActivoConPermisos(200L, 10L))
                 .thenReturn(Optional.empty());
         when(miembroProyectoRepository.findByProyectoIdProyecto(200L)).thenReturn(List.of());

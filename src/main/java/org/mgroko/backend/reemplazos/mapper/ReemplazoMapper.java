@@ -7,6 +7,8 @@ import java.util.List;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.Perfil;
+import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.ValorCaracteristica;
 import org.mgroko.backend.perfiles.dto.CaracteristicaResponse;
 import org.mgroko.backend.reemplazos.dto.CandidatoReemplazoResponse;
@@ -41,10 +43,10 @@ public final class ReemplazoMapper {
                         ? reemplazo.getActividad().getNombre()
                         : null,
                 requerimientoActividad != null
-                        ? requerimientoActividad.getIdRequerimiento()
+                        ? idRequerimientoActividad(requerimientoActividad)
                         : null,
                 requerimientoGeneral != null
-                        ? requerimientoGeneral.getIdRequerimientoGral()
+                        ? idRequerimientoGral(requerimientoGeneral)
                         : null,
                 requerimientoActividad != null
                         ? requerimientoActividad.getProfesion().getNombre()
@@ -165,5 +167,26 @@ public final class ReemplazoMapper {
                 .map(String::trim)
                 .filter(texto -> !texto.isBlank())
                 .toList();
+    }
+
+    /**
+     * Los reemplazos cerrados apuntan a un snapshot para liberar el
+     * requerimiento activo. La API sigue exponiendo el identificador del
+     * requerimiento de origen para no romper filtros ni historiales de UI.
+     */
+    private static Long idRequerimientoActividad(RequerimientoActividad requerimiento) {
+        if (requerimiento.getFechaArchivado() != null
+                && requerimiento.getIdRequerimientoOrigen() != null) {
+            return requerimiento.getIdRequerimientoOrigen();
+        }
+        return requerimiento.getIdRequerimiento();
+    }
+
+    private static Long idRequerimientoGral(RequerimientoGralProyecto requerimiento) {
+        if (requerimiento.getFechaArchivado() != null
+                && requerimiento.getIdRequerimientoOrigen() != null) {
+            return requerimiento.getIdRequerimientoOrigen();
+        }
+        return requerimiento.getIdRequerimientoGral();
     }
 }

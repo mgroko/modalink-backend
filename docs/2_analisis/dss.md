@@ -413,6 +413,106 @@
 
 ---
 
+### **UC-21: Modificar publicación**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-22 Buscar publicación`.
+  2. El actor envía el mensaje `unaPublicacion = obtenerPublicacion(idPublicacion)`.
+  3. El sistema retorna `mostrarFormularioEdicion(unaPublicacion)`.
+  4. El actor envía el mensaje `modificarPublicacion(unaPublicacion, titulo, descripcion, proyecto, ubicacion, imagenesConservadas[], imagenesNuevas[])`.
+  5. **Bloque Alternativo (`alt`)**:
+     - `[campos obligatorios vacíos, imágenes fuera de rango o proyecto no asociable]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `publicacionActualizada(unaPublicacion)`.
+       - **Bloque Opcional (`opt`)** `[el actor decide invitar a un colaborador]`: **Referencia/Inclusión:** Comienza el DSS de `UC-61 Enviar solicitud de colaboración`.
+
+---
+
+### **UC-61: Enviar solicitud de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-16 Buscar perfil`.
+  2. El actor envía el mensaje `unPerfil = obtenerPerfil(idPerfilDestinatario)`.
+  3. El sistema retorna `mostrarPerfilYConfirmacion(unPerfil)`.
+  4. El actor envía el mensaje `enviarSolicitudColaboracion(idPublicacion, unPerfil)`.
+  5. **Bloque Alternativo (`alt`)**:
+     - `[publicación inexistente, ajena, no activa, destinatario fuera de la red, ya colaborador o solicitud pendiente duplicada]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `solicitudColaboracionCreada(unaSolicitud)`.
+       - El sistema retorna `notificarSolicitudColaboracion(unPerfil, idPublicacion)`.
+
+---
+
+### **UC-62: Aceptar solicitud de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-65 Buscar solicitudes de colaboración`.
+  2. El actor envía el mensaje `aceptarSolicitudColaboracion(idSolicitudColaboracion)`.
+  3. El sistema valida que el perfil activo sea el destinatario y que la solicitud esté pendiente.
+  4. El sistema valida que la publicación siga disponible.
+  5. **Bloque Alternativo (`alt`)**:
+     - `[solicitud inexistente, ajena, ya gestionada, publicación no disponible o perfil ya colaborador]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `solicitudColaboracionAceptada(unaSolicitud)`.
+       - El sistema retorna `agregarColaborador(unaPublicacion, unPerfil)`.
+       - El sistema retorna `notificarAceptacion(alEmisor)`.
+
+---
+
+### **UC-63: Rechazar solicitud de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-65 Buscar solicitudes de colaboración`.
+  2. El actor envía el mensaje `rechazarSolicitudColaboracion(idSolicitudColaboracion)`.
+  3. El sistema valida que el perfil activo sea el destinatario y que la solicitud esté pendiente.
+  4. **Bloque Alternativo (`alt`)**:
+     - `[solicitud inexistente, ajena o ya gestionada]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `solicitudColaboracionRechazada(unaSolicitud)`.
+       - El sistema retorna `notificarRechazo(alEmisor)`.
+
+---
+
+### **UC-64: Eliminar solicitud de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. **Referencia/Inclusión:** Comienza el DSS de `UC-65 Buscar solicitudes de colaboración`.
+  2. El actor envía el mensaje `eliminarSolicitudColaboracion(idSolicitudColaboracion)`.
+  3. El sistema valida que el perfil activo sea el remitente y que la solicitud esté pendiente.
+  4. **Bloque Alternativo (`alt`)**:
+     - `[solicitud inexistente, ajena o ya gestionada]`: El sistema retorna `excepcion()`.
+     - `[datos válidos]`:
+       - El sistema retorna `solicitudColaboracionEliminada(idSolicitudColaboracion)`.
+       - El sistema retorna `eliminarNotificacionSolicitudColaboracion(alDestinatario)`.
+
+---
+
+### **UC-65: Buscar solicitudes de colaboración**
+
+- **Actor:** Usuario
+- **Sistema:** `:ModaLink`
+- **Flujo de interacción:**
+  1. El actor envía el mensaje `buscarSolicitudesColaboracion(direccion, idPerfilEmisor, idPerfilReceptor, estado, fechaDesde, fechaHasta, idPublicacion, pagina, tamanio)`.
+  2. El sistema consulta las solicitudes donde el perfil activo es emisor o destinatario y aplica los filtros.
+  3. **Bloque Alternativo (`alt`)**:
+     - `[filtros inválidos]`: El sistema retorna `excepcion()`.
+     - `[sin resultados]`: El sistema retorna `paginaVacia()`.
+     - `[resultados encontrados]`:
+       - El sistema retorna `listarSolicitudesConPublicaciones(solicitudes[])`.
+       - El sistema calcula `direccion` y flags de acciones para el perfil activo.
+
+---
+
 ### **UC-36: Modificar proyecto**
 
 - **Actor:** Director de proyecto

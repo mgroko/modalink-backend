@@ -15,6 +15,7 @@ import java.util.Set;
 
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
+import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Notificacion;
@@ -48,12 +49,14 @@ import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
+import org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException;
 import org.mgroko.backend.proyectos.mapper.ProyectoMapper;
+import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.MoodboardRepository;
@@ -65,6 +68,7 @@ import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
+import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,6 +111,8 @@ public class ModificarProyectoService {
     private final NotificacionService notificacionService;
     private final BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy;
     private final RequerimientoSnapshotService requerimientoSnapshotService;
+    private final ImagenRepository imagenRepository;
+    private final BorradoArchivosDiferido borradoArchivosDiferido;
     private final Clock reloj;
 
     public ModificarProyectoService(
@@ -130,6 +136,8 @@ public class ModificarProyectoService {
             NotificacionService notificacionService,
             BajaVoluntariaProyectoPolicy bajaVoluntariaProyectoPolicy,
             RequerimientoSnapshotService requerimientoSnapshotService,
+            ImagenRepository imagenRepository,
+            BorradoArchivosDiferido borradoArchivosDiferido,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
@@ -151,6 +159,8 @@ public class ModificarProyectoService {
         this.notificacionService = notificacionService;
         this.bajaVoluntariaProyectoPolicy = bajaVoluntariaProyectoPolicy;
         this.requerimientoSnapshotService = requerimientoSnapshotService;
+        this.imagenRepository = imagenRepository;
+        this.borradoArchivosDiferido = borradoArchivosDiferido;
         this.reloj = reloj;
     }
 
@@ -293,9 +303,7 @@ public class ModificarProyectoService {
 
     private void validarEstadoModificable(Proyecto proyecto) {
         EstadoProyecto estado = proyecto.getEstado();
-        if (estado != EstadoProyecto.BORRADOR
-                && estado != EstadoProyecto.PUBLICADO
-                && estado != EstadoProyecto.CONFIRMADO) {
+        if (estado == null || !estado.permiteModificacion()) {
             throw new EstadoProyectoNoModificableException(
                     estado != null ? estado.getNombre() : null);
         }
@@ -604,6 +612,10 @@ public class ModificarProyectoService {
                 .orElse(null);
 
         if (moodboard == null) {
+            List<Long> conservadas = request.moodboard().imagenesConservadas();
+            if (conservadas != null && !conservadas.isEmpty()) {
+                throw new ImagenMoodboardNoEncontradaException(conservadas.get(0));
+            }
             moodboardRepository.save(Moodboard.builder()
                     .proyecto(proyecto)
                     .descripcion(descripcion)
@@ -612,7 +624,57 @@ public class ModificarProyectoService {
         }
 
         moodboard.setDescripcion(descripcion);
+
+        if (request.moodboard().imagenesConservadas() != null) {
+            reconciliarImagenes(moodboard, request.moodboard().imagenesConservadas());
+        }
+
         moodboardRepository.save(moodboard);
+    }
+
+    /**
+     * UC-36: deja en el moodboard únicamente las imágenes indicadas. Las
+     * restantes se desasocian y se borran físicamente (fila + archivo). El
+     * archivo se elimina después del commit para no dejar rastros si la
+     * transacción falla.
+     */
+    private void reconciliarImagenes(Moodboard moodboard, List<Long> idsConservadas) {
+        if (moodboard.getImagenes() == null) {
+            moodboard.setImagenes(new HashSet<>());
+        }
+
+        Set<Long> conservadas = new HashSet<>();
+        for (Long id : idsConservadas) {
+            if (id != null) {
+                conservadas.add(id);
+            }
+        }
+
+        for (Long id : conservadas) {
+            boolean pertenece = moodboard.getImagenes().stream()
+                    .anyMatch(imagen -> id.equals(imagen.getIdImagen()));
+            if (!pertenece) {
+                throw new ImagenMoodboardNoEncontradaException(id);
+            }
+        }
+
+        List<Imagen> aEliminar = moodboard.getImagenes().stream()
+                .filter(imagen -> !conservadas.contains(imagen.getIdImagen()))
+                .toList();
+
+        if (aEliminar.isEmpty()) {
+            return;
+        }
+
+        // Primero se quitan las filas de imagen_moodboard; recién después se
+        // puede borrar la fila de imagen sin violar la FK.
+        moodboard.getImagenes().removeAll(aEliminar);
+        moodboardRepository.saveAndFlush(moodboard);
+
+        for (Imagen imagen : aEliminar) {
+            borradoArchivosDiferido.registrarBorrados(null, imagen.getNombreArchivo());
+            imagenRepository.delete(imagen);
+        }
     }
 
     private void validarInformacionBasicaSiCorresponde(Long idProyecto, Proyecto proyecto) {

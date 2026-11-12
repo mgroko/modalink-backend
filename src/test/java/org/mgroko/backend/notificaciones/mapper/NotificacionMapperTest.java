@@ -197,6 +197,37 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void solicitudColaboracionRecibida_incluyeLinkALaPublicacion() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_COLABORACION_RECIBIDA",
+                        "PUBLICACION", 99L, null),
+                null);
+
+        assertThat(response.link()).isEqualTo("/publicaciones/99");
+        assertThat(response.titulo())
+                .isEqualTo("Solicitud de colaboración recibida");
+    }
+
+    @Test
+    void solicitudColaboracionAceptadaYRechazada_enlazanALaPublicacion() {
+        NotificacionResponse aceptada = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_COLABORACION_ACEPTADA",
+                        "PUBLICACION", 99L, null),
+                null);
+        NotificacionResponse rechazada = NotificacionMapper.toResponse(
+                notificacion("SOLICITUD_COLABORACION_RECHAZADA",
+                        "PUBLICACION", 99L, null),
+                null);
+
+        assertThat(aceptada.link()).isEqualTo("/publicaciones/99");
+        assertThat(aceptada.titulo())
+                .isEqualTo("Solicitud de colaboración aceptada");
+        assertThat(rechazada.link()).isEqualTo("/publicaciones/99");
+        assertThat(rechazada.titulo())
+                .isEqualTo("Solicitud de colaboración rechazada");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");

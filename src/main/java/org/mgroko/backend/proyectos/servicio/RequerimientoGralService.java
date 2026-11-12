@@ -23,6 +23,7 @@ import org.mgroko.backend.perfiles.exception.ValorCaracteristicaNoEncontradoExce
 import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
 import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoGralModificadoEvent;
 import org.mgroko.backend.proyectos.exception.HabilidadNoEncontradaException;
 import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
@@ -31,6 +32,7 @@ import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
@@ -46,6 +48,7 @@ public class RequerimientoGralService {
     private final HabilidadRepository habilidadRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RequerimientoGralService(
             ProfesionRepository profesionRepository,
@@ -53,13 +56,15 @@ public class RequerimientoGralService {
             ValorCaracteristicaRepository valorCaracteristicaRepository,
             HabilidadRepository habilidadRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
-            RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository) {
+            RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.profesionRepository = profesionRepository;
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.valorCaracteristicaRepository = valorCaracteristicaRepository;
         this.habilidadRepository = habilidadRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -145,6 +150,9 @@ public class RequerimientoGralService {
 
         RequerimientoGralProyecto guardado =
                 requerimientoGralProyectoRepository.saveAndFlush(requerimiento);
+
+        eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
+                guardado.getIdRequerimientoGral()));
 
         persistirValoresCaracteristicas(
                 guardado.getCaracteristicas(), idsValoresPorCaracteristica);

@@ -82,10 +82,24 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
 import org.mgroko.backend.postulaciones.exception.RangoFechasPostulacionInvalidoException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
+import org.mgroko.backend.publicaciones.exception.ComentarioInvalidoException;
+import org.mgroko.backend.publicaciones.exception.FiltroSolicitudColaboracionInvalidoException;
+import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
+import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
+import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
+import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
+import org.mgroko.backend.publicaciones.exception.RangoFechasSolicitudColaboracionInvalidoException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionDuplicadaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionInvalidaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoEncontradaException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPendienteException;
+import org.mgroko.backend.publicaciones.exception.SolicitudColaboracionNoPermitidaException;
+import org.mgroko.backend.publicaciones.exception.RangoFechasPublicacionInvalidoException;
 import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
 import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
+import org.mgroko.backend.storage.exception.LimpiezaImagenesEnCursoException;
 import org.mgroko.backend.ubicacion.exception.LocalidadNoEncontradaException;
 import org.mgroko.backend.ubicacion.exception.LocalidadSinProvinciaException;
 import org.mgroko.backend.ubicacion.exception.PaisNoConfiguradoException;
@@ -404,6 +418,101 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException.class)
     public ResponseEntity<Map<String, Object>> handleLimiteImagenesMoodboardExcedido(
             org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleImagenMoodboardNoEncontrada(
+            org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(LimiteImagenesPublicacionExcedidoException.class)
+    public ResponseEntity<Map<String, Object>> handleLimiteImagenesPublicacionExcedido(
+            LimiteImagenesPublicacionExcedidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ProyectoNoAsociableException.class)
+    public ResponseEntity<Map<String, Object>> handleProyectoNoAsociable(
+            ProyectoNoAsociableException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "PROYECTO_NO_ASOCIABLE", HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(PublicacionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePublicacionInvalida(
+            PublicacionInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ComentarioInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleComentarioInvalido(
+            ComentarioInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(PublicacionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handlePublicacionNoEncontrada(
+            PublicacionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.EstadoPublicacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleEstadoPublicacionInvalido(
+            org.mgroko.backend.publicaciones.exception.EstadoPublicacionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionInvalida(
+            SolicitudColaboracionInvalidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionDuplicada(
+            SolicitudColaboracionDuplicadaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(FiltroSolicitudColaboracionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleFiltroSolicitudColaboracionInvalido(
+            FiltroSolicitudColaboracionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionNoEncontrada(
+            SolicitudColaboracionNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionNoPermitida(
+            SolicitudColaboracionNoPermitidaException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(SolicitudColaboracionNoPendienteException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudColaboracionNoPendiente(
+            SolicitudColaboracionNoPendienteException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(RangoFechasSolicitudColaboracionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasSolicitudColaboracionInvalido(
+            RangoFechasSolicitudColaboracionInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RangoFechasPublicacionInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleRangoFechasPublicacionInvalido(
+            RangoFechasPublicacionInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
@@ -1192,6 +1301,13 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(LimpiezaImagenesEnCursoException.class)
+    public ResponseEntity<Map<String, Object>> handleLimpiezaImagenesEnCurso(
+            LimpiezaImagenesEnCursoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "LIMPIEZA_IMAGENES_EN_CURSO", HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExcedido(
             org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
@@ -1253,6 +1369,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadNoEliminableException.class)
     public ResponseEntity<Map<String, Object>> handleActividadNoEliminable(
             org.mgroko.backend.actividades.exception.ActividadNoEliminableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.actividades.exception.ActividadConReemplazosException.class)
+    public ResponseEntity<Map<String, Object>> handleActividadConReemplazos(
+            org.mgroko.backend.actividades.exception.ActividadConReemplazosException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
@@ -1428,6 +1550,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.reportes.exception.AutoreportePublicacionException.class)
+    public ResponseEntity<Map<String, Object>> handleAutoreportePublicacion(
+            org.mgroko.backend.reportes.exception.AutoreportePublicacionException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.reportes.exception.ReportePendienteExistenteException.class)
     public ResponseEntity<Map<String, Object>> handleReportePendienteExistente(
             org.mgroko.backend.reportes.exception.ReportePendienteExistenteException ex) {
@@ -1528,6 +1656,42 @@ public class GlobalExceptionHandler {
             org.mgroko.backend.contratos.exception.ContratoNoModificableException ex) {
         return buildErrorResponseConCodigo(
                 ex.getMessage(), ex.getCodigo(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.PolaroidsSoloParaModelosException.class)
+    public ResponseEntity<Map<String, Object>> handlePolaroidsSoloParaModelos(
+            org.mgroko.backend.polaroids.exception.PolaroidsSoloParaModelosException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.LimitePolaroidsExcedidoException.class)
+    public ResponseEntity<Map<String, Object>> handleLimitePolaroidsExcedido(
+            org.mgroko.backend.polaroids.exception.LimitePolaroidsExcedidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.PolaroidNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handlePolaroidNoEncontrada(
+            org.mgroko.backend.polaroids.exception.PolaroidNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.TipoPolaroidNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleTipoPolaroidNoEncontrado(
+            org.mgroko.backend.polaroids.exception.TipoPolaroidNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.PolaroidInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handlePolaroidInvalida(
+            org.mgroko.backend.polaroids.exception.PolaroidInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.polaroids.exception.ReordenamientoPolaroidsInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleReordenamientoPolaroidsInvalido(
+            org.mgroko.backend.polaroids.exception.ReordenamientoPolaroidsInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
 }

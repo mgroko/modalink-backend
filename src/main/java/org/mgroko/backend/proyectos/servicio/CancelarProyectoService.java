@@ -1,5 +1,6 @@
 package org.mgroko.backend.proyectos.servicio;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -125,6 +126,7 @@ public class CancelarProyectoService {
 
         proyecto.setEstado(EstadoProyecto.CANCELADO);
         proyecto.setMotivoCancelacion(motivo);
+        proyecto.setFechaCancelacion(LocalDateTime.now());
         proyectoRepository.save(proyecto);
 
         actividadRepository.cancelarPendientesDeProyecto(idProyecto);

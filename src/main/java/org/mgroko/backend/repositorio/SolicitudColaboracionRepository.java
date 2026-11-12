@@ -1,0 +1,130 @@
+package org.mgroko.backend.repositorio;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+import org.mgroko.backend.modelo.Publicacion;
+import org.mgroko.backend.modelo.SolicitudColaboracion;
+import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoPublicacion;
+import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
+
+public interface SolicitudColaboracionRepository
+        extends JpaRepository<SolicitudColaboracion, Long>,
+                JpaSpecificationExecutor<SolicitudColaboracion> {
+
+    /**
+     * UC-61: impide más de una solicitud para la misma publicación y
+     * destinatario mientras la anterior siga pendiente. El índice único
+     * parcial de la base refuerza la misma regla ante concurrencia.
+     */
+    boolean existsByPublicacionIdPublicacionAndPerfilDestinatarioIdPerfilAndEstado(
+            Long idPublicacion,
+            Long idPerfilDestinatario,
+            EstadoSolicitud estado);
+
+    /**
+     * UC-65: carga el detalle de la página sin N+1. Las imágenes de la
+     * publicación se cargan en lote mediante {@code @BatchSize}.
+     */
+    @EntityGraph(attributePaths = {
+            "publicacion",
+            "perfilRemitente",
+            "perfilRemitente.profesion",
+            "perfilRemitente.imagen",
+            "perfilDestinatario",
+            "perfilDestinatario.profesion",
+            "perfilDestinatario.imagen"
+    })
+    @Query("""
+            SELECT s
+            FROM SolicitudColaboracion s
+            WHERE s.idSolicitudColaboracion IN :ids
+            """)
+    List<SolicitudColaboracion> findAllByIdInWithDetalle(
+            @Param("ids") Collection<Long> ids);
+
+    /**
+     * UC-65: publicaciones distintas que tienen solicitudes en la dirección
+     * indicada para el perfil activo, aplicando las mismas reglas de
+     * visibilidad que la búsqueda. Se usa para poblar el selector de
+     * publicaciones del filtro.
+     */
+    @Query("""
+            SELECT DISTINCT p
+            FROM SolicitudColaboracion s
+            JOIN s.publicacion p
+            JOIN s.perfilRemitente remitente
+            JOIN remitente.usuario usuarioRemitente
+            JOIN s.perfilDestinatario destinatario
+            JOIN destinatario.usuario usuarioDestinatario
+            WHERE p.estado = :estadoPublicacion
+              AND (
+                (:incluirRecibidas = TRUE
+                  AND destinatario.idPerfil = :idPerfilActivo
+                  AND remitente.estado = :estadoPerfil
+                  AND usuarioRemitente.estado = :estadoUsuario)
+                OR
+                (:incluirEnviadas = TRUE
+                  AND remitente.idPerfil = :idPerfilActivo
+                  AND destinatario.estado = :estadoPerfil
+                  AND usuarioDestinatario.estado = :estadoUsuario)
+              )
+            ORDER BY p.titulo ASC, p.idPublicacion ASC
+            """)
+    List<Publicacion> findPublicacionesDistintasParaFiltro(
+            @Param("idPerfilActivo") Long idPerfilActivo,
+            @Param("incluirRecibidas") boolean incluirRecibidas,
+            @Param("incluirEnviadas") boolean incluirEnviadas,
+            @Param("estadoPublicacion") EstadoPublicacion estadoPublicacion,
+            @Param("estadoPerfil") EstadoPerfil estadoPerfil,
+            @Param("estadoUsuario") EstadoUsuario estadoUsuario);
+
+    /**
+     * UC-20/62: obtiene el ID de la publicación sin inicializar la asociación
+     * perezosa. Se usa para bloquear primero la publicación y evitar carreras
+     * con la baja física.
+     */
+    @Query("""
+            SELECT s.publicacion.idPublicacion
+            FROM SolicitudColaboracion s
+            WHERE s.idSolicitudColaboracion = :idSolicitudColaboracion
+            """)
+    Optional<Long> findIdPublicacionBySolicitudId(
+            @Param("idSolicitudColaboracion") Long idSolicitudColaboracion);
+
+    /**
+     * UC-62/63/64: bloquea la solicitud para que aceptar, rechazar y eliminar
+     * no compitan entre sí.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT s
+            FROM SolicitudColaboracion s
+            WHERE s.idSolicitudColaboracion = :idSolicitudColaboracion
+            """)
+    Optional<SolicitudColaboracion> findByIdForUpdate(
+            @Param("idSolicitudColaboracion") Long idSolicitudColaboracion);
+
+    /**
+     * UC-20: elimina todas las solicitudes asociadas a una publicación que se
+     * da de baja físicamente.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM SolicitudColaboracion s
+            WHERE s.publicacion.idPublicacion = :idPublicacion
+            """)
+    int eliminarPorPublicacion(@Param("idPublicacion") Long idPublicacion);
+}

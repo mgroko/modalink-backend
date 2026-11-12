@@ -45,6 +45,8 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoActividadModificadoEvent;
+import org.mgroko.backend.proyectos.evento.CupoRequerimientoGralModificadoEvent;
 import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
@@ -209,6 +211,11 @@ public class AceptarPostulacionService {
 
         MiembroProyecto miembro = crearMiembro(
                 proyecto, postulante, requerimiento, idTycAceptado);
+
+        if (requerimiento != null) {
+            eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
+                    requerimiento.getIdRequerimientoGral()));
+        }
 
         postulacion.setEstado(EstadoSolicitud.ACEPTADA);
         postulacion = postulacionGralRepository.saveAndFlush(postulacion);
@@ -384,6 +391,9 @@ public class AceptarPostulacionService {
                         .actividad(requerimiento.getActividad())
                         .requerimientoActividad(requerimiento)
                         .build());
+
+        eventPublisher.publishEvent(new CupoRequerimientoActividadModificadoEvent(
+                requerimiento.getIdRequerimiento()));
 
         postulacion.setEstado(EstadoSolicitud.ACEPTADA);
         postulacion = postulacionActividadRepository.saveAndFlush(postulacion);

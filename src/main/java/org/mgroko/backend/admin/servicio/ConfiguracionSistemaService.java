@@ -41,6 +41,7 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_IMAGEN_MAX_MEGAPIXELES = "IMAGEN_MAX_MEGAPIXELES";
     public static final String CLAVE_IMAGEN_CALIDAD_WEBP = "IMAGEN_CALIDAD_WEBP";
     public static final String CLAVE_IMAGEN_LADO_SALIDA_PX = "IMAGEN_LADO_SALIDA_PX";
+    public static final String CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX = "IMAGEN_PUBLICACION_LADO_SALIDA_PX";
     public static final String CLAVE_IMAGEN_MAX_TAMANO_BYTES = "IMAGEN_MAX_TAMANO_BYTES";
     public static final String CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS = "IMAGEN_LIMPIEZA_INTERVALO_HORAS";
     public static final String CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS = "IMAGEN_LIMPIEZA_GRACIA_MINUTOS";
@@ -293,6 +294,23 @@ Mis condiciones de trabajo
                     + "' en configuracion_sistema no puede ser negativo: " + minutos);
         }
         return minutos;
+    }
+
+    /**
+     * Modifica cada cuántas horas se ejecuta la limpieza de imágenes.
+     * El scheduler lee el valor en cada ciclo, por lo que el cambio se aplica
+     * sin reiniciar el servidor.
+     *
+     * @param horas intervalo en horas (1 a 168)
+     */
+    @Transactional
+    @AuditarOperacion
+    public void actualizarIntervaloLimpiezaImagenes(int horas) {
+        if (horas < 1 || horas > 168) {
+            throw new IllegalArgumentException("El intervalo de limpieza de imágenes debe estar entre 1 y 168 horas.");
+        }
+        guardarOActualizar(CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS, String.valueOf(horas),
+                "Intervalo en horas para la limpieza de imágenes huérfanas");
     }
 
     @Transactional

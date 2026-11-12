@@ -29,9 +29,11 @@ import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.proyectos.dto.MoodboardResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
+import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.repositorio.ImagenRepository;
@@ -119,8 +121,8 @@ class MoodboardImagenesServiceTest {
         });
 
         when(storageService.almacenarImagenMoodboard(any())).thenReturn(
-                new ArchivoAlmacenado("moodboard_a.webp", "/uploads/perfiles/moodboard_a.webp", "image/webp", 512L),
-                new ArchivoAlmacenado("moodboard_b.webp", "/uploads/perfiles/moodboard_b.webp", "image/webp", 512L));
+                new ArchivoAlmacenado("moodboard_a.webp", "/uploads/moodboard/moodboard_a.webp", "image/webp", 512L),
+                new ArchivoAlmacenado("moodboard_b.webp", "/uploads/moodboard/moodboard_b.webp", "image/webp", 512L));
 
         java.util.concurrent.atomic.AtomicInteger secuencia = new java.util.concurrent.atomic.AtomicInteger(10);
         when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
@@ -135,8 +137,8 @@ class MoodboardImagenesServiceTest {
         assertNotNull(response);
         assertEquals(99L, response.idMoodboard());
         assertEquals(2, response.imagenes().size());
-        assertEquals("/uploads/perfiles/moodboard_a.webp", response.imagenes().get(0).url());
-        assertEquals("/uploads/perfiles/moodboard_b.webp", response.imagenes().get(1).url());
+        assertEquals("/uploads/moodboard/moodboard_a.webp", response.imagenes().get(0).url());
+        assertEquals("/uploads/moodboard/moodboard_b.webp", response.imagenes().get(1).url());
         verify(imagenRepository, times(2)).save(any(Imagen.class));
         // Dos guardados: creación del moodboard y alta final con las imágenes
         verify(moodboardRepository, times(2)).save(any(Moodboard.class));
@@ -146,7 +148,7 @@ class MoodboardImagenesServiceTest {
     void subirImagenes_moodboardExistente_agregaYRespetaLimiteDeDiez() {
         Set<Imagen> existentes = new HashSet<>();
         for (int i = 1; i <= 10; i++) {
-            existentes.add(Imagen.builder().idImagen((long) i).url("/uploads/perfiles/moodboard_" + i + ".webp").build());
+            existentes.add(Imagen.builder().idImagen((long) i).url("/uploads/moodboard/moodboard_" + i + ".webp").build());
         }
         Moodboard moodboard = Moodboard.builder()
                 .idMoodboard(7L)
@@ -245,7 +247,7 @@ class MoodboardImagenesServiceTest {
         when(moodboardRepository.save(any(Moodboard.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         when(storageService.almacenarImagenMoodboard(any())).thenReturn(new ArchivoAlmacenado(
-                "moodboard_x.webp", "/uploads/perfiles/moodboard_x.webp", "image/webp", 256L));
+                "moodboard_x.webp", "/uploads/moodboard/moodboard_x.webp", "image/webp", 256L));
         when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
             Imagen imagen = invocation.getArgument(0);
             imagen.setIdImagen(11L);
@@ -277,5 +279,63 @@ class MoodboardImagenesServiceTest {
 
         verify(proyectoSecurityService).validarPermiso(
                 eq(5L), eq(2L), eq(MoodboardImagenesService.PERMISO_MODIFICAR_PROYECTO));
+    }
+
+    @Test
+    void subirImagenes_proyectoFinalizado_lanzaEstadoNoModificable() {
+        proyecto.setEstado(EstadoProyecto.FINALIZADO);
+
+        assertThrows(EstadoProyectoNoModificableException.class, () ->
+                servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg"))));
+
+        verify(storageService, never()).almacenarImagenMoodboard(any());
+    }
+
+    @Test
+    void subirImagenes_proyectoCancelado_lanzaEstadoNoModificable() {
+        proyecto.setEstado(EstadoProyecto.CANCELADO);
+
+        assertThrows(EstadoProyectoNoModificableException.class, () ->
+                servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg"))));
+
+        verify(storageService, never()).almacenarImagenMoodboard(any());
+    }
+
+    @Test
+    void subirImagenes_proyectoPublicado_permiteSubir() {
+        proyecto.setEstado(EstadoProyecto.PUBLICADO);
+        when(moodboardRepository.findByProyectoIdProyecto(5L)).thenReturn(Optional.of(
+                Moodboard.builder().idMoodboard(7L).proyecto(proyecto).imagenes(new HashSet<>()).build()));
+        when(moodboardRepository.save(any(Moodboard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        devolverAlmacenado("a.jpg", "moodboard_a.webp");
+        when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
+            Imagen imagen = invocation.getArgument(0);
+            imagen.setIdImagen(12L);
+            return imagen;
+        });
+
+        MoodboardResponse response = servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg")));
+
+        assertEquals(1, response.imagenes().size());
+        verify(storageService).almacenarImagenMoodboard(any());
+    }
+
+    @Test
+    void subirImagenes_proyectoConfirmado_permiteSubir() {
+        proyecto.setEstado(EstadoProyecto.CONFIRMADO);
+        when(moodboardRepository.findByProyectoIdProyecto(5L)).thenReturn(Optional.of(
+                Moodboard.builder().idMoodboard(7L).proyecto(proyecto).imagenes(new HashSet<>()).build()));
+        when(moodboardRepository.save(any(Moodboard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        devolverAlmacenado("a.jpg", "moodboard_a.webp");
+        when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
+            Imagen imagen = invocation.getArgument(0);
+            imagen.setIdImagen(12L);
+            return imagen;
+        });
+
+        MoodboardResponse response = servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("a.jpg")));
+
+        assertEquals(1, response.imagenes().size());
+        verify(storageService).almacenarImagenMoodboard(any());
     }
 }

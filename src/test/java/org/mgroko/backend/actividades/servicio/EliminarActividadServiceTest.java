@@ -27,6 +27,7 @@ import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
 import org.mgroko.backend.actividades.enums.AccionIntegrante;
 import org.mgroko.backend.actividades.evento.ActividadEliminadaEvent;
 import org.mgroko.backend.actividades.exception.ActividadEnCursoConfirmadaNoEliminableException;
+import org.mgroko.backend.actividades.exception.ActividadConReemplazosException;
 import org.mgroko.backend.actividades.exception.ActividadNoEliminableException;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
 import org.mgroko.backend.actividades.exception.DecisionIntegranteInvalidaException;
@@ -107,6 +108,8 @@ class EliminarActividadServiceTest {
     private CronogramaService cronogramaService;
     @Mock
     private ReprogramarProyectoService reprogramarProyectoService;
+    @Mock
+    private org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository reemplazoRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
@@ -214,6 +217,16 @@ class EliminarActividadServiceTest {
                 .isInstanceOf(ProyectoNoEncontradoException.class);
 
         verifyNoInteractions(proyectoSecurityService, eventPublisher);
+    }
+
+    @Test
+    void eliminar_conReemplazosAsociados_lanzaExcepcionYNoBorra() {
+        when(reemplazoRepository.existsByActividad_IdActividad(55L))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.eliminar(
+                1L, 10L, 100L, 55L, request("Motivo")))
+                .isInstanceOf(ActividadConReemplazosException.class);
     }
 
     @Test

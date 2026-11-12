@@ -1,0 +1,602 @@
+<mxfile host="app.diagrams.net" modified="2026-11-11T12:38:30" agent="OpenCode" version="24.7.17" type="device">
+  <diagram id="java-01" name="Modelo de clases Java — Usuarios y seguridad">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="890" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p1_title" value="Modelo de clases Java — Usuarios y seguridad" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_subtitle" value="Paquete org.mgroko.backend.modelo · Página 1 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Usuario" value="&lt;b&gt;Usuario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idUsuario &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;FK rolGlobal &lt;font color=&quot;#666666&quot;&gt;: RolGlobal&lt;/font&gt;&lt;br&gt;FK genero &lt;font color=&quot;#666666&quot;&gt;: Genero&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;apellido &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;dni &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_UsuarioIdentidad" value="&lt;b&gt;UsuarioIdentidad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idIdentidad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;proveedor &lt;font color=&quot;#666666&quot;&gt;: ProveedorAuth&lt;/font&gt;&lt;br&gt;idExterno &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;correo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;correoVerificado &lt;font color=&quot;#666666&quot;&gt;: boolean&lt;/font&gt;&lt;br&gt;fechaVinculacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_RolGlobal" value="&lt;b&gt;RolGlobal&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRolGlobal &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;permisos &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;PermisoGlobal&amp;gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_PermisoGlobal" value="&lt;b&gt;PermisoGlobal&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPermisoGlobal &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Genero" value="&lt;b&gt;Genero&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idGenero &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Pais" value="&lt;b&gt;Pais&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPais &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigoIso &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;activo &lt;font color=&quot;#666666&quot;&gt;: Boolean&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Provincia" value="&lt;b&gt;Provincia&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idProvincia &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK pais &lt;font color=&quot;#666666&quot;&gt;: Pais&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idExterno &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fuenteApi &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;activo &lt;font color=&quot;#666666&quot;&gt;: Boolean&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Ciudad" value="&lt;b&gt;Ciudad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCiudad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK provincia &lt;font color=&quot;#666666&quot;&gt;: Provincia&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;codigoPostal &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idExterno &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fuenteApi &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;activo &lt;font color=&quot;#666666&quot;&gt;: Boolean&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_class_Ubicacion" value="&lt;b&gt;Ubicacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idUbicacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK ciudad &lt;font color=&quot;#666666&quot;&gt;: Ciudad&lt;/font&gt;&lt;br&gt;direccion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;codigoPostal &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;latitud &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;&lt;br&gt;longitud &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel0" value="ubicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Usuario" target="p1_class_Ubicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel1" value="rolGlobal  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Usuario" target="p1_class_RolGlobal">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel2" value="genero  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Usuario" target="p1_class_Genero">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel3" value="usuario  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_UsuarioIdentidad" target="p1_class_Usuario">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel4" value="permisos  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_RolGlobal" target="p1_class_PermisoGlobal">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel5" value="pais  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Provincia" target="p1_class_Pais">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel6" value="provincia  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Ciudad" target="p1_class_Provincia">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_rel7" value="ciudad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p1_class_Ubicacion" target="p1_class_Ciudad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-02" name="Modelo de clases Java — Perfiles y catálogos">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="890" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p2_title" value="Modelo de clases Java — Perfiles y catálogos" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_subtitle" value="Paquete org.mgroko.backend.modelo · Página 2 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_Perfil" value="&lt;b&gt;Perfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK imagen &lt;font color=&quot;#666666&quot;&gt;: Imagen&lt;/font&gt;&lt;br&gt;FK caracteristicas &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;CaracteristicaPerfil&amp;gt;&lt;/font&gt;&lt;br&gt;nombreArtistico &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;biografia &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Usuario&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Imagen&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_PerfilTyc" value="&lt;b&gt;PerfilTyc&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK id &lt;font color=&quot;#666666&quot;&gt;: PerfilTycId&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaInicio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaFin &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ PerfilTycId&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_Profesion" value="&lt;b&gt;Profesion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idProfesion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_CaracteristicaTecnica" value="&lt;b&gt;CaracteristicaTecnica&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK unidadMedida &lt;font color=&quot;#666666&quot;&gt;: UnidadMedida&lt;/font&gt;&lt;br&gt;FK valores &lt;font color=&quot;#666666&quot;&gt;: List&amp;lt;ValorCaracteristica&amp;gt;&lt;/font&gt;&lt;br&gt;TIPO_ENUMERADO &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;TIPO_TEXTO &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;TIPO_NUMERICO &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_CaracteristicaPerfil" value="&lt;b&gt;CaracteristicaPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCaracteristicaPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK caracteristicaTecnica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;FK valorCaracteristica &lt;font color=&quot;#666666&quot;&gt;: ValorCaracteristica&lt;/font&gt;&lt;br&gt;valor &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;fechaRegistro &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_ValorCaracteristica" value="&lt;b&gt;ValorCaracteristica&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK id &lt;font color=&quot;#666666&quot;&gt;: ValorCaracteristicaId&lt;/font&gt;&lt;br&gt;FK caracteristicaTecnica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;etiqueta &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;colorHex &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ ValorCaracteristicaId&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_Habilidad" value="&lt;b&gt;Habilidad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idHabilidad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_UnidadMedida" value="&lt;b&gt;UnidadMedida&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idUnidad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;simbolo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;tipoDatoPermitido &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_class_Reporte" value="&lt;b&gt;Reporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReporte &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuarioAutor &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK perfilAutor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilReportado &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK adminRevisor &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;entidadTipo &lt;font color=&quot;#666666&quot;&gt;: EntidadReporte&lt;/font&gt;&lt;br&gt;entidadId &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Usuario&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Usuario&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel0" value="profesion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_Perfil" target="p2_class_Profesion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel1" value="caracteristicas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_Perfil" target="p2_class_CaracteristicaPerfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel2" value="habilidades  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_Perfil" target="p2_class_Habilidad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel3" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_PerfilTyc" target="p2_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel4" value="profesion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_CaracteristicaTecnica" target="p2_class_Profesion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel5" value="unidadMedida  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_CaracteristicaTecnica" target="p2_class_UnidadMedida">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel6" value="valores  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_CaracteristicaTecnica" target="p2_class_ValorCaracteristica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel7" value="perfil  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_CaracteristicaPerfil" target="p2_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel8" value="caracteristicaTecnica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_CaracteristicaPerfil" target="p2_class_CaracteristicaTecnica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel9" value="valorCaracteristica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_CaracteristicaPerfil" target="p2_class_ValorCaracteristica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel10" value="caracteristicaTecnica  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_ValorCaracteristica" target="p2_class_CaracteristicaTecnica">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel11" value="perfilAutor  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_Reporte" target="p2_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_rel12" value="perfilReportado  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_class_Reporte" target="p2_class_Perfil">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-03" name="Modelo de clases Java — Proyectos y miembros">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="890" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p3_title" value="Modelo de clases Java — Proyectos y miembros" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_subtitle" value="Paquete org.mgroko.backend.modelo · Página 3 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_Proyecto" value="&lt;b&gt;Proyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaInicio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaFinalizacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaCancelacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Ubicacion&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_Planificacion" value="&lt;b&gt;Planificacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPlanificacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;fechaEntrega &lt;font color=&quot;#666666&quot;&gt;: LocalDate&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_Objetivo" value="&lt;b&gt;Objetivo&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idObjetivo &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_Moodboard" value="&lt;b&gt;Moodboard&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMoodboard &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;fechaCreacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;imagenes &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;Imagen&amp;gt;&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Imagen&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_MiembroProyecto" value="&lt;b&gt;MiembroProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMiembro &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK rolProyecto &lt;font color=&quot;#666666&quot;&gt;: RolProyecto&lt;/font&gt;&lt;br&gt;FK tycAceptado &lt;font color=&quot;#666666&quot;&gt;: PerfilTyc&lt;/font&gt;&lt;br&gt;FK requerimientoGral &lt;font color=&quot;#666666&quot;&gt;: RequerimientoGralProyecto&lt;/font&gt;&lt;br&gt;FK perfilAutorBaja &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ PerfilTyc&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ RequerimientoGralProyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;… más referencias&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_RolProyecto" value="&lt;b&gt;RolProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRolProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;permisos &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;PermisoProyecto&amp;gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_PermisoProyecto" value="&lt;b&gt;PermisoProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPermisoProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_class_CalificacionPerfil" value="&lt;b&gt;CalificacionPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idCalificacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK perfilEmisor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilReceptor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;valoracion &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;resenia &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaRegistro &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_rel0" value="proyecto  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_class_Planificacion" target="p3_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_rel1" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_class_Objetivo" target="p3_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_rel2" value="proyecto  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_class_Moodboard" target="p3_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_rel3" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_class_MiembroProyecto" target="p3_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_rel4" value="rolProyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_class_MiembroProyecto" target="p3_class_RolProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_rel5" value="permisos  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_class_RolProyecto" target="p3_class_PermisoProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_rel6" value="proyecto  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_class_CalificacionPerfil" target="p3_class_Proyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-04" name="Modelo de clases Java — Requerimientos">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="630" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p4_title" value="Modelo de clases Java — Requerimientos" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_subtitle" value="Paquete org.mgroko.backend.modelo · Página 4 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_class_RequerimientoGralProyecto" value="&lt;b&gt;RequerimientoGralProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRequerimientoGral &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK caracteristicas &lt;font color=&quot;#666666&quot;&gt;: List&amp;lt;RequerimientoGralCaract&amp;gt;&lt;/font&gt;&lt;br&gt;cantidad &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaArchivado &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Proyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Profesion&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Habilidad&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_class_RequerimientoGralCaract" value="&lt;b&gt;RequerimientoGralCaract&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReqGralCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK requerimientoGral &lt;font color=&quot;#666666&quot;&gt;: RequerimientoGralProyecto&lt;/font&gt;&lt;br&gt;FK caracteristica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;valorMin &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;&lt;br&gt;valorMax &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ CaracteristicaTecnica&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_class_RequerimientoGralCaractValor" value="&lt;b&gt;RequerimientoGralCaractValor&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idReqGralCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_class_RequerimientoActividad" value="&lt;b&gt;RequerimientoActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idRequerimiento &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK profesion &lt;font color=&quot;#666666&quot;&gt;: Profesion&lt;/font&gt;&lt;br&gt;FK actividad &lt;font color=&quot;#666666&quot;&gt;: Actividad&lt;/font&gt;&lt;br&gt;FK caracteristicas &lt;font color=&quot;#666666&quot;&gt;: List&amp;lt;RequerimientoActCaract&amp;gt;&lt;/font&gt;&lt;br&gt;cantidad &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaArchivado &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Profesion&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Actividad&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Habilidad&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_class_RequerimientoActCaract" value="&lt;b&gt;RequerimientoActCaract&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReqActCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK requerimientoActividad &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;&lt;br&gt;FK caracteristica &lt;font color=&quot;#666666&quot;&gt;: CaracteristicaTecnica&lt;/font&gt;&lt;br&gt;valorMin &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;&lt;br&gt;valorMax &lt;font color=&quot;#666666&quot;&gt;: BigDecimal&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ CaracteristicaTecnica&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_class_RequerimientoActCaractValor" value="&lt;b&gt;RequerimientoActCaractValor&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idReqActCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_rel0" value="caracteristicas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p4_class_RequerimientoGralProyecto" target="p4_class_RequerimientoGralCaract">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_rel1" value="requerimientoGral  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p4_class_RequerimientoGralCaract" target="p4_class_RequerimientoGralProyecto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_rel2" value="caracteristicas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p4_class_RequerimientoActividad" target="p4_class_RequerimientoActCaract">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4_rel3" value="requerimientoActividad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p4_class_RequerimientoActCaract" target="p4_class_RequerimientoActividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-05" name="Modelo de clases Java — Actividades y agenda">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="630" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p5_title" value="Modelo de clases Java — Actividades y agenda" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_subtitle" value="Paquete org.mgroko.backend.modelo · Página 5 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_class_Actividad" value="&lt;b&gt;Actividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idActividad &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK planificacion &lt;font color=&quot;#666666&quot;&gt;: Planificacion&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoActividad&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;duracionMinutos &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Planificacion&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Ubicacion&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_class_Agenda" value="&lt;b&gt;Agenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idAgenda &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK jornadas &lt;font color=&quot;#666666&quot;&gt;: Set&amp;lt;JornadaAgenda&amp;gt;&lt;/font&gt;&lt;br&gt;MARGEN_ACTIVIDAD_MINUTOS_DEFECTO &lt;font color=&quot;#666666&quot;&gt;: int&lt;/font&gt;&lt;br&gt;margenActividadMinutos &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Usuario&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_class_JornadaAgenda" value="&lt;b&gt;JornadaAgenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idJornada &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK agenda &lt;font color=&quot;#666666&quot;&gt;: Agenda&lt;/font&gt;&lt;br&gt;diaSemana &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;horaInicioManana &lt;font color=&quot;#666666&quot;&gt;: LocalTime&lt;/font&gt;&lt;br&gt;horaFinManana &lt;font color=&quot;#666666&quot;&gt;: LocalTime&lt;/font&gt;&lt;br&gt;horaInicioTarde &lt;font color=&quot;#666666&quot;&gt;: LocalTime&lt;/font&gt;&lt;br&gt;horaFinTarde &lt;font color=&quot;#666666&quot;&gt;: LocalTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_class_BloqueoAgenda" value="&lt;b&gt;BloqueoAgenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idBloqueo &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK agenda &lt;font color=&quot;#666666&quot;&gt;: Agenda&lt;/font&gt;&lt;br&gt;fechaHoraInicio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaHoraFin &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;motivo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_class_AsignacionActividad" value="&lt;b&gt;AsignacionActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idAsignacionAct &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK miembro &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;FK actividad &lt;font color=&quot;#666666&quot;&gt;: Actividad&lt;/font&gt;&lt;br&gt;FK requerimientoActividad &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ MiembroProyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ RequerimientoActividad&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_class_Hito" value="&lt;b&gt;Hito&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idHito &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Proyecto&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_rel0" value="predecesoras  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p5_class_Actividad" target="p5_class_Actividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_rel1" value="sucesoras  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p5_class_Actividad" target="p5_class_Actividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_rel2" value="jornadas  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p5_class_Agenda" target="p5_class_JornadaAgenda">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_rel3" value="agenda  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p5_class_JornadaAgenda" target="p5_class_Agenda">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_rel4" value="agenda  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p5_class_BloqueoAgenda" target="p5_class_Agenda">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5_rel5" value="actividad  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p5_class_AsignacionActividad" target="p5_class_Actividad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-06" name="Modelo de clases Java — Postulaciones e invitaciones">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="630" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p6_title" value="Modelo de clases Java — Postulaciones e invitaciones" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p6_subtitle" value="Paquete org.mgroko.backend.modelo · Página 6 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p6_class_PostulacionGral" value="&lt;b&gt;PostulacionGral&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPostulacionGral &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK requerimientoGral &lt;font color=&quot;#666666&quot;&gt;: RequerimientoGralProyecto&lt;/font&gt;&lt;br&gt;fechaPostulacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ RequerimientoGralProyecto&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p6_class_PostulacionActividad" value="&lt;b&gt;PostulacionActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPostulacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK requerimiento &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;&lt;br&gt;fechaPostulacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ RequerimientoActividad&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p6_class_InvitacionGral" value="&lt;b&gt;InvitacionGral&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idInvitacionGral &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK requerimientoGral &lt;font color=&quot;#666666&quot;&gt;: RequerimientoGralProyecto&lt;/font&gt;&lt;br&gt;mensaje &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Proyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;… más referencias&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p6_class_InvitacionActividad" value="&lt;b&gt;InvitacionActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idInvitacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK requerimiento &lt;font color=&quot;#666666&quot;&gt;: RequerimientoActividad&lt;/font&gt;&lt;br&gt;mensaje &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaRechazo &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ RequerimientoActividad&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-07" name="Modelo de clases Java — Contratos">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="630" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p7_title" value="Modelo de clases Java — Contratos" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_subtitle" value="Paquete org.mgroko.backend.modelo · Página 7 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_class_TipoAcuerdoContrato" value="&lt;b&gt;TipoAcuerdoContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idTipoAcuerdo &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;plantilla &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;activo &lt;font color=&quot;#666666&quot;&gt;: Boolean&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_class_Contrato" value="&lt;b&gt;Contrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idContrato &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK tipoAcuerdo &lt;font color=&quot;#666666&quot;&gt;: TipoAcuerdoContrato&lt;/font&gt;&lt;br&gt;FK miembroEmisor &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;texto &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Proyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ MiembroProyecto&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_class_ContratoVersion" value="&lt;b&gt;ContratoVersion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idContratoVersion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK contrato &lt;font color=&quot;#666666&quot;&gt;: Contrato&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;version &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;texto &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaCreacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Usuario&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_class_ContratoEvento" value="&lt;b&gt;ContratoEvento&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idEvento &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK contrato &lt;font color=&quot;#666666&quot;&gt;: Contrato&lt;/font&gt;&lt;br&gt;FK miembro &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;FK usuario &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK contratoVersion &lt;font color=&quot;#666666&quot;&gt;: ContratoVersion&lt;/font&gt;&lt;br&gt;tipoEvento &lt;font color=&quot;#666666&quot;&gt;: TipoEventoContrato&lt;/font&gt;&lt;br&gt;fechaHora &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ MiembroProyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Usuario&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_class_FirmaContrato" value="&lt;b&gt;FirmaContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMiembro &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;PK idContrato &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK miembro &lt;font color=&quot;#666666&quot;&gt;: MiembroProyecto&lt;/font&gt;&lt;br&gt;FK contrato &lt;font color=&quot;#666666&quot;&gt;: Contrato&lt;/font&gt;&lt;br&gt;FK contratoVersion &lt;font color=&quot;#666666&quot;&gt;: ContratoVersion&lt;/font&gt;&lt;br&gt;rolParte &lt;font color=&quot;#666666&quot;&gt;: RolParteContrato&lt;/font&gt;&lt;br&gt;estadoFirma &lt;font color=&quot;#666666&quot;&gt;: EstadoFirmaContrato&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ MiembroProyecto&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_rel0" value="tipoAcuerdo  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p7_class_Contrato" target="p7_class_TipoAcuerdoContrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_rel1" value="contrato  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p7_class_ContratoVersion" target="p7_class_Contrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_rel2" value="contrato  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p7_class_ContratoEvento" target="p7_class_Contrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_rel3" value="contratoVersion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p7_class_ContratoEvento" target="p7_class_ContratoVersion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_rel4" value="contrato  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p7_class_FirmaContrato" target="p7_class_Contrato">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p7_rel5" value="contratoVersion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p7_class_FirmaContrato" target="p7_class_ContratoVersion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-08" name="Modelo de clases Java — Conexiones y mensajería">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="630" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p8_title" value="Modelo de clases Java — Conexiones y mensajería" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_subtitle" value="Paquete org.mgroko.backend.modelo · Página 8 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_class_Conexion" value="&lt;b&gt;Conexion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idConexion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil1 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfil2 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK solicitudOrigen &lt;font color=&quot;#666666&quot;&gt;: SolicitudConexion&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoConexion&lt;/font&gt;&lt;br&gt;fechaInicioConexion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaFinConexion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_class_SolicitudConexion" value="&lt;b&gt;SolicitudConexion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idSolicitudConexion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaRespuesta &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_class_Conversacion" value="&lt;b&gt;Conversacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idConversacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil1 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfil2 &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;fechaCreacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaUltimoMensaje &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_class_Mensaje" value="&lt;b&gt;Mensaje&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMensaje &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK conversacion &lt;font color=&quot;#666666&quot;&gt;: Conversacion&lt;/font&gt;&lt;br&gt;FK perfilEmisor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;contenido &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;leido &lt;font color=&quot;#666666&quot;&gt;: Boolean&lt;/font&gt;&lt;br&gt;fechaLectura &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_class_MensajeProyecto" value="&lt;b&gt;MensajeProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idMensajeProyecto &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK perfilEmisor &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;contenido &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Proyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_rel0" value="solicitudOrigen  (1 → 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p8_class_Conexion" target="p8_class_SolicitudConexion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p8_rel1" value="conversacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p8_class_Mensaje" target="p8_class_Conversacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-09" name="Modelo de clases Java — Publicaciones e interacción">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="890" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p9_title" value="Modelo de clases Java — Publicaciones e interacción" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_subtitle" value="Paquete org.mgroko.backend.modelo · Página 9 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_Publicacion" value="&lt;b&gt;Publicacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPublicacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK proyecto &lt;font color=&quot;#666666&quot;&gt;: Proyecto&lt;/font&gt;&lt;br&gt;FK ubicacion &lt;font color=&quot;#666666&quot;&gt;: Ubicacion&lt;/font&gt;&lt;br&gt;titulo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaPublicacion &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Proyecto&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Ubicacion&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;… más referencias&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_Comentario" value="&lt;b&gt;Comentario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idComentario &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK publicacion &lt;font color=&quot;#666666&quot;&gt;: Publicacion&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;texto &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;fechaComentario &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_MeGusta" value="&lt;b&gt;MeGusta&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK id &lt;font color=&quot;#666666&quot;&gt;: MeGustaId&lt;/font&gt;&lt;br&gt;fecha &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ MeGustaId&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_Imagen" value="&lt;b&gt;Imagen&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idImagen &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;url &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombreArchivo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;tipoImagen &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;tamanoBytes &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;fechaSubida &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_GrupoPolaroid" value="&lt;b&gt;GrupoPolaroid&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idGrupoPolaroid &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_TipoPolaroid" value="&lt;b&gt;TipoPolaroid&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idTipoPolaroid &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK grupo &lt;font color=&quot;#666666&quot;&gt;: GrupoPolaroid&lt;/font&gt;&lt;br&gt;codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_PolaroidPerfil" value="&lt;b&gt;PolaroidPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idPolaroid &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK perfil &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK imagen &lt;font color=&quot;#666666&quot;&gt;: Imagen&lt;/font&gt;&lt;br&gt;FK tipoPolaroid &lt;font color=&quot;#666666&quot;&gt;: TipoPolaroid&lt;/font&gt;&lt;br&gt;orden &lt;font color=&quot;#666666&quot;&gt;: Integer&lt;/font&gt;&lt;br&gt;fechaRegistro &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_class_SolicitudColaboracion" value="&lt;b&gt;SolicitudColaboracion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idSolicitudColaboracion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK publicacion &lt;font color=&quot;#666666&quot;&gt;: Publicacion&lt;/font&gt;&lt;br&gt;FK perfilRemitente &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;FK perfilDestinatario &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;estado &lt;font color=&quot;#666666&quot;&gt;: EstadoSolicitud&lt;/font&gt;&lt;br&gt;fechaEnvio &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;fechaRespuesta &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_rel0" value="imagenes  (1 → 0..*)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p9_class_Publicacion" target="p9_class_Imagen">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_rel1" value="publicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p9_class_Comentario" target="p9_class_Publicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_rel2" value="grupo  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p9_class_TipoPolaroid" target="p9_class_GrupoPolaroid">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_rel3" value="imagen  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p9_class_PolaroidPerfil" target="p9_class_Imagen">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_rel4" value="tipoPolaroid  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p9_class_PolaroidPerfil" target="p9_class_TipoPolaroid">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="p9_rel5" value="publicacion  (0..* → 0..1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#666666;strokeWidth=1;fontSize=8;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p9_class_SolicitudColaboracion" target="p9_class_Publicacion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-10" name="Modelo de clases Java — Notificaciones">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="370" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p10_title" value="Modelo de clases Java — Notificaciones" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p10_subtitle" value="Paquete org.mgroko.backend.modelo · Página 10 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p10_class_Notificacion" value="&lt;b&gt;Notificacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idNotificacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;FK usuarioDestino &lt;font color=&quot;#666666&quot;&gt;: Usuario&lt;/font&gt;&lt;br&gt;FK perfilContexto &lt;font color=&quot;#666666&quot;&gt;: Perfil&lt;/font&gt;&lt;br&gt;tipo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;mensaje &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;entidadTipo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;entidadId &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Usuario&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#777777&quot;&gt;→ Perfil&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-11" name="Modelo de clases Java — Auditoría y configuración">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="630" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p11_title" value="Modelo de clases Java — Auditoría y configuración" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="980" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p11_subtitle" value="Paquete org.mgroko.backend.modelo · Página 11 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="980" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p11_class_Auditoria" value="&lt;b&gt;Auditoria&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idAuditoria &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;usuarioBd &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;entidadAfectada &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;entidadClave &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idAfectado &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;fechaHora &lt;font color=&quot;#666666&quot;&gt;: LocalDateTime&lt;/font&gt;&lt;br&gt;ipUsuario &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p11_class_DetalleAuditoria" value="&lt;b&gt;DetalleAuditoria&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK idDetalleAuditoria &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;campo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;valorAnterior &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;valorNuevo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;idAuditoria &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p11_class_TipoEventoAuditoria" value="&lt;b&gt;TipoEventoAuditoria&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK codigo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;nombre &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;modulo &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;activo &lt;font color=&quot;#666666&quot;&gt;: boolean&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p11_class_ConfiguracionSistema" value="&lt;b&gt;ConfiguracionSistema&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Entity»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PK clave &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;valor &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;&lt;br&gt;descripcion &lt;font color=&quot;#666666&quot;&gt;: String&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="java-12" name="Modelo de clases Java — Enums y claves embebidas">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1430" pageHeight="1930" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="p12_title" value="Modelo de clases Java — Enums y claves embebidas" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="50" y="4" width="1330" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_subtitle" value="Paquete org.mgroko.backend.modelo · Página 12 de 12 · «Entity» / «Enumeration» / «Embeddable»" style="text;html=1;fontSize=9;align=left;verticalAlign=middle;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="32" width="1330" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EntidadReporte" value="&lt;b&gt;EntidadReporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PERFIL&lt;br&gt;PUBLICACION" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoActividad" value="&lt;b&gt;EstadoActividad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PENDIENTE&lt;br&gt;EN_CURSO&lt;br&gt;FINALIZADA&lt;br&gt;CANCELADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoConexion" value="&lt;b&gt;EstadoConexion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVA&lt;br&gt;ELIMINADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoContrato" value="&lt;b&gt;EstadoContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;BORRADOR&lt;br&gt;PENDIENTE_FIRMA&lt;br&gt;ACTIVO&lt;br&gt;RECHAZADO_POR_PARTES&lt;br&gt;CANCELADO&lt;br&gt;ELIMINADO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="110" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoCronograma" value="&lt;b&gt;EstadoCronograma&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;NORMAL&lt;br&gt;ALERTA_DESBORDE&lt;br&gt;CONFLICTO&lt;br&gt;SIN_FECHA_ENTREGA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoFirmaContrato" value="&lt;b&gt;EstadoFirmaContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PENDIENTE&lt;br&gt;FIRMADO&lt;br&gt;RECHAZADO&lt;br&gt;CANCELADA&lt;br&gt;INVALIDADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoParticipacion" value="&lt;b&gt;EstadoParticipacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVO&lt;br&gt;BAJA_VOLUNTARIA&lt;br&gt;ELIMINADO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoPerfil" value="&lt;b&gt;EstadoPerfil&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVO&lt;br&gt;DESHABILITADO&lt;br&gt;PENDIENTE_BAJA&lt;br&gt;BAJA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="370" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoProyecto" value="&lt;b&gt;EstadoProyecto&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;BORRADOR&lt;br&gt;PUBLICADO&lt;br&gt;CONFIRMADO&lt;br&gt;FINALIZADO&lt;br&gt;CANCELADO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoPublicacion" value="&lt;b&gt;EstadoPublicacion&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVA&lt;br&gt;OCULTA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoReporte" value="&lt;b&gt;EstadoReporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoSolicitud" value="&lt;b&gt;EstadoSolicitud&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PENDIENTE&lt;br&gt;ACEPTADA&lt;br&gt;RECHAZADA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="630" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_EstadoUsuario" value="&lt;b&gt;EstadoUsuario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;ACTIVO&lt;br&gt;DESHABILITADO&lt;br&gt;PENDIENTE_BAJA&lt;br&gt;BAJA" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="890" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_FirmaContratoId" value="&lt;b&gt;FirmaContratoId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;serialVersionUID &lt;font color=&quot;#666666&quot;&gt;: long&lt;/font&gt;&lt;br&gt;idMiembro &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idContrato &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="890" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_MeGustaId" value="&lt;b&gt;MeGustaId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;serialVersionUID &lt;font color=&quot;#666666&quot;&gt;: long&lt;/font&gt;&lt;br&gt;idPublicacion &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="890" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_MotivoReporte" value="&lt;b&gt;MotivoReporte&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="890" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_OrigenInicio" value="&lt;b&gt;OrigenInicio&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PROYECTADA&lt;br&gt;CONFIRMADA&lt;br&gt;REAL" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1150" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_PerfilTycId" value="&lt;b&gt;PerfilTycId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idPerfil &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idTyc &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1150" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_Privacidad" value="&lt;b&gt;Privacidad&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;PUBLICO&lt;br&gt;PRIVADO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="1150" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_ProveedorAuth" value="&lt;b&gt;ProveedorAuth&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;LOCAL&lt;br&gt;GOOGLE" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="1150" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_RequerimientoActCaractValorId" value="&lt;b&gt;RequerimientoActCaractValorId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idReqActCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1410" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_RequerimientoGralCaractValorId" value="&lt;b&gt;RequerimientoGralCaractValorId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idReqGralCaract &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1410" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_RolParteContrato" value="&lt;b&gt;RolParteContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;DIRECTOR&lt;br&gt;DESTINATARIO&lt;br&gt;DIRECTOR_DESTINATARIO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="1410" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_RolProyectoUsuario" value="&lt;b&gt;RolProyectoUsuario&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;DIRECTOR&lt;br&gt;MIEMBRO" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="1410" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_TipoEventoContrato" value="&lt;b&gt;TipoEventoContrato&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;CREADO&lt;br&gt;MODIFICADO&lt;br&gt;EMITIDO&lt;br&gt;FIRMADO&lt;br&gt;RECHAZADO&lt;br&gt;ACTIVADO&lt;br&gt;CANCELADO&lt;br&gt;ELIMINADO&lt;br&gt;FIRMA_CANCELADA&lt;br&gt;FIRMA_INVALIDADA&lt;br&gt;…" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1670" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_TipoEventoHistorial" value="&lt;b&gt;TipoEventoHistorial&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Enumeration»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1670" width="280" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="p12_class_ValorCaracteristicaId" value="&lt;b&gt;ValorCaracteristicaId&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;«Embeddable»&lt;/font&gt;&lt;br&gt;&lt;hr&gt;&lt;br&gt;idValor &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;&lt;br&gt;idCaracteristica &lt;font color=&quot;#666666&quot;&gt;: Long&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="750" y="1670" width="280" height="180" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

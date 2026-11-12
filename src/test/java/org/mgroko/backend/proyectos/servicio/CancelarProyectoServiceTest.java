@@ -203,6 +203,7 @@ class CancelarProyectoServiceTest {
         assertThat(resultado).isEqualTo(respuesta);
         assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.CANCELADO);
         assertThat(proyecto.getMotivoCancelacion()).isEqualTo("Falta de presupuesto");
+        assertThat(proyecto.getFechaCancelacion()).isNotNull();
 
         verify(actividadRepository).cancelarPendientesDeProyecto(100L);
         verify(proyectoSecurityService).validarPermiso(100L, 10L, "CANCELAR_PROYECTO");

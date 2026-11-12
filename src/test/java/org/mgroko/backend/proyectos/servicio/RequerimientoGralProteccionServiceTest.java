@@ -11,6 +11,7 @@ import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
 import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
@@ -33,6 +34,9 @@ class RequerimientoGralProteccionServiceTest {
 
     @Mock
     private InvitacionGralRepository invitacionGralRepository;
+
+    @Mock
+    private ReemplazoRepository reemplazoRepository;
 
     @InjectMocks
     private RequerimientoGralProteccionService proteccionService;
@@ -89,6 +93,15 @@ class RequerimientoGralProteccionServiceTest {
     }
 
     @Test
+    void conReemplazoAsociado_esProtegido() {
+        when(reemplazoRepository
+                .existsByRequerimientoGral_IdRequerimientoGral(10L))
+                .thenReturn(true);
+
+        assertThat(proteccionService.estaProtegido(requerimiento)).isTrue();
+    }
+
+    @Test
     void conAceptadaDeInactivo_noEsProtegido() {
         assertThat(proteccionService.estaProtegido(requerimiento)).isFalse();
     }
@@ -107,6 +120,9 @@ class RequerimientoGralProteccionServiceTest {
         when(postulacionGralRepository.findIdsRequerimientoGralPorEstado(
                 List.of(20L, 30L, 40L), EstadoSolicitud.PENDIENTE))
                 .thenReturn(List.of(30L));
+        when(reemplazoRepository.findIdsRequerimientoGralConReemplazos(
+                List.of(20L, 30L, 40L)))
+                .thenReturn(List.of());
 
         Map<Long, Boolean> resultado = proteccionService.calcularProtegidos(
                 requerimientos);

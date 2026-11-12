@@ -27,6 +27,7 @@ public class CancelarReemplazoService {
     private final ProyectoSecurityService proyectoSecurityService;
     private final ReemplazoQueryService queryService;
     private final ReemplazoNotificacionService notificacionService;
+    private final ReemplazoSnapshotService reemplazoSnapshotService;
     private final Clock reloj;
 
     public CancelarReemplazoService(
@@ -35,12 +36,14 @@ public class CancelarReemplazoService {
             ProyectoSecurityService proyectoSecurityService,
             ReemplazoQueryService queryService,
             ReemplazoNotificacionService notificacionService,
+            ReemplazoSnapshotService reemplazoSnapshotService,
             Clock reloj) {
         this.reemplazoRepository = reemplazoRepository;
         this.candidatoRepository = candidatoRepository;
         this.proyectoSecurityService = proyectoSecurityService;
         this.queryService = queryService;
         this.notificacionService = notificacionService;
+        this.reemplazoSnapshotService = reemplazoSnapshotService;
         this.reloj = reloj;
     }
 
@@ -67,6 +70,7 @@ public class CancelarReemplazoService {
         LocalDateTime ahora = LocalDateTime.now(reloj);
         reemplazo.setEstado(EstadoReemplazo.CANCELADO);
         reemplazo.setFechaCierre(ahora);
+        reemplazoSnapshotService.repuntarAlCerrar(reemplazo, ahora);
         reemplazoRepository.saveAndFlush(reemplazo);
 
         var candidatos = candidatoRepository.findConDetalleByReemplazo(idReemplazo);

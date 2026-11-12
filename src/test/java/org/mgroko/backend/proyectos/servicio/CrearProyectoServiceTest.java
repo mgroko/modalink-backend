@@ -94,6 +94,9 @@ class CrearProyectoServiceTest {
     @Mock
     private org.mgroko.backend.repositorio.MoodboardRepository moodboardRepository;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private CrearProyectoService crearProyectoService;
 
     private Perfil perfil;
@@ -107,7 +110,8 @@ class CrearProyectoServiceTest {
                 valorCaracteristicaRepository,
                 habilidadRepository,
                 requerimientoGralProyectoRepository,
-                requerimientoGralCaractValorRepository);
+                requerimientoGralCaractValorRepository,
+                eventPublisher);
 
         crearProyectoService = new CrearProyectoService(
                 proyectoRepository,

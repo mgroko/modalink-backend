@@ -31,6 +31,7 @@ import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaExceptio
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
@@ -67,6 +68,7 @@ public class CrearPostulacionService {
     private final CupoRequerimientoService cupoRequerimientoService;
     private final NotificacionService notificacionService;
     private final EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
+    private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final Clock reloj;
 
     public CrearPostulacionService(
@@ -80,6 +82,7 @@ public class CrearPostulacionService {
             CupoRequerimientoService cupoRequerimientoService,
             NotificacionService notificacionService,
             EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService,
+            ProyectoVisibilidadService proyectoVisibilidadService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
@@ -91,6 +94,7 @@ public class CrearPostulacionService {
         this.cupoRequerimientoService = cupoRequerimientoService;
         this.notificacionService = notificacionService;
         this.evaluarDisponibilidadActividadService = evaluarDisponibilidadActividadService;
+        this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.reloj = reloj;
     }
 
@@ -114,7 +118,7 @@ public class CrearPostulacionService {
                         "El requerimiento general " + idRequerimientoGral + " no existe."));
 
         Proyecto proyecto = requerimiento.getProyecto();
-        validarProyecto(idProyecto, proyecto);
+        validarProyecto(idProyecto, proyecto, perfil);
 
         if (!Boolean.TRUE.equals(proyecto.getAceptaPostulacionGral())) {
             throw new PostulacionNoPermitidaException(
@@ -183,7 +187,7 @@ public class CrearPostulacionService {
 
         Actividad actividad = requerimiento.getActividad();
         Proyecto proyecto = actividad.getPlanificacion().getProyecto();
-        validarProyecto(idProyecto, proyecto);
+        validarProyecto(idProyecto, proyecto, perfil);
 
         if (actividad.getEstado() != EstadoActividad.PENDIENTE) {
             throw new PostulacionNoPermitidaException(
@@ -258,7 +262,7 @@ public class CrearPostulacionService {
         return perfil;
     }
 
-    private void validarProyecto(Long idProyecto, Proyecto proyecto) {
+    private void validarProyecto(Long idProyecto, Proyecto proyecto, Perfil perfil) {
         if (!proyecto.getIdProyecto().equals(idProyecto)) {
             throw new RequerimientoNoEncontradoException(
                     "El requerimiento no pertenece al proyecto indicado.");
@@ -268,6 +272,7 @@ public class CrearPostulacionService {
             throw new PostulacionNoPermitidaException(
                     "El proyecto ya no acepta postulaciones.");
         }
+        proyectoVisibilidadService.validarAcceso(proyecto, perfil.getIdPerfil());
     }
 
     private void validarPerfilApto(

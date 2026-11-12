@@ -33,6 +33,9 @@ public final class NotificacionTitulos {
             Map.entry("INVITACION_RECHAZADA", "Invitación rechazada"),
             Map.entry("HITO_CUMPLIDO", "Hito cumplido"),
             Map.entry("PERFIL_REPORTADO", "Perfil reportado"),
+            Map.entry("PUBLICACION_REPORTADA", "Publicación reportada"),
+            Map.entry("PUBLICACION_OCULTADA", "Publicación ocultada"),
+            Map.entry("PUBLICACION_REACTIVADA", "Publicación reactivada"),
             Map.entry("HABILIDAD_MODIFICADA", "Habilidad modificada"),
             Map.entry("HABILIDAD_ELIMINADA", "Habilidad eliminada"),
             Map.entry("INTEGRANTE_ELIMINADO", "Integrante eliminado"),
@@ -49,6 +52,11 @@ public final class NotificacionTitulos {
             Map.entry("SOLICITUD_CONEXION_ACEPTADA", "Solicitud de conexión aceptada"),
             Map.entry("SOLICITUD_CONEXION_RECHAZADA", "Solicitud de conexión rechazada"),
             Map.entry("CONEXION_ELIMINADA", "Conexión eliminada"),
+            Map.entry("SOLICITUD_COLABORACION_RECIBIDA", "Solicitud de colaboración recibida"),
+            Map.entry("SOLICITUD_COLABORACION_ACEPTADA", "Solicitud de colaboración aceptada"),
+            Map.entry("SOLICITUD_COLABORACION_RECHAZADA", "Solicitud de colaboración rechazada"),
+            Map.entry("PUBLICACION_MEGUSTA", "Nueva interacción en publicación"),
+            Map.entry("PUBLICACION_COMENTARIO", "Nuevo comentario en publicación"),
             Map.entry("MENSAJE_PRIVADO_RECIBIDO", "Mensaje privado recibido"),
             Map.entry("MENSAJE_GRUPAL_RECIBIDO", "Mensaje grupal recibido"));
 

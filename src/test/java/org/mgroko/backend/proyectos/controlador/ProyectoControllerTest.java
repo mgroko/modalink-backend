@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -806,6 +807,70 @@ class ProyectoControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("No se puede modificar un proyecto en estado Finalizado."));
+    }
+
+    @Test
+    void modificar_conImagenesConservadas_llegaAlServicio() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.ModificarProyectoRequest(
+                "Nueva descripción",
+                Privacidad.Publico,
+                true,
+                null,
+                null,
+                null,
+                null,
+                new org.mgroko.backend.proyectos.dto.CrearMoodboardRequest(
+                        "Paleta", List.of(5L, 6L)));
+
+        when(modificarProyectoService.modificar(
+                eq(1L), eq(10L), eq(100L), any(org.mgroko.backend.proyectos.dto.ModificarProyectoRequest.class)))
+                .thenReturn(proyectoResponseModificado());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/proyectos/100")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<org.mgroko.backend.proyectos.dto.ModificarProyectoRequest> captor =
+                ArgumentCaptor.forClass(org.mgroko.backend.proyectos.dto.ModificarProyectoRequest.class);
+        verify(modificarProyectoService).modificar(eq(1L), eq(10L), eq(100L), captor.capture());
+        assertThat(captor.getValue().moodboard().imagenesConservadas())
+                .containsExactly(5L, 6L);
+    }
+
+    @Test
+    void modificar_imagenMoodboardAjena_devuelve404() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna Diseños"));
+
+        var request = new org.mgroko.backend.proyectos.dto.ModificarProyectoRequest(
+                "Nueva descripción",
+                Privacidad.Publico,
+                true,
+                null,
+                null,
+                null,
+                null,
+                new org.mgroko.backend.proyectos.dto.CrearMoodboardRequest(
+                        "Paleta", List.of(99L)));
+
+        when(modificarProyectoService.modificar(
+                eq(1L), eq(10L), eq(100L), any(org.mgroko.backend.proyectos.dto.ModificarProyectoRequest.class)))
+                .thenThrow(new org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException(99L));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/proyectos/100")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message")
+                        .value("La imagen con id 99 no pertenece al moodboard del proyecto."));
     }
 
     @Test

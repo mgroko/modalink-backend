@@ -162,6 +162,22 @@ public interface ReemplazoCandidatoRepository extends JpaRepository<ReemplazoCan
             Collection<EstadoCandidatoReemplazo> estados);
 
     @Query("""
+            SELECT c.perfil.idPerfil
+            FROM ReemplazoCandidato c
+            WHERE c.reemplazo.idReemplazo = :idReemplazo
+            """)
+    List<Long> findIdsPerfilByReemplazo(
+            @Param("idReemplazo") Long idReemplazo);
+
+    @Query("""
+            SELECT COALESCE(MAX(c.ordenRanking), 0)
+            FROM ReemplazoCandidato c
+            WHERE c.reemplazo.idReemplazo = :idReemplazo
+            """)
+    int findMaxOrdenRankingByReemplazo(
+            @Param("idReemplazo") Long idReemplazo);
+
+    @Query("""
             SELECT c.idCandidato AS entidadId,
                    c.reemplazo.proyecto.idProyecto AS idProyecto
             FROM ReemplazoCandidato c

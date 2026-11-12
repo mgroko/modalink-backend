@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.reemplazos.repositorio.ReemplazoRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
 import org.mgroko.backend.repositorio.PostulacionActividadRepository;
@@ -25,6 +26,8 @@ class RequerimientoProteccionServiceTest {
     private InvitacionActividadRepository invitacionActividadRepository;
     @Mock
     private AsignacionActividadRepository asignacionActividadRepository;
+    @Mock
+    private ReemplazoRepository reemplazoRepository;
 
     @InjectMocks
     private RequerimientoProteccionService service;
@@ -67,6 +70,15 @@ class RequerimientoProteccionServiceTest {
         when(invitacionActividadRepository
                 .existsByRequerimiento_IdRequerimientoAndEstado(
                         7L, EstadoSolicitud.PENDIENTE))
+                .thenReturn(true);
+
+        assertThat(service.estaProtegido(7L)).isTrue();
+    }
+
+    @Test
+    void reemplazoAsociado_protege() {
+        when(reemplazoRepository
+                .existsByRequerimientoActividad_IdRequerimiento(7L))
                 .thenReturn(true);
 
         assertThat(service.estaProtegido(7L)).isTrue();

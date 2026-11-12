@@ -50,6 +50,41 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
             @Param("entidadTipo") String entidadTipo,
             @Param("entidadId") Long entidadId);
 
+    /**
+     * UC-64: elimina la notificación de una entidad para un usuario y perfil
+     * concretos. Se usa para no borrar las notificaciones de otros
+     * destinatarios de la misma publicación.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM Notificacion n
+             WHERE n.tipo = :tipo
+               AND n.entidadTipo = :entidadTipo
+               AND n.entidadId = :entidadId
+               AND n.usuarioDestino.idUsuario = :idUsuarioDestino
+               AND n.perfilContexto.idPerfil = :idPerfilContexto
+            """)
+    int deleteByTipoAndEntidadTipoAndEntidadIdYPerfil(
+            @Param("tipo") String tipo,
+            @Param("entidadTipo") String entidadTipo,
+            @Param("entidadId") Long entidadId,
+            @Param("idUsuarioDestino") Long idUsuarioDestino,
+            @Param("idPerfilContexto") Long idPerfilContexto);
+
+    /**
+     * UC-20: elimina todas las notificaciones que apuntan a una entidad que se
+     * da de baja físicamente.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM Notificacion n
+             WHERE n.entidadTipo = :entidadTipo
+               AND n.entidadId = :entidadId
+            """)
+    int deleteByEntidadTipoAndEntidadId(
+            @Param("entidadTipo") String entidadTipo,
+            @Param("entidadId") Long entidadId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notificacion n
