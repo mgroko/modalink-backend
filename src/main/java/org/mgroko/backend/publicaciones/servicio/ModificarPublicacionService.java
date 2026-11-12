@@ -25,6 +25,7 @@ import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PublicacionRepository;
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
+import org.mgroko.backend.storage.servicio.HuellaImagenService;
 import org.mgroko.backend.storage.servicio.StorageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,8 @@ public class ModificarPublicacionService {
     private final BorradoArchivosDiferido borradoArchivosDiferido;
     private final EntityManager entityManager;
     private final PublicacionInteraccionResumenService interaccionResumenService;
+    private final DetectarColaboracionAutomaticaService detectorColaboracionService;
+    private final ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
 
     public ModificarPublicacionService(
             PublicacionRepository publicacionRepository,
@@ -60,7 +63,9 @@ public class ModificarPublicacionService {
             StorageService storageService,
             BorradoArchivosDiferido borradoArchivosDiferido,
             EntityManager entityManager,
-            PublicacionInteraccionResumenService interaccionResumenService) {
+            PublicacionInteraccionResumenService interaccionResumenService,
+            DetectarColaboracionAutomaticaService detectorColaboracionService,
+            ColaboracionAutomaticaLifecycleService colaboracionLifecycleService) {
         this.publicacionRepository = publicacionRepository;
         this.imagenRepository = imagenRepository;
         this.publicacionDatosService = publicacionDatosService;
@@ -69,6 +74,8 @@ public class ModificarPublicacionService {
         this.borradoArchivosDiferido = borradoArchivosDiferido;
         this.entityManager = entityManager;
         this.interaccionResumenService = interaccionResumenService;
+        this.detectorColaboracionService = detectorColaboracionService;
+        this.colaboracionLifecycleService = colaboracionLifecycleService;
     }
 
     @Transactional
@@ -213,6 +220,7 @@ public class ModificarPublicacionService {
         }
 
         for (Imagen imagen : aEliminar) {
+            colaboracionLifecycleService.cancelarPendientesPorImagen(imagen.getIdImagen());
             publicacionRepository.eliminarImagenPublicacion(
                     idPublicacion, imagen.getIdImagen());
             borradoArchivosDiferido.registrarBorrados(null, imagen.getNombreArchivo());
@@ -232,6 +240,10 @@ public class ModificarPublicacionService {
                     .tipoImagen(almacenado.tipoMime())
                     .tamanoBytes((int) almacenado.tamanoBytes())
                     .estado(PublicacionDatosService.ESTADO_IMAGEN_ACTIVA)
+                    .sha256Original(almacenado.sha256Original())
+                    .sha256Contenido(almacenado.sha256Contenido())
+                    .phash(almacenado.phash())
+                    .phashVersion(HuellaImagenService.PHASH_VERSION)
                     .build());
 
             publicacionRepository.insertarImagenPublicacion(
@@ -258,6 +270,9 @@ public class ModificarPublicacionService {
         if (publicacion.getColaboradores() != null) {
             publicacion.getColaboradores().size();
         }
+
+        detectorColaboracionService.detectar(publicacion, nuevas);
+
         entityManager.clear();
     }
 }

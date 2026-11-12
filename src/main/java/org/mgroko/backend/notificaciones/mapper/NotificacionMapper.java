@@ -12,6 +12,8 @@ public final class NotificacionMapper {
     private static final String ENTIDAD_CONEXION = "CONEXION";
     private static final String ENTIDAD_CONVERSACION = "CONVERSACION";
     private static final String ENTIDAD_PUBLICACION = "PUBLICACION";
+    private static final String ENTIDAD_COLABORACION_AUTOMATICA =
+            "COLABORACION_AUTOMATICA";
     private static final String TIPO_CALIFICACION_SOLICITADA =
             "CALIFICACION_SOLICITADA";
     private static final String TIPO_SOLICITUD_CONEXION_RECIBIDA =
@@ -36,6 +38,16 @@ public final class NotificacionMapper {
             "PUBLICACION_MEGUSTA";
     private static final String TIPO_PUBLICACION_COMENTARIO =
             "PUBLICACION_COMENTARIO";
+    private static final String TIPO_COLABORACION_AUTOMATICA_DETECTADA =
+            "COLABORACION_AUTOMATICA_DETECTADA";
+    private static final String TIPO_COLABORACION_AUTOMATICA_CONFIRMADA =
+            "COLABORACION_AUTOMATICA_CONFIRMADA";
+    private static final String TIPO_COLABORACION_AUTOMATICA_RECHAZADA =
+            "COLABORACION_AUTOMATICA_RECHAZADA";
+    private static final String TIPO_COLABORACION_AUTOMATICA_CANCELADA =
+            "COLABORACION_AUTOMATICA_CANCELADA";
+    private static final String TIPO_COLABORACION_AUTOMATICA_DISUELTA =
+            "COLABORACION_AUTOMATICA_DISUELTA";
     private static final String TIPO_PUBLICACION_REACTIVADA =
             "PUBLICACION_REACTIVADA";
 
@@ -113,6 +125,15 @@ public final class NotificacionMapper {
                     ENTIDAD_PUBLICACION.equals(notificacion.getEntidadTipo())
                             && notificacion.getEntidadId() != null
                             ? "/publicaciones/" + notificacion.getEntidadId()
+                            : null;
+            case TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                 TIPO_COLABORACION_AUTOMATICA_CONFIRMADA,
+                 TIPO_COLABORACION_AUTOMATICA_RECHAZADA,
+                 TIPO_COLABORACION_AUTOMATICA_CANCELADA,
+                 TIPO_COLABORACION_AUTOMATICA_DISUELTA ->
+                    ENTIDAD_COLABORACION_AUTOMATICA.equals(notificacion.getEntidadTipo())
+                            && notificacion.getEntidadId() != null
+                            ? "/colaboraciones-automaticas/" + notificacion.getEntidadId()
                             : null;
             default -> null;
         };

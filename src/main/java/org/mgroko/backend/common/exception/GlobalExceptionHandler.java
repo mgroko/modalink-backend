@@ -458,6 +458,30 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaNoEncontrada(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaNoPermitida(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPermitidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPendienteException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaNoPendiente(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPendienteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaInvalida(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.mgroko.backend.publicaciones.exception.EstadoPublicacionInvalidoException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoPublicacionInvalido(
             org.mgroko.backend.publicaciones.exception.EstadoPublicacionInvalidoException ex) {

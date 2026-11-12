@@ -67,6 +67,9 @@ class GestionarSolicitudColaboracionServiceTest {
     @Mock
     private NotificacionService notificacionService;
 
+    @Mock
+    private ColaboradorPublicacionOrigenService colaboradorOrigenService;
+
     private GestionarSolicitudColaboracionService servicio;
     private Usuario usuarioRemitente;
     private Usuario usuarioDestinatario;
@@ -82,6 +85,7 @@ class GestionarSolicitudColaboracionServiceTest {
                 solicitudColaboracionRepository,
                 publicacionRepository,
                 notificacionService,
+                colaboradorOrigenService,
                 RELOJ);
 
         usuarioRemitente = Usuario.builder()

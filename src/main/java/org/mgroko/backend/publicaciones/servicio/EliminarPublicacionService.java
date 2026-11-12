@@ -34,6 +34,8 @@ public class EliminarPublicacionService {
     private final SolicitudColaboracionRepository solicitudColaboracionRepository;
     private final NotificacionService notificacionService;
     private final BorradoArchivosDiferido borradoArchivosDiferido;
+    private final ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
+    private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
     private final EntityManager entityManager;
 
     public EliminarPublicacionService(
@@ -43,6 +45,8 @@ public class EliminarPublicacionService {
             SolicitudColaboracionRepository solicitudColaboracionRepository,
             NotificacionService notificacionService,
             BorradoArchivosDiferido borradoArchivosDiferido,
+            ColaboracionAutomaticaLifecycleService colaboracionLifecycleService,
+            ColaboradorPublicacionOrigenService colaboradorOrigenService,
             EntityManager entityManager) {
         this.publicacionDatosService = publicacionDatosService;
         this.publicacionRepository = publicacionRepository;
@@ -50,6 +54,8 @@ public class EliminarPublicacionService {
         this.solicitudColaboracionRepository = solicitudColaboracionRepository;
         this.notificacionService = notificacionService;
         this.borradoArchivosDiferido = borradoArchivosDiferido;
+        this.colaboracionLifecycleService = colaboracionLifecycleService;
+        this.colaboradorOrigenService = colaboradorOrigenService;
         this.entityManager = entityManager;
     }
 
@@ -75,8 +81,22 @@ public class EliminarPublicacionService {
             throw new PublicacionNoEncontradaException(idPublicacion);
         }
 
+        boolean origenAutomatico = colaboradorOrigenService
+                .buscar(idPublicacion, perfil.getIdPerfil())
+                .map(origen -> origen.getOrigen()
+                        == org.mgroko.backend.modelo.enums.OrigenColaboracion.AUTOMATICA
+                        || origen.getOrigen()
+                        == org.mgroko.backend.modelo.enums.OrigenColaboracion.AMBOS)
+                .orElse(false);
+
+        if (origenAutomatico) {
+            colaboracionLifecycleService.disolverPorEtiqueta(
+                    idPublicacion, perfil.getIdPerfil());
+        }
+
         publicacionRepository.eliminarColaboradorPublicacion(
                 idPublicacion, perfil.getIdPerfil());
+        colaboradorOrigenService.eliminar(idPublicacion, perfil.getIdPerfil());
     }
 
     private boolean esDuenio(Publicacion publicacion, Perfil perfil) {
@@ -93,6 +113,9 @@ public class EliminarPublicacionService {
 
     private void eliminarFisicamente(Publicacion publicacion) {
         Long idPublicacion = publicacion.getIdPublicacion();
+
+        colaboracionLifecycleService.cancelarPendientesPorPublicacion(idPublicacion);
+
         List<Imagen> imagenes = publicacion.getImagenes() != null
                 ? new ArrayList<>(publicacion.getImagenes())
                 : List.of();
@@ -101,6 +124,13 @@ public class EliminarPublicacionService {
         for (Imagen imagen : imagenes) {
             borradoArchivosDiferido.registrarBorrados(null, imagen.getNombreArchivo());
             imagenRepository.eliminarFisicamente(imagen.getIdImagen());
+        }
+
+        if (publicacion.getColaboradores() != null) {
+            for (Perfil colaborador : publicacion.getColaboradores()) {
+                colaboradorOrigenService.eliminar(
+                        idPublicacion, colaborador.getIdPerfil());
+            }
         }
 
         publicacionRepository.eliminarColaboradoresPublicacion(idPublicacion);

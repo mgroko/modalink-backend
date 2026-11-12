@@ -77,6 +77,9 @@ class CrearPublicacionServiceTest {
     @Mock
     private BorradoArchivosDiferido borradoArchivosDiferido;
 
+    @Mock
+    private DetectarColaboracionAutomaticaService detectorColaboracionService;
+
     private CrearPublicacionService servicio;
     private Perfil perfil;
 
@@ -94,7 +97,8 @@ class CrearPublicacionServiceTest {
                 proyectoVisibilidadService,
                 publicacionDatosService,
                 storageService,
-                borradoArchivosDiferido);
+                borradoArchivosDiferido,
+                detectorColaboracionService);
 
         perfil = Perfil.builder()
                 .idPerfil(7L)

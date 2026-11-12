@@ -77,7 +77,8 @@ class LocalStorageServiceTest {
                 "moodboard",
                 "publicaciones",
                 "polaroids",
-                new ProcesadorImagen(repositorio));
+                new ProcesadorImagen(repositorio),
+                mock(HuellaImagenService.class));
     }
 
     @Test

@@ -36,6 +36,7 @@ public class GestionarSolicitudColaboracionService {
     private final SolicitudColaboracionRepository solicitudColaboracionRepository;
     private final PublicacionRepository publicacionRepository;
     private final NotificacionService notificacionService;
+    private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
     private final Clock reloj;
 
     public GestionarSolicitudColaboracionService(
@@ -43,11 +44,13 @@ public class GestionarSolicitudColaboracionService {
             SolicitudColaboracionRepository solicitudColaboracionRepository,
             PublicacionRepository publicacionRepository,
             NotificacionService notificacionService,
+            ColaboradorPublicacionOrigenService colaboradorOrigenService,
             Clock reloj) {
         this.perfilActivoService = perfilActivoService;
         this.solicitudColaboracionRepository = solicitudColaboracionRepository;
         this.publicacionRepository = publicacionRepository;
         this.notificacionService = notificacionService;
+        this.colaboradorOrigenService = colaboradorOrigenService;
         this.reloj = reloj;
     }
 
@@ -102,6 +105,9 @@ public class GestionarSolicitudColaboracionService {
             }
             throw ex;
         }
+
+        colaboradorOrigenService.registrarManual(
+                publicacion.getIdPublicacion(), perfilActivo.getIdPerfil());
 
         solicitud.setEstado(EstadoSolicitud.ACEPTADA);
         solicitud.setFechaRespuesta(LocalDateTime.now(reloj));

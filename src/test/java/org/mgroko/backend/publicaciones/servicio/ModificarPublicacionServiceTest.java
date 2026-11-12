@@ -87,6 +87,12 @@ class ModificarPublicacionServiceTest {
     @Mock
     private PublicacionInteraccionResumenService interaccionResumenService;
 
+    @Mock
+    private DetectarColaboracionAutomaticaService detectorColaboracionService;
+
+    @Mock
+    private ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
+
     private ModificarPublicacionService servicio;
     private Perfil perfil;
     private Publicacion publicacion;
@@ -109,7 +115,9 @@ class ModificarPublicacionServiceTest {
                 storageService,
                 borradoArchivosDiferido,
                 entityManager,
-                interaccionResumenService);
+                interaccionResumenService,
+                detectorColaboracionService,
+                colaboracionLifecycleService);
 
         perfil = Perfil.builder()
                 .idPerfil(7L)

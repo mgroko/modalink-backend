@@ -58,6 +58,9 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
     @Autowired
     private GeneroRepository generoRepository;
 
+    @Autowired
+    private PublicacionRepository publicacionRepository;
+
     private Escenario escenario;
     private Long pubAId;
     private Long pubBId;
@@ -108,6 +111,11 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
         idR8 = crearSolicitud(
                 pubA, escenario.a(), escenario.e(), EstadoSolicitud.PENDIENTE,
                 LocalDateTime.of(2026, 11, 10, 9, 0)).getIdSolicitudColaboracion();
+
+        pubA.getImagenes().get(0).setSha256Contenido("sha-a");
+        pubA.getImagenes().get(0).setPhash(0L);
+        pubB.getImagenes().get(0).setSha256Contenido("sha-b");
+        pubB.getImagenes().get(0).setPhash(0L);
 
         em.flush();
         pubAId = pubA.getIdPublicacion();
@@ -194,6 +202,33 @@ class BuscarSolicitudColaboracionIntegrationTest extends AbstractPostgresIntegra
         assertThat(pagina.contenido()).allSatisfy(item ->
                 assertThat(item.publicacion().idPublicacion())
                         .isEqualTo(pubAId));
+    }
+
+    @Test
+    void repositorio_buscaCoincidenciasExactasYPerceptuales() {
+        var exactas = publicacionRepository.buscarCoincidenciasExactas(
+                "sha-b",
+                pubAId,
+                escenario.idPerfilA(),
+                escenario.a().getUsuario().getIdUsuario(),
+                10);
+
+        assertThat(exactas)
+                .extracting(fila -> fila.getIdPublicacion())
+                .containsExactly(pubBId);
+
+        var perceptuales = publicacionRepository.buscarCoincidenciasPerceptuales(
+                0L,
+                0,
+                pubAId,
+                escenario.idPerfilA(),
+                escenario.a().getUsuario().getIdUsuario(),
+                10);
+
+        assertThat(perceptuales)
+                .extracting(fila -> fila.getIdPublicacion())
+                .containsExactly(pubBId);
+        assertThat(perceptuales.get(0).getDistancia()).isZero();
     }
 
     @Test

@@ -104,12 +104,24 @@ public class NotificacionService {
             "PUBLICACION_MEGUSTA";
     public static final String TIPO_PUBLICACION_COMENTARIO =
             "PUBLICACION_COMENTARIO";
+    public static final String TIPO_COLABORACION_AUTOMATICA_DETECTADA =
+            "COLABORACION_AUTOMATICA_DETECTADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_CONFIRMADA =
+            "COLABORACION_AUTOMATICA_CONFIRMADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_RECHAZADA =
+            "COLABORACION_AUTOMATICA_RECHAZADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_CANCELADA =
+            "COLABORACION_AUTOMATICA_CANCELADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_DISUELTA =
+            "COLABORACION_AUTOMATICA_DISUELTA";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";
     public static final String ENTIDAD_CONVERSACION = "CONVERSACION";
     public static final String ENTIDAD_PROYECTO = "PROYECTO";
     public static final String ENTIDAD_PUBLICACION = "PUBLICACION";
+    public static final String ENTIDAD_COLABORACION_AUTOMATICA =
+            "COLABORACION_AUTOMATICA";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;

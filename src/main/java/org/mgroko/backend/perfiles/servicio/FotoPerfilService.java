@@ -16,6 +16,7 @@ import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.PerfilAccessPolicy;
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
+import org.mgroko.backend.storage.servicio.HuellaImagenService;
 import org.mgroko.backend.storage.servicio.StorageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +68,10 @@ public class FotoPerfilService {
                 .tipoImagen(archivoAlmacenado.tipoMime())
                 .tamanoBytes((int) archivoAlmacenado.tamanoBytes())
                 .estado("Activa")
+                .sha256Original(archivoAlmacenado.sha256Original())
+                .sha256Contenido(archivoAlmacenado.sha256Contenido())
+                .phash(archivoAlmacenado.phash())
+                .phashVersion(HuellaImagenService.PHASH_VERSION)
                 .build();
 
         Imagen imagenGuardada = imagenRepository.save(nuevaImagen);

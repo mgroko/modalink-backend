@@ -112,6 +112,10 @@ public class MoodboardImagenesService {
                     .tipoImagen(almacenado.tipoMime())
                     .tamanoBytes((int) almacenado.tamanoBytes())
                     .estado(ESTADO_IMAGEN_ACTIVA)
+                    .sha256Original(almacenado.sha256Original())
+                    .sha256Contenido(almacenado.sha256Contenido())
+                    .phash(almacenado.phash())
+                    .phashVersion(org.mgroko.backend.storage.servicio.HuellaImagenService.PHASH_VERSION)
                     .build());
 
             moodboard.getImagenes().add(imagen);

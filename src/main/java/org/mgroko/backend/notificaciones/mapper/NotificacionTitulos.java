@@ -57,6 +57,11 @@ public final class NotificacionTitulos {
             Map.entry("SOLICITUD_COLABORACION_RECHAZADA", "Solicitud de colaboración rechazada"),
             Map.entry("PUBLICACION_MEGUSTA", "Nueva interacción en publicación"),
             Map.entry("PUBLICACION_COMENTARIO", "Nuevo comentario en publicación"),
+            Map.entry("COLABORACION_AUTOMATICA_DETECTADA", "Posible colaboración detectada"),
+            Map.entry("COLABORACION_AUTOMATICA_CONFIRMADA", "Colaboración confirmada"),
+            Map.entry("COLABORACION_AUTOMATICA_RECHAZADA", "Colaboración rechazada"),
+            Map.entry("COLABORACION_AUTOMATICA_CANCELADA", "Colaboración cancelada"),
+            Map.entry("COLABORACION_AUTOMATICA_DISUELTA", "Colaboración disuelta"),
             Map.entry("MENSAJE_PRIVADO_RECIBIDO", "Mensaje privado recibido"),
             Map.entry("MENSAJE_GRUPAL_RECIBIDO", "Mensaje grupal recibido"));
 

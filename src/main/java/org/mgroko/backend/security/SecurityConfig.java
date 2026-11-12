@@ -155,6 +155,8 @@ public class SecurityConfig {
                         "/solicitudes-conexion/**",
                         "/solicitudes-colaboracion",
                         "/solicitudes-colaboracion/**",
+                        "/colaboraciones-automaticas",
+                        "/colaboraciones-automaticas/**",
                         "/conexiones/**",
                         "/presencia",
                         "/presencia/**",

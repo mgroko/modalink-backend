@@ -17,6 +17,7 @@ import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PublicacionRepository;
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
+import org.mgroko.backend.storage.servicio.HuellaImagenService;
 import org.mgroko.backend.storage.servicio.StorageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public class CrearPublicacionService {
     private final PublicacionDatosService publicacionDatosService;
     private final StorageService storageService;
     private final BorradoArchivosDiferido borradoArchivosDiferido;
+    private final DetectarColaboracionAutomaticaService detectorColaboracionService;
 
     public CrearPublicacionService(
             PublicacionRepository publicacionRepository,
@@ -38,13 +40,15 @@ public class CrearPublicacionService {
             ProyectoVisibilidadService proyectoVisibilidadService,
             PublicacionDatosService publicacionDatosService,
             StorageService storageService,
-            BorradoArchivosDiferido borradoArchivosDiferido) {
+            BorradoArchivosDiferido borradoArchivosDiferido,
+            DetectarColaboracionAutomaticaService detectorColaboracionService) {
         this.publicacionRepository = publicacionRepository;
         this.imagenRepository = imagenRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.publicacionDatosService = publicacionDatosService;
         this.storageService = storageService;
         this.borradoArchivosDiferido = borradoArchivosDiferido;
+        this.detectorColaboracionService = detectorColaboracionService;
     }
 
     @Transactional
@@ -83,12 +87,19 @@ public class CrearPublicacionService {
                     .tipoImagen(almacenado.tipoMime())
                     .tamanoBytes((int) almacenado.tamanoBytes())
                     .estado(PublicacionDatosService.ESTADO_IMAGEN_ACTIVA)
+                    .sha256Original(almacenado.sha256Original())
+                    .sha256Contenido(almacenado.sha256Contenido())
+                    .phash(almacenado.phash())
+                    .phashVersion(HuellaImagenService.PHASH_VERSION)
                     .build());
 
             publicacion.getImagenes().add(imagen);
         }
 
         publicacion = publicacionRepository.save(publicacion);
+
+        detectorColaboracionService.detectar(
+                publicacion, new java.util.ArrayList<>(publicacion.getImagenes()));
 
         boolean puedeVerProyecto = proyecto != null
                 && proyectoVisibilidadService.puedeVer(proyecto, perfil.getIdPerfil());

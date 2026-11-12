@@ -242,4 +242,68 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
             WHERE id_publicacion = :idPublicacion
             """, nativeQuery = true)
     int eliminarFisicamente(@Param("idPublicacion") Long idPublicacion);
+
+    /**
+     * Coincidencias exactas por SHA-256 para la detección automática.
+     */
+    @Query(value = """
+            SELECT p.id_publicacion AS idPublicacion,
+                   i.id_imagen AS idImagen,
+                   i.sha256_contenido AS sha256Contenido,
+                   0 AS distancia
+            FROM imagen i
+            JOIN imagen_publicacion ip ON ip.id_imagen = i.id_imagen
+            JOIN publicacion p ON p.id_publicacion = ip.id_publicacion
+            JOIN perfil pf ON pf.id_perfil = p.id_perfil
+            JOIN usuario u ON u.id_usuario = pf.id_usuario
+            WHERE i.sha256_contenido = :sha256
+              AND p.estado = 'ACTIVA'
+              AND pf.estado = 'ACTIVO'
+              AND u.estado = 'ACTIVO'
+              AND p.id_publicacion <> :idPublicacionActual
+              AND p.id_perfil <> :idPerfilActual
+              AND u.id_usuario <> :idUsuarioActual
+            ORDER BY p.fecha_publicacion DESC, p.id_publicacion DESC
+            LIMIT :limite
+            """, nativeQuery = true)
+    List<org.mgroko.backend.repositorio.proyeccion.CoincidenciaImagenProyeccion>
+            buscarCoincidenciasExactas(
+                    @Param("sha256") String sha256,
+                    @Param("idPublicacionActual") Long idPublicacionActual,
+                    @Param("idPerfilActual") Long idPerfilActual,
+                    @Param("idUsuarioActual") Long idUsuarioActual,
+                    @Param("limite") int limite);
+
+    /**
+     * Coincidencias perceptuales por distancia de Hamming entre pHash.
+     */
+    @Query(value = """
+            SELECT p.id_publicacion AS idPublicacion,
+                   i.id_imagen AS idImagen,
+                   i.sha256_contenido AS sha256Contenido,
+                   bit_count(CAST(i.phash AS bit(64)) # CAST(:phash AS bit(64))) AS distancia
+            FROM imagen i
+            JOIN imagen_publicacion ip ON ip.id_imagen = i.id_imagen
+            JOIN publicacion p ON p.id_publicacion = ip.id_publicacion
+            JOIN perfil pf ON pf.id_perfil = p.id_perfil
+            JOIN usuario u ON u.id_usuario = pf.id_usuario
+            WHERE i.phash IS NOT NULL
+              AND bit_count(CAST(i.phash AS bit(64)) # CAST(:phash AS bit(64))) <= :umbral
+              AND p.estado = 'ACTIVA'
+              AND pf.estado = 'ACTIVO'
+              AND u.estado = 'ACTIVO'
+              AND p.id_publicacion <> :idPublicacionActual
+              AND p.id_perfil <> :idPerfilActual
+              AND u.id_usuario <> :idUsuarioActual
+            ORDER BY distancia ASC, p.fecha_publicacion DESC
+            LIMIT :limite
+            """, nativeQuery = true)
+    List<org.mgroko.backend.repositorio.proyeccion.CoincidenciaImagenProyeccion>
+            buscarCoincidenciasPerceptuales(
+                    @Param("phash") Long phash,
+                    @Param("umbral") int umbral,
+                    @Param("idPublicacionActual") Long idPublicacionActual,
+                    @Param("idPerfilActual") Long idPerfilActual,
+                    @Param("idUsuarioActual") Long idUsuarioActual,
+                    @Param("limite") int limite);
 }
