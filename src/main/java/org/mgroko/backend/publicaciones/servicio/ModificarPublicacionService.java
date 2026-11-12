@@ -21,6 +21,7 @@ import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
 import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
+import org.mgroko.backend.publicaciones.evento.ColaboracionAutomaticaSolicitadaEvent;
 import org.mgroko.backend.publicaciones.mapper.PublicacionMapper;
 import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PublicacionRepository;
@@ -28,6 +29,7 @@ import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.mgroko.backend.storage.servicio.HuellaImagenService;
 import org.mgroko.backend.storage.servicio.StorageService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -53,7 +55,7 @@ public class ModificarPublicacionService {
     private final BorradoArchivosDiferido borradoArchivosDiferido;
     private final EntityManager entityManager;
     private final PublicacionInteraccionResumenService interaccionResumenService;
-    private final DetectarColaboracionAutomaticaService detectorColaboracionService;
+    private final ApplicationEventPublisher eventPublisher;
     private final ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
     private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
 
@@ -66,7 +68,7 @@ public class ModificarPublicacionService {
             BorradoArchivosDiferido borradoArchivosDiferido,
             EntityManager entityManager,
             PublicacionInteraccionResumenService interaccionResumenService,
-            DetectarColaboracionAutomaticaService detectorColaboracionService,
+            ApplicationEventPublisher eventPublisher,
             ColaboracionAutomaticaLifecycleService colaboracionLifecycleService,
             ColaboradorPublicacionOrigenService colaboradorOrigenService) {
         this.publicacionRepository = publicacionRepository;
@@ -77,7 +79,7 @@ public class ModificarPublicacionService {
         this.borradoArchivosDiferido = borradoArchivosDiferido;
         this.entityManager = entityManager;
         this.interaccionResumenService = interaccionResumenService;
-        this.detectorColaboracionService = detectorColaboracionService;
+        this.eventPublisher = eventPublisher;
         this.colaboracionLifecycleService = colaboracionLifecycleService;
         this.colaboradorOrigenService = colaboradorOrigenService;
     }
@@ -280,7 +282,14 @@ public class ModificarPublicacionService {
             publicacion.getColaboradores().size();
         }
 
-        detectorColaboracionService.detectar(publicacion, nuevas);
+        if (!nuevas.isEmpty()) {
+            eventPublisher.publishEvent(new ColaboracionAutomaticaSolicitadaEvent(
+                    publicacion.getIdPublicacion(),
+                    nuevas.stream()
+                            .map(Imagen::getIdImagen)
+                            .filter(Objects::nonNull)
+                            .toList()));
+        }
 
         entityManager.clear();
     }
