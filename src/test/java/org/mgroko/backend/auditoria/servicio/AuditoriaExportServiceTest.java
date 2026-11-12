@@ -101,6 +101,8 @@ class AuditoriaExportServiceTest {
                 LocalDateTime.of(2026, 11, 1, 0, 0),
                 LocalDateTime.of(2026, 11, 7, 23, 59, 59),
                 null,
+                null,
+                null,
                 Map.of());
 
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
@@ -146,7 +148,8 @@ class AuditoriaExportServiceTest {
         when(detalleAuditoriaRepository
                 .findByIdAuditoriaInOrderByIdDetalleAuditoriaAsc(any()))
                 .thenReturn(List.of(valor, descripcion));
-        when(auditoriaResumenService.obtenerResumen(any(), any(), any()))
+        when(auditoriaResumenService.obtenerResumen(
+                any(), any(), any(), any(), any()))
                 .thenReturn(new AuditoriaResumenResponse(
                         LocalDate.of(2026, 11, 1),
                         LocalDate.of(2026, 11, 7),
@@ -158,6 +161,8 @@ class AuditoriaExportServiceTest {
         AuditoriaFiltroResuelto filtro = new AuditoriaFiltroResuelto(
                 LocalDateTime.of(2026, 11, 1, 0, 0),
                 LocalDateTime.of(2026, 11, 7, 23, 59, 59),
+                null,
+                null,
                 null,
                 Map.of());
 

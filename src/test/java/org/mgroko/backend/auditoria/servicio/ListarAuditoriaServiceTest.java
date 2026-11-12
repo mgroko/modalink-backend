@@ -100,7 +100,8 @@ class ListarAuditoriaServiceTest {
             String codigoError) {
 
         if (codigoError != null) {
-            assertThatThrownBy(() -> service.listar(fechaDesde, fechaHasta, tipos, page, size))
+            assertThatThrownBy(() -> service.listar(
+                fechaDesde, fechaHasta, tipos, null, null, page, size))
                     .isInstanceOfSatisfying(
                             AuditoriaFiltroInvalidoException.class,
                             ex -> assertThat(ex.getCodigo()).isEqualTo(codigoError));
@@ -108,14 +109,15 @@ class ListarAuditoriaServiceTest {
         }
 
         assertThatCode(() -> {
-            PaginaResponse<?> pagina = service.listar(fechaDesde, fechaHasta, tipos, page, size);
+            PaginaResponse<?> pagina = service.listar(
+                fechaDesde, fechaHasta, tipos, null, null, page, size);
             assertThat(pagina.contenido()).isEmpty();
         }).doesNotThrowAnyException();
     }
 
     @Test
     void listar_sinTiposConsultaTodosLosActivos() {
-        service.listar(DESDE, HASTA, null, 0, 20);
+        service.listar(DESDE, HASTA, null, null, null, 0, 20);
 
         verify(auditoriaRepository).findAll(
                 any(Specification.class), any(Pageable.class));

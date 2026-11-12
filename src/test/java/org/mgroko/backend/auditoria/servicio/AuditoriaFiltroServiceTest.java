@@ -52,7 +52,7 @@ class AuditoriaFiltroServiceTest {
         when(tipoEventoAuditoriaRepository.findByActivoTrueOrderByModuloAscNombreAsc())
                 .thenReturn(List.of(USUARIO_ALTA));
 
-        var filtro = service.resolver(DESDE, HASTA, null);
+        var filtro = service.resolver(DESDE, HASTA, null, null, null);
 
         assertThat(filtro.tipos()).isNull();
         assertThat(filtro.tieneFiltroDeTipos()).isFalse();
@@ -64,7 +64,7 @@ class AuditoriaFiltroServiceTest {
                 .thenReturn(List.of(USUARIO_ALTA));
 
         var filtro = service.resolver(
-                DESDE, HASTA, List.of(" usuario_alta ", "USUARIO_ALTA"));
+                DESDE, HASTA, List.of(" usuario_alta ", "USUARIO_ALTA"), null, null);
 
         assertThat(filtro.tipos()).containsExactly("USUARIO_ALTA");
     }
@@ -74,7 +74,7 @@ class AuditoriaFiltroServiceTest {
         when(tipoEventoAuditoriaRepository.findByActivoTrueOrderByModuloAscNombreAsc())
                 .thenReturn(List.of());
 
-        var filtro = service.resolver(DESDE, HASTA, null);
+        var filtro = service.resolver(DESDE, HASTA, null, null, null);
 
         assertThat(filtro.tipos()).isNull();
     }
@@ -84,7 +84,8 @@ class AuditoriaFiltroServiceTest {
         when(tipoEventoAuditoriaRepository.findByActivoTrueOrderByModuloAscNombreAsc())
                 .thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.resolver(DESDE, HASTA, List.of("USUARIO_ALTA")))
+        assertThatThrownBy(() -> service.resolver(
+                DESDE, HASTA, List.of("USUARIO_ALTA"), null, null))
                 .isInstanceOfSatisfying(
                         AuditoriaFiltroInvalidoException.class,
                         ex -> assertThat(ex.getCodigo()).isEqualTo("CATALOGO_VACIO"));
@@ -95,7 +96,8 @@ class AuditoriaFiltroServiceTest {
         when(tipoEventoAuditoriaRepository.findByActivoTrueOrderByModuloAscNombreAsc())
                 .thenReturn(List.of(USUARIO_ALTA));
 
-        assertThatThrownBy(() -> service.resolver(DESDE, HASTA, List.of("NO_EXISTE")))
+        assertThatThrownBy(() -> service.resolver(
+                DESDE, HASTA, List.of("NO_EXISTE"), null, null))
                 .isInstanceOfSatisfying(
                         AuditoriaFiltroInvalidoException.class,
                         ex -> assertThat(ex.getCodigo()).isEqualTo("TIPO_EVENTO_INVALIDO"));

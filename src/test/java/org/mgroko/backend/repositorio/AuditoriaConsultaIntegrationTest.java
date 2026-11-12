@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.auditoria.dto.AuditoriaEventoResponse;
 import org.mgroko.backend.auditoria.dto.AuditoriaFiltroResuelto;
 import org.mgroko.backend.auditoria.dto.AuditoriaResumenResponse;
 import org.mgroko.backend.auditoria.servicio.AuditoriaExportService;
@@ -45,7 +46,8 @@ class AuditoriaConsultaIntegrationTest extends AbstractPostgresIntegrationTest {
         insertarAuditoria(null, null);
         insertarAuditoria("USUARIO_ALTA", "USUARIO_ALTA");
 
-        var pagina = listarAuditoriaService.listar(HOY, HOY, null, 0, 20);
+        var pagina = listarAuditoriaService.listar(
+                HOY, HOY, null, null, null, 0, 20);
 
         assertThat(pagina.contenido())
                 .anyMatch(evento -> evento.legacy())
@@ -58,7 +60,7 @@ class AuditoriaConsultaIntegrationTest extends AbstractPostgresIntegrationTest {
         insertarAuditoria("USUARIO_ALTA", "USUARIO_ALTA");
 
         var pagina = listarAuditoriaService.listar(
-                HOY, HOY, List.of("USUARIO_ALTA"), 0, 20);
+                HOY, HOY, List.of("USUARIO_ALTA"), null, null, 0, 20);
 
         assertThat(pagina.contenido())
                 .isNotEmpty()
@@ -71,7 +73,7 @@ class AuditoriaConsultaIntegrationTest extends AbstractPostgresIntegrationTest {
         insertarAuditoria("USUARIO_ALTA", "USUARIO_ALTA");
 
         AuditoriaResumenResponse resumen =
-                auditoriaResumenService.obtenerResumen(HOY, HOY, null);
+                auditoriaResumenService.obtenerResumen(HOY, HOY, null, null, null);
 
         assertThat(resumen.totalRegistros()).isGreaterThanOrEqualTo(2);
         assertThat(resumen.porTipoEvento())
@@ -85,7 +87,7 @@ class AuditoriaConsultaIntegrationTest extends AbstractPostgresIntegrationTest {
         insertarAuditoria("USUARIO_ALTA", "USUARIO_ALTA");
 
         AuditoriaFiltroResuelto filtro =
-                auditoriaExportService.validarExportacion(HOY, HOY, null);
+                auditoriaExportService.validarExportacion(HOY, HOY, null, null, null);
 
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         auditoriaExportService.exportarCsv(filtro, salida);
@@ -107,13 +109,101 @@ class AuditoriaConsultaIntegrationTest extends AbstractPostgresIntegrationTest {
         insertarAuditoria("USUARIO_ALTA", "USUARIO_ALTA");
 
         AuditoriaFiltroResuelto filtro =
-                auditoriaExportService.validarExportacion(HOY, HOY, null);
+                auditoriaExportService.validarExportacion(HOY, HOY, null, null, null);
 
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         auditoriaExportService.exportarPdf(filtro, 1L, salida);
 
         assertThat(salida.size()).isGreaterThan(500);
         assertThat(salida.toByteArray()).startsWith("%PDF".getBytes(StandardCharsets.US_ASCII));
+    }
+
+    @Test
+    void filtraPorOperadorSnapshotSinAcentos() {
+        long idLuna = insertarAuditoriaConOperador("USUARIO_ALTA", "Luna Pérez");
+        insertarAuditoriaConOperador("USUARIO_ALTA", "Sol Gómez");
+
+        var pagina = listarAuditoriaService.listar(
+                HOY, HOY, null, "perez", null, 0, 20);
+
+        assertThat(pagina.contenido())
+                .extracting(AuditoriaEventoResponse::idAuditoria)
+                .containsExactly(idLuna);
+        assertThat(pagina.contenido().getFirst().operador()).isEqualTo("Luna Pérez");
+    }
+
+    @Test
+    void filtraPorTextoEnDetalleSinAcentos() {
+        long idCoincide = insertarAuditoriaConOperador("USUARIO_ALTA", "Luna Pérez");
+        insertarDetalle(idCoincide, "descripcion", null, "El perfil es un tonto");
+
+        long idOtro = insertarAuditoriaConOperador("USUARIO_ALTA", "Sol Gómez");
+        insertarDetalle(idOtro, "descripcion", null, "Texto sin la palabra buscada");
+
+        var pagina = listarAuditoriaService.listar(
+                HOY, HOY, null, null, "tonto", 0, 20);
+
+        assertThat(pagina.contenido())
+                .extracting(AuditoriaEventoResponse::idAuditoria)
+                .containsExactly(idCoincide);
+    }
+
+    @Test
+    void filtraPorTextoEnMetadatosDeAuditoria() {
+        long idCoincide = insertarAuditoriaConOperador(
+                "MENSAJE_PRIVADO_ENVIADO", "Luna Pérez");
+        insertarAuditoriaConOperador("USUARIO_ALTA", "Sol Gómez");
+
+        var pagina = listarAuditoriaService.listar(
+                HOY, HOY, null, null, "mensaje_privado", 0, 20);
+
+        assertThat(pagina.contenido())
+                .extracting(AuditoriaEventoResponse::idAuditoria)
+                .contains(idCoincide);
+    }
+
+    @Test
+    void resumenAplicaFiltrosDeOperadorYTexto() {
+        long idCoincide = insertarAuditoriaConOperador("USUARIO_ALTA", "Luna Pérez");
+        insertarDetalle(idCoincide, "descripcion", null, "El perfil es un tonto");
+
+        long idOtro = insertarAuditoriaConOperador("USUARIO_ALTA", "Sol Gómez");
+        insertarDetalle(idOtro, "descripcion", null, "Texto sin la palabra buscada");
+
+        AuditoriaResumenResponse resumen = auditoriaResumenService.obtenerResumen(
+                HOY, HOY, null, "luna", "tonto");
+
+        assertThat(resumen.totalRegistros()).isEqualTo(1);
+    }
+
+    private long insertarAuditoriaConOperador(
+            String tipoEvento,
+            String operadorNombre) {
+
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO auditoria (
+                    usuario_bd, entidad_afectada, id_afectado, fecha_hora,
+                    ip_usuario, id_tipo_auditoria, id_usuario, operador_nombre,
+                    tipo_evento, tipo_evento_original)
+                VALUES ('postgres', 'usuario', 1, CURRENT_TIMESTAMP,
+                        '127.0.0.1',
+                        (SELECT id_tipo_auditoria FROM tipo_accion_auditoria WHERE nombre = 'UPDATE'),
+                        1, ?, ?, ?)
+                RETURNING id_auditoria
+                """, Long.class, operadorNombre, tipoEvento, tipoEvento);
+    }
+
+    private void insertarDetalle(
+            long idAuditoria,
+            String campo,
+            String anterior,
+            String nuevo) {
+
+        jdbcTemplate.update("""
+                INSERT INTO detalle_auditoria (
+                    campo, valor_anterior, valor_nuevo, id_auditoria)
+                VALUES (?, ?, ?, ?)
+                """, campo, anterior, nuevo, idAuditoria);
     }
 
     private void insertarAuditoria(String tipoEvento, String tipoEventoOriginal) {

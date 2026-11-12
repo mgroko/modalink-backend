@@ -40,6 +40,9 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
     private static final String MIGRACION_FASE24 =
             "migraciones-test/2026-11-08_uc67_auditoria_fase2_4.sql";
 
+    private static final String MIGRACION_OPERADOR_BUSQUEDA =
+            "migraciones-test/2026-11-12_auditoria_operador_busqueda_mensajes.sql";
+
     @Autowired
     private DataSource dataSource;
 
@@ -127,6 +130,45 @@ class AuditoriaMigracionIdempotenciaTest extends AbstractPostgresIntegrationTest
                 assertThat(contar(conexion, """
                         SELECT count(*) FROM pg_trigger
                         WHERE tgname = 'trg_auditar_catalogo_habilidad'
+                        """)).isEqualTo(1);
+            } finally {
+                conexion.rollback();
+            }
+        }
+    }
+
+    @Test
+    void migracionOperadorBusquedaMensajesSePuedeEjecutarDosVecesSinErrores()
+            throws Exception {
+        try (Connection conexion = dataSource.getConnection()) {
+            conexion.setAutoCommit(false);
+            try {
+                aplicarDosVeces(conexion, MIGRACION_OPERADOR_BUSQUEDA);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM information_schema.columns
+                        WHERE table_name = 'auditoria'
+                          AND column_name = 'operador_nombre'
+                        """)).isEqualTo(1);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM pg_trigger
+                        WHERE tgname IN (
+                            'trg_auditar_mensaje_privado',
+                            'trg_auditar_mensaje_proyecto',
+                            'trg_auditoria_completar_operador')
+                        """)).isEqualTo(3);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM tipo_evento_auditoria
+                        WHERE codigo IN (
+                            'MENSAJE_PRIVADO_ENVIADO',
+                            'MENSAJE_PROYECTO_ENVIADO')
+                        """)).isEqualTo(2);
+
+                assertThat(contar(conexion, """
+                        SELECT count(*) FROM pg_proc
+                        WHERE proname = 'f_unaccent'
                         """)).isEqualTo(1);
             } finally {
                 conexion.rollback();

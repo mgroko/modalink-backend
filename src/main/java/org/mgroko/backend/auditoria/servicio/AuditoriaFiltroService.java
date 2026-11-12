@@ -43,7 +43,9 @@ public class AuditoriaFiltroService {
     public AuditoriaFiltroResuelto resolver(
             LocalDate fechaDesde,
             LocalDate fechaHasta,
-            List<String> tiposEvento) {
+            List<String> tiposEvento,
+            String operador,
+            String texto) {
 
         validarFechas(fechaDesde, fechaHasta);
 
@@ -57,11 +59,17 @@ public class AuditoriaFiltroService {
                         LinkedHashMap::new));
 
         List<String> tipos = resolverTipos(tiposEvento, catalogoPorCodigo);
+        String operadorNormalizado = normalizarTextoLibre(
+                operador, "OPERADOR_INVALIDO", 2, 100);
+        String textoNormalizado = normalizarTextoLibre(
+                texto, "TEXTO_INVALIDO", 2, 200);
 
         return new AuditoriaFiltroResuelto(
                 fechaDesde.atStartOfDay(),
                 fechaHasta.atTime(LocalTime.MAX),
                 tipos,
+                operadorNormalizado,
+                textoNormalizado,
                 catalogoPorCodigo);
     }
 
@@ -100,6 +108,29 @@ public class AuditoriaFiltroService {
                     "RANGO_FECHAS_EXCEDIDO",
                     "El rango máximo permitido es de " + maximo + " días.");
         }
+    }
+
+    private String normalizarTextoLibre(
+            String valor,
+            String codigoError,
+            int minimo,
+            int maximo) {
+
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        String normalizado = valor.trim();
+        if (normalizado.length() < minimo) {
+            throw new AuditoriaFiltroInvalidoException(
+                    codigoError,
+                    "El texto debe tener al menos " + minimo + " caracteres.");
+        }
+        if (normalizado.length() > maximo) {
+            throw new AuditoriaFiltroInvalidoException(
+                    codigoError,
+                    "El texto no puede superar los " + maximo + " caracteres.");
+        }
+        return normalizado;
     }
 
     /**

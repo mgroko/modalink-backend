@@ -17,10 +17,20 @@ public record AuditoriaFiltroResuelto(
         LocalDateTime fechaDesde,
         LocalDateTime fechaHasta,
         List<String> tipos,
+        String operador,
+        String texto,
         Map<String, TipoEventoAuditoria> catalogo
 ) {
     public boolean tieneFiltroDeTipos() {
         return tipos != null && !tipos.isEmpty();
+    }
+
+    public boolean tieneFiltroDeOperador() {
+        return operador != null && !operador.isBlank();
+    }
+
+    public boolean tieneFiltroDeTexto() {
+        return texto != null && !texto.isBlank();
     }
 
     public List<String> tiposAplicados() {

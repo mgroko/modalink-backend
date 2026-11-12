@@ -444,13 +444,13 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 
 ## UC-67 — Generar informe de auditoría
 
-| Nombre | listarAuditoria(fechaDesde, fechaHasta, tipos, page, size) |
+| Nombre | listarAuditoria(fechaDesde, fechaHasta, tipos, operador, texto, page, size) |
 | :---- | :---- |
-| **Responsabilidades** | Listar los eventos críticos de auditoría en un rango de fechas, con filtros opcionales por tipo de evento. |
+| **Responsabilidades** | Listar los eventos críticos de auditoría en un rango de fechas, con filtros opcionales por tipo de evento, operador y texto. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-67 |
-| **Notas** | Solo rol Administrador. Las fechas son obligatorias e inclusivas. Si no se envían tipos, **no se aplica filtro por tipo**: se incluyen los históricos (`tipo_evento = NULL`) y los eventos fuera del catálogo. El rango máximo se configura en `AUDITORIA_RANGO_MAX_DIAS` (default 90). El tamaño máximo de página se configura en `AUDITORIA_PAGINA_MAX` (default 100). Orden: `fechaHora DESC, idAuditoria DESC`. |
-| **Excepciones** | Fechas ausentes (`FECHAS_OBLIGATORIAS`), rango invertido (`RANGO_FECHAS_INVALIDO`), rango excedido (`RANGO_FECHAS_EXCEDIDO`), catálogo vacío (`CATALOGO_VACIO`), tipo inexistente (`TIPO_EVENTO_INVALIDO`), paginación inválida (`PAGINACION_INVALIDA`). |
+| **Notas** | Solo rol Administrador. Las fechas son obligatorias e inclusivas. Si no se envían tipos, **no se aplica filtro por tipo**: se incluyen los históricos (`tipo_evento = NULL`) y los eventos fuera del catálogo. `operador` es texto libre (parcial, sin acentos) y usa el snapshot del nombre guardado al momento del evento; si no existe snapshot, hace fallback al usuario actual. `texto` busca en `detalle_auditoria` y en los metadatos del evento, con `ILIKE` sin acentos. El rango máximo se configura en `AUDITORIA_RANGO_MAX_DIAS` (default 90). El tamaño máximo de página se configura en `AUDITORIA_PAGINA_MAX` (default 100). Orden: `fechaHora DESC, idAuditoria DESC`. |
+| **Excepciones** | Fechas ausentes (`FECHAS_OBLIGATORIAS`), rango invertido (`RANGO_FECHAS_INVALIDO`), rango excedido (`RANGO_FECHAS_EXCEDIDO`), catálogo vacío (`CATALOGO_VACIO`), tipo inexistente (`TIPO_EVENTO_INVALIDO`), paginación inválida (`PAGINACION_INVALIDA`), operador/texto inválido (`OPERADOR_INVALIDO`, `TEXTO_INVALIDO`). |
 | **Salida** | `PaginaResponse<AuditoriaEventoResponse>` con `idAuditoria`, `fechaHora`, `tipoEvento`, `tipoEventoNombre`, `entidadAfectada`, `entidadClave`, `idAfectado`, `idUsuario`, `usuarioNombre`, `usuarioBd`, `ipUsuario`, `tipoEventoOriginal`, `legacy`, `operador` y `detalle[]`. |
 | **Precondición** | El usuario está autenticado con rol Administrador. |
 | **Postcondición** | No modifica datos. Devuelve la página solicitada o una página vacía si no hay coincidencias. |
@@ -466,23 +466,23 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Precondición** | El usuario está autenticado con rol Administrador. |
 | **Postcondición** | No modifica datos. |
 
-| Nombre | obtenerResumenAuditoria(fechaDesde, fechaHasta, tipos) |
+| Nombre | obtenerResumenAuditoria(fechaDesde, fechaHasta, tipos, operador, texto) |
 | :---- | :---- |
 | **Responsabilidades** | Calcular el total de registros y los agregados por tipo de evento y por entidad afectada. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-67 |
-| **Notas** | Solo rol Administrador. Usa los mismos filtros y validaciones que el listado. Sin filtro de tipos, las filas con `tipo_evento = NULL` se agrupan como `SIN_TIPO`. Con filtro de tipos, no se incluye `SIN_TIPO`. |
+| **Notas** | Solo rol Administrador. Usa los mismos filtros y validaciones que el listado, incluyendo operador y texto. Sin filtro de tipos, las filas con `tipo_evento = NULL` se agrupan como `SIN_TIPO`. Con filtro de tipos, no se incluye `SIN_TIPO`. |
 | **Excepciones** | Las mismas que el listado. |
 | **Salida** | `AuditoriaResumenResponse` con `fechaDesde`, `fechaHasta`, `tiposAplicados`, `totalRegistros`, `porTipoEvento[]` y `porEntidad[]`. |
 | **Precondición** | El usuario está autenticado con rol Administrador. |
 | **Postcondición** | No modifica datos. |
 
-| Nombre | exportarAuditoria(formato, fechaDesde, fechaHasta, tipos) |
+| Nombre | exportarAuditoria(formato, fechaDesde, fechaHasta, tipos, operador, texto) |
 | :---- | :---- |
 | **Responsabilidades** | Exportar el resultado filtrado a CSV o PDF, con tope configurable. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-67 |
-| **Notas** | Solo rol Administrador. `formato` es obligatorio (`CSV` o `PDF`). El tope se configura en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000); si se supera, devuelve `400`. El PDF incluye encabezado, resumen y tabla de eventos. Las filas históricas muestran “No disponible (histórico)” como operador. |
+| **Notas** | Solo rol Administrador. `formato` es obligatorio (`CSV` o `PDF`). Aplica los filtros de operador y texto igual que el listado. El tope se configura en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000); si se supera, devuelve `400`. El PDF incluye encabezado, resumen y tabla de eventos. Las filas históricas muestran “No disponible (histórico)” como operador. |
 | **Excepciones** | Fechas/tipos inválidos, `FORMATO_EXPORTACION_INVALIDO`, `EXPORTACION_EXCEDIDA`. |
 | **Salida** | Archivo CSV (`text/csv`) o PDF (`application/pdf`) con `Content-Disposition: attachment`. |
 | **Precondición** | El usuario está autenticado con rol Administrador. |

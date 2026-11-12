@@ -54,11 +54,13 @@ public class AdminAuditoriaController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
             @RequestParam(required = false) List<String> tipos,
+            @RequestParam(required = false) String operador,
+            @RequestParam(required = false) String texto,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(listarAuditoriaService.listar(
-                fechaDesde, fechaHasta, tipos, page, size));
+                fechaDesde, fechaHasta, tipos, operador, texto, page, size));
     }
 
     @GetMapping("/tipos")
@@ -72,10 +74,12 @@ public class AdminAuditoriaController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
-            @RequestParam(required = false) List<String> tipos) {
+            @RequestParam(required = false) List<String> tipos,
+            @RequestParam(required = false) String operador,
+            @RequestParam(required = false) String texto) {
 
         return ResponseEntity.ok(auditoriaResumenService.obtenerResumen(
-                fechaDesde, fechaHasta, tipos));
+                fechaDesde, fechaHasta, tipos, operador, texto));
     }
 
     @GetMapping("/export")
@@ -85,12 +89,15 @@ public class AdminAuditoriaController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
             @RequestParam(required = false) List<String> tipos,
+            @RequestParam(required = false) String operador,
+            @RequestParam(required = false) String texto,
             @RequestParam(required = false) String formato,
             Authentication authentication) {
 
         FormatoExportacion formatoExportacion = FormatoExportacion.desde(formato);
         AuditoriaFiltroResuelto filtro =
-                auditoriaExportService.validarExportacion(fechaDesde, fechaHasta, tipos);
+                auditoriaExportService.validarExportacion(
+                        fechaDesde, fechaHasta, tipos, operador, texto);
 
         String extension = formatoExportacion == FormatoExportacion.CSV ? "csv" : "pdf";
         String filename = "auditoria_" + fechaDesde + "_" + fechaHasta + "." + extension;

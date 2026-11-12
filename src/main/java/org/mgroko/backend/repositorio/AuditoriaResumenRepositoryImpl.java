@@ -26,14 +26,18 @@ public class AuditoriaResumenRepositoryImpl implements AuditoriaResumenRepositor
     public List<Object[]> contarPorTipo(
             LocalDateTime fechaDesde,
             LocalDateTime fechaHasta,
-            List<String> tiposEvento) {
+            List<String> tiposEvento,
+            String operador,
+            String texto) {
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Object[]> query = cb.createQuery(Object[].class);
         Root<Auditoria> root = query.from(Auditoria.class);
 
         query.multiselect(root.get("tipoEvento"), cb.count(root));
-        query.where(predicados(root, query, cb, fechaDesde, fechaHasta, tiposEvento));
+        query.where(predicados(
+                root, query, cb, fechaDesde, fechaHasta, tiposEvento,
+                operador, texto));
         query.groupBy(root.get("tipoEvento"));
         query.orderBy(cb.desc(cb.count(root)));
 
@@ -45,14 +49,18 @@ public class AuditoriaResumenRepositoryImpl implements AuditoriaResumenRepositor
     public List<Object[]> contarPorEntidad(
             LocalDateTime fechaDesde,
             LocalDateTime fechaHasta,
-            List<String> tiposEvento) {
+            List<String> tiposEvento,
+            String operador,
+            String texto) {
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Object[]> query = cb.createQuery(Object[].class);
         Root<Auditoria> root = query.from(Auditoria.class);
 
         query.multiselect(root.get("entidadAfectada"), cb.count(root));
-        query.where(predicados(root, query, cb, fechaDesde, fechaHasta, tiposEvento));
+        query.where(predicados(
+                root, query, cb, fechaDesde, fechaHasta, tiposEvento,
+                operador, texto));
         query.groupBy(root.get("entidadAfectada"));
         query.orderBy(cb.desc(cb.count(root)));
 
@@ -65,10 +73,13 @@ public class AuditoriaResumenRepositoryImpl implements AuditoriaResumenRepositor
             CriteriaBuilder cb,
             LocalDateTime fechaDesde,
             LocalDateTime fechaHasta,
-            List<String> tiposEvento) {
+            List<String> tiposEvento,
+            String operador,
+            String texto) {
 
         return AuditoriaPredicados.construir(
-                        root, query, cb, fechaDesde, fechaHasta, tiposEvento)
+                        root, query, cb, fechaDesde, fechaHasta, tiposEvento,
+                        operador, texto)
                 .toArray(new Predicate[0]);
     }
 }
