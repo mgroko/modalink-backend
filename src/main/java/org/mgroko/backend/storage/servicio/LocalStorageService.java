@@ -173,6 +173,28 @@ public class LocalStorageService implements StorageService {
      * consumidores, pero el alcance ya no es solo {@code perfiles/}.
      */
     @Override
+    public byte[] leerArchivo(String nombreArchivo) {
+        if (nombreArchivo == null || nombreArchivo.isBlank()) {
+            return null;
+        }
+
+        String nombreSimple = Paths.get(nombreArchivo).getFileName().toString();
+        for (Path directorio : List.of(perfilesPath, moodboardPath, publicacionesPath, polaroidsPath)) {
+            Path archivoPath = directorio.resolve(nombreSimple).normalize();
+            if (!archivoPath.startsWith(directorio) || !Files.isRegularFile(archivoPath)) {
+                continue;
+            }
+            try {
+                return Files.readAllBytes(archivoPath);
+            } catch (IOException e) {
+                throw new ErrorAlmacenamientoException(
+                        "No se pudo leer el archivo de almacenamiento: " + archivoPath, e);
+            }
+        }
+        return null;
+    }
+
+    @Override
     public void eliminarFotoPerfil(String nombreArchivo) {
         if (nombreArchivo == null || nombreArchivo.isBlank()) {
             return;

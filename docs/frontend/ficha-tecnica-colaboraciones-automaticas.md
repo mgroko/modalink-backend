@@ -1,6 +1,6 @@
 # Ficha técnica — Colaboraciones automáticas
 
-> **Estado:** backend implementado.
+> **Estado:** backend implementado, con verificación ORB y fallback multi-recorte.
 > **Casos de uso relacionados:** UC-19/21 (imágenes), UC-20 (baja), UC-22 (búsqueda), UC-61/62/63/64/65 (colaboración manual), UC-66 (interacciones) y UC-69 (reportes).
 
 ## 1. Objetivo
@@ -22,7 +22,6 @@ Si después quieren ser conexión, deben usar el flujo manual de UC-43.
 Se ejecuta al crear una publicación o al agregar imágenes nuevas con UC-21.
 
 - Solo considera imágenes de publicaciones.
-- Compara por SHA-256 exacto y por pHash perceptual con OpenCV.
 - Solo considera publicaciones `ACTIVA`, perfiles `ACTIVO` y usuarios `ACTIVO`.
 - Excluye:
   - la misma publicación;
@@ -31,13 +30,45 @@ Se ejecuta al crear una publicación o al agregar imágenes nuevas con UC-21.
   - publicaciones donde ya existe una etiqueta recíproca de colaborador;
   - propuestas `PENDIENTE` o `CONFIRMADA` para el mismo par.
 
+### 2.1 Pipeline de coincidencia
+
+1. **SHA-256 exacto**: si el contenido es idéntico, se acepta como `EXACTA`
+   sin verificación adicional.
+2. **pHash candidato**: se buscan imágenes con distancia pHash menor o igual a
+   `phash-distancia-candidato`.
+3. **Alta confianza**: si la distancia pHash es menor o igual a
+   `phash-distancia-alta-confianza`, se acepta como `PERCEPTUAL_ALTA` sin ORB.
+4. **ORB**: verificación principal para candidatos perceptuales. Se acepta como
+   `PERCEPTUAL_ORB` si hay suficientes keypoints y matches buenos.
+5. **Multi-recorte pHash**: fallback cuando ORB no alcanza. Compara recortes de
+   ambas imágenes en una grilla y varias escalas; se acepta como
+   `PERCEPTUAL_MULTICROP` si la distancia mínima no supera el máximo.
+
 Configuración:
 
 ```properties
 app.colaboracion-automatica.habilitada=true
-app.colaboracion-automatica.phash-distancia-maxima=8
+app.colaboracion-automatica.phash-distancia-candidato=24
+app.colaboracion-automatica.phash-distancia-alta-confianza=8
 app.colaboracion-automatica.max-propuestas-por-imagen=10
+app.colaboracion-automatica.orb-min-keypoints=50
+app.colaboracion-automatica.orb-min-matches=50
+app.colaboracion-automatica.orb-max-distancia=60
+app.colaboracion-automatica.orb-max-distancia-inliers=40
+app.colaboracion-automatica.multicrop-distancia-maxima=8
+app.colaboracion-automatica.multicrop-grid=3
+app.colaboracion-automatica.multicrop-escalas=90,80,70
 ```
+
+La propuesta guarda la evidencia de la verificación:
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `distancia_phash` | `int4` | Distancia pHash entre las imágenes comparadas |
+| `distancia_multicrop` | `int4` | Distancia mínima del fallback multi-recorte |
+| `orb_matches` | `int4` | Matches ORB buenos |
+| `orb_inliers` | `int4` | Matches ORB con distancia estricta |
+| `tipo_coincidencia` | `varchar(30)` | `EXACTA`, `PERCEPTUAL_ALTA`, `PERCEPTUAL_ORB` o `PERCEPTUAL_MULTICROP` |
 
 ## 3. Endpoints
 
@@ -155,10 +186,11 @@ perfil, con su `origen`.
 | Se quita una etiqueta manual | No afecta colaboraciones automáticas |
 
 No se conservan imágenes, portadas ni URLs de publicaciones eliminadas. Sí se
-conservan el registro, los perfiles, los estados, las fechas y los hashes de
-evidencia.
+conservan el registro, los perfiles, los estados, las fechas, los hashes de
+evidencia y los scores de verificación (`distancia_phash`, `distancia_multicrop`,
+`orb_matches`, `orb_inliers`, `tipo_coincidencia`).
 
-## 5. Notificaciones
+## 6. Notificaciones
 
 Tipos:
 
@@ -176,7 +208,7 @@ Link del frontend:
 /colaboraciones-automaticas/{id}
 ```
 
-## 6. Errores
+## 7. Errores
 
 | HTTP | Caso |
 |---|---|
@@ -185,7 +217,7 @@ Link del frontend:
 | `409` | Propuesta ya respondida, ya no pendiente o publicación no disponible |
 | `400` | Filtros inválidos |
 
-## 7. Frontend
+## 8. Frontend
 
 - Mostrar una pestaña separada: `/colaboraciones-automaticas`.
 - Por defecto, listar `PENDIENTE`.

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -120,6 +121,10 @@ class LocalStorageServiceTest {
         BufferedImage imagenOptimizada = ImageIO.read(new ByteArrayInputStream(bytesGuardados));
         assertEquals(600, imagenOptimizada.getWidth());
         assertEquals(600, imagenOptimizada.getHeight());
+
+        assertNotNull(storageService.leerArchivo(resultado.nombreArchivo()));
+        assertNull(storageService.leerArchivo("..\\no-existe.webp"));
+        assertNull(storageService.leerArchivo("no-existe.webp"));
     }
 
     @Test

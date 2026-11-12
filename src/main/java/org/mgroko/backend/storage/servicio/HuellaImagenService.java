@@ -57,15 +57,29 @@ public class HuellaImagenService {
 
         try (BytePointer entrada = new BytePointer(bytes);
                 Mat buffer = new Mat(1, bytes.length, CV_8UC1, entrada);
-                Mat imagen = imdecode(buffer, IMREAD_COLOR);
-                Mat hash = new Mat();
-                PHash phash = PHash.create()) {
+                Mat imagen = imdecode(buffer, IMREAD_COLOR)) {
 
             if (imagen.empty()) {
                 LOG.warn("No se pudo decodificar la imagen para calcular pHash.");
                 return null;
             }
 
+            return phash(imagen);
+        } catch (RuntimeException ex) {
+            LOG.warn("No se pudo calcular el pHash de la imagen.", ex);
+            return null;
+        }
+    }
+
+    /**
+     * Calcula el pHash de una imagen ya decodificada.
+     */
+    public Long phash(Mat imagen) {
+        if (imagen == null || imagen.empty()) {
+            return null;
+        }
+
+        try (Mat hash = new Mat(); PHash phash = PHash.create()) {
             phash.compute(imagen, hash);
 
             if (hash.total() != BYTES_PHASH) {

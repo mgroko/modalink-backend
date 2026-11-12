@@ -54,6 +54,12 @@ class DetectarColaboracionAutomaticaServiceTest {
     @Mock
     private NotificacionService notificacionService;
 
+    @Mock
+    private CoincidenciaVerificacionService verificacionService;
+
+    @Mock
+    private org.mgroko.backend.storage.servicio.StorageService storageService;
+
     private DetectarColaboracionAutomaticaService servicio;
     private Publicacion actual;
     private Publicacion otra;
@@ -64,8 +70,11 @@ class DetectarColaboracionAutomaticaServiceTest {
                 publicacionRepository,
                 colaboracionRepository,
                 notificacionService,
+                verificacionService,
+                storageService,
                 RELOJ,
                 true,
+                24,
                 8,
                 10);
 
@@ -118,6 +127,52 @@ class DetectarColaboracionAutomaticaServiceTest {
         assertEquals(8L, creada.getPerfilB().getIdPerfil());
         assertEquals("abc", creada.getSha256Evidencia());
         verify(notificacionService).registrarTodas(any());
+    }
+
+    @Test
+    void detectar_candidatoPerceptual_verificaConOrbYGuardaScores() {
+        Imagen imagen = Imagen.builder()
+                .idImagen(99L)
+                .nombreArchivo("actual.webp")
+                .sha256Contenido("sha-actual")
+                .phash(17L)
+                .build();
+
+        CoincidenciaImagenProyeccion coincidencia =
+                mock(CoincidenciaImagenProyeccion.class);
+        when(coincidencia.getIdPublicacion()).thenReturn(20L);
+        when(coincidencia.getIdImagen()).thenReturn(100L);
+        when(coincidencia.getNombreArchivo()).thenReturn("otra.webp");
+        when(coincidencia.getSha256Contenido()).thenReturn("sha-otra");
+        when(coincidencia.getDistancia()).thenReturn(17);
+
+        when(publicacionRepository.buscarCoincidenciasPerceptuales(
+                eq(17L), eq(24), eq(10L), eq(7L), eq(1L), eq(10)))
+                .thenReturn(List.of(coincidencia));
+        when(storageService.leerArchivo("actual.webp")).thenReturn(new byte[] { 1 });
+        when(storageService.leerArchivo("otra.webp")).thenReturn(new byte[] { 2 });
+        when(verificacionService.verificar(
+                any(), any(), eq(17)))
+                .thenReturn(new CoincidenciaVerificacionService.Resultado(
+                        true,
+                        org.mgroko.backend.modelo.enums.TipoCoincidenciaColaboracion.PERCEPTUAL_ORB,
+                        17,
+                        null,
+                        300,
+                        278));
+
+        servicio.detectar(actual, List.of(imagen));
+
+        ArgumentCaptor<ColaboracionAutomatica> captor =
+                ArgumentCaptor.forClass(ColaboracionAutomatica.class);
+        verify(colaboracionRepository).saveAndFlush(captor.capture());
+        ColaboracionAutomatica creada = captor.getValue();
+
+        assertEquals(org.mgroko.backend.modelo.enums.TipoCoincidenciaColaboracion
+                .PERCEPTUAL_ORB, creada.getTipoCoincidencia());
+        assertEquals(17, creada.getDistanciaPhash());
+        assertEquals(300, creada.getOrbMatches());
+        assertEquals(278, creada.getOrbInliers());
     }
 
     @Test

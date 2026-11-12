@@ -8932,6 +8932,11 @@ CREATE TABLE colaboracion_automatica (
     id_imagen                   int8,
     sha256_evidencia            varchar(64),
     phash_version               int2,
+    distancia_phash             int4,
+    distancia_multicrop         int4,
+    orb_matches                 int4,
+    orb_inliers                 int4,
+    tipo_coincidencia           varchar(30),
     id_publicacion_a            int8,
     id_publicacion_b            int8,
     id_perfil_a                 int8         NOT NULL,
@@ -8961,6 +8966,9 @@ CREATE TABLE colaboracion_automatica (
         CHECK (estado_perfil_a IN ('PENDIENTE', 'CONFIRMADA', 'RECHAZADA')),
     CONSTRAINT chk_colab_auto_estado_b
         CHECK (estado_perfil_b IN ('PENDIENTE', 'CONFIRMADA', 'RECHAZADA')),
+    CONSTRAINT chk_colab_auto_tipo
+        CHECK (tipo_coincidencia IS NULL OR tipo_coincidencia IN
+               ('EXACTA', 'PERCEPTUAL_ALTA', 'PERCEPTUAL_ORB', 'PERCEPTUAL_MULTICROP')),
     CONSTRAINT chk_colab_auto_pubs_distintas
         CHECK (id_publicacion_a IS NULL OR id_publicacion_b IS NULL
                OR id_publicacion_a <> id_publicacion_b),

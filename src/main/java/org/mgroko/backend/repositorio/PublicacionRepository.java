@@ -263,6 +263,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @Query(value = """
             SELECT p.id_publicacion AS idPublicacion,
                    i.id_imagen AS idImagen,
+                   i.nombre_archivo AS nombreArchivo,
                    i.sha256_contenido AS sha256Contenido,
                    0 AS distancia
             FROM imagen i
@@ -294,6 +295,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @Query(value = """
             SELECT p.id_publicacion AS idPublicacion,
                    i.id_imagen AS idImagen,
+                   i.nombre_archivo AS nombreArchivo,
                    i.sha256_contenido AS sha256Contenido,
                    bit_count(CAST(i.phash AS bit(64)) # CAST(:phash AS bit(64))) AS distancia
             FROM imagen i

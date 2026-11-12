@@ -15,10 +15,12 @@ import org.mgroko.backend.modelo.enums.EstadoColaboracionAutomatica;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.modelo.enums.TipoCoincidenciaColaboracion;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.repositorio.ColaboracionAutomaticaRepository;
 import org.mgroko.backend.repositorio.PublicacionRepository;
 import org.mgroko.backend.repositorio.proyeccion.CoincidenciaImagenProyeccion;
+import org.mgroko.backend.storage.servicio.StorageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -38,25 +40,34 @@ public class DetectarColaboracionAutomaticaService {
     private final PublicacionRepository publicacionRepository;
     private final ColaboracionAutomaticaRepository colaboracionRepository;
     private final NotificacionService notificacionService;
+    private final CoincidenciaVerificacionService verificacionService;
+    private final StorageService storageService;
     private final Clock reloj;
     private final boolean habilitada;
-    private final int umbralPhash;
+    private final int umbralPhashCandidato;
+    private final int umbralPhashAltaConfianza;
     private final int maxPropuestasPorImagen;
 
     public DetectarColaboracionAutomaticaService(
             PublicacionRepository publicacionRepository,
             ColaboracionAutomaticaRepository colaboracionRepository,
             NotificacionService notificacionService,
+            CoincidenciaVerificacionService verificacionService,
+            StorageService storageService,
             Clock reloj,
             @Value("${app.colaboracion-automatica.habilitada:true}") boolean habilitada,
-            @Value("${app.colaboracion-automatica.phash-distancia-maxima:8}") int umbralPhash,
+            @Value("${app.colaboracion-automatica.phash-distancia-candidato:24}") int umbralPhashCandidato,
+            @Value("${app.colaboracion-automatica.phash-distancia-alta-confianza:8}") int umbralPhashAltaConfianza,
             @Value("${app.colaboracion-automatica.max-propuestas-por-imagen:10}") int maxPropuestasPorImagen) {
         this.publicacionRepository = publicacionRepository;
         this.colaboracionRepository = colaboracionRepository;
         this.notificacionService = notificacionService;
+        this.verificacionService = verificacionService;
+        this.storageService = storageService;
         this.reloj = reloj;
         this.habilitada = habilitada;
-        this.umbralPhash = umbralPhash;
+        this.umbralPhashCandidato = umbralPhashCandidato;
+        this.umbralPhashAltaConfianza = umbralPhashAltaConfianza;
         this.maxPropuestasPorImagen = maxPropuestasPorImagen;
     }
 
@@ -91,7 +102,7 @@ public class DetectarColaboracionAutomaticaService {
             if (imagen.getPhash() != null) {
                 coincidencias.addAll(publicacionRepository.buscarCoincidenciasPerceptuales(
                         imagen.getPhash(),
-                        umbralPhash,
+                        umbralPhashCandidato,
                         publicacion.getIdPublicacion(),
                         perfilActual.getIdPerfil(),
                         idUsuarioActual,
@@ -100,21 +111,23 @@ public class DetectarColaboracionAutomaticaService {
 
             for (CoincidenciaImagenProyeccion coincidencia : coincidencias) {
                 if (coincidencia.getIdPublicacion() == null
-                        || !publicacionesYaPropuestas.add(coincidencia.getIdPublicacion())) {
+                        || publicacionesYaPropuestas.contains(coincidencia.getIdPublicacion())) {
                     continue;
                 }
 
-                procesarCoincidencia(
+                if (procesarCoincidencia(
                         publicacion,
                         perfilActual,
                         idUsuarioActual,
                         imagen,
-                        coincidencia);
+                        coincidencia)) {
+                    publicacionesYaPropuestas.add(coincidencia.getIdPublicacion());
+                }
             }
         }
     }
 
-    private void procesarCoincidencia(
+    private boolean procesarCoincidencia(
             Publicacion publicacionActual,
             Perfil perfilActual,
             Long idUsuarioActual,
@@ -132,7 +145,7 @@ public class DetectarColaboracionAutomaticaService {
                 || otra.getPerfil().getUsuario() == null
                 || otra.getPerfil().getUsuario().getEstado() != EstadoUsuario.ACTIVO
                 || otra.getPerfil().getUsuario().getIdUsuario().equals(idUsuarioActual)) {
-            return;
+            return false;
         }
 
         Perfil otroPerfil = otra.getPerfil();
@@ -141,7 +154,7 @@ public class DetectarColaboracionAutomaticaService {
                 publicacionActual.getIdPublicacion(), otroPerfil.getIdPerfil())
                 || publicacionRepository.existsColaborador(
                         otra.getIdPublicacion(), perfilActual.getIdPerfil())) {
-            return;
+            return false;
         }
 
         Publicacion publicacionA = publicacionActual.getIdPublicacion()
@@ -155,13 +168,56 @@ public class DetectarColaboracionAutomaticaService {
                 publicacionA.getIdPublicacion(),
                 publicacionB.getIdPublicacion(),
                 ESTADOS_QUE_BLOQUEAN)) {
-            return;
+            return false;
+        }
+
+        int distanciaPhash = coincidencia.getDistancia() != null
+                ? coincidencia.getDistancia()
+                : 0;
+
+        boolean esExacta = imagen.getSha256Contenido() != null
+                && imagen.getSha256Contenido().equals(coincidencia.getSha256Contenido());
+
+        TipoCoincidenciaColaboracion tipo;
+        Integer distanciaMulticrop = null;
+        Integer orbMatches = null;
+        Integer orbInliers = null;
+
+        if (esExacta) {
+            tipo = TipoCoincidenciaColaboracion.EXACTA;
+        } else if (distanciaPhash <= umbralPhashAltaConfianza) {
+            tipo = TipoCoincidenciaColaboracion.PERCEPTUAL_ALTA;
+        } else {
+            byte[] bytesActual = storageService.leerArchivo(imagen.getNombreArchivo());
+            byte[] bytesOtra = storageService.leerArchivo(coincidencia.getNombreArchivo());
+
+            if (bytesActual == null || bytesOtra == null) {
+                return false;
+            }
+
+            CoincidenciaVerificacionService.Resultado verificacion =
+                    verificacionService.verificar(
+                            bytesActual, bytesOtra, distanciaPhash);
+
+            if (!verificacion.aceptada()) {
+                return false;
+            }
+
+            tipo = verificacion.tipo();
+            distanciaMulticrop = verificacion.distanciaMulticrop();
+            orbMatches = verificacion.orbMatches();
+            orbInliers = verificacion.orbInliers();
         }
 
         ColaboracionAutomatica colaboracion = ColaboracionAutomatica.builder()
                 .imagen(imagen)
                 .sha256Evidencia(imagen.getSha256Contenido())
                 .phashVersion(imagen.getPhashVersion())
+                .distanciaPhash(distanciaPhash)
+                .distanciaMulticrop(distanciaMulticrop)
+                .orbMatches(orbMatches)
+                .orbInliers(orbInliers)
+                .tipoCoincidencia(tipo)
                 .publicacionA(publicacionA)
                 .publicacionB(publicacionB)
                 .perfilA(perfilA)
@@ -174,10 +230,11 @@ public class DetectarColaboracionAutomaticaService {
             colaboracion = colaboracionRepository.saveAndFlush(colaboracion);
         } catch (DataIntegrityViolationException ex) {
             // Carrera contra el índice único de propuestas pendientes.
-            return;
+            return false;
         }
 
         notificarDeteccion(colaboracion, publicacionA, publicacionB, perfilA, perfilB);
+        return true;
     }
 
     private void notificarDeteccion(

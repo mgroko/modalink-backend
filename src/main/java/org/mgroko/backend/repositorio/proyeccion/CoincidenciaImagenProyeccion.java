@@ -10,6 +10,8 @@ public interface CoincidenciaImagenProyeccion {
 
     Long getIdImagen();
 
+    String getNombreArchivo();
+
     String getSha256Contenido();
 
     Integer getDistancia();

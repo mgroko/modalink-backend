@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import org.mgroko.backend.modelo.enums.EstadoColaboracionAutomatica;
 import org.mgroko.backend.modelo.enums.EstadoConfirmacionColaboracion;
+import org.mgroko.backend.modelo.enums.TipoCoincidenciaColaboracion;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -53,6 +54,22 @@ public class ColaboracionAutomatica {
 
     @Column(name = "phash_version")
     private Short phashVersion;
+
+    @Column(name = "distancia_phash")
+    private Integer distanciaPhash;
+
+    @Column(name = "distancia_multicrop")
+    private Integer distanciaMulticrop;
+
+    @Column(name = "orb_matches")
+    private Integer orbMatches;
+
+    @Column(name = "orb_inliers")
+    private Integer orbInliers;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_coincidencia", length = 30)
+    private TipoCoincidenciaColaboracion tipoCoincidencia;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_publicacion_a")
