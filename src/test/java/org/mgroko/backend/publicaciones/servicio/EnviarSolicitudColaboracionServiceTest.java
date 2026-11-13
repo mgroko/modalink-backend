@@ -248,14 +248,25 @@ class EnviarSolicitudColaboracionServiceTest {
     }
 
     @Test
-    void enviar_otroPerfilDelMismoUsuario_lanzaMismoUsuario() {
+    void enviar_otroPerfilDelMismoUsuario_creaSolicitudSinConexion() {
         destinatario.setUsuario(usuarioRemitente);
+        when(conexionRepository.existsActivaEntre(7L, 8L)).thenReturn(false);
 
-        SolicitudColaboracionInvalidaException ex = assertThrows(
-                SolicitudColaboracionInvalidaException.class,
-                () -> servicio.enviar(1L, 7L, 99L, request(8L)));
+        SolicitudColaboracionResponse response = servicio.enviar(
+                1L, 7L, 99L, request(8L));
 
-        assertEquals("MISMO_USUARIO", ex.getCodigo());
+        assertEquals(50L, response.idSolicitudColaboracion());
+        assertEquals(EstadoSolicitud.PENDIENTE, response.estado());
+        verify(solicitudColaboracionRepository)
+                .saveAndFlush(any(SolicitudColaboracion.class));
+        verify(conexionRepository, never()).existsActivaEntre(7L, 8L);
+        verify(notificacionService).crear(
+                eq(usuarioRemitente),
+                eq(destinatario),
+                eq(NotificacionService.TIPO_SOLICITUD_COLABORACION_RECIBIDA),
+                any(),
+                eq(NotificacionService.ENTIDAD_PUBLICACION),
+                eq(99L));
     }
 
     @Test

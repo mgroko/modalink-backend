@@ -1729,4 +1729,34 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoNoEncontrado(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoEnCursoException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoEnCurso(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoEnCursoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoCancelableException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoNoCancelable(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoCancelableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoInvalido(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoSinDatosException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoSinDatos(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoSinDatosException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
 }

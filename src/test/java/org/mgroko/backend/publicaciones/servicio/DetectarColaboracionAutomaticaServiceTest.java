@@ -130,6 +130,38 @@ class DetectarColaboracionAutomaticaServiceTest {
     }
 
     @Test
+    void detectar_mismoUsuarioDistintoPerfil_creaPropuesta() {
+        Publicacion otroPerfilDelMismoUsuario =
+                publicacion(20L, 8L, 1L, "Mi perfil de maquilladora");
+        when(publicacionRepository.findByIdPublicacion(20L))
+                .thenReturn(Optional.of(otroPerfilDelMismoUsuario));
+
+        Imagen imagen = Imagen.builder()
+                .idImagen(99L)
+                .sha256Contenido("abc")
+                .build();
+
+        CoincidenciaImagenProyeccion coincidencia =
+                mock(CoincidenciaImagenProyeccion.class);
+        when(coincidencia.getIdPublicacion()).thenReturn(20L);
+        when(coincidencia.getIdImagen()).thenReturn(100L);
+        when(coincidencia.getSha256Contenido()).thenReturn("abc");
+        when(coincidencia.getDistancia()).thenReturn(0);
+
+        when(publicacionRepository.buscarCoincidenciasExactas(
+                eq("abc"), eq(10L), eq(7L), eq(1L), eq(10)))
+                .thenReturn(List.of(coincidencia));
+
+        DetectarColaboracionAutomaticaService.DeteccionResultado resultado =
+                servicio.detectar(actual, List.of(imagen));
+
+        assertEquals(1, resultado.creadas());
+        verify(colaboracionRepository).saveAndFlush(
+                any(ColaboracionAutomatica.class));
+        verify(notificacionService).registrarTodas(any());
+    }
+
+    @Test
     void detectar_candidatoPerceptual_verificaConOrbYGuardaScores() {
         Imagen imagen = Imagen.builder()
                 .idImagen(99L)

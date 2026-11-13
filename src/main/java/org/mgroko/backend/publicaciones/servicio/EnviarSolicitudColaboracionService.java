@@ -87,7 +87,12 @@ public class EnviarSolicitudColaboracionService {
 
         validarPerfilesDistintos(remitente, destinatario);
 
-        if (!conexionRepository.existsActivaEntre(
+        boolean mismoUsuario = remitente.getUsuario() != null
+                && destinatario.getUsuario() != null
+                && remitente.getUsuario().getIdUsuario()
+                        .equals(destinatario.getUsuario().getIdUsuario());
+
+        if (!mismoUsuario && !conexionRepository.existsActivaEntre(
                 remitente.getIdPerfil(), destinatario.getIdPerfil())) {
             throw new SolicitudColaboracionInvalidaException(
                     "El perfil destinatario no pertenece a tu red de contactos.",
@@ -158,16 +163,6 @@ public class EnviarSolicitudColaboracionService {
             throw new SolicitudColaboracionInvalidaException(
                     "No se puede enviar una solicitud al mismo perfil.",
                     "AUTOINVITACION");
-        }
-
-        if (remitente.getUsuario() == null
-                || destinatario.getUsuario() == null
-                || Objects.equals(
-                        remitente.getUsuario().getIdUsuario(),
-                        destinatario.getUsuario().getIdUsuario())) {
-            throw new SolicitudColaboracionInvalidaException(
-                    "No se puede enviar una solicitud entre perfiles del mismo usuario.",
-                    "MISMO_USUARIO");
         }
     }
 

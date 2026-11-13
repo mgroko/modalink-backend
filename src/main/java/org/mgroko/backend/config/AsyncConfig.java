@@ -37,4 +37,22 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean(name = "procesamientoHistoricoExecutor")
+    public ThreadPoolTaskExecutor procesamientoHistoricoExecutor(
+            @Value("${app.colaboracion-automatica.historico.queue-capacity:10}")
+            int queueCapacity,
+            @Value("${app.colaboracion-automatica.historico.await-termination-seconds:120}")
+            int awaitTerminationSeconds) {
+
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(queueCapacity);
+        executor.setThreadNamePrefix("colab-hist-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(awaitTerminationSeconds);
+        executor.initialize();
+        return executor;
+    }
 }

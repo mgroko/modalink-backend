@@ -58,6 +58,42 @@ public class ColaboracionAutomaticaLifecycleService {
         }
     }
 
+    /**
+     * Cancela las propuestas pendientes entre una publicación y un perfil.
+     * Se usa cuando el dueño etiqueta manualmente a su otro perfil: la
+     * propuesta automática deja de tener sentido.
+     */
+    @Transactional
+    public void cancelarPendientesEntrePerfil(Long idPublicacion, Long idPerfil) {
+        if (idPublicacion == null || idPerfil == null) {
+            return;
+        }
+
+        List<ColaboracionAutomatica> pendientes = colaboracionRepository
+                .findByPublicacionYEstado(
+                        idPublicacion, EstadoColaboracionAutomatica.PENDIENTE);
+
+        for (ColaboracionAutomatica colaboracion : pendientes) {
+            boolean involucra =
+                    (colaboracion.getPublicacionA() != null
+                            && colaboracion.getPerfilB() != null
+                            && colaboracion.getPublicacionA().getIdPublicacion()
+                                    .equals(idPublicacion)
+                            && colaboracion.getPerfilB().getIdPerfil()
+                                    .equals(idPerfil))
+                    || (colaboracion.getPublicacionB() != null
+                            && colaboracion.getPerfilA() != null
+                            && colaboracion.getPublicacionB().getIdPublicacion()
+                                    .equals(idPublicacion)
+                            && colaboracion.getPerfilA().getIdPerfil()
+                                    .equals(idPerfil));
+
+            if (involucra) {
+                cancelar(colaboracion);
+            }
+        }
+    }
+
     @Transactional
     public void cancelarPendientesPorImagen(Long idImagen) {
         if (idImagen == null) {

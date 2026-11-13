@@ -80,7 +80,12 @@ public class GestionarColaboracionAutomaticaService {
         }
 
         LocalDateTime ahora = LocalDateTime.now(reloj);
-        if (esPerfilA) {
+        if (esMismoUsuario(colaboracion)) {
+            colaboracion.setEstadoPerfilA(EstadoConfirmacionColaboracion.CONFIRMADA);
+            colaboracion.setEstadoPerfilB(EstadoConfirmacionColaboracion.CONFIRMADA);
+            colaboracion.setFechaRespuestaA(ahora);
+            colaboracion.setFechaRespuestaB(ahora);
+        } else if (esPerfilA) {
             colaboracion.setEstadoPerfilA(EstadoConfirmacionColaboracion.CONFIRMADA);
             colaboracion.setFechaRespuestaA(ahora);
         } else {
@@ -113,7 +118,8 @@ public class GestionarColaboracionAutomaticaService {
             notificar(
                     colaboracion,
                     NotificacionService.TIPO_COLABORACION_AUTOMATICA_CONFIRMADA,
-                    "La colaboración automática fue confirmada por ambos perfiles.");
+                    "La colaboración automática fue confirmada por ambos perfiles.",
+                    perfilActivo);
         }
 
         return ColaboracionAutomaticaMapper.toResponse(
@@ -142,7 +148,12 @@ public class GestionarColaboracionAutomaticaService {
         }
 
         LocalDateTime ahora = LocalDateTime.now(reloj);
-        if (esPerfilA) {
+        if (esMismoUsuario(colaboracion)) {
+            colaboracion.setEstadoPerfilA(EstadoConfirmacionColaboracion.RECHAZADA);
+            colaboracion.setEstadoPerfilB(EstadoConfirmacionColaboracion.RECHAZADA);
+            colaboracion.setFechaRespuestaA(ahora);
+            colaboracion.setFechaRespuestaB(ahora);
+        } else if (esPerfilA) {
             colaboracion.setEstadoPerfilA(EstadoConfirmacionColaboracion.RECHAZADA);
             colaboracion.setFechaRespuestaA(ahora);
         } else {
@@ -156,7 +167,8 @@ public class GestionarColaboracionAutomaticaService {
         notificar(
                 colaboracion,
                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_RECHAZADA,
-                "La colaboración automática fue rechazada.");
+                "La colaboración automática fue rechazada.",
+                perfilActivo);
 
         return ColaboracionAutomaticaMapper.toResponse(
                 colaboracion, perfilActivo.getIdPerfil());
@@ -256,22 +268,47 @@ public class GestionarColaboracionAutomaticaService {
     private void notificar(
             ColaboracionAutomatica colaboracion,
             String tipo,
-            String mensaje) {
+            String mensaje,
+            Perfil perfilActivo) {
 
         List<org.mgroko.backend.modelo.Notificacion> notificaciones = new ArrayList<>();
-        for (Perfil perfil : List.of(colaboracion.getPerfilA(), colaboracion.getPerfilB())) {
-            if (perfil.getUsuario() != null
-                    && perfil.getUsuario().getEstado() == EstadoUsuario.ACTIVO) {
+
+        if (esMismoUsuario(colaboracion)) {
+            if (perfilActivo.getUsuario() != null
+                    && perfilActivo.getUsuario().getEstado() == EstadoUsuario.ACTIVO) {
                 notificaciones.add(notificacionService.crear(
-                        perfil.getUsuario(),
-                        perfil,
+                        perfilActivo.getUsuario(),
+                        perfilActivo,
                         tipo,
                         mensaje,
                         NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
                         colaboracion.getIdColaboracionAutomatica()));
             }
+        } else {
+            for (Perfil perfil : List.of(colaboracion.getPerfilA(), colaboracion.getPerfilB())) {
+                if (perfil.getUsuario() != null
+                        && perfil.getUsuario().getEstado() == EstadoUsuario.ACTIVO) {
+                    notificaciones.add(notificacionService.crear(
+                            perfil.getUsuario(),
+                            perfil,
+                            tipo,
+                            mensaje,
+                            NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
+                            colaboracion.getIdColaboracionAutomatica()));
+                }
+            }
         }
+
         notificacionService.registrarTodas(notificaciones);
+    }
+
+    private boolean esMismoUsuario(ColaboracionAutomatica colaboracion) {
+        return colaboracion.getPerfilA() != null
+                && colaboracion.getPerfilA().getUsuario() != null
+                && colaboracion.getPerfilB() != null
+                && colaboracion.getPerfilB().getUsuario() != null
+                && colaboracion.getPerfilA().getUsuario().getIdUsuario()
+                        .equals(colaboracion.getPerfilB().getUsuario().getIdUsuario());
     }
 
     private boolean mensajeContiene(DataIntegrityViolationException ex, String texto) {

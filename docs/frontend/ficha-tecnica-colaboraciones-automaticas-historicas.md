@@ -1,6 +1,6 @@
 # Ficha técnica — Colaboraciones automáticas en publicaciones históricas
 
-> **Estado:** propuesta de diseño. Pendiente de implementación.
+> **Estado:** implementado en backend. Pendiente la interfaz de administración.
 > **Relación:** extensión administrativa de
 > `docs/frontend/ficha-tecnica-colaboraciones-automaticas.md`.
 > **Objetivo:** procesar publicaciones e imágenes ya existentes para detectar
@@ -57,6 +57,7 @@ GET  /admin/colaboraciones-automaticas/historicas
 GET  /admin/colaboraciones-automaticas/historicas/{id}
 GET  /admin/colaboraciones-automaticas/historicas/{id}/errores
 POST /admin/colaboraciones-automaticas/historicas/{id}/cancelar
+POST /admin/colaboraciones-automaticas/historicas/{id}/reanudar
 ```
 
 ### 4.1 Previsualizar
@@ -365,12 +366,27 @@ límite configurable por job para evitar spam. Esta decisión queda abierta.
 - Confirmación o rechazo masivo de propuestas.
 - Cambios en los umbrales de detección.
 
-## 15. Decisiones pendientes
+## 15. Implementación
 
-1. ¿`notificar` debe ser `false` por defecto? (recomendado: sí).
-2. ¿Se necesita reanudación exacta tras un reinicio o alcanza con relanzar?
-3. ¿Los errores por imagen van a tabla propia o alcanza con contadores y logs?
-4. ¿Se incluyen publicaciones `OCULTA`? (recomendado: no, igual que la
-   detección normal).
-5. ¿Hace falta una fecha de corte por defecto o el administrador siempre elige
-   el rango?
+- Controlador: `AdminColaboracionHistoricaController`.
+- Servicio administrativo: `AdminColaboracionHistoricaService`.
+- Worker: `ProcesamientoHistoricoWorker` + `ProcesamientoHistoricoBatchService`.
+- Executor dedicado: `procesamientoHistoricoExecutor` (1 hilo).
+- Evento after-commit: `ProcesamientoHistoricoSolicitadoEvent` +
+  `ProcesamientoHistoricoEventoListener`.
+- Entidades: `ProcesamientoColaboracionHistorica` y
+  `ProcesamientoColaboracionHistoricaError`.
+- Migración: `docs/3_diseño/migraciones/2026-11-12_procesamiento_colaboraciones_historicas.sql`.
+- Reinicio: los jobs `PENDIENTE` o `EN_PROGRESO` pasan a `INTERRUMPIDO`.
+- Reanudación: `POST .../{id}/reanudar` crea un job nuevo desde el cursor.
+- Autocolaboración: el detector ahora permite perfiles del mismo usuario, por
+  lo que el proceso histórico también los considera.
+
+## 16. Decisiones tomadas
+
+1. `notificar` queda en `false` por defecto.
+2. La reanudación usa `ultimo_id_publicacion`; los jobs interrumpidos se pueden
+   relanzar desde el cursor.
+3. Los errores por imagen se guardan en tabla propia.
+4. Solo se procesan publicaciones `ACTIVA`.
+5. El rango de fechas es opcional; si no se envía, se procesa todo.

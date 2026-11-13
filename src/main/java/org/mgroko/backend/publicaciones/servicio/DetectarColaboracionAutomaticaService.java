@@ -72,16 +72,28 @@ public class DetectarColaboracionAutomaticaService {
     }
 
     @Transactional
-    public void detectar(Publicacion publicacion, List<Imagen> imagenesNuevas) {
+    public DeteccionResultado detectar(Publicacion publicacion, List<Imagen> imagenesNuevas) {
+        return detectar(publicacion, imagenesNuevas, true);
+    }
+
+    @Transactional
+    public DeteccionResultado detectar(
+            Publicacion publicacion,
+            List<Imagen> imagenesNuevas,
+            boolean notificar) {
+
         if (!habilitada || publicacion == null || imagenesNuevas == null
                 || imagenesNuevas.isEmpty() || publicacion.getPerfil() == null
                 || publicacion.getPerfil().getUsuario() == null) {
-            return;
+            return new DeteccionResultado(0, 0, 0);
         }
 
         Perfil perfilActual = publicacion.getPerfil();
         Long idUsuarioActual = perfilActual.getUsuario().getIdUsuario();
         Set<Long> publicacionesYaPropuestas = new HashSet<>();
+        int candidatos = 0;
+        int creadas = 0;
+        int omitidas = 0;
 
         for (Imagen imagen : imagenesNuevas) {
             if (imagen == null) {
@@ -110,8 +122,11 @@ public class DetectarColaboracionAutomaticaService {
             }
 
             for (CoincidenciaImagenProyeccion coincidencia : coincidencias) {
+                candidatos++;
+
                 if (coincidencia.getIdPublicacion() == null
                         || publicacionesYaPropuestas.contains(coincidencia.getIdPublicacion())) {
+                    omitidas++;
                     continue;
                 }
 
@@ -120,11 +135,17 @@ public class DetectarColaboracionAutomaticaService {
                         perfilActual,
                         idUsuarioActual,
                         imagen,
-                        coincidencia)) {
+                        coincidencia,
+                        notificar)) {
+                    creadas++;
                     publicacionesYaPropuestas.add(coincidencia.getIdPublicacion());
+                } else {
+                    omitidas++;
                 }
             }
         }
+
+        return new DeteccionResultado(candidatos, creadas, omitidas);
     }
 
     private boolean procesarCoincidencia(
@@ -132,7 +153,8 @@ public class DetectarColaboracionAutomaticaService {
             Perfil perfilActual,
             Long idUsuarioActual,
             Imagen imagen,
-            CoincidenciaImagenProyeccion coincidencia) {
+            CoincidenciaImagenProyeccion coincidencia,
+            boolean notificar) {
 
         Publicacion otra = publicacionRepository
                 .findByIdPublicacion(coincidencia.getIdPublicacion())
@@ -143,8 +165,7 @@ public class DetectarColaboracionAutomaticaService {
                 || otra.getPerfil() == null
                 || otra.getPerfil().getEstado() != EstadoPerfil.ACTIVO
                 || otra.getPerfil().getUsuario() == null
-                || otra.getPerfil().getUsuario().getEstado() != EstadoUsuario.ACTIVO
-                || otra.getPerfil().getUsuario().getIdUsuario().equals(idUsuarioActual)) {
+                || otra.getPerfil().getUsuario().getEstado() != EstadoUsuario.ACTIVO) {
             return false;
         }
 
@@ -233,7 +254,9 @@ public class DetectarColaboracionAutomaticaService {
             return false;
         }
 
-        notificarDeteccion(colaboracion, publicacionA, publicacionB, perfilA, perfilB);
+        notificarDeteccion(
+                colaboracion, publicacionA, publicacionB, perfilA, perfilB,
+                perfilActual, notificar);
         return true;
     }
 
@@ -242,27 +265,46 @@ public class DetectarColaboracionAutomaticaService {
             Publicacion publicacionA,
             Publicacion publicacionB,
             Perfil perfilA,
-            Perfil perfilB) {
+            Perfil perfilB,
+            Perfil perfilOrigen,
+            boolean notificar) {
+
+        if (!notificar) {
+            return;
+        }
 
         String mensaje = "Detectamos una posible colaboración entre las publicaciones '"
                 + publicacionA.getTitulo() + "' y '" + publicacionB.getTitulo()
                 + "'. Si ambos confirman, aparecerán como colaboradores en la publicación del otro.";
 
         List<org.mgroko.backend.modelo.Notificacion> notificaciones = new ArrayList<>();
-        agregarNotificacion(notificaciones, notificacionService.crear(
-                perfilA.getUsuario(),
-                perfilA,
-                NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
-                mensaje,
-                NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
-                colaboracion.getIdColaboracionAutomatica()));
-        agregarNotificacion(notificaciones, notificacionService.crear(
-                perfilB.getUsuario(),
-                perfilB,
-                NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
-                mensaje,
-                NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
-                colaboracion.getIdColaboracionAutomatica()));
+        boolean mismoUsuario = perfilA.getUsuario().getIdUsuario()
+                .equals(perfilB.getUsuario().getIdUsuario());
+
+        if (mismoUsuario) {
+            agregarNotificacion(notificaciones, notificacionService.crear(
+                    perfilOrigen.getUsuario(),
+                    perfilOrigen,
+                    NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                    mensaje,
+                    NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
+                    colaboracion.getIdColaboracionAutomatica()));
+        } else {
+            agregarNotificacion(notificaciones, notificacionService.crear(
+                    perfilA.getUsuario(),
+                    perfilA,
+                    NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                    mensaje,
+                    NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
+                    colaboracion.getIdColaboracionAutomatica()));
+            agregarNotificacion(notificaciones, notificacionService.crear(
+                    perfilB.getUsuario(),
+                    perfilB,
+                    NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                    mensaje,
+                    NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
+                    colaboracion.getIdColaboracionAutomatica()));
+        }
 
         notificacionService.registrarTodas(notificaciones);
     }
@@ -273,5 +315,8 @@ public class DetectarColaboracionAutomaticaService {
         if (notificacion != null) {
             notificaciones.add(notificacion);
         }
+    }
+
+    public record DeteccionResultado(int candidatos, int creadas, int omitidas) {
     }
 }

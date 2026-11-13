@@ -30,7 +30,6 @@ ni el multi-recorte: publica un evento con los IDs y responde.
 - Excluye:
   - la misma publicación;
   - el mismo perfil;
-  - otros perfiles del mismo usuario;
   - publicaciones donde ya existe una etiqueta recíproca de colaborador;
   - propuestas `PENDIENTE` o `CONFIRMADA` para el mismo par.
 
@@ -80,6 +79,25 @@ La propuesta guarda la evidencia de la verificación:
 | `orb_matches` | `int4` | Matches ORB buenos |
 | `orb_inliers` | `int4` | Matches ORB con distancia estricta |
 | `tipo_coincidencia` | `varchar(30)` | `EXACTA`, `PERCEPTUAL_ALTA`, `PERCEPTUAL_ORB` o `PERCEPTUAL_MULTICROP` |
+
+### 2.2 Autocolaboración
+
+Un usuario puede colaborar entre sus propios perfiles (por ejemplo, modelo y
+maquilladora). Se mantiene la exclusión del mismo perfil.
+
+- **Automática:** el detector considera perfiles distintos del mismo usuario.
+  Si ambos perfiles pertenecen al mismo usuario, una sola confirmación o rechazo
+  alcanza para ambos lados.
+- **Manual directa:** `POST /publicaciones/{idPublicacion}/colaboradores/propios`
+  con `{ "idPerfil": 8 }` agrega el perfil propio como colaborador sin solicitud
+  ni conexión, con origen `MANUAL`.
+- **Solicitud manual:** los perfiles del mismo usuario pueden enviarse
+  solicitudes sin exigir una conexión activa.
+- **Conexiones:** los perfiles del mismo usuario siguen sin poder conectarse.
+- **Notificaciones:** en autocolaboración automática se genera una sola
+  notificación, en el contexto del perfil que subió la imagen.
+- **Portfolio:** no cambia. Las colaboraciones solo `AUTOMATICA` siguen
+  excluidas; las `MANUAL` se incluyen.
 
 ## 3. Endpoints
 

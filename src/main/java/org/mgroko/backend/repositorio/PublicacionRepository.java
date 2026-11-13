@@ -277,7 +277,6 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
               AND u.estado = 'ACTIVO'
               AND p.id_publicacion <> :idPublicacionActual
               AND p.id_perfil <> :idPerfilActual
-              AND u.id_usuario <> :idUsuarioActual
             ORDER BY p.fecha_publicacion DESC, p.id_publicacion DESC
             LIMIT :limite
             """, nativeQuery = true)
@@ -310,7 +309,6 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
               AND u.estado = 'ACTIVO'
               AND p.id_publicacion <> :idPublicacionActual
               AND p.id_perfil <> :idPerfilActual
-              AND u.id_usuario <> :idUsuarioActual
             ORDER BY distancia ASC, p.fecha_publicacion DESC
             LIMIT :limite
             """, nativeQuery = true)
@@ -322,4 +320,154 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
                     @Param("idPerfilActual") Long idPerfilActual,
                     @Param("idUsuarioActual") Long idUsuarioActual,
                     @Param("limite") int limite);
+
+    /**
+     * Publicaciones históricas a procesar, en orden de ID para paginación por
+     * clave.
+     */
+    @Query("""
+            SELECT p.idPublicacion
+            FROM Publicacion p
+            WHERE p.estado = org.mgroko.backend.modelo.enums.EstadoPublicacion.ACTIVA
+              AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+              AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+              AND p.idPublicacion = COALESCE(:idPublicacion, p.idPublicacion)
+              AND p.perfil.idPerfil = COALESCE(:idPerfil, p.perfil.idPerfil)
+              AND p.fechaPublicacion >= COALESCE(:desde, p.fechaPublicacion)
+              AND p.fechaPublicacion <= COALESCE(:hasta, p.fechaPublicacion)
+              AND p.idPublicacion > :ultimoId
+            ORDER BY p.idPublicacion
+            """)
+    List<Long> buscarIdsPublicacionesHistoricas(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil,
+            @Param("desde") java.time.LocalDateTime desde,
+            @Param("hasta") java.time.LocalDateTime hasta,
+            @Param("ultimoId") Long ultimoId,
+            Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(p)
+            FROM Publicacion p
+            WHERE p.estado = org.mgroko.backend.modelo.enums.EstadoPublicacion.ACTIVA
+              AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+              AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+              AND p.idPublicacion = COALESCE(:idPublicacion, p.idPublicacion)
+              AND p.perfil.idPerfil = COALESCE(:idPerfil, p.perfil.idPerfil)
+              AND p.fechaPublicacion >= COALESCE(:desde, p.fechaPublicacion)
+              AND p.fechaPublicacion <= COALESCE(:hasta, p.fechaPublicacion)
+            """)
+    long contarPublicacionesHistoricas(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil,
+            @Param("desde") java.time.LocalDateTime desde,
+            @Param("hasta") java.time.LocalDateTime hasta);
+
+    @EntityGraph(attributePaths = {
+            "perfil",
+            "perfil.usuario",
+            "imagenes"
+    })
+    @Query("SELECT p FROM Publicacion p WHERE p.idPublicacion = :id")
+    Optional<Publicacion> findByIdPublicacionConImagenes(@Param("id") Long id);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM imagen i
+            JOIN imagen_publicacion ip ON ip.id_imagen = i.id_imagen
+            JOIN publicacion p ON p.id_publicacion = ip.id_publicacion
+            JOIN perfil pf ON pf.id_perfil = p.id_perfil
+            JOIN usuario u ON u.id_usuario = pf.id_usuario
+            WHERE p.estado = 'ACTIVA'
+              AND pf.estado = 'ACTIVO'
+              AND u.estado = 'ACTIVO'
+              AND p.id_publicacion = COALESCE(:idPublicacion, p.id_publicacion)
+              AND p.id_perfil = COALESCE(:idPerfil, p.id_perfil)
+              AND p.fecha_publicacion >= COALESCE(:desde, p.fecha_publicacion)
+              AND p.fecha_publicacion <= COALESCE(:hasta, p.fecha_publicacion)
+            """, nativeQuery = true)
+    long contarImagenesHistoricas(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil,
+            @Param("desde") java.time.LocalDateTime desde,
+            @Param("hasta") java.time.LocalDateTime hasta);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM imagen i
+            JOIN imagen_publicacion ip ON ip.id_imagen = i.id_imagen
+            JOIN publicacion p ON p.id_publicacion = ip.id_publicacion
+            JOIN perfil pf ON pf.id_perfil = p.id_perfil
+            JOIN usuario u ON u.id_usuario = pf.id_usuario
+            WHERE p.estado = 'ACTIVA'
+              AND pf.estado = 'ACTIVO'
+              AND u.estado = 'ACTIVO'
+              AND i.sha256_contenido IS NULL
+              AND p.id_publicacion = COALESCE(:idPublicacion, p.id_publicacion)
+              AND p.id_perfil = COALESCE(:idPerfil, p.id_perfil)
+              AND p.fecha_publicacion >= COALESCE(:desde, p.fecha_publicacion)
+              AND p.fecha_publicacion <= COALESCE(:hasta, p.fecha_publicacion)
+            """, nativeQuery = true)
+    long contarImagenesSinSha256Historicas(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil,
+            @Param("desde") java.time.LocalDateTime desde,
+            @Param("hasta") java.time.LocalDateTime hasta);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM imagen i
+            JOIN imagen_publicacion ip ON ip.id_imagen = i.id_imagen
+            JOIN publicacion p ON p.id_publicacion = ip.id_publicacion
+            JOIN perfil pf ON pf.id_perfil = p.id_perfil
+            JOIN usuario u ON u.id_usuario = pf.id_usuario
+            WHERE p.estado = 'ACTIVA'
+              AND pf.estado = 'ACTIVO'
+              AND u.estado = 'ACTIVO'
+              AND i.phash IS NULL
+              AND p.id_publicacion = COALESCE(:idPublicacion, p.id_publicacion)
+              AND p.id_perfil = COALESCE(:idPerfil, p.id_perfil)
+              AND p.fecha_publicacion >= COALESCE(:desde, p.fecha_publicacion)
+              AND p.fecha_publicacion <= COALESCE(:hasta, p.fecha_publicacion)
+            """, nativeQuery = true)
+    long contarImagenesSinPhashHistoricas(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil,
+            @Param("desde") java.time.LocalDateTime desde,
+            @Param("hasta") java.time.LocalDateTime hasta);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM imagen i1
+            JOIN imagen_publicacion ip1 ON ip1.id_imagen = i1.id_imagen
+            JOIN publicacion p1 ON p1.id_publicacion = ip1.id_publicacion
+            JOIN perfil pf1 ON pf1.id_perfil = p1.id_perfil
+            JOIN usuario u1 ON u1.id_usuario = pf1.id_usuario
+            JOIN imagen i2 ON i2.id_imagen > i1.id_imagen
+            JOIN imagen_publicacion ip2 ON ip2.id_imagen = i2.id_imagen
+            JOIN publicacion p2 ON p2.id_publicacion = ip2.id_publicacion
+            JOIN perfil pf2 ON pf2.id_perfil = p2.id_perfil
+            JOIN usuario u2 ON u2.id_usuario = pf2.id_usuario
+            WHERE i1.phash IS NOT NULL
+              AND i2.phash IS NOT NULL
+              AND p1.id_publicacion <> p2.id_publicacion
+              AND p1.id_perfil <> p2.id_perfil
+              AND p1.estado = 'ACTIVA' AND pf1.estado = 'ACTIVO' AND u1.estado = 'ACTIVO'
+              AND p2.estado = 'ACTIVA' AND pf2.estado = 'ACTIVO' AND u2.estado = 'ACTIVO'
+              AND (p1.id_publicacion = COALESCE(:idPublicacion, p1.id_publicacion)
+                   OR p2.id_publicacion = COALESCE(:idPublicacion, p2.id_publicacion))
+              AND (p1.id_perfil = COALESCE(:idPerfil, p1.id_perfil)
+                   OR p2.id_perfil = COALESCE(:idPerfil, p2.id_perfil))
+              AND (p1.fecha_publicacion >= COALESCE(:desde, p1.fecha_publicacion)
+                   OR p2.fecha_publicacion >= COALESCE(:desde, p2.fecha_publicacion))
+              AND (p1.fecha_publicacion <= COALESCE(:hasta, p1.fecha_publicacion)
+                   OR p2.fecha_publicacion <= COALESCE(:hasta, p2.fecha_publicacion))
+              AND bit_count(CAST(i1.phash AS bit(64)) # CAST(i2.phash AS bit(64))) <= :umbral
+            """, nativeQuery = true)
+    long contarParesCandidatosHistoricos(
+            @Param("idPublicacion") Long idPublicacion,
+            @Param("idPerfil") Long idPerfil,
+            @Param("desde") java.time.LocalDateTime desde,
+            @Param("hasta") java.time.LocalDateTime hasta,
+            @Param("umbral") int umbral);
 }
