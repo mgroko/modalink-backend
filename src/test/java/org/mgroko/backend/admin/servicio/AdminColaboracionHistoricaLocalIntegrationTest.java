@@ -1,6 +1,7 @@
 package org.mgroko.backend.admin.servicio;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDateTime;
@@ -48,6 +49,11 @@ class AdminColaboracionHistoricaLocalIntegrationTest {
                         1L, null, null, null, null));
 
         assertTrue(response.publicaciones() <= 1);
+    }
+
+    @Test
+    void listar_sinFiltros_noFallaConParametrosNulos() {
+        assertNotNull(service.listar(null, null, null, 0, 20));
     }
 
     @Test

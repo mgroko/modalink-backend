@@ -48,9 +48,9 @@ public interface ProcesamientoColaboracionHistoricaRepository
     @Query("""
             SELECT p
             FROM ProcesamientoColaboracionHistorica p
-            WHERE (:estado IS NULL OR p.estado = :estado)
-              AND (:desde IS NULL OR p.fechaInicio >= :desde)
-              AND (:hasta IS NULL OR p.fechaInicio <= :hasta)
+            WHERE p.estado = COALESCE(:estado, p.estado)
+              AND p.fechaInicio >= COALESCE(:desde, p.fechaInicio)
+              AND p.fechaInicio <= COALESCE(:hasta, p.fechaInicio)
             ORDER BY p.fechaInicio DESC, p.idProcesamiento DESC
             """)
     Page<ProcesamientoColaboracionHistorica> buscar(

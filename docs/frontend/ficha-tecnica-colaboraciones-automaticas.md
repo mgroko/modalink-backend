@@ -41,8 +41,10 @@ ni el multi-recorte: publica un evento con los IDs y responde.
    `phash-distancia-candidato`.
 3. **Alta confianza**: si la distancia pHash es menor o igual a
    `phash-distancia-alta-confianza`, se acepta como `PERCEPTUAL_ALTA` sin ORB.
-4. **ORB**: verificación principal para candidatos perceptuales. Se acepta como
-   `PERCEPTUAL_ORB` si hay suficientes keypoints y matches buenos.
+4. **ORB**: verificación principal para candidatos perceptuales. Se aplica
+   ratio test de Lowe (0.75) y validación geométrica con homografía RANSAC.
+   Se acepta como `PERCEPTUAL_ORB` si los inliers geométricos alcanzan
+   `orb-min-inliers`.
 5. **Multi-recorte pHash**: fallback cuando ORB no alcanza. Compara recortes de
    ambas imágenes en una grilla y varias escalas; se acepta como
    `PERCEPTUAL_MULTICROP` si la distancia mínima no supera el máximo.
@@ -57,7 +59,7 @@ app.colaboracion-automatica.max-propuestas-por-imagen=10
 app.colaboracion-automatica.orb-min-keypoints=50
 app.colaboracion-automatica.orb-min-matches=50
 app.colaboracion-automatica.orb-max-distancia=60
-app.colaboracion-automatica.orb-max-distancia-inliers=40
+app.colaboracion-automatica.orb-min-inliers=10
 app.colaboracion-automatica.multicrop-distancia-maxima=8
 app.colaboracion-automatica.multicrop-grid=3
 app.colaboracion-automatica.multicrop-escalas=90,80,70
@@ -77,7 +79,7 @@ La propuesta guarda la evidencia de la verificación:
 | `distancia_phash` | `int4` | Distancia pHash entre las imágenes comparadas |
 | `distancia_multicrop` | `int4` | Distancia mínima del fallback multi-recorte |
 | `orb_matches` | `int4` | Matches ORB buenos |
-| `orb_inliers` | `int4` | Matches ORB con distancia estricta |
+| `orb_inliers` | `int4` | Inliers geométricos de RANSAC |
 | `tipo_coincidencia` | `varchar(30)` | `EXACTA`, `PERCEPTUAL_ALTA`, `PERCEPTUAL_ORB` o `PERCEPTUAL_MULTICROP` |
 
 ### 2.2 Autocolaboración

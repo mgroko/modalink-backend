@@ -29,7 +29,7 @@ class CoincidenciaVerificacionServiceTest {
                 50,
                 50,
                 60,
-                40,
+                10,
                 8,
                 3,
                 "90,80,70");
@@ -72,7 +72,7 @@ class CoincidenciaVerificacionServiceTest {
     void verificar_sinKeypointsUsaMultiRecorte() throws Exception {
         CoincidenciaVerificacionService soloMulticrop =
                 new CoincidenciaVerificacionService(
-                        huella, 100000, 50, 60, 40, 8, 3, "90,80,70");
+                        huella, 100000, 50, 60, 10, 8, 3, "90,80,70");
         byte[] imagen = imagen(320, 240, 1);
 
         CoincidenciaVerificacionService.Resultado resultado =
