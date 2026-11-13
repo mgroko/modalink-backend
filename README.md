@@ -148,6 +148,13 @@ Luego cargar el esquema canónico:
 psql -U postgres -d modalink -f "docs/3_diseño/ModaLinkBD.sql"
 ```
 
+Si la base ya existía antes del rechazo automático de postulaciones e
+invitaciones, aplicar una vez la migración:
+
+```bash
+psql -U postgres -d modalink -f scripts/migracion-rechazo-automatico-cupo.sql
+```
+
 ### 2. Backend
 
 ```bash

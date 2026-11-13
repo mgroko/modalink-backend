@@ -212,13 +212,15 @@ public class AceptarPostulacionService {
         MiembroProyecto miembro = crearMiembro(
                 proyecto, postulante, requerimiento, idTycAceptado);
 
+        postulacion.setEstado(EstadoSolicitud.ACEPTADA);
+        postulacion = postulacionGralRepository.saveAndFlush(postulacion);
+
+        // La postulación ya está ACEPTADA: el listener no la incluye entre las
+        // pendientes que debe rechazar si el cupo quedó cubierto.
         if (requerimiento != null) {
             eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
                     requerimiento.getIdRequerimientoGral()));
         }
-
-        postulacion.setEstado(EstadoSolicitud.ACEPTADA);
-        postulacion = postulacionGralRepository.saveAndFlush(postulacion);
 
         notificarAceptacion(postulante, proyecto, postulacion);
 
@@ -392,11 +394,13 @@ public class AceptarPostulacionService {
                         .requerimientoActividad(requerimiento)
                         .build());
 
-        eventPublisher.publishEvent(new CupoRequerimientoActividadModificadoEvent(
-                requerimiento.getIdRequerimiento()));
-
         postulacion.setEstado(EstadoSolicitud.ACEPTADA);
         postulacion = postulacionActividadRepository.saveAndFlush(postulacion);
+
+        // La postulación ya está ACEPTADA: el listener no la incluye entre las
+        // pendientes que debe rechazar si el cupo quedó cubierto.
+        eventPublisher.publishEvent(new CupoRequerimientoActividadModificadoEvent(
+                requerimiento.getIdRequerimiento()));
 
         if (proyecto.getEstado() != null
                 && proyecto.getEstado().permiteReprogramacion()) {

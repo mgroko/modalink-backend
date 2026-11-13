@@ -157,13 +157,15 @@ public class AceptarInvitacionService {
         MiembroProyecto miembro = crearMiembro(
                 proyecto, perfil, requerimiento, invitacion.getIdTycAceptado());
 
+        invitacion.setEstado(EstadoSolicitud.ACEPTADA);
+        invitacionGralRepository.saveAndFlush(invitacion);
+
+        // La invitación ya está ACEPTADA: el listener rechaza las restantes
+        // postulaciones e invitaciones pendientes si el cupo quedó cubierto.
         if (requerimiento != null) {
             eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
                     requerimiento.getIdRequerimientoGral()));
         }
-
-        invitacion.setEstado(EstadoSolicitud.ACEPTADA);
-        invitacionGralRepository.saveAndFlush(invitacion);
 
         notificarDirectores(
                 proyecto,
@@ -173,8 +175,6 @@ public class AceptarInvitacionService {
                         + proyecto.getNombre() + "'.",
                 NotificacionDestinoResolver.ENTIDAD_INVITACION_GRAL,
                 invitacion.getIdInvitacionGral());
-
-        eliminarPendientesGeneralesSiCorresponde(requerimiento);
 
         return new InvitacionGestionadaResponse(
                 invitacion.getIdInvitacionGral(),
@@ -304,13 +304,15 @@ public class AceptarInvitacionService {
                     "El perfil ya está asignado a esta actividad.");
         }
 
+        invitacion.setEstado(EstadoSolicitud.ACEPTADA);
+        invitacion = invitacionActividadRepository.saveAndFlush(invitacion);
+
+        // La invitación ya está ACEPTADA: el listener rechaza las restantes
+        // postulaciones e invitaciones pendientes si el cupo quedó cubierto.
         if (requerimiento != null) {
             eventPublisher.publishEvent(new CupoRequerimientoActividadModificadoEvent(
                     requerimiento.getIdRequerimiento()));
         }
-
-        invitacion.setEstado(EstadoSolicitud.ACEPTADA);
-        invitacion = invitacionActividadRepository.saveAndFlush(invitacion);
 
         if (proyecto.getEstado() != null && proyecto.getEstado().permiteReprogramacion()) {
             eventPublisher.publishEvent(new DisponibilidadModificadaEvent(
@@ -328,8 +330,6 @@ public class AceptarInvitacionService {
                         + proyecto.getNombre() + "'.",
                 NotificacionDestinoResolver.ENTIDAD_INVITACION_ACTIVIDAD,
                 invitacion.getIdInvitacion());
-
-        eliminarPendientesActividadSiCorresponde(requerimiento);
 
         return new InvitacionGestionadaResponse(
                 invitacion.getIdInvitacion(),
@@ -462,42 +462,6 @@ public class AceptarInvitacionService {
         } catch (DataIntegrityViolationException ex) {
             throw new InvitacionNoPermitidaException(
                     "El perfil ya es miembro activo de este proyecto.");
-        }
-    }
-
-    private void eliminarPendientesGeneralesSiCorresponde(
-            RequerimientoGralProyecto requerimiento) {
-
-        if (requerimiento == null) {
-            return;
-        }
-
-        if (!cupoRequerimientoService.calcularGeneral(requerimiento).satisfecho()) {
-            return;
-        }
-
-        List<InvitacionGral> pendientes = invitacionGralRepository
-                .findPendientesPorRequerimientoGralParaActualizar(
-                        requerimiento.getIdRequerimientoGral());
-        if (!pendientes.isEmpty()) {
-            invitacionGralRepository.deleteAll(pendientes);
-            invitacionGralRepository.flush();
-        }
-    }
-
-    private void eliminarPendientesActividadSiCorresponde(
-            RequerimientoActividad requerimiento) {
-
-        if (!cupoRequerimientoService.calcularActividad(requerimiento).satisfecho()) {
-            return;
-        }
-
-        List<InvitacionActividad> pendientes = invitacionActividadRepository
-                .findPendientesPorRequerimientoParaActualizar(
-                        requerimiento.getIdRequerimiento());
-        if (!pendientes.isEmpty()) {
-            invitacionActividadRepository.deleteAll(pendientes);
-            invitacionActividadRepository.flush();
         }
     }
 

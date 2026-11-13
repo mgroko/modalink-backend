@@ -324,7 +324,7 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 new CrearInvitacionActividadRequest(
                         idRequerimiento, destinatario.idPerfil(), null));
 
-        crearInvitacionService.invitarAProyectoActividad(
+        InvitacionResponse otraInvitacion = crearInvitacionService.invitarAProyectoActividad(
                 director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
                 new CrearInvitacionActividadRequest(
                         idRequerimiento, otroDestinatario.idPerfil(), null));
@@ -347,6 +347,18 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 WHERE id_requerimiento_act = ? AND estado = 'PENDIENTE'
                 """, Long.class, idRequerimiento);
         assertThat(pendientes).isZero();
+
+        String estadoOtra = jdbcTemplate.queryForObject("""
+                SELECT estado FROM invitacion_actividad WHERE id_invitacion = ?
+                """, String.class, otraInvitacion.idInvitacion());
+        assertThat(estadoOtra).isEqualTo("RECHAZADA");
+
+        Long notificacionOtra = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notificacion
+                WHERE id_usuario_destino = ? AND tipo = 'INVITACION_RECHAZADA'
+                  AND entidad_tipo = 'INVITACION_ACTIVIDAD' AND entidad_id = ?
+                """, Long.class, otroDestinatario.idUsuario(), otraInvitacion.idInvitacion());
+        assertThat(notificacionOtra).isEqualTo(1L);
     }
 
     @Test

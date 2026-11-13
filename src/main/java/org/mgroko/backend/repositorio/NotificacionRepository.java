@@ -49,6 +49,17 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
             String entidadTipo,
             Long entidadId);
 
+    /**
+     * Indica si el usuario ya recibió una notificación de ese tipo para la
+     * entidad, sin importar si la marcó como leída. Se usa para que el rechazo
+     * automático sea idempotente y no duplique avisos.
+     */
+    boolean existsByUsuarioDestino_IdUsuarioAndTipoAndEntidadTipoAndEntidadId(
+            Long idUsuario,
+            String tipo,
+            String entidadTipo,
+            Long entidadId);
+
     @Modifying(flushAutomatically = true)
     @Query("""
             DELETE FROM Notificacion n

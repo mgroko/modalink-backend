@@ -1696,82 +1696,9 @@ CREATE TABLE postulacion_actividad(
     CONSTRAINT "PK_postulacion_actividad" PRIMARY KEY (id_postulacion)
 )
 ;
--- Control de postulaciones y cupos cada vez que se acepta una postulacion 
-CREATE OR REPLACE FUNCTION fn_control_cupo_postulacion_actividad() RETURNS trigger AS $$
-DECLARE
-    v_cantidad_requerida INT;
-    v_cubiertos INT;
-BEGIN
-    IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-
-        SELECT ra.cantidad INTO v_cantidad_requerida
-        FROM requerimiento_actividad ra
-        WHERE ra.id_requerimiento_act = NEW.id_requerimiento_act;
-
-        SELECT COUNT(*) INTO v_cubiertos
-        FROM asignacion_actividad aa
-        JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
-        WHERE aa.id_requerimiento_act = NEW.id_requerimiento_act
-          AND mp.estado_participacion = 'ACTIVO';
-
-        IF v_cantidad_requerida IS NOT NULL AND v_cubiertos >= v_cantidad_requerida THEN
-
-            WITH rechazadas AS (
-                UPDATE postulacion_actividad pa
-                SET estado = 'RECHAZADA'
-                WHERE pa.id_requerimiento_act = NEW.id_requerimiento_act
-                  AND pa.id_postulacion <> NEW.id_postulacion
-                  AND pa.estado = 'PENDIENTE'
-                RETURNING pa.id_postulacion, pa.id_perfil, pa.id_requerimiento_act
-            )
-            INSERT INTO notificacion (
-                id_usuario_destino,
-                id_perfil_contexto,
-                tipo,
-                mensaje,
-                entidad_tipo,
-                entidad_id,
-                leida,
-                fecha_leida,
-                origen,
-                fecha_generada
-            )
-            SELECT p.id_usuario,
-                   r.id_perfil,
-                   'POSTULACION_RECHAZADA',
-                   'Tu postulación a la actividad "' || a.nombre
-                       || '" del proyecto "' || proy.nombre
-                       || '" fue rechazada porque el cupo ya fue cubierto.',
-                   'POSTULACION_ACTIVIDAD',
-                   r.id_postulacion,
-                   false,
-                   NULL,
-                   'TRIGGER',
-                   clock_timestamp()
-            FROM rechazadas r
-            JOIN perfil p ON p.id_perfil = r.id_perfil
-            JOIN requerimiento_actividad ra ON ra.id_requerimiento_act = r.id_requerimiento_act
-            JOIN actividad a ON a.id_actividad = ra.id_actividad
-            JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
-            JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM notificacion n
-                WHERE n.id_usuario_destino = p.id_usuario
-                  AND n.tipo = 'POSTULACION_RECHAZADA'
-                  AND n.entidad_tipo = 'POSTULACION_ACTIVIDAD'
-                  AND n.entidad_id = r.id_postulacion
-            );
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_control_cupo_postulacion_actividad ON postulacion_actividad;
-CREATE TRIGGER trg_control_cupo_postulacion_actividad
-    AFTER UPDATE OF estado ON postulacion_actividad
-    FOR EACH ROW EXECUTE FUNCTION fn_control_cupo_postulacion_actividad();
+-- El rechazo automático de postulaciones e invitaciones al cubrirse el cupo
+-- se implementa en la capa de servicio (RechazoAutomaticoCupoService) para
+-- notificar de forma idempotente y abarcar también las invitaciones.
 
 -- 
 -- TABLE: postulacion_gral 
@@ -1787,79 +1714,9 @@ CREATE TABLE postulacion_gral(
     CONSTRAINT "PK_postulacion_general" PRIMARY KEY (id_postulacion_gral)
 )
 ;
--- Control de cupo para postulaciones generales
-CREATE OR REPLACE FUNCTION fn_control_cupo_postulacion_gral() RETURNS trigger AS $$
-DECLARE
-    v_cantidad_requerida INT;
-    v_cubiertos INT;
-BEGIN
-    IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-
-        SELECT rgp.cantidad INTO v_cantidad_requerida
-        FROM requerimiento_gral_proyecto rgp
-        WHERE rgp.id_requerimiento_gral = NEW.id_requerimiento_gral;
-
-        SELECT COUNT(*) INTO v_cubiertos
-        FROM miembros_proyecto mp
-        WHERE mp.id_requerimiento_gral = NEW.id_requerimiento_gral
-          AND mp.estado_participacion = 'ACTIVO';
-
-        IF v_cantidad_requerida IS NOT NULL AND v_cubiertos >= v_cantidad_requerida THEN
-
-            WITH rechazadas AS (
-                UPDATE postulacion_gral post
-                SET estado = 'RECHAZADA'
-                WHERE post.id_requerimiento_gral = NEW.id_requerimiento_gral
-                  AND post.id_postulacion_gral <> NEW.id_postulacion_gral
-                  AND post.estado = 'PENDIENTE'
-                RETURNING post.id_postulacion_gral, post.id_perfil, post.id_requerimiento_gral
-            )
-            INSERT INTO notificacion (
-                id_usuario_destino,
-                id_perfil_contexto,
-                tipo,
-                mensaje,
-                entidad_tipo,
-                entidad_id,
-                leida,
-                fecha_leida,
-                origen,
-                fecha_generada
-            )
-            SELECT p.id_usuario,
-                   r.id_perfil,
-                   'POSTULACION_RECHAZADA',
-                   'Tu postulación al proyecto "' || proy.nombre
-                       || '" fue rechazada porque el cupo ya fue cubierto.',
-                   'POSTULACION_GRAL',
-                   r.id_postulacion_gral,
-                   false,
-                   NULL,
-                   'TRIGGER',
-                   clock_timestamp()
-            FROM rechazadas r
-            JOIN perfil p ON p.id_perfil = r.id_perfil
-            JOIN requerimiento_gral_proyecto rgp
-              ON rgp.id_requerimiento_gral = r.id_requerimiento_gral
-            JOIN proyecto proy ON proy.id_proyecto = rgp.id_proyecto
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM notificacion n
-                WHERE n.id_usuario_destino = p.id_usuario
-                  AND n.tipo = 'POSTULACION_RECHAZADA'
-                  AND n.entidad_tipo = 'POSTULACION_GRAL'
-                  AND n.entidad_id = r.id_postulacion_gral
-            );
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_control_cupo_postulacion_gral ON postulacion_gral;
-CREATE TRIGGER trg_control_cupo_postulacion_gral
-    AFTER UPDATE OF estado ON postulacion_gral
-    FOR EACH ROW EXECUTE FUNCTION fn_control_cupo_postulacion_gral();
+-- El rechazo automático de postulaciones e invitaciones al cubrirse el cupo
+-- se implementa en la capa de servicio (RechazoAutomaticoCupoService) para
+-- notificar de forma idempotente y abarcar también las invitaciones.
 
 -- 
 -- TABLE: profesion 
@@ -3267,14 +3124,22 @@ CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, 
 -- INDEX: "UQ_perfil_postulacion_act" 
 --
 
-CREATE UNIQUE INDEX "UQ_perfil_postulacion_act" ON postulacion_actividad(id_perfil, id_requerimiento_act)
+-- Índice parcial: una postulación RECHAZADA no bloquea un nuevo intento si
+-- el cupo se libera. Sólo PENDIENTE y ACEPTADA son estados vigentes.
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_act"
+    ON postulacion_actividad(id_perfil, id_requerimiento_act)
+    WHERE estado IN ('PENDIENTE', 'ACEPTADA')
 ;
 
 -- 
 -- INDEX: "UQ_perfil_postulacion_gral" 
 --
 
-CREATE UNIQUE INDEX "UQ_perfil_postulacion_gral" ON postulacion_gral(id_perfil, id_requerimiento_gral)
+-- Índice parcial: una postulación RECHAZADA no bloquea un nuevo intento si
+-- el cupo se libera. Sólo PENDIENTE y ACEPTADA son estados vigentes.
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_gral"
+    ON postulacion_gral(id_perfil, id_requerimiento_gral)
+    WHERE estado IN ('PENDIENTE', 'ACEPTADA')
 ;
 
 --

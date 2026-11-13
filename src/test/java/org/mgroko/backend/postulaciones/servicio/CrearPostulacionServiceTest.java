@@ -138,8 +138,9 @@ class CrearPostulacionServiceTest {
         when(cupoRequerimientoService.calcularGeneral(requerimiento))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionGralRepository
-                .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGral(
-                        ID_PERFIL, ID_REQUERIMIENTO_GRAL)).thenReturn(false);
+                .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGralAndEstadoIn(
+                        eq(ID_PERFIL), eq(ID_REQUERIMIENTO_GRAL), anyCollection()))
+                .thenReturn(false);
         when(postulacionGralRepository.saveAndFlush(any(PostulacionGral.class)))
                 .thenAnswer(invocacion -> {
                     PostulacionGral p = invocacion.getArgument(0);
@@ -344,8 +345,9 @@ class CrearPostulacionServiceTest {
         when(cupoRequerimientoService.calcularGeneral(any(RequerimientoGralProyecto.class)))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionGralRepository
-                .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGral(
-                        ID_PERFIL, ID_REQUERIMIENTO_GRAL)).thenReturn(true);
+                .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGralAndEstadoIn(
+                        eq(ID_PERFIL), eq(ID_REQUERIMIENTO_GRAL), anyCollection()))
+                .thenReturn(true);
 
         assertThatThrownBy(() -> servicio.darDeAltaPostulacionGeneral(
                 ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL))
@@ -391,8 +393,9 @@ class CrearPostulacionServiceTest {
         when(cupoRequerimientoService.calcularActividad(requerimiento))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionActividadRepository
-                .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
-                        ID_PERFIL, ID_REQUERIMIENTO_ACT)).thenReturn(false);
+                .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimientoAndEstadoIn(
+                        eq(ID_PERFIL), eq(ID_REQUERIMIENTO_ACT), anyCollection()))
+                .thenReturn(false);
         when(evaluarDisponibilidadActividadService.evaluar(any(Proyecto.class), eq(requerimiento.getActividad()), eq(List.of(ID_USUARIO))))
                 .thenReturn(new ResultadoDisponibilidad(true, false, AHORA, AHORA.plusHours(2)));
         when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
@@ -498,8 +501,9 @@ class CrearPostulacionServiceTest {
         when(cupoRequerimientoService.calcularActividad(requerimiento))
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
         when(postulacionActividadRepository
-                .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
-                        ID_PERFIL, ID_REQUERIMIENTO_ACT)).thenReturn(true);
+                .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimientoAndEstadoIn(
+                        eq(ID_PERFIL), eq(ID_REQUERIMIENTO_ACT), anyCollection()))
+                .thenReturn(true);
 
         assertThatThrownBy(() -> servicio.darDeAltaPostulacionActividad(
                 ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_ACT))
@@ -618,6 +622,69 @@ class CrearPostulacionServiceTest {
                 ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_ACT);
 
         assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+    }
+
+    @Test
+    void general_postulacionRechazadaPrevia_permiteVolverAPostularse() {
+        RequerimientoGralProyecto requerimiento = requerimientoGral(proyectoPublicado(true));
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoGralProyectoRepository.findByIdConProyecto(ID_REQUERIMIENTO_GRAL))
+                .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularGeneral(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        when(postulacionGralRepository.saveAndFlush(any(PostulacionGral.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(ID_PROYECTO)))
+                .thenReturn(List.of());
+
+        PostulacionResponse respuesta = servicio.darDeAltaPostulacionGeneral(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_GRAL);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+
+        ArgumentCaptor<java.util.Collection<EstadoSolicitud>> estados =
+                ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(postulacionGralRepository)
+                .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGralAndEstadoIn(
+                        eq(ID_PERFIL), eq(ID_REQUERIMIENTO_GRAL), estados.capture());
+        assertThat(estados.getValue())
+                .containsExactlyInAnyOrder(
+                        EstadoSolicitud.PENDIENTE, EstadoSolicitud.ACEPTADA);
+    }
+
+    @Test
+    void actividad_postulacionRechazadaPrevia_permiteVolverAPostularse() {
+        RequerimientoActividad requerimiento = requerimientoActividad(EstadoActividad.PENDIENTE);
+
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+                .thenReturn(Optional.of(perfil(EstadoPerfil.ACTIVO, ID_PROFESION)));
+        when(requerimientoActividadRepository.findByIdConActividadYProyecto(ID_REQUERIMIENTO_ACT))
+                .thenReturn(Optional.of(requerimiento));
+        when(cupoRequerimientoService.calcularActividad(requerimiento))
+                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        when(evaluarDisponibilidadActividadService.evaluar(
+                any(Proyecto.class), eq(requerimiento.getActividad()), eq(List.of(ID_USUARIO))))
+                .thenReturn(new ResultadoDisponibilidad(true, false, AHORA, AHORA.plusHours(2)));
+        when(postulacionActividadRepository.saveAndFlush(any(PostulacionActividad.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+        when(miembroProyectoRepository.buscarDirectoresDeProyectos(List.of(ID_PROYECTO)))
+                .thenReturn(List.of());
+
+        PostulacionResponse respuesta = servicio.darDeAltaPostulacionActividad(
+                ID_USUARIO, ID_PERFIL, ID_PROYECTO, ID_REQUERIMIENTO_ACT);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+
+        ArgumentCaptor<java.util.Collection<EstadoSolicitud>> estados =
+                ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(postulacionActividadRepository)
+                .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimientoAndEstadoIn(
+                        eq(ID_PERFIL), eq(ID_REQUERIMIENTO_ACT), estados.capture());
+        assertThat(estados.getValue())
+                .containsExactlyInAnyOrder(
+                        EstadoSolicitud.PENDIENTE, EstadoSolicitud.ACEPTADA);
     }
 
     @Test

@@ -88,13 +88,21 @@ public interface InvitacionActividadRepository extends JpaRepository<InvitacionA
 
     /**
      * Invitaciones de actividad pendientes de un requerimiento, bloqueadas para
-     * la limpieza posterior a cubrir el cupo (UC-28).
+     * el rechazo automático posterior a cubrir el cupo. Se ordenan por id para
+     * que dos transacciones concurrentes tomen los locks en el mismo orden.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT i FROM InvitacionActividad i
-        WHERE i.requerimiento.idRequerimiento = :idRequerimiento
+        JOIN FETCH i.perfilDestinatario perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH i.requerimiento requerimiento
+        JOIN FETCH requerimiento.actividad actividad
+        JOIN FETCH actividad.planificacion planificacion
+        JOIN FETCH planificacion.proyecto
+        WHERE requerimiento.idRequerimiento = :idRequerimiento
           AND i.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+        ORDER BY i.idInvitacion ASC
     """)
     List<InvitacionActividad> findPendientesPorRequerimientoParaActualizar(
             @Param("idRequerimiento") Long idRequerimiento);

@@ -58,6 +58,13 @@ public class CrearPostulacionService {
     static final String ENTIDAD_POSTULACION_ACTIVIDAD = "POSTULACION_ACTIVIDAD";
     static final String ENTIDAD_POSTULACION_GRAL = "POSTULACION_GRAL";
 
+    /**
+     * Una postulación rechazada no bloquea un nuevo intento. Sólo las
+     * pendientes o aceptadas se consideran vigentes para el requerimiento.
+     */
+    private static final List<EstadoSolicitud> ESTADOS_POSTULACION_VIGENTE =
+            List.of(EstadoSolicitud.PENDIENTE, EstadoSolicitud.ACEPTADA);
+
     private final PerfilRepository perfilRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
@@ -327,8 +334,10 @@ public class CrearPostulacionService {
             RequerimientoActividad requerimiento) {
 
         if (postulacionActividadRepository
-                .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
-                        perfil.getIdPerfil(), requerimiento.getIdRequerimiento())) {
+                .existsByPerfil_IdPerfilAndRequerimiento_IdRequerimientoAndEstadoIn(
+                        perfil.getIdPerfil(),
+                        requerimiento.getIdRequerimiento(),
+                        ESTADOS_POSTULACION_VIGENTE)) {
             throw new PostulacionNoPermitidaException(
                     "Ya existe una postulación de este perfil a este requerimiento.");
         }
@@ -349,8 +358,10 @@ public class CrearPostulacionService {
             RequerimientoGralProyecto requerimiento) {
 
         if (postulacionGralRepository
-                .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGral(
-                        perfil.getIdPerfil(), requerimiento.getIdRequerimientoGral())) {
+                .existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGralAndEstadoIn(
+                        perfil.getIdPerfil(),
+                        requerimiento.getIdRequerimientoGral(),
+                        ESTADOS_POSTULACION_VIGENTE)) {
             throw new PostulacionNoPermitidaException(
                     "Ya existe una postulación de este perfil a este requerimiento.");
         }
