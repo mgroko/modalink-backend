@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.publicaciones.evento.ColaboracionAutomaticaSolicitadaEvent;
+import org.mgroko.backend.repositorio.AbstractPostgresIntegrationTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
@@ -14,8 +15,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * Usa el PostgreSQL de Testcontainers de la base compartida: el contexto de
+ * Spring necesita un datasource real aunque el test solo verifique eventos.
+ */
 @SpringBootTest
-class ColaboracionAutomaticaEventoIntegrationTest {
+class ColaboracionAutomaticaEventoIntegrationTest
+        extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;

@@ -29,7 +29,7 @@ import org.testcontainers.utility.MountableFile;
  *
  * Requiere Docker: si no está disponible, los tests fallan.
  */
-abstract class AbstractPostgresIntegrationTest {
+public abstract class AbstractPostgresIntegrationTest {
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
             .withCopyFileToContainer(
@@ -68,7 +68,7 @@ abstract class AbstractPostgresIntegrationTest {
     }
 
     @DynamicPropertySource
-    static void registrarDatasource(DynamicPropertyRegistry registry) {
+    public static void registrarDatasource(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);

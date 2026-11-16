@@ -2,11 +2,36 @@ name: Tests
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Ubuntu 26.04 (ubuntu-latest desde noviembre 2026) trae Docker 29.4.2,
+    # que está dando problemas con Testcontainers 1.21.3. Se fija 24.04
+    # (Docker 28) hasta que la imagen del runner se estabilice.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           java-version: "25"
           distribution: "temurin"
+      # Falla acá con un mensaje claro si Docker no está disponible o si no se
+      # pueden descargar las imágenes, en vez de fallar dentro del static de
+      # AbstractPostgresIntegrationTest con 539 NoClassDefFoundError.
+      - name: Comprobar Docker y pre-descargar imágenes de test
+        run: |
+          docker version
+          docker info
+          for imagen in postgres:17-alpine axllent/mailpit:latest testcontainers/ryuk:0.12.0; do
+            ok=0
+            for intento in 1 2 3; do
+              if docker pull "$imagen"; then
+                ok=1
+                break
+              fi
+              echo "Reintentando $imagen ($intento/3)..."
+              sleep 5
+            done
+            if [ "$ok" -ne 1 ]; then
+              echo "No se pudo descargar $imagen"
+              exit 1
+            fi
+          done
       - run: mvn -B verify

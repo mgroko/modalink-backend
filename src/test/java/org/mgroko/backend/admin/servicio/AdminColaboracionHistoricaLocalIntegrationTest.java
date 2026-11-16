@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mgroko.backend.admin.dto.PreviewProcesamientoHistoricoResponse;
 import org.mgroko.backend.admin.dto.PrevisualizarColaboracionesHistoricasRequest;
 import org.mgroko.backend.modelo.ProcesamientoColaboracionHistorica;
@@ -17,7 +18,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Test dependiente de datos ya cargados en una base local (publicaciones e
+ * imágenes). No usa Testcontainers: toma el datasource de
+ * application.properties (localhost:5432). Por eso queda deshabilitado por
+ * defecto y solo se ejecuta si se define MODALINK_LOCAL_DB=true.
+ */
 @SpringBootTest
+@EnabledIfEnvironmentVariable(named = "MODALINK_LOCAL_DB", matches = "true")
 class AdminColaboracionHistoricaLocalIntegrationTest {
 
     @Autowired
