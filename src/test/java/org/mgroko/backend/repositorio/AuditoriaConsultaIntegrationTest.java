@@ -43,11 +43,12 @@ class AuditoriaConsultaIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void listadoSinTiposIncluyeHistoricosYEventosConocidos() {
-        insertarAuditoria(null, null);
-        insertarAuditoria("USUARIO_ALTA", "USUARIO_ALTA");
+        String operador = "Operador UC67";
+        insertarAuditoriaConOperador(null, operador);
+        insertarAuditoriaConOperador("USUARIO_ALTA", operador);
 
         var pagina = listarAuditoriaService.listar(
-                HOY, HOY, null, null, null, 0, 20);
+                HOY, HOY, null, operador, null, 0, 20);
 
         assertThat(pagina.contenido())
                 .anyMatch(evento -> evento.legacy())
