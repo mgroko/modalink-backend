@@ -33,7 +33,7 @@ public abstract class AbstractPostgresIntegrationTest {
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
             .withCopyFileToContainer(
-                    MountableFile.forHostPath(prepararSchemaLf()),
+                    MountableFile.forHostPath(prepararSchemaLf(), 0644),
                     "/docker-entrypoint-initdb.d/01-schema.sql");
 
     static {
