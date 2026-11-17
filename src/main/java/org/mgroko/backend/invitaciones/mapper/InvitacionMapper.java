@@ -137,6 +137,7 @@ public final class InvitacionMapper {
                 perfil.getUsuario() != null ? perfil.getUsuario().getNombre() : null,
                 perfil.getUsuario() != null ? perfil.getUsuario().getApellido() : null,
                 perfil.getProfesion() != null ? perfil.getProfesion().getIdProfesion() : null,
-                perfil.getProfesion() != null ? perfil.getProfesion().getNombre() : null);
+                perfil.getProfesion() != null ? perfil.getProfesion().getNombre() : null,
+                perfil.getImagen() != null ? perfil.getImagen().getUrl() : null);
     }
 }

@@ -9,6 +9,7 @@ public record PerfilInvitacionResponse(
         String nombre,
         String apellido,
         Long idProfesion,
-        String nombreProfesion
+        String nombreProfesion,
+        String fotoUrl
 ) {
 }

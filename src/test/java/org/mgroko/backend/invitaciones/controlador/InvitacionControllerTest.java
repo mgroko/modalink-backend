@@ -434,8 +434,8 @@ class InvitacionControllerTest {
                 null,
                 null,
                 null,
-                new PerfilInvitacionResponse(10L, "Remitente", "Ana", "Pérez", 1L, "Fotógrafo"),
-                new PerfilInvitacionResponse(20L, "Destinatario", "Sol", "Gómez", 2L, "Modelo"),
+                new PerfilInvitacionResponse(10L, "Remitente", "Ana", "Pérez", 1L, "Fotógrafo", "/uploads/perfiles/ana.jpg"),
+                new PerfilInvitacionResponse(20L, "Destinatario", "Sol", "Gómez", 2L, "Modelo", null),
                 "Hola",
                 false);
     }
