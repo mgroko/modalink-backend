@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.mgroko.backend.modelo.ColaboracionAutomatica;
@@ -22,7 +23,6 @@ import org.mgroko.backend.repositorio.PublicacionRepository;
 import org.mgroko.backend.repositorio.proyeccion.CoincidenciaImagenProyeccion;
 import org.mgroko.backend.storage.servicio.StorageService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -247,21 +247,23 @@ public class DetectarColaboracionAutomaticaService {
                 .fechaDeteccion(LocalDateTime.now(reloj))
                 .build();
 
-        try {
-            colaboracion = colaboracionRepository.saveAndFlush(colaboracion);
-        } catch (DataIntegrityViolationException ex) {
-            // Carrera contra el índice único de propuestas pendientes.
+        Optional<Long> idColaboracion = colaboracionRepository
+                .insertarPendienteSiNoExiste(colaboracion);
+
+        if (idColaboracion.isEmpty()) {
+            // Otra detección concurrente ya creó la propuesta pendiente para
+            // esta pareja de publicaciones. No se notifica dos veces.
             return false;
         }
 
         notificarDeteccion(
-                colaboracion, publicacionA, publicacionB, perfilA, perfilB,
+                idColaboracion.get(), publicacionA, publicacionB, perfilA, perfilB,
                 perfilActual, notificar);
         return true;
     }
 
     private void notificarDeteccion(
-            ColaboracionAutomatica colaboracion,
+            Long idColaboracion,
             Publicacion publicacionA,
             Publicacion publicacionB,
             Perfil perfilA,
@@ -288,7 +290,7 @@ public class DetectarColaboracionAutomaticaService {
                     NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
                     mensaje,
                     NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
-                    colaboracion.getIdColaboracionAutomatica()));
+                    idColaboracion));
         } else {
             agregarNotificacion(notificaciones, notificacionService.crear(
                     perfilA.getUsuario(),
@@ -296,14 +298,14 @@ public class DetectarColaboracionAutomaticaService {
                     NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
                     mensaje,
                     NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
-                    colaboracion.getIdColaboracionAutomatica()));
+                    idColaboracion));
             agregarNotificacion(notificaciones, notificacionService.crear(
                     perfilB.getUsuario(),
                     perfilB,
                     NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
                     mensaje,
                     NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
-                    colaboracion.getIdColaboracionAutomatica()));
+                    idColaboracion));
         }
 
         notificacionService.registrarTodas(notificaciones);

@@ -20,7 +20,8 @@ import jakarta.persistence.LockModeType;
 
 public interface ColaboracionAutomaticaRepository
         extends JpaRepository<ColaboracionAutomatica, Long>,
-                JpaSpecificationExecutor<ColaboracionAutomatica> {
+                JpaSpecificationExecutor<ColaboracionAutomatica>,
+                ColaboracionAutomaticaRepositoryCustom {
 
     @EntityGraph(attributePaths = {
             "imagen",

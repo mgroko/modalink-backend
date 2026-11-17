@@ -87,8 +87,8 @@ class DetectarColaboracionAutomaticaServiceTest {
                 .thenReturn(false);
         when(colaboracionRepository.existsByParYEstados(anyLong(), anyLong(), any()))
                 .thenReturn(false);
-        when(colaboracionRepository.saveAndFlush(any()))
-                .thenAnswer(invocacion -> invocacion.getArgument(0));
+        when(colaboracionRepository.insertarPendienteSiNoExiste(any()))
+                .thenReturn(Optional.of(500L));
         when(notificacionService.crear(
                 any(Usuario.class), any(Perfil.class), anyString(), anyString(),
                 anyString(), anyLong()))
@@ -117,7 +117,7 @@ class DetectarColaboracionAutomaticaServiceTest {
 
         ArgumentCaptor<ColaboracionAutomatica> captor =
                 ArgumentCaptor.forClass(ColaboracionAutomatica.class);
-        verify(colaboracionRepository).saveAndFlush(captor.capture());
+        verify(colaboracionRepository).insertarPendienteSiNoExiste(captor.capture());
         ColaboracionAutomatica creada = captor.getValue();
 
         assertEquals(EstadoColaboracionAutomatica.PENDIENTE, creada.getEstado());
@@ -156,7 +156,7 @@ class DetectarColaboracionAutomaticaServiceTest {
                 servicio.detectar(actual, List.of(imagen));
 
         assertEquals(1, resultado.creadas());
-        verify(colaboracionRepository).saveAndFlush(
+        verify(colaboracionRepository).insertarPendienteSiNoExiste(
                 any(ColaboracionAutomatica.class));
         verify(notificacionService).registrarTodas(any());
     }
@@ -197,7 +197,7 @@ class DetectarColaboracionAutomaticaServiceTest {
 
         ArgumentCaptor<ColaboracionAutomatica> captor =
                 ArgumentCaptor.forClass(ColaboracionAutomatica.class);
-        verify(colaboracionRepository).saveAndFlush(captor.capture());
+        verify(colaboracionRepository).insertarPendienteSiNoExiste(captor.capture());
         ColaboracionAutomatica creada = captor.getValue();
 
         assertEquals(org.mgroko.backend.modelo.enums.TipoCoincidenciaColaboracion
@@ -226,7 +226,34 @@ class DetectarColaboracionAutomaticaServiceTest {
         servicio.detectar(actual, List.of(imagen));
 
         verify(colaboracionRepository, org.mockito.Mockito.never())
-                .saveAndFlush(any());
+                .insertarPendienteSiNoExiste(any());
+    }
+
+    @Test
+    void detectar_siOtraDeteccionYaCreoLaPropuesta_noNotificaNiCuentaComoCreada() {
+        Imagen imagen = Imagen.builder()
+                .idImagen(99L)
+                .sha256Contenido("abc")
+                .build();
+
+        CoincidenciaImagenProyeccion coincidencia =
+                mock(CoincidenciaImagenProyeccion.class);
+        when(coincidencia.getIdPublicacion()).thenReturn(20L);
+        when(coincidencia.getSha256Contenido()).thenReturn("abc");
+        when(coincidencia.getDistancia()).thenReturn(0);
+
+        when(publicacionRepository.buscarCoincidenciasExactas(
+                eq("abc"), eq(10L), eq(7L), eq(1L), eq(10)))
+                .thenReturn(List.of(coincidencia));
+        when(colaboracionRepository.insertarPendienteSiNoExiste(any()))
+                .thenReturn(Optional.empty());
+
+        DetectarColaboracionAutomaticaService.DeteccionResultado resultado =
+                servicio.detectar(actual, List.of(imagen));
+
+        assertEquals(0, resultado.creadas());
+        verify(notificacionService, org.mockito.Mockito.never())
+                .registrarTodas(any());
     }
 
     private Publicacion publicacion(
