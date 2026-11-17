@@ -8897,6 +8897,17 @@ UPDATE notificacion_tipo SET prioridad = 'ALTA'  WHERE codigo = 'CONTRATO_FIRMAD
 UPDATE notificacion_tipo SET prioridad = 'MEDIA' WHERE codigo = 'PUBLICACION_COMENTARIO';
 UPDATE notificacion_tipo SET prioridad = 'MEDIA' WHERE codigo = 'PUBLICACION_MEGUSTA';
 
+-- UC-04: los avisos de deshabilitación/habilitación de cuenta son de
+-- prioridad ALTA, por lo que el trigger de outbox los envía por email.
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
+    ('USUARIO_DESHABILITADO', 'Cuenta deshabilitada', 'CUENTA', 'ALTA'),
+    ('USUARIO_HABILITADO',    'Cuenta habilitada',    'CUENTA', 'ALTA')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        categoria = EXCLUDED.categoria,
+        prioridad = EXCLUDED.prioridad,
+        activo = true;
+
 -- ----------------------------------------------------------------------------
 -- 2. Estado ENVIANDO
 -- ----------------------------------------------------------------------------

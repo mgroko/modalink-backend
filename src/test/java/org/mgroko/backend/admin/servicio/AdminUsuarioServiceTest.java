@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.admin.dto.AdminUsuarioResponse;
@@ -16,14 +17,20 @@ import org.mgroko.backend.admin.exception.AutoDeshabilitacionException;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
 import org.mgroko.backend.modelo.Genero;
+import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,8 +42,20 @@ class AdminUsuarioServiceTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
+    @Mock
+    private NotificacionService notificacionService;
+
     @InjectMocks
     private AdminUsuarioService adminUsuarioService;
+
+    @BeforeEach
+    void configurarNotificaciones() {
+        lenient().when(notificacionService.crear(
+                any(Usuario.class), anyString(), anyString(), anyString(), anyLong()))
+                .thenReturn(Notificacion.builder().build());
+        lenient().when(notificacionService.registrarTodas(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     private Usuario usuarioConRol(EstadoUsuario estado) {
         return Usuario.builder()
@@ -67,6 +86,12 @@ class AdminUsuarioServiceTest {
         assertEquals("Activo", response.estado());
         assertEquals(EstadoUsuario.Activo, usuario.getEstado());
         verify(usuarioRepository).save(usuario);
+        verify(notificacionService).crear(
+                any(Usuario.class),
+                eq(NotificacionService.TIPO_USUARIO_HABILITADO),
+                anyString(),
+                eq(NotificacionService.ENTIDAD_USUARIO),
+                eq(2L));
     }
 
     @Test
@@ -80,6 +105,8 @@ class AdminUsuarioServiceTest {
 
         assertEquals("Activo", response.estado());
         verify(usuarioRepository).save(usuario);
+        verify(notificacionService, never()).crear(
+                any(Usuario.class), anyString(), anyString(), anyString(), anyLong());
     }
 
     @Test
@@ -118,6 +145,12 @@ class AdminUsuarioServiceTest {
         assertNotNull(response.fechaHastaDeshabilitacion());
         assertEquals(EstadoUsuario.Deshabilitado, usuario.getEstado());
         verify(usuarioRepository).save(usuario);
+        verify(notificacionService).crear(
+                any(Usuario.class),
+                eq(NotificacionService.TIPO_USUARIO_DESHABILITADO),
+                anyString(),
+                eq(NotificacionService.ENTIDAD_USUARIO),
+                eq(2L));
     }
 
     @Test

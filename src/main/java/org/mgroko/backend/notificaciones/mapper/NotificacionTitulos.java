@@ -13,6 +13,8 @@ import java.util.Map;
 public final class NotificacionTitulos {
 
     private static final Map<String, String> TITULOS = Map.ofEntries(
+            Map.entry("USUARIO_DESHABILITADO", "Cuenta deshabilitada"),
+            Map.entry("USUARIO_HABILITADO", "Cuenta habilitada"),
             Map.entry("PROYECTO_CANCELADO", "Proyecto cancelado"),
             Map.entry("PROYECTO_CONFIRMADO", "Proyecto confirmado"),
             Map.entry("PROYECTO_PUBLICADO", "Proyecto publicado"),

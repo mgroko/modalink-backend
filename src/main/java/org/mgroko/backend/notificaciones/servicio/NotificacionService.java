@@ -117,6 +117,10 @@ public class NotificacionService {
             "COLABORACION_AUTOMATICA_CANCELADA";
     public static final String TIPO_COLABORACION_AUTOMATICA_DISUELTA =
             "COLABORACION_AUTOMATICA_DISUELTA";
+    public static final String TIPO_USUARIO_DESHABILITADO =
+            "USUARIO_DESHABILITADO";
+    public static final String TIPO_USUARIO_HABILITADO =
+            "USUARIO_HABILITADO";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";
@@ -125,6 +129,7 @@ public class NotificacionService {
     public static final String ENTIDAD_PUBLICACION = "PUBLICACION";
     public static final String ENTIDAD_COLABORACION_AUTOMATICA =
             "COLABORACION_AUTOMATICA";
+    public static final String ENTIDAD_USUARIO = "USUARIO";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;

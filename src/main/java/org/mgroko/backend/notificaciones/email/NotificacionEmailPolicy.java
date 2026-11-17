@@ -1,7 +1,10 @@
 package org.mgroko.backend.notificaciones.email;
 
+import java.util.Set;
+
 import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.repositorio.NotificacionRepository;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +18,14 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class NotificacionEmailPolicy {
+
+    /**
+     * Notificaciones de cuenta que deben enviarse aunque el usuario ya no
+     * tenga acceso (por ejemplo, el aviso de deshabilitación).
+     */
+    private static final Set<String> TIPOS_CUENTA = Set.of(
+            NotificacionService.TIPO_USUARIO_DESHABILITADO,
+            NotificacionService.TIPO_USUARIO_HABILITADO);
 
     private final NotificacionRepository notificacionRepository;
 
@@ -33,7 +44,8 @@ public class NotificacionEmailPolicy {
         if (notificacion.getIdNotificacion() == null || notificacion.getTipo() == null) {
             return "NOTIFICACION_INVALIDA";
         }
-        if (!usuario.getEstado().permiteAcceso()) {
+        if (!usuario.getEstado().permiteAcceso()
+                && !TIPOS_CUENTA.contains(notificacion.getTipo())) {
             return "USUARIO_NO_ACTIVO";
         }
         if (usuario.getCorreo() == null || usuario.getCorreo().isBlank()) {

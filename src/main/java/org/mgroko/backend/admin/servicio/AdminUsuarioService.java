@@ -1,6 +1,7 @@
 package org.mgroko.backend.admin.servicio;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminUsuarioResponse;
@@ -11,6 +12,7 @@ import org.mgroko.backend.admin.exception.UsuarioEnBajaException;
 import org.mgroko.backend.admin.mapper.AdminUsuarioMapper;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +21,17 @@ import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 @Service
 public class AdminUsuarioService {
 
-    private final UsuarioRepository usuarioRepository;
+    private static final DateTimeFormatter FORMATO_FECHA =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    public AdminUsuarioService(UsuarioRepository usuarioRepository) {
+    private final UsuarioRepository usuarioRepository;
+    private final NotificacionService notificacionService;
+
+    public AdminUsuarioService(
+            UsuarioRepository usuarioRepository,
+            NotificacionService notificacionService) {
         this.usuarioRepository = usuarioRepository;
+        this.notificacionService = notificacionService;
     }
 
     @Transactional(readOnly = true)
@@ -71,10 +80,18 @@ public class AdminUsuarioService {
     public AdminUsuarioResponse habilitar(Long idUsuario) {
         Usuario usuario = buscarOFallar(idUsuario);
         rechazarSiEstaEnBaja(usuario);
+        boolean cambiaEstado = usuario.getEstado() != EstadoUsuario.Activo;
         usuario.setEstado(EstadoUsuario.Activo);
         usuario.setMotivoDeshabilitacion(null);
         usuario.setFechaHastaDeshabilitacion(null);
-        return AdminUsuarioMapper.toResponse(usuarioRepository.save(usuario));
+        Usuario guardado = usuarioRepository.save(usuario);
+        if (cambiaEstado) {
+            notificarCambioCuenta(
+                    guardado,
+                    NotificacionService.TIPO_USUARIO_HABILITADO,
+                    "Tu cuenta fue habilitada nuevamente. Ya podés volver a ingresar a ModaLink.");
+        }
+        return AdminUsuarioMapper.toResponse(guardado);
     }
 
     /**
@@ -91,13 +108,45 @@ public class AdminUsuarioService {
         }
         Usuario usuario = buscarOFallar(idUsuario);
         rechazarSiEstaEnBaja(usuario);
+        boolean cambiaEstado = usuario.getEstado() != EstadoUsuario.Deshabilitado;
         usuario.setEstado(EstadoUsuario.Deshabilitado);
         usuario.setMotivoDeshabilitacion(request.motivo());
         usuario.setFechaHastaDeshabilitacion(
                 request.duracionDias() != null
                         ? LocalDateTime.now().plusDays(request.duracionDias())
                         : null);
-        return AdminUsuarioMapper.toResponse(usuarioRepository.save(usuario));
+        Usuario guardado = usuarioRepository.save(usuario);
+        if (cambiaEstado) {
+            notificarCambioCuenta(
+                    guardado,
+                    NotificacionService.TIPO_USUARIO_DESHABILITADO,
+                    mensajeDeshabilitacion(guardado));
+        }
+        return AdminUsuarioMapper.toResponse(guardado);
+    }
+
+    private void notificarCambioCuenta(Usuario usuario, String tipo, String mensaje) {
+        notificacionService.registrarTodas(List.of(
+                notificacionService.crear(
+                        usuario,
+                        tipo,
+                        mensaje,
+                        NotificacionService.ENTIDAD_USUARIO,
+                        usuario.getIdUsuario())));
+    }
+
+    private String mensajeDeshabilitacion(Usuario usuario) {
+        String motivo = usuario.getMotivoDeshabilitacion() == null
+                ? ""
+                : usuario.getMotivoDeshabilitacion().trim();
+        StringBuilder mensaje = new StringBuilder(
+                "Tu cuenta fue deshabilitada. Motivo: ").append(motivo).append('.');
+        if (usuario.getFechaHastaDeshabilitacion() != null) {
+            mensaje.append(" La deshabilitación finaliza el ")
+                    .append(usuario.getFechaHastaDeshabilitacion().format(FORMATO_FECHA))
+                    .append('.');
+        }
+        return mensaje.toString();
     }
 
     private void rechazarSiEstaEnBaja(Usuario usuario) {

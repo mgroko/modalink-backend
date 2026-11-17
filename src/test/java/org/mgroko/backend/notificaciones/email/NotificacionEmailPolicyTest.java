@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.repositorio.NotificacionRepository;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -48,6 +49,17 @@ class NotificacionEmailPolicyTest {
 
         assertThat(policy.motivoNoElegible(notificacion, usuario))
                 .isEqualTo("USUARIO_NO_ACTIVO");
+    }
+
+    @Test
+    void usuarioDeshabilitadoConAvisoDeCuenta_esElegible() {
+        Notificacion notificacion =
+                notificacion(NotificacionService.TIPO_USUARIO_DESHABILITADO);
+        Usuario usuario = usuario(EstadoUsuario.DESHABILITADO, "persona@modalink.com");
+        when(notificacionRepository.esTipoEmailPrioridadAlta(
+                NotificacionService.TIPO_USUARIO_DESHABILITADO)).thenReturn(true);
+
+        assertThat(policy.esElegible(notificacion, usuario)).isTrue();
     }
 
     @Test
