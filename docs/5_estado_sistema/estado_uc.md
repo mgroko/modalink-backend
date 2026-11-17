@@ -130,6 +130,19 @@ el historial de git sirva de bitácora adicional.
 
 ---
 
+## Extensión administrativa — detalle de solo lectura
+
+| Nombre | Estado | Endpoints | Permisos | Notas |
+| ------ | ------ | --------- | -------- | ----- |
+| Detalle administrativo de perfiles | Implementado | `GET /admin/perfiles`, `GET /admin/perfiles/{idPerfil}` | `VER_PERFILES` | Listado con filtros por texto, profesión, estado, usuario, género y ubicación. Detalle con datos del perfil y del usuario, habilidades, características, T&C, y listas relacionadas de proyectos, contratos y publicaciones. Incluye todos los estados y no permite escritura. |
+| Detalle administrativo de proyectos | Implementado | `GET /admin/proyectos`, `GET /admin/proyectos/{idProyecto}` | `VER_PROYECTOS` | Listado con todos los estados, incluido `BORRADOR`. Detalle con ubicación, director, objetivos, requerimientos, moodboard, miembros activos e históricos y resumen de contratos. Solo lectura. |
+| Detalle administrativo de contratos | Implementado | `GET /admin/contratos`, `GET /admin/contratos/{idContrato}`, `GET /admin/contratos/{idContrato}/eventos` | `VER_CONTRATOS` | Listado con filtros por proyecto, estado, tipo, parte y fechas. Incluye `BORRADOR` y `ELIMINADO`. Detalle con texto legal completo, partes, firmas y eventos. Solo lectura. |
+
+> Los tres permisos son globales y se asignan al rol `Administrador` mediante la migración
+> `2026-11-16_admin_detalle_readonly.sql`. No forman parte del catálogo numerado de casos de uso.
+
+---
+
 ## Resumen
 
 | Módulo                             | Total UC | Implementado y testeado | Implementado | En progreso | No iniciado |
