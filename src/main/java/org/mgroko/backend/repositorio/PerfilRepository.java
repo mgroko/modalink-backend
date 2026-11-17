@@ -63,6 +63,29 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
     Optional<Perfil> findByIdPerfilAndUsuarioIdUsuario(Long idPerfil, Long idUsuario);
 
     /**
+     * Igual que {@link #findByIdPerfilAndUsuarioIdUsuario(Long, Long)}, pero
+     * inicializando el usuario dueño del perfil.
+     *
+     * <p>Se usa en validaciones que corren fuera de una transacción: con
+     * {@code spring.jpa.open-in-view=false} el perfil queda detached al
+     * volver del repositorio y acceder a {@code perfil.getUsuario()} dispara
+     * {@code LazyInitializationException}.</p>
+     *
+     * @param idPerfil  el ID del perfil
+     * @param idUsuario el ID del usuario dueño del perfil
+     * @return el perfil con su usuario inicializado
+     */
+    @Query("""
+        SELECT p FROM Perfil p
+        JOIN FETCH p.usuario u
+        WHERE p.idPerfil = :idPerfil
+          AND u.idUsuario = :idUsuario
+    """)
+    Optional<Perfil> findByIdPerfilAndUsuarioIdUsuarioConUsuario(
+            @Param("idPerfil") Long idPerfil,
+            @Param("idUsuario") Long idUsuario);
+
+    /**
      * Busca un perfil propio bloqueando la fila para serializar cambios
      * concurrentes sobre sus términos y condiciones (UC-23).
      */
