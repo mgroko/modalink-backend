@@ -1,11 +1,12 @@
 # Plan de Pruebas — ModaLink
 
 > **Metodología:** Proceso Unificado (UP)  
-> **Fase actual:** Construcción cerrada / transición a aceptación  
-> **Versión:** 1.0  
-> **Fecha de corte:** 11/11/2026  
-> **Alcance:** backend ModaLink (API REST + PostgreSQL)  
-> **Base:** suite de pruebas existente en `src/test/java`
+> **Fase actual:** Transición / cierre de pruebas  
+> **Versión:** 1.1  
+> **Fecha de corte:** 17/11/2026  
+> **Alcance:** backend ModaLink (API REST + PostgreSQL 17)  
+> **Base:** suite de pruebas existente en `src/test/java`  
+> **Última ejecución:** 17/11/2026 — 387 suites, 2.920 pruebas, 0 fallos, 0 errores, 4 omitidas
 
 ---
 
@@ -72,9 +73,10 @@ No incluye, por ahora:
 ### 2.1 Lectura del estado actual
 
 - Los **76 UC del seguimiento** están implementados y testeados.
-- La suite actual tiene **354 clases de test**, **2.763 pruebas ejecutadas**, **0 fallos y 0 errores**.
-- Cobertura global: **85,61 % de líneas**, **84,48 % de instrucciones**, **65,78 % de ramas**.
-- La etapa actual es de **transición**: consolidar regresión, aceptación y brechas de cobertura.
+- La suite actual tiene **390 archivos de prueba** (**387 suites ejecutadas**), **2.920 pruebas**, **0 fallos**, **0 errores** y **4 pruebas omitidas**.
+- Cobertura global: **84,23 % de líneas**, **84,00 % de instrucciones**, **63,68 % de ramas** y **84,29 % de métodos**.
+- Tiempo de ejecución de la suite completa: **≈ 11 minutos** (659 s).
+- La etapa actual es de **transición cerrada**: regresión completa en verde y brechas de cobertura identificadas por módulo.
 
 ---
 
@@ -241,23 +243,35 @@ Reportes:
 
 | Módulo | UC | Pruebas representativas | Cobertura de líneas |
 |---|---:|---|---:|
-| Usuarios y administración | 16 | `AuthControllerTest`, `AuthServiceTest`, `GoogleOAuthFlowIntegrationTest`, `AdminUsuarioControllerTest`, `AdminUsuarioServiceTest`, `AdminAuditoriaControllerTest` | 81,6 % auth / 89,6 % admin / 90,7 % auditoría |
-| Perfiles y disponibilidad | 13 | `PerfilControllerTest`, `CrearPerfilServiceTest`, `VerPerfilServiceTest`, `CalendarioControllerTest`, `CalendarioRepositoryIntegrationTest`, `GestionTerminosCondicionesIntegrationTest` | 88,8 % perfiles / 90,1 % calendario |
-| Publicaciones | 11 | `PublicacionControllerTest`, `CrearPublicacionServiceTest`, `ModificarPublicacionServiceTest`, `InteractuarPublicacionIntegrationTest`, `GestionarSolicitudColaboracionIntegrationTest` | 94,0 % |
-| Proyectos | 26 | `ProyectoControllerTest`, `CrearProyectoServiceTest`, `ConfirmarProyectoServiceTest`, `FinalizarProyectoServiceTest`, `CpmMotorTest`, `PublicarProyectoIntegrationTest`, `FinalizarProyectoIntegrationTest` | 84,3 % |
-| Contratos | 5 | `ContratoControllerTest`, `GenerarContratoServiceTest`, `GenerarContratoIntegrationTest`, `FirmarContratoIntegrationTest`, `RechazarContratoIntegrationTest` | 93,3 % |
-| Conexiones y mensajería | 5 | `ConexionControllerTest`, `SolicitudConexionControllerTest`, `ChatGrupalControllerTest`, `MensajeriaIntegrationTest`, `EliminarConexionConcurrencyIntegrationTest` | 96,9 % conexiones / 92,5 % mensajería |
-| Actividades | — | `ActividadControllerTest`, `CpmMotorTest`, `PlanificadorRecursosServiceTest`, `ModificarActividadIntegrationTest`, `EliminarActividadIntegrationTest` | 90,1 % |
-| Postulaciones e invitaciones | — | `PostulacionControllerTest`, `AceptarPostulacionServiceTest`, `InvitacionControllerTest`, `GestionarPostulacionConcurrencyIntegrationTest` | 93,3 % postulaciones / 84,2 % invitaciones |
-| Notificaciones | — | `NotificacionControllerTest`, listeners de actividad, habilidad, proyecto y reportes | 91,6 % |
-| Auditoría | — | `AdminAuditoriaControllerTest`, `ListarAuditoriaServiceTest`, `AuditoriaTriggerIntegrationTest`, `AuditoriaPerformanceIT` | 90,7 % |
-| Storage | — | `LocalStorageServiceTest`, `ProcesadorImagenTest`, `BorradoArchivosDiferidoTest`, `LimpiezaImagenesSchedulerTest` | 88,3 % |
-| Seguridad | — | `JwtAuthenticationFilterTest`, `JwtServiceTest`, `SecurityConfigTest`, `AdminAreaAccessSecurityTest`, `LogoutSecurityIntegrationTest` | 92,9 % |
-| Reemplazos automáticos | derivado | `EvaluadorConcordanciaTest`, `ReemplazoQueryServiceTest`, `GenerarReemplazosIntegrationTest` | 72,2 % |
-| Polaroids | derivado | `PolaroidPerfilControllerTest`, `CrearPolaroidPerfilServiceTest`, `PolaroidPerfilIntegrationTest` | 66,9 % |
-| Presencia | derivado | `PresenciaControllerTest`, `PresenciaServiceTest`, `PresenciaIntegrationTest` | 89,9 % |
+| Usuarios y administración | 16 | `AuthControllerTest`, `AuthServiceTest`, `GoogleOAuthFlowIntegrationTest`, `AdminUsuarioControllerTest`, `AdminUsuarioServiceTest`, `AdminAuditoriaControllerTest` | 80,2 % auth / 80,9 % admin / 90,9 % auditoría |
+| Perfiles y disponibilidad | 13 | `PerfilControllerTest`, `CrearPerfilServiceTest`, `VerPerfilServiceTest`, `CalendarioControllerTest`, `CalendarioRepositoryIntegrationTest`, `GestionTerminosCondicionesIntegrationTest` | 89,8 % perfiles / 90,9 % calendario |
+| Publicaciones | 11 | `PublicacionControllerTest`, `CrearPublicacionServiceTest`, `ModificarPublicacionServiceTest`, `InteractuarPublicacionIntegrationTest`, `GestionarSolicitudColaboracionIntegrationTest` | 87,0 % |
+| Proyectos | 26 | `ProyectoControllerTest`, `CrearProyectoServiceTest`, `ConfirmarProyectoServiceTest`, `FinalizarProyectoServiceTest`, `CpmMotorTest`, `PublicarProyectoIntegrationTest`, `FinalizarProyectoIntegrationTest` | 83,3 % |
+| Contratos | 5 | `ContratoControllerTest`, `GenerarContratoServiceTest`, `GenerarContratoIntegrationTest`, `FirmarContratoIntegrationTest`, `RechazarContratoIntegrationTest` | 90,5 % |
+| Conexiones y mensajería | 5 | `ConexionControllerTest`, `SolicitudConexionControllerTest`, `ChatGrupalControllerTest`, `MensajeriaIntegrationTest`, `EliminarConexionConcurrencyIntegrationTest` | 96,7 % conexiones / 91,9 % mensajería |
+| Actividades | — | `ActividadControllerTest`, `CpmMotorTest`, `PlanificadorRecursosServiceTest`, `ModificarActividadIntegrationTest`, `EliminarActividadIntegrationTest` | 89,6 % |
+| Postulaciones e invitaciones | — | `PostulacionControllerTest`, `AceptarPostulacionServiceTest`, `InvitacionControllerTest`, `GestionarPostulacionConcurrencyIntegrationTest` | 91,7 % postulaciones / 77,9 % invitaciones |
+| Notificaciones | — | `NotificacionControllerTest`, listeners de actividad, habilidad, proyecto y reportes | 73,6 % |
+| Auditoría | — | `AdminAuditoriaControllerTest`, `ListarAuditoriaServiceTest`, `AuditoriaTriggerIntegrationTest`, `AuditoriaPerformanceIT` | 90,9 % |
+| Storage | — | `LocalStorageServiceTest`, `ProcesadorImagenTest`, `BorradoArchivosDiferidoTest`, `LimpiezaImagenesSchedulerTest` | 86,1 % |
+| Seguridad | — | `JwtAuthenticationFilterTest`, `JwtServiceTest`, `SecurityConfigTest`, `AdminAreaAccessSecurityTest`, `LogoutSecurityIntegrationTest` | 92,6 % |
+| Reemplazos automáticos | derivado | `EvaluadorConcordanciaTest`, `ReemplazoQueryServiceTest`, `GenerarReemplazosIntegrationTest` | 71,5 % |
+| Polaroids | derivado | `PolaroidPerfilControllerTest`, `CrearPolaroidPerfilServiceTest`, `PolaroidPerfilIntegrationTest` | 65,6 % |
+| Presencia | derivado | `PresenciaControllerTest`, `PresenciaServiceTest`, `PresenciaIntegrationTest` | 90,4 % |
 
-> La cobertura indicada es de líneas y corresponde al reporte JaCoCo del 11/11/2026.
+> La cobertura indicada es de líneas y corresponde al reporte JaCoCo del 17/11/2026.
+
+### 6.1 Pruebas de colaboraciones automáticas
+
+El módulo de colaboraciones automáticas cuenta con pruebas específicas para cada capa del algoritmo:
+
+| Componente | Pruebas |
+|---|---|
+| Huellas de imagen | `HuellaImagenServiceTest` (SHA-256, pHash de 64 bits y distancia de Hamming) |
+| Verificación geométrica | `CoincidenciaVerificacionServiceTest` (ORB, ratio test de Lowe, RANSAC y pHash multi-recorte) |
+| Detección y propuestas | `DetectarColaboracionAutomaticaServiceTest`, `DetectarColaboracionAutomaticaAsyncServiceTest` |
+| Ciclo de vida | `GestionarColaboracionAutomaticaServiceTest`, `ColaboracionAutomaticaLifecycleServiceTest`, `ColaboracionAutomaticaEventoIntegrationTest` |
+| Procesamiento histórico | `AdminColaboracionHistoricaServiceTest`, `AdminColaboracionHistoricaControllerTest`, `AdminColaboracionHistoricaLocalIntegrationTest` |
 
 ---
 
@@ -267,35 +281,40 @@ Reportes:
 
 | Métrica | Valor |
 |---|---:|
-| Clases de test | **354** |
-| Pruebas ejecutadas | **2.763** |
+| Archivos de prueba | **390** |
+| Suites ejecutadas | **387** |
+| Pruebas ejecutadas | **2.920** |
 | Fallos | **0** |
 | Errores | **0** |
-| Cobertura de líneas | **85,61 %** |
-| Cobertura de instrucciones | **84,48 %** |
-| Cobertura de ramas | **65,78 %** |
+| Pruebas omitidas | **4** |
+| Tiempo de ejecución | **659 s** |
+| Cobertura de líneas | **84,23 %** |
+| Cobertura de instrucciones | **84,00 %** |
+| Cobertura de ramas | **63,68 %** |
+| Cobertura de métodos | **84,29 %** |
 
 ### 7.2 Módulos por debajo del 85 % de líneas
 
 | Módulo | Cobertura | Acción propuesta |
 |---|---:|---|
-| `common` | 17,1 % | Revisar si incluye DTOs/handlers generados; agregar tests de excepciones y utilidades reales |
-| `polaroids` | 66,9 % | Cubrir CRUD, permisos, visibilidad y casos de error |
-| `usuario` | 68,5 % | Reforzar datos personales, baja, reactivación y schedulers |
-| `reemplazos` | 72,2 % | Cubrir evaluación de candidatos, cancelación y regeneración |
-| `modelo` | 74,9 % | No priorizar getters/setters; cubrir lógica de entidades si existe |
-| `requerimientos` | 79,4 % | Cubrir búsquedas globales, filtros y elegibilidad |
-| `auth` | 81,6 % | Cubrir OAuth, CSRF, cookies y errores del callback |
-| `invitaciones` | 84,2 % | Cubrir batch, rechazo, concurrencia y cupos |
-| `proyectos` | 84,3 % | Reforzar finalización, reemplazos, reprogramación y snapshots |
-| `home` | 84,8 % | Cubrir resumen de oportunidades y estados vacíos |
+| `polaroids` | 65,6 % | Cubrir CRUD, permisos, visibilidad y casos de error |
+| `common` | 66,9 % | Revisar si incluye DTOs/handlers generados; agregar tests de excepciones y utilidades reales |
+| `usuario` | 68,1 % | Reforzar datos personales, baja, reactivación y schedulers |
+| `reemplazos` | 71,5 % | Cubrir evaluación de candidatos, cancelación y regeneración |
+| `notificaciones` | 73,6 % | Cubrir listeners, resolución de destinos y canales de entrega |
+| `modelo` | 75,4 % | No priorizar getters/setters; cubrir lógica de entidades si existe |
+| `invitaciones` | 77,9 % | Cubrir batch, rechazo, concurrencia y cupos |
+| `requerimientos` | 80,1 % | Cubrir búsquedas globales, filtros y elegibilidad |
+| `auth` | 80,2 % | Cubrir OAuth, CSRF, cookies y errores del callback |
+| `admin` | 80,9 % | Reforzar reportes, catálogos y tareas administrativas |
+| `proyectos` | 83,3 % | Reforzar finalización, reemplazos, reprogramación y snapshots |
 
 ### 7.3 Objetivos de cobertura
 
-- **Global:** ≥ 85 % de líneas (hoy 85,61 %).
+- **Global:** ≥ 85 % de líneas (hoy 84,23 %; brecha de 0,77 pp).
 - **Código nuevo o modificado:** ≥ 80 %.
-- **Módulos críticos** (proyectos, contratos, postulaciones, conexiones, mensajería, seguridad): ≥ 90 %.
-- **Ramas:** subir gradualmente desde 65,78 %; priorizar reglas de negocio y validaciones.
+- **Módulos críticos** (proyectos, contratos, postulaciones, conexiones, mensajería, seguridad): ≥ 90 %. Estado actual: contratos 90,5 %, postulaciones 91,7 %, conexiones 96,7 %, mensajería 91,9 %, seguridad 92,6 %; proyectos 83,3 % (brecha a cubrir).
+- **Ramas:** subir gradualmente desde 63,68 %; priorizar reglas de negocio y validaciones.
 
 ---
 
@@ -312,10 +331,10 @@ Reportes:
 
 ### 8.2 Criterios de salida
 
-- 100 % de las pruebas planificadas ejecutadas.
+- 100 % de las pruebas planificadas ejecutadas (2.920 pruebas; 4 omitidas justificadas).
 - 0 fallos y 0 errores en la suite completa.
 - 0 defectos críticos o bloqueantes abiertos.
-- Cobertura global ≥ 85 % de líneas.
+- Cobertura global ≥ 85 % de líneas (actual 84,23 %; brecha de 0,77 pp documentada por módulo).
 - Cada UC con al menos una prueba unitaria y una de integración, o justificación documentada.
 - Regresión completa en verde.
 - Reporte de JaCoCo y Surefire adjuntos.
@@ -351,10 +370,10 @@ Un UC se considera cerrado cuando:
 
 ### 9.1 Baseline actual
 
-- 2.763 pruebas, 0 fallos, 0 errores.
-- 85,61 % líneas / 84,48 % instrucciones / 65,78 % ramas.
-- Módulos con mejor cobertura: conexiones 96,9 %, reportes 95,6 %, ubicación 94,9 %, publicaciones 94,0 %.
-- Módulos a reforzar: `common`, `polaroids`, `usuario`, `reemplazos`, `requerimientos`, `auth`, `invitaciones`, `proyectos`.
+- 2.920 pruebas, 0 fallos, 0 errores, 4 omitidas; ejecución completa en 659 s.
+- 84,23 % líneas / 84,00 % instrucciones / 63,68 % ramas / 84,29 % métodos.
+- Módulos con mejor cobertura: conexiones 96,7 %, reportes 95,8 %, ubicación 94,7 %, seguridad 92,6 %, mensajería 91,9 %.
+- Módulos a reforzar: `polaroids`, `common`, `usuario`, `reemplazos`, `notificaciones`, `modelo`, `invitaciones`, `requerimientos`, `auth`, `admin`, `proyectos`.
 
 ---
 
