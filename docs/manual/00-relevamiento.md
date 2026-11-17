@@ -1,7 +1,12 @@
 # Relevamiento de pantallas — Manual de usuario de ModaLink
 
-**Etapa:** 1 de 4 (relevamiento)
+**Etapa:** 1 de 4 (relevamiento) — **VALIDADO**
 **Fecha:** 16/11/2026
+**Decisiones de validación (16/11/2026):**
+1. Se incluyen los cuatro capítulos complementarios: Contratos, Mensajería, Calificaciones y reseñas, y Colaboraciones automáticas.
+2. Las publicaciones se documentan con el mismo nivel de detalle que los proyectos, dentro del capítulo 8.
+3. Solo se documentan las pantallas de administración navegables desde el menú o desde un enlace visible. **Búsqueda de usuarios** queda fuera del cuerpo del manual; **Proyectos** se incluye porque el Dashboard tiene un enlace **Ver todos →**. La antigua pantalla **Reportes** ya no existe.
+4. Los defectos visibles de la interfaz no se mencionan en el manual.
 **Fuentes consultadas:**
 - Frontend Vue 3: `C:\Users\HP\Desktop\modalink-frontend` (router, vistas, componentes y servicios).
 - Backend Spring Boot: `C:\Users\HP\Desktop\modalink-backend` (controladores, servicios y reglas).
@@ -21,7 +26,7 @@
 
 | Pantalla | Ruta | Rol que accede | Caso de uso asociado | Estado |
 |---|---|---|---|---|
-| Te damos la bienvenida (iniciar sesión) | `/login` | Público | UC-01, UC-09; reactivación UC-07 | Completa [1][2][3] |
+| Te damos la bienvenida (iniciar sesión) | `/login` | Público | UC-01, UC-09; reactivación UC-07 | Completa [1][3] |
 | Creá tu cuenta (registro) | `/registro` | Público | UC-03, UC-09 | Completa [4] |
 | Conectando con Google (retorno) | `/auth/google/callback` | Público (retorno de Google) | UC-09 | Completa [5] |
 | Completá tu registro (onboarding Google) | `/auth/google/completar` | Usuario pendiente de completar datos de Google | UC-09 | Completa |
@@ -35,13 +40,13 @@
 | Pantalla | Ruta | Rol que accede | Caso de uso asociado | Estado |
 |---|---|---|---|---|
 | Dashboard / Mis perfiles | `/dashboard-usuario` | Usuario autenticado (también sin perfil activo) | UC-07, UC-12, UC-13, UC-14 | Completa [7][8] |
-| Modificar datos personales | `/dashboard-usuario/modificar-datos` | Usuario autenticado | UC-08 | Completa [9][10] |
+| Modificar datos personales | `/dashboard-usuario/modificar-datos` | Usuario autenticado | UC-08 | Completa [10] |
 | Calendario | `/dashboard-usuario/calendario` | Usuario con perfil activo | UC-17, UC-18, UC-71 | Completa [11] |
 | Notificaciones de la cuenta | `/dashboard-usuario/notificaciones` | Usuario autenticado | Módulo de notificaciones (sin UC numerado) | Completa [12] |
 | Notificaciones del perfil | `/notificaciones` | Usuario con perfil activo | Módulo de notificaciones (sin UC numerado) | Completa [12] |
 | Crear nuevo perfil | `/dashboard-usuario/crear-perfil` | Usuario autenticado | UC-10, UC-47, UC-14 | Completa [13] |
 | Editar perfil (desde el panel) | `/dashboard-usuario/editar-perfil/:id` | Perfil activo dueño | UC-11, UC-47 | Completa [14] |
-| Mi perfil | `/inicio-perfil` y `/inicio-perfil/:seccion` | Usuario con perfil activo | UC-14, UC-14 bis, UC-22, UC-23, UC-47, polaroids | Completa [15][16][17][18] |
+| Mi perfil | `/inicio-perfil` y `/inicio-perfil/:seccion` | Usuario con perfil activo | UC-14, UC-14 bis, UC-22, UC-23, UC-47, polaroids | Completa [15][16][18] |
 | Ver perfil de otro profesional | `/perfiles/:id` y `/perfiles/:id/:seccion` | Usuario con perfil activo | UC-14, UC-14 bis, UC-15, UC-16, UC-43, UC-44, UC-45 | Completa [19] |
 | Ajustes de perfil | `/inicio-perfil/ajustes` | Perfil activo dueño | UC-11, UC-12, UC-23 | Completa [20] |
 | Editar perfil (desde Mi perfil / Ajustes) | `/inicio-perfil/editar/:id` y `/inicio-perfil/ajustes/editar/:id` | Perfil activo dueño | UC-11, UC-47 | Completa [14] |
@@ -111,7 +116,6 @@
 | Detalle del reporte de publicación | `/admin/reportes-publicacion/:id` | Administrador | UC-69 | Completa |
 | Auditoría (informe y exportación) | `/admin/auditoria` | Administrador | UC-67 | Completa [51] |
 | Proyectos (administración) | `/admin/proyectos` | Administrador con permiso de ver usuarios | Consulta administrativa (sin UC numerado) | Completa [52] |
-| Reportes (administración) | `/admin/reportes` | Administrador | Sin UC (no implementado) | Parcial (placeholder) [53] |
 
 ---
 
@@ -162,19 +166,16 @@ Estos flujos son accesibles desde las pantallas anteriores y se documentarán de
 
 ---
 
-## 7. Solo backend o no implementado
+## 7. Solo backend
 
 | Funcionalidad | Dónde existe | Estado | Nota |
 |---|---|---|---|
-| Recuperar contraseña | — | No implementado | No hay pantalla ni endpoint. Solo existe recuperación de cuenta dada de baja. [2] |
-| Reportes administrativos generales | Ruta `/admin/reportes` | No implementado | Pantalla con texto “Los reportes administrativos todavía no están disponibles” y backend que responde “no implementado”. [53] |
 | Configuración de notificaciones por correo | Backend y base | Solo backend | Scheduler, remitente, reintentos y prioridad se configuran por propiedades del sistema; no hay pantalla. [54] |
 | Historial de eventos de un contrato | Backend | Solo backend | El detalle del contrato muestra datos y firmas, pero no la línea de eventos/versiones. [30] |
 | Auditoría de bajas de un proyecto | Backend | Solo backend | No se encontró pantalla que la consuma. |
 | Presencia en línea en tiempo real | Backend y componentes | Completa (invisible) | Se refleja en “En línea” de Mi red, mensajes y perfiles; no tiene pantalla propia. |
 | Rechazo automático por cupo completo | Backend | Solo backend | Se refleja en el estado de postulaciones e invitaciones y en notificaciones. |
 | Eliminación definitiva de cuentas y perfiles vencidos | Backend (scheduler) | Solo backend | Se configura desde el Panel de Administración; el usuario no ejecuta la acción. |
-| Sección “Participaciones” del perfil | Mi perfil | No implementado | Al elegirla muestra “La funcionalidad «Participaciones» todavía no está disponible”. [17] |
 
 ---
 
@@ -205,22 +206,19 @@ Estos flujos son accesibles desde las pantallas anteriores y se documentarán de
 ## 9. Observaciones preliminares (a completar en la revisión final)
 
 [1] El inicio de sesión con Google está integrado en la misma pantalla; no hay una pantalla separada de “elegir método”.
-[2] No existe “recuperar contraseña” ni “recordarme”. La recuperación disponible es la reactivación de una cuenta dada de baja.
 [3] El modal de reactivación de cuenta solo aparece cuando el backend responde con el código de cuenta pendiente de baja.
 [4] El formulario de registro pide también DNI y género, que no figuran en el caso de uso UC-03.
 [5] La pantalla de retorno de Google es solo de transición: no tiene acciones propias.
 [6] El acceso por enlace de correo es una extensión implementada que no está en el catálogo de casos de uso.
 [7] La pestaña “Calendario” del dashboard navega a otra ruta; el contenido alternativo de esa pestaña no es alcanzable.
 [8] El color de las tarjetas de perfil por profesión está fijado en el código (comentario pendiente en el código).
-[9] No se pueden modificar correo, DNI ni contraseña desde “Modificar datos personales”.
 [10] El archivo de la vista contiene un texto suelto antes de la plantilla (“Modificardatosview · VUE”), defecto técnico que conviene corregir.
 [11] La agenda se puede consultar en modo lectura desde el perfil propio y ajeno; las acciones solo aparecen en el perfil propio.
 [12] La bandeja no tiene paginación visible (pide 100 registros) ni acciones de borrar o marcar como no leída.
 [13] La foto y las habilidades se asocian después de crear el perfil; si falla alguna, el perfil queda creado y se avisa.
 [14] La profesión no se puede cambiar una vez creado el perfil.
-[15] “Mi perfil” incluye publicaciones, proyectos, reseñas, términos, habilidades, características y polaroids; “Participaciones” no está disponible.
+[15] “Mi perfil” incluye publicaciones, proyectos, reseñas, términos, habilidades, características y polaroids.
 [16] El historial de proyectos del perfil muestra solo proyectos finalizados o cancelados.
-[17] La sección “Participaciones” muestra un aviso de funcionalidad no disponible y redirige al perfil.
 [18] Las polaroids se gestionan con modales dentro del perfil; no tienen pantalla propia.
 [19] En el perfil ajeno el calendario es solo lectura y no se muestran acciones de edición.
 [20] La baja del perfil se puede iniciar desde tres lugares distintos (panel, ajustes y perfil) con textos equivalentes.
@@ -256,7 +254,6 @@ Estos flujos son accesibles desde las pantallas anteriores y se documentarán de
 [50] “Configuración del sistema” es un menú de cinco tarjetas; no edita parámetros generales.
 [51] La auditoría permite filtrar, ver el resumen y exportar a CSV o PDF.
 [52] “Proyectos” de administración no está en el menú lateral y su encabezado no tiene título de ruta.
-[53] “Reportes” de administración está fuera del menú, muestra un aviso de no disponible y el backend responde “no implementado”.
 [54] Las notificaciones por correo se envían solo para prioridad alta y su configuración no es visible en la interfaz.
 
 ### Contradicciones entre documentación y código (preliminar)
@@ -269,14 +266,16 @@ Estos flujos son accesibles desde las pantallas anteriores y se documentarán de
 6. **Catálogo de permisos:** el esquema canónico define 12 permisos globales, pero el código y las migraciones usan además permisos de tipos de contrato (`VER_TIPOS_CONTRATO`, `CREAR_TIPO_CONTRATO`, `MODIFICAR_TIPO_CONTRATO`, `ELIMINAR_TIPO_CONTRATO`).
 7. **Estructura del manual:** la estructura solicitada no contempla contratos, mensajería, calificaciones/reseñas ni colaboraciones automáticas, que sí están implementados y son accesibles.
 8. **Publicaciones:** los casos de uso UC-19 a UC-22 y UC-61 a UC-66 están implementados, pero la estructura solicitada solo menciona “Conexiones y publicaciones (solo la parte implementada)”.
-9. **Administración:** la vista “Reportes” existe como pantalla, pero no tiene funcionalidad; el menú la omite.
-10. **Notificaciones:** no tienen casos de uso numerados en el catálogo, aunque son un módulo completo con tres bandejas.
+9. **Notificaciones:** no tienen casos de uso numerados en el catálogo, aunque son un módulo completo con tres bandejas.
 
 ---
 
-## 10. Preguntas para validar antes de redactar
+## 10. Validación y decisiones de redacción
 
-1. ¿Incluyo capítulos complementarios para **Contratos**, **Mensajería**, **Calificaciones y reseñas** y **Colaboraciones automáticas**, o los integro como secciones dentro de los capítulos 7 y 8?
-2. ¿Documento las **publicaciones** con el mismo nivel de detalle que proyectos (alta, edición, baja, interacciones, colaboraciones y reportes) dentro del capítulo 8?
-3. ¿Incluyo en el manual las pantallas de administración que **no están en el menú** (Búsqueda de usuarios, Proyectos, Reportes) o solo las accesibles por navegación normal?
-4. ¿Querés que el manual mencione los **defectos visibles** (por ejemplo, el filtro “Pendiente de baja” o el texto suelto en Modificar datos) en “Observaciones para el equipo”, sin reflejarlos en los pasos?
+1. Se incluyeron capítulos complementarios para **Contratos**, **Mensajería**, **Calificaciones y reseñas** y **Colaboraciones automáticas**.
+2. Las **publicaciones** se documentaron con el mismo nivel de detalle que los proyectos dentro del capítulo 8.
+3. Se documentaron solo las pantallas de administración navegables. **Búsqueda de usuarios** queda fuera; **Proyectos** se incluye por el enlace del Dashboard.
+4. No se incluyeron defectos visibles en los pasos del manual.
+5. La antigua pantalla **Reportes** fue eliminada: el Panel de Administración solo tiene **Reportes de perfil** y **Reportes de publicaciones**.
+6. La sección **Participaciones** ya no existe.
+7. No se documentan funciones no previstas (recuperación de contraseña, cambio de correo, DNI o contraseña).
