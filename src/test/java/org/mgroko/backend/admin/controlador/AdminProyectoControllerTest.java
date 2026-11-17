@@ -41,7 +41,7 @@ class AdminProyectoControllerTest {
         when(adminProyectoService.listarProyectos(any(), anyInt(), anyInt()))
                 .thenReturn(new PaginaResponse<>(
                         List.of(new AdminProyectoList(
-                                10L, "Proyecto Luna", LocalDateTime.now(),
+                                10L, "Proyecto Luna", LocalDateTime.now(), null,
                                 EstadoProyecto.BORRADOR, "PUBLICO")),
                         0, 20, 1, 1, true, true));
 

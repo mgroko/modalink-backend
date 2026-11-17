@@ -7,6 +7,7 @@ public record AdminProyectoList(
         Long idProyecto,
         String nombre,
         LocalDateTime fechaInicio,
+        LocalDateTime fechaFinalizacion,
         EstadoProyecto estado,
         String privacidad
 ) {}

@@ -159,6 +159,7 @@ public class AdminProyectoService {
                 proyecto.getIdProyecto(),
                 proyecto.getNombre(),
                 proyecto.getFechaInicio(),
+                proyecto.getFechaFinalizacion(),
                 proyecto.getEstado(),
                 proyecto.getPrivacidad() != null
                         ? proyecto.getPrivacidad().name()
