@@ -9256,3 +9256,26 @@ CREATE TABLE procesamiento_colaboracion_historica_error (
 
 CREATE INDEX idx_proc_colab_hist_error_job
     ON procesamiento_colaboracion_historica_error(id_procesamiento);
+
+-- ============================================================================
+-- Consulta administrativa de solo lectura: perfiles, proyectos y contratos
+-- ============================================================================
+
+INSERT INTO permiso_global (nombre)
+SELECT v.nombre
+FROM (VALUES
+    ('VER_PERFILES'),
+    ('VER_PROYECTOS'),
+    ('VER_CONTRATOS')
+) AS v(nombre)
+WHERE NOT EXISTS (
+    SELECT 1 FROM permiso_global pg WHERE pg.nombre = v.nombre
+);
+
+INSERT INTO rol_global_permiso (id_rol_global, id_permiso_global)
+SELECT rg.id_rol_global, pg.id_permiso_global
+FROM rol_global rg
+CROSS JOIN permiso_global pg
+WHERE rg.nombre = 'Administrador'
+  AND pg.nombre IN ('VER_PERFILES', 'VER_PROYECTOS', 'VER_CONTRATOS')
+ON CONFLICT DO NOTHING;

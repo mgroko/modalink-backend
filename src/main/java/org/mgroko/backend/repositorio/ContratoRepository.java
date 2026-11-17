@@ -8,7 +8,12 @@ import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.repositorio.proyeccion.ContratoActivoProyeccion;
 import org.mgroko.backend.repositorio.proyeccion.ProyectoDeEntidad;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,7 +21,68 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 public interface ContratoRepository
-        extends JpaRepository<Contrato, Long>, ContratoBusquedaRepository {
+        extends JpaRepository<Contrato, Long>,
+                ContratoBusquedaRepository,
+                JpaSpecificationExecutor<Contrato> {
+
+    /**
+     * Listado administrativo de contratos. Inicializa las relaciones que usa
+     * el resumen sin aplicar reglas de visibilidad.
+     */
+    @Override
+    @EntityGraph(attributePaths = {
+            "proyecto",
+            "tipoAcuerdo",
+            "miembroEmisor",
+            "miembroEmisor.perfil",
+            "miembroEmisor.perfil.usuario"
+    })
+    Page<Contrato> findAll(Specification<Contrato> spec, Pageable pageable);
+
+    /**
+     * Contratos en los que el perfil es emisor o parte firmante. Incluye todos
+     * los estados y se usa en el detalle administrativo del perfil.
+     */
+    @Query("""
+        SELECT c FROM Contrato c
+        JOIN FETCH c.proyecto p
+        JOIN FETCH c.tipoAcuerdo ta
+        WHERE c.miembroEmisor.perfil.idPerfil = :idPerfil
+           OR EXISTS (
+                SELECT 1 FROM FirmaContrato f
+                WHERE f.idContrato = c.idContrato
+                  AND f.miembro.perfil.idPerfil = :idPerfil
+           )
+        ORDER BY COALESCE(c.fechaEmision, c.fechaCreacion) DESC, c.idContrato DESC
+    """)
+    List<Contrato> findByIdPerfilComoParte(
+            @Param("idPerfil") Long idPerfil,
+            Pageable pageable);
+
+    @Query("""
+        SELECT COUNT(DISTINCT c) FROM Contrato c
+        WHERE c.miembroEmisor.perfil.idPerfil = :idPerfil
+           OR EXISTS (
+                SELECT 1 FROM FirmaContrato f
+                WHERE f.idContrato = c.idContrato
+                  AND f.miembro.perfil.idPerfil = :idPerfil
+           )
+    """)
+    long countByIdPerfilComoParte(@Param("idPerfil") Long idPerfil);
+
+    /**
+     * Contratos de un proyecto con el tipo de acuerdo inicializado. Incluye
+     * borradores, cancelados y eliminados.
+     */
+    @Query("""
+        SELECT c FROM Contrato c
+        JOIN FETCH c.proyecto p
+        JOIN FETCH c.tipoAcuerdo ta
+        WHERE p.idProyecto = :idProyecto
+        ORDER BY c.fechaCreacion DESC, c.idContrato DESC
+    """)
+    List<Contrato> findByProyectoIdProyectoConTipo(
+            @Param("idProyecto") Long idProyecto);
 
     @Query("""
         SELECT c FROM Contrato c

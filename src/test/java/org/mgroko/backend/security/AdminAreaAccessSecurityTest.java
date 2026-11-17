@@ -5,7 +5,13 @@ import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAu
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.admin.controlador.AdminContratoController;
+import org.mgroko.backend.admin.controlador.AdminPerfilController;
+import org.mgroko.backend.admin.controlador.AdminProyectoController;
 import org.mgroko.backend.admin.controlador.AdminUsuarioController;
+import org.mgroko.backend.admin.servicio.AdminContratoService;
+import org.mgroko.backend.admin.servicio.AdminPerfilService;
+import org.mgroko.backend.admin.servicio.AdminProyectoService;
 import org.mgroko.backend.admin.servicio.AdminUsuarioService;
 import org.mgroko.backend.auth.oauth.CookieOAuth2AuthorizationRequestRepository;
 import org.mgroko.backend.auth.oauth.GoogleOAuth2FailureHandler;
@@ -46,6 +52,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class, controllers = {
         HomeController.class,
         AdminUsuarioController.class,
+        AdminPerfilController.class,
+        AdminProyectoController.class,
+        AdminContratoController.class,
         ProfesionController.class,
         CaracteristicaTecnicaController.class,
         RequerimientoBusquedaController.class
@@ -64,6 +73,15 @@ class AdminAreaAccessSecurityTest {
 
     @MockitoBean
     private AdminUsuarioService adminUsuarioService;
+
+    @MockitoBean
+    private AdminPerfilService adminPerfilService;
+
+    @MockitoBean
+    private AdminProyectoService adminProyectoService;
+
+    @MockitoBean
+    private AdminContratoService adminContratoService;
 
     @MockitoBean
     private ProfesionService profesionService;
@@ -118,6 +136,66 @@ class AdminAreaAccessSecurityTest {
                                 new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"),
                                 new SimpleGrantedAuthority("VER_USUARIOS"))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void administradorConVerPerfiles_puedeConsultarPerfiles() throws Exception {
+        when(adminPerfilService.buscar(any(), anyInt(), anyInt(), anyBoolean()))
+                .thenReturn(new PaginaResponse<>(List.of(), 0, 20, 0, 0, true, true));
+
+        mockMvc.perform(get("/admin/perfiles")
+                        .with(user("admin").authorities(
+                                new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"),
+                                new SimpleGrantedAuthority("VER_PERFILES"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void administradorSinVerPerfiles_noPuedeConsultarPerfiles() throws Exception {
+        mockMvc.perform(get("/admin/perfiles")
+                        .with(user("admin").authorities(
+                                new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void administradorConVerProyectos_puedeConsultarProyectos() throws Exception {
+        when(adminProyectoService.listarProyectos(any(), anyInt(), anyInt()))
+                .thenReturn(new PaginaResponse<>(List.of(), 0, 20, 0, 0, true, true));
+
+        mockMvc.perform(get("/admin/proyectos")
+                        .with(user("admin").authorities(
+                                new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"),
+                                new SimpleGrantedAuthority("VER_PROYECTOS"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void administradorSinVerProyectos_noPuedeConsultarProyectos() throws Exception {
+        mockMvc.perform(get("/admin/proyectos")
+                        .with(user("admin").authorities(
+                                new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void administradorConVerContratos_puedeConsultarContratos() throws Exception {
+        when(adminContratoService.buscar(any(), anyInt(), anyInt(), anyBoolean()))
+                .thenReturn(new PaginaResponse<>(List.of(), 0, 20, 0, 0, true, true));
+
+        mockMvc.perform(get("/admin/contratos")
+                        .with(user("admin").authorities(
+                                new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"),
+                                new SimpleGrantedAuthority("VER_CONTRATOS"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void administradorSinVerContratos_noPuedeConsultarContratos() throws Exception {
+        mockMvc.perform(get("/admin/contratos")
+                        .with(user("admin").authorities(
+                                new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"))))
+                .andExpect(status().isForbidden());
     }
 
     @Test

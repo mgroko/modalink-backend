@@ -65,6 +65,37 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
             Pageable pageable);
 
     /**
+     * Publicaciones relacionadas de un perfil para el detalle administrativo.
+     * Incluye publicaciones propias y colaboraciones, sin filtrar por estado
+     * (ACTIVA u OCULTA).
+     */
+    @EntityGraph(attributePaths = {"proyecto"})
+    @Query("""
+            SELECT DISTINCT p
+            FROM Publicacion p
+            WHERE p.perfil.idPerfil = :idPerfil
+               OR EXISTS (
+                    SELECT c FROM p.colaboradores c
+                    WHERE c.idPerfil = :idPerfil
+               )
+            ORDER BY p.fechaPublicacion DESC, p.idPublicacion DESC
+            """)
+    List<Publicacion> findRelacionadasAdmin(
+            @Param("idPerfil") Long idPerfil,
+            Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(DISTINCT p)
+            FROM Publicacion p
+            WHERE p.perfil.idPerfil = :idPerfil
+               OR EXISTS (
+                    SELECT c FROM p.colaboradores c
+                    WHERE c.idPerfil = :idPerfil
+               )
+            """)
+    long countRelacionadasAdmin(@Param("idPerfil") Long idPerfil);
+
+    /**
      * Proyectos distintos asociados a publicaciones activas del perfil.
      * Se usan para poblar el selector de proyecto de UC-22.
      */

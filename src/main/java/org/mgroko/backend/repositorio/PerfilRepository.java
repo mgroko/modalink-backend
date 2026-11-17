@@ -8,6 +8,9 @@ import java.util.Optional;
 import org.mgroko.backend.admin.dto.AdminDashboardProfesionRow;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -19,6 +22,36 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecificationExecutor<Perfil> {
+
+    /**
+     * Listado administrativo de perfiles con los datos necesarios para el
+     * resumen, sin aplicar reglas de visibilidad.
+     */
+    @Override
+    @EntityGraph(attributePaths = {"usuario", "usuario.rolGlobal", "profesion", "imagen"})
+    Page<Perfil> findAll(Specification<Perfil> spec, Pageable pageable);
+
+    /**
+     * Detalle administrativo completo. Incluye usuario, ubicacion, genero,
+     * profesion, imagen, habilidades y caracteristicas tecnicas.
+     */
+    @EntityGraph(attributePaths = {
+            "usuario",
+            "usuario.rolGlobal",
+            "usuario.genero",
+            "usuario.ubicacion",
+            "usuario.ubicacion.ciudad",
+            "usuario.ubicacion.ciudad.provincia",
+            "usuario.ubicacion.ciudad.provincia.pais",
+            "profesion",
+            "imagen",
+            "habilidades",
+            "caracteristicas",
+            "caracteristicas.caracteristicaTecnica",
+            "caracteristicas.valorCaracteristica"
+    })
+    @Query("SELECT p FROM Perfil p WHERE p.idPerfil = :idPerfil")
+    Optional<Perfil> findByIdConDetalleAdmin(@Param("idPerfil") Long idPerfil);
 
     @Query("""
         SELECT new org.mgroko.backend.admin.dto.AdminDashboardProfesionRow(
