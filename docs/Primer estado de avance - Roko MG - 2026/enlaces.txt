@@ -1,0 +1,6 @@
+Link al video: https://youtu.be/jbm0-4z-Xe0
+
+Repositorio de backend: https://github.com/mgroko/modalink-backend
+
+Repositorio de frontend: https://github.com/mgroko/modalink-frontend
+
