@@ -8,6 +8,7 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -41,18 +42,21 @@ public class ListarFeedPublicacionesService {
     private final PublicacionRepository publicacionRepository;
     private final ProyectoVisibilidadService proyectoVisibilidadService;
     private final PublicacionInteraccionResumenService interaccionResumenService;
+    private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
 
     public ListarFeedPublicacionesService(
             PerfilRepository perfilRepository,
             ConexionRepository conexionRepository,
             PublicacionRepository publicacionRepository,
             ProyectoVisibilidadService proyectoVisibilidadService,
-            PublicacionInteraccionResumenService interaccionResumenService) {
+            PublicacionInteraccionResumenService interaccionResumenService,
+            ColaboradorPublicacionOrigenService colaboradorOrigenService) {
         this.perfilRepository = perfilRepository;
         this.conexionRepository = conexionRepository;
         this.publicacionRepository = publicacionRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.interaccionResumenService = interaccionResumenService;
+        this.colaboradorOrigenService = colaboradorOrigenService;
     }
 
     @Transactional(readOnly = true)
@@ -96,6 +100,12 @@ public class ListarFeedPublicacionesService {
                                 .toList(),
                         idPerfilActivo);
 
+        Map<Long, Map<Long, OrigenColaboracion>> origenes =
+                colaboradorOrigenService.obtenerOrigenes(
+                        publicaciones.getContent().stream()
+                                .map(Publicacion::getIdPublicacion)
+                                .toList());
+
         Page<PublicacionResponse> respuesta = publicaciones.map(publicacion -> {
             boolean puedeVerProyecto = publicacion.getProyecto() != null
                     && proyectoVisibilidadService.puedeVer(
@@ -105,7 +115,8 @@ public class ListarFeedPublicacionesService {
                     puedeVerProyecto,
                     resumenes.getOrDefault(
                             publicacion.getIdPublicacion(),
-                            ResumenInteraccionPublicacion.vacio()));
+                            ResumenInteraccionPublicacion.vacio()),
+                    origenes.getOrDefault(publicacion.getIdPublicacion(), Map.of()));
         });
 
         return PaginaResponse.fromPage(respuesta);

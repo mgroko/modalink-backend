@@ -126,13 +126,17 @@ public class AuditoriaExportService {
     public AuditoriaFiltroResuelto validarExportacion(
             LocalDate fechaDesde,
             LocalDate fechaHasta,
-            List<String> tiposEvento) {
+            List<String> tiposEvento,
+            String operador,
+            String texto) {
 
         AuditoriaFiltroResuelto filtro =
-                auditoriaFiltroService.resolver(fechaDesde, fechaHasta, tiposEvento);
+                auditoriaFiltroService.resolver(
+                        fechaDesde, fechaHasta, tiposEvento, operador, texto);
 
         long total = auditoriaRepository.count(AuditoriaSpecifications.conFiltros(
-                filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos()));
+                filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos(),
+                filtro.operador(), filtro.texto()));
 
         int maximo = configuracionSistemaService.obtenerMaximoExportacionAuditoria();
         if (total > maximo) {
@@ -189,7 +193,9 @@ public class AuditoriaExportService {
         AuditoriaResumenResponse resumen = auditoriaResumenService.obtenerResumen(
                 filtro.fechaDesde().toLocalDate(),
                 filtro.fechaHasta().toLocalDate(),
-                filtro.tipos());
+                filtro.tipos(),
+                filtro.operador(),
+                filtro.texto());
 
         Document document = new Document(PageSize.A4.rotate(), 24, 24, 32, 32);
         try {
@@ -265,6 +271,14 @@ public class AuditoriaExportService {
                                 filtro.tieneFiltroDeTipos()
                                         ? String.join(",", filtro.tipos())
                                         : "TODOS"),
+                        new AuditoriaDetalleRequest("operador", null,
+                                filtro.tieneFiltroDeOperador()
+                                        ? filtro.operador()
+                                        : "TODOS"),
+                        new AuditoriaDetalleRequest("texto", null,
+                                filtro.tieneFiltroDeTexto()
+                                        ? filtro.texto()
+                                        : "TODOS"),
                         new AuditoriaDetalleRequest("registros", null,
                                 String.valueOf(registros))));
     }
@@ -272,7 +286,8 @@ public class AuditoriaExportService {
     private DatosExportacion cargarDatos(AuditoriaFiltroResuelto filtro) {
         List<Auditoria> registros = auditoriaRepository.findAll(
                 AuditoriaSpecifications.conFiltros(
-                        filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos()),
+                        filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos(),
+                        filtro.operador(), filtro.texto()),
                 Sort.by(
                         Sort.Order.desc("fechaHora"),
                         Sort.Order.desc("idAuditoria")));

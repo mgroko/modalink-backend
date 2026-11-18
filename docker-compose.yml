@@ -12,5 +12,15 @@ services:
       - ./docs/3_diseño/ModaLinkBD.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - pgdata:/var/lib/postgresql/data
 
+  # Mailpit: SMTP local + UI web para desarrollo/testing.
+  # Se levanta con: docker compose --profile mail up -d
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: modalink-mailpit
+    profiles: ["mail"]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   pgdata:

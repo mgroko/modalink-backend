@@ -224,7 +224,18 @@ public class AuthService {
     }
 
     public LoginResultado construirLoginResultado(Usuario usuario) {
-        Perfil perfilActivoInicial = resolverPerfilActivoPorDefecto(usuario);
+        return construirLoginResultado(usuario, resolverPerfilActivoPorDefecto(usuario));
+    }
+
+    /**
+     * Construye la sesión usando el perfil indicado. Se usa en el auto-login
+     * por email para respetar el perfil contextual de la notificación. Si el
+     * usuario es administrador, el perfil se ignora.
+     */
+    public LoginResultado construirLoginResultado(Usuario usuario, Perfil perfilActivo) {
+        Perfil perfilActivoInicial = PerfilAccessPolicy.esAdministrador(usuario)
+                ? null
+                : perfilActivo;
 
         String token = jwtService.generarToken(
                 usuario.getIdUsuario().toString(),

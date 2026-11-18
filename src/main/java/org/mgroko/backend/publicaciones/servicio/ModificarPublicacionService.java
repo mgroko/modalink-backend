@@ -13,6 +13,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPublicacion;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.ModificarPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
@@ -20,12 +21,15 @@ import org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion;
 import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
+import org.mgroko.backend.publicaciones.evento.ColaboracionAutomaticaSolicitadaEvent;
 import org.mgroko.backend.publicaciones.mapper.PublicacionMapper;
 import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PublicacionRepository;
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
+import org.mgroko.backend.storage.servicio.HuellaImagenService;
 import org.mgroko.backend.storage.servicio.StorageService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,6 +55,9 @@ public class ModificarPublicacionService {
     private final BorradoArchivosDiferido borradoArchivosDiferido;
     private final EntityManager entityManager;
     private final PublicacionInteraccionResumenService interaccionResumenService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
+    private final ColaboradorPublicacionOrigenService colaboradorOrigenService;
 
     public ModificarPublicacionService(
             PublicacionRepository publicacionRepository,
@@ -60,7 +67,10 @@ public class ModificarPublicacionService {
             StorageService storageService,
             BorradoArchivosDiferido borradoArchivosDiferido,
             EntityManager entityManager,
-            PublicacionInteraccionResumenService interaccionResumenService) {
+            PublicacionInteraccionResumenService interaccionResumenService,
+            ApplicationEventPublisher eventPublisher,
+            ColaboracionAutomaticaLifecycleService colaboracionLifecycleService,
+            ColaboradorPublicacionOrigenService colaboradorOrigenService) {
         this.publicacionRepository = publicacionRepository;
         this.imagenRepository = imagenRepository;
         this.publicacionDatosService = publicacionDatosService;
@@ -69,6 +79,9 @@ public class ModificarPublicacionService {
         this.borradoArchivosDiferido = borradoArchivosDiferido;
         this.entityManager = entityManager;
         this.interaccionResumenService = interaccionResumenService;
+        this.eventPublisher = eventPublisher;
+        this.colaboracionLifecycleService = colaboracionLifecycleService;
+        this.colaboradorOrigenService = colaboradorOrigenService;
     }
 
     @Transactional
@@ -114,7 +127,12 @@ public class ModificarPublicacionService {
         ResumenInteraccionPublicacion resumen =
                 interaccionResumenService.resumirUna(idPublicacion, perfil.getIdPerfil());
 
-        return PublicacionMapper.toResponsePropia(publicacion, puedeVerProyecto, resumen);
+        Map<Long, OrigenColaboracion> origenes = colaboradorOrigenService
+                .obtenerOrigenes(List.of(publicacion.getIdPublicacion()))
+                .getOrDefault(publicacion.getIdPublicacion(), Map.of());
+
+        return PublicacionMapper.toResponsePropia(
+                publicacion, puedeVerProyecto, resumen, origenes);
     }
 
     private void actualizarProyecto(Publicacion publicacion, Long idProyecto, Perfil perfil) {
@@ -213,6 +231,7 @@ public class ModificarPublicacionService {
         }
 
         for (Imagen imagen : aEliminar) {
+            colaboracionLifecycleService.cancelarPendientesPorImagen(imagen.getIdImagen());
             publicacionRepository.eliminarImagenPublicacion(
                     idPublicacion, imagen.getIdImagen());
             borradoArchivosDiferido.registrarBorrados(null, imagen.getNombreArchivo());
@@ -232,6 +251,10 @@ public class ModificarPublicacionService {
                     .tipoImagen(almacenado.tipoMime())
                     .tamanoBytes((int) almacenado.tamanoBytes())
                     .estado(PublicacionDatosService.ESTADO_IMAGEN_ACTIVA)
+                    .sha256Original(almacenado.sha256Original())
+                    .sha256Contenido(almacenado.sha256Contenido())
+                    .phash(almacenado.phash())
+                    .phashVersion(HuellaImagenService.PHASH_VERSION)
                     .build());
 
             publicacionRepository.insertarImagenPublicacion(
@@ -258,6 +281,16 @@ public class ModificarPublicacionService {
         if (publicacion.getColaboradores() != null) {
             publicacion.getColaboradores().size();
         }
+
+        if (!nuevas.isEmpty()) {
+            eventPublisher.publishEvent(new ColaboracionAutomaticaSolicitadaEvent(
+                    publicacion.getIdPublicacion(),
+                    nuevas.stream()
+                            .map(Imagen::getIdImagen)
+                            .filter(Objects::nonNull)
+                            .toList()));
+        }
+
         entityManager.clear();
     }
 }

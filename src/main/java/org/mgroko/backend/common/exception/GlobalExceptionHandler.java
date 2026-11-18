@@ -37,6 +37,7 @@ import org.mgroko.backend.auth.exception.IdentidadGoogleConflictoException;
 import org.mgroko.backend.auth.exception.RegistroConSesionActivaException;
 import org.mgroko.backend.auth.exception.RegistroPendienteInvalidoException;
 import org.mgroko.backend.auth.exception.RolGlobalNoEncontradoException;
+import org.mgroko.backend.auth.exception.TokenEmailException;
 import org.mgroko.backend.auth.exception.UsuarioDeshabilitadoException;
 import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.calendario.exception.AgendaNoEncontradaException;
@@ -148,6 +149,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<Map<String, Object>> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(TokenEmailException.class)
+    public ResponseEntity<Map<String, Object>> handleTokenEmail(TokenEmailException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("codigo", ex.getCodigo());
+        response.put("message", ex.getMessage());
+        response.put("httpStatus", ex.getHttpStatus().value());
+        response.put("timestamp", System.currentTimeMillis());
+        return new ResponseEntity<>(response, ex.getHttpStatus());
     }
 
     @ExceptionHandler(RegistroPendienteInvalidoException.class)
@@ -456,6 +467,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePublicacionNoEncontrada(
             PublicacionNoEncontradaException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaNoEncontrada(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoEncontradaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPermitidaException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaNoPermitida(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPermitidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPendienteException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaNoPendiente(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaNoPendienteException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleColaboracionAutomaticaInvalida(
+            org.mgroko.backend.publicaciones.exception.ColaboracionAutomaticaInvalidaException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.mgroko.backend.publicaciones.exception.EstadoPublicacionInvalidoException.class)
@@ -1692,6 +1727,36 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleReordenamientoPolaroidsInvalido(
             org.mgroko.backend.polaroids.exception.ReordenamientoPolaroidsInvalidoException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoNoEncontrado(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoEncontradoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoEnCursoException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoEnCurso(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoEnCursoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoCancelableException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoNoCancelable(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoNoCancelableException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoInvalido(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoInvalidoException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.admin.exception.ProcesamientoHistoricoSinDatosException.class)
+    public ResponseEntity<Map<String, Object>> handleProcesamientoHistoricoSinDatos(
+            org.mgroko.backend.admin.exception.ProcesamientoHistoricoSinDatosException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
 }

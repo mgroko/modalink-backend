@@ -22,6 +22,17 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     Optional<Notificacion> findByIdNotificacionAndUsuarioDestino_IdUsuario(
             Long idNotificacion, Long idUsuario);
 
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM notificacion_tipo nt
+                WHERE nt.codigo = :tipo
+                  AND nt.activo = true
+                  AND nt.prioridad = 'ALTA'
+            )
+            """, nativeQuery = true)
+    boolean esTipoEmailPrioridadAlta(@Param("tipo") String tipo);
+
     long countByUsuarioDestino_IdUsuario(Long idUsuario);
 
     long countByUsuarioDestino_IdUsuarioAndLeidaFalse(Long idUsuario);
@@ -33,6 +44,17 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
             Long idUsuario, Long idPerfilContexto);
 
     boolean existsByUsuarioDestino_IdUsuarioAndTipoAndEntidadTipoAndEntidadIdAndLeidaFalse(
+            Long idUsuario,
+            String tipo,
+            String entidadTipo,
+            Long entidadId);
+
+    /**
+     * Indica si el usuario ya recibió una notificación de ese tipo para la
+     * entidad, sin importar si la marcó como leída. Se usa para que el rechazo
+     * automático sea idempotente y no duplique avisos.
+     */
+    boolean existsByUsuarioDestino_IdUsuarioAndTipoAndEntidadTipoAndEntidadId(
             Long idUsuario,
             String tipo,
             String entidadTipo,

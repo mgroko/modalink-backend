@@ -82,6 +82,8 @@ class AdminAuditoriaControllerTest {
                 eq(LocalDate.of(2026, 11, 1)),
                 eq(LocalDate.of(2026, 11, 7)),
                 any(),
+                isNull(),
+                isNull(),
                 eq(0),
                 eq(20)))
                 .thenReturn(new PaginaResponse<>(List.of(evento), 0, 20, 1L, 1, true, true));
@@ -102,7 +104,7 @@ class AdminAuditoriaControllerTest {
     @Test
     void listarSinFechas_devuelve400ConCodigo() throws Exception {
         when(listarAuditoriaService.listar(
-                isNull(), isNull(), any(), anyInt(), anyInt()))
+                isNull(), isNull(), any(), isNull(), isNull(), anyInt(), anyInt()))
                 .thenThrow(new AuditoriaFiltroInvalidoException(
                         "FECHAS_OBLIGATORIAS",
                         "Las fechas desde y hasta son obligatorias."));
@@ -126,7 +128,9 @@ class AdminAuditoriaControllerTest {
         when(auditoriaResumenService.obtenerResumen(
                 eq(LocalDate.of(2026, 11, 1)),
                 eq(LocalDate.of(2026, 11, 7)),
-                any()))
+                any(),
+                isNull(),
+                isNull()))
                 .thenReturn(new AuditoriaResumenResponse(
                         LocalDate.of(2026, 11, 1),
                         LocalDate.of(2026, 11, 7),
@@ -151,12 +155,16 @@ class AdminAuditoriaControllerTest {
                 LocalDateTime.of(2026, 11, 1, 0, 0),
                 LocalDateTime.of(2026, 11, 7, 23, 59, 59),
                 null,
+                null,
+                null,
                 Map.of());
 
         when(auditoriaExportService.validarExportacion(
                 eq(LocalDate.of(2026, 11, 1)),
                 eq(LocalDate.of(2026, 11, 7)),
-                any()))
+                any(),
+                isNull(),
+                isNull()))
                 .thenReturn(filtro);
 
         doAnswer(invocation -> {
@@ -172,6 +180,8 @@ class AdminAuditoriaControllerTest {
         var response = controller.exportar(
                 LocalDate.of(2026, 11, 1),
                 LocalDate.of(2026, 11, 7),
+                null,
+                null,
                 null,
                 "CSV",
                 new UsernamePasswordAuthenticationToken("1", null, List.of()));

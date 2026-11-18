@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.RequerimientoActCaract;
 import org.mgroko.backend.modelo.RequerimientoActCaractValor;
@@ -14,6 +15,7 @@ import org.mgroko.backend.modelo.RequerimientoActividad;
 import org.mgroko.backend.modelo.RequerimientoGralCaract;
 import org.mgroko.backend.modelo.RequerimientoGralCaractValor;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
+import org.mgroko.backend.modelo.ValorCaracteristica;
 import org.mgroko.backend.reemplazos.exception.ReemplazoNoGestionableException;
 import org.mgroko.backend.reemplazos.servicio.modelo.CaracteristicaRequerida;
 import org.mgroko.backend.reemplazos.servicio.modelo.RequisitoReemplazo;
@@ -21,6 +23,7 @@ import org.mgroko.backend.repositorio.RequerimientoActCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralCaractValorRepository;
 import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
+import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,16 +37,19 @@ public class CatalogoRequisitoService {
     private final RequerimientoActCaractValorRepository requerimientoActCaractValorRepository;
     private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository;
+    private final ValorCaracteristicaRepository valorCaracteristicaRepository;
 
     public CatalogoRequisitoService(
             RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoActCaractValorRepository requerimientoActCaractValorRepository,
             RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
-            RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository) {
+            RequerimientoGralCaractValorRepository requerimientoGralCaractValorRepository,
+            ValorCaracteristicaRepository valorCaracteristicaRepository) {
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoActCaractValorRepository = requerimientoActCaractValorRepository;
         this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoGralCaractValorRepository = requerimientoGralCaractValorRepository;
+        this.valorCaracteristicaRepository = valorCaracteristicaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +66,9 @@ public class CatalogoRequisitoService {
 
         List<CaracteristicaRequerida> caracteristicas = new ArrayList<>();
         for (RequerimientoActCaract caracteristica : requerimiento.getCaracteristicas()) {
+            Set<Long> idsValores = valores.getOrDefault(
+                    caracteristica.getCaracteristica().getIdCaracteristica(),
+                    Set.of());
             caracteristicas.add(new CaracteristicaRequerida(
                     caracteristica.getCaracteristica().getIdCaracteristica(),
                     caracteristica.getCaracteristica().getCodigo(),
@@ -67,9 +76,8 @@ public class CatalogoRequisitoService {
                     caracteristica.getCaracteristica().getTipoDato(),
                     caracteristica.getValorMin(),
                     caracteristica.getValorMax(),
-                    valores.getOrDefault(
-                            caracteristica.getCaracteristica().getIdCaracteristica(),
-                            Set.of())));
+                    idsValores,
+                    etiquetasValores(caracteristica.getCaracteristica(), idsValores)));
         }
         caracteristicas.sort(java.util.Comparator.comparing(
                 CaracteristicaRequerida::idCaracteristica));
@@ -96,6 +104,9 @@ public class CatalogoRequisitoService {
 
         List<CaracteristicaRequerida> caracteristicas = new ArrayList<>();
         for (RequerimientoGralCaract caracteristica : requerimiento.getCaracteristicas()) {
+            Set<Long> idsValores = valores.getOrDefault(
+                    caracteristica.getCaracteristica().getIdCaracteristica(),
+                    Set.of());
             caracteristicas.add(new CaracteristicaRequerida(
                     caracteristica.getCaracteristica().getIdCaracteristica(),
                     caracteristica.getCaracteristica().getCodigo(),
@@ -103,9 +114,8 @@ public class CatalogoRequisitoService {
                     caracteristica.getCaracteristica().getTipoDato(),
                     caracteristica.getValorMin(),
                     caracteristica.getValorMax(),
-                    valores.getOrDefault(
-                            caracteristica.getCaracteristica().getIdCaracteristica(),
-                            Set.of())));
+                    idsValores,
+                    etiquetasValores(caracteristica.getCaracteristica(), idsValores)));
         }
         caracteristicas.sort(java.util.Comparator.comparing(
                 CaracteristicaRequerida::idCaracteristica));
@@ -162,6 +172,32 @@ public class CatalogoRequisitoService {
         }
 
         return resultado;
+    }
+
+    private Map<Long, String> etiquetasValores(
+            CaracteristicaTecnica caracteristica,
+            Set<Long> idsValores) {
+
+        if (caracteristica == null
+                || !CaracteristicaTecnica.TIPO_ENUMERADO.equals(
+                        caracteristica.getTipoDato())
+                || idsValores == null
+                || idsValores.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> etiquetas = new HashMap<>();
+        for (ValorCaracteristica valor : valorCaracteristicaRepository
+                .findByCaracteristicaTecnica_IdCaracteristicaOrderByEtiqueta(
+                        caracteristica.getIdCaracteristica())) {
+            if (valor.getIdValor() != null
+                    && idsValores.contains(valor.getIdValor())
+                    && valor.getEtiqueta() != null
+                    && !valor.getEtiqueta().isBlank()) {
+                etiquetas.put(valor.getIdValor(), valor.getEtiqueta());
+            }
+        }
+        return etiquetas;
     }
 
     private Set<Long> idsHabilidades(Set<Habilidad> habilidades) {

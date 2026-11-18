@@ -1,10 +1,7 @@
 package org.mgroko.backend.admin.controlador;
 
 import org.mgroko.backend.admin.dto.AdminDashboardResumen;
-import org.mgroko.backend.admin.dto.AdminProyectoList;
 import org.mgroko.backend.admin.servicio.AdminDashboardService;
-import org.mgroko.backend.common.dto.PaginaResponse;
-import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,15 +28,5 @@ public class AdminDashboardController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
 
         return adminDashboardService.obtenerResumen(size);
-    }
-
-    @GetMapping("/proyectos")
-    @PreAuthorize("hasAuthority('VER_USUARIOS')")
-    public PaginaResponse<AdminProyectoList> listarProyectos(
-            @RequestParam(required = false) EstadoProyecto[] estado,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-
-        return adminDashboardService.listarProyectos(estado, page, size);
     }
 }

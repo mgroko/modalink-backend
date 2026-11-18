@@ -97,6 +97,10 @@ public class ModificarPolaroidPerfilService {
                 .tipoImagen(almacenado.tipoMime())
                 .tamanoBytes((int) almacenado.tamanoBytes())
                 .estado("Activa")
+                .sha256Original(almacenado.sha256Original())
+                .sha256Contenido(almacenado.sha256Contenido())
+                .phash(almacenado.phash())
+                .phashVersion(org.mgroko.backend.storage.servicio.HuellaImagenService.PHASH_VERSION)
                 .build());
 
         polaroid.setImagen(imagenNueva);

@@ -71,6 +71,7 @@ public class LocalStorageService implements StorageService {
     private final String publicacionesSubdir;
     private final String polaroidsSubdir;
     private final ProcesadorImagen procesadorImagen;
+    private final HuellaImagenService huellaImagenService;
 
     public LocalStorageService(
             @Value("${app.storage.upload-dir:uploads}") String uploadDir,
@@ -78,13 +79,15 @@ public class LocalStorageService implements StorageService {
             @Value("${app.storage.moodboard-dir:moodboard}") String moodboardSubdir,
             @Value("${app.storage.publicaciones-dir:publicaciones}") String publicacionesSubdir,
             @Value("${app.storage.polaroids-dir:polaroids}") String polaroidsSubdir,
-            ProcesadorImagen procesadorImagen) {
+            ProcesadorImagen procesadorImagen,
+            HuellaImagenService huellaImagenService) {
         this.uploadDir = uploadDir;
         this.perfilesSubdir = perfilesSubdir;
         this.moodboardSubdir = moodboardSubdir;
         this.publicacionesSubdir = publicacionesSubdir;
         this.polaroidsSubdir = polaroidsSubdir;
         this.procesadorImagen = procesadorImagen;
+        this.huellaImagenService = huellaImagenService;
 
         this.perfilesPath = prepararDirectorio(uploadDir, perfilesSubdir);
         this.moodboardPath = prepararDirectorio(uploadDir, moodboardSubdir);
@@ -157,7 +160,10 @@ public class LocalStorageService implements StorageService {
                 nombreArchivoGenerado,
                 urlRelativa,
                 ProcesadorImagen.MIME_SALIDA,
-                bytesConvertidos.length
+                bytesConvertidos.length,
+                huellaImagenService.sha256(bytes),
+                huellaImagenService.sha256(bytesConvertidos),
+                huellaImagenService.phash(bytesConvertidos)
         );
     }
 
@@ -166,6 +172,28 @@ public class LocalStorageService implements StorageService {
      * mantiene el nombre hist&oacute;rico del m&eacute;todo para no romper a sus
      * consumidores, pero el alcance ya no es solo {@code perfiles/}.
      */
+    @Override
+    public byte[] leerArchivo(String nombreArchivo) {
+        if (nombreArchivo == null || nombreArchivo.isBlank()) {
+            return null;
+        }
+
+        String nombreSimple = Paths.get(nombreArchivo).getFileName().toString();
+        for (Path directorio : List.of(perfilesPath, moodboardPath, publicacionesPath, polaroidsPath)) {
+            Path archivoPath = directorio.resolve(nombreSimple).normalize();
+            if (!archivoPath.startsWith(directorio) || !Files.isRegularFile(archivoPath)) {
+                continue;
+            }
+            try {
+                return Files.readAllBytes(archivoPath);
+            } catch (IOException e) {
+                throw new ErrorAlmacenamientoException(
+                        "No se pudo leer el archivo de almacenamiento: " + archivoPath, e);
+            }
+        }
+        return null;
+    }
+
     @Override
     public void eliminarFotoPerfil(String nombreArchivo) {
         if (nombreArchivo == null || nombreArchivo.isBlank()) {

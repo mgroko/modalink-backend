@@ -12,12 +12,15 @@ import org.mgroko.backend.modelo.enums.EstadoPublicacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.CrearPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.evento.ColaboracionAutomaticaSolicitadaEvent;
 import org.mgroko.backend.publicaciones.mapper.PublicacionMapper;
 import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PublicacionRepository;
 import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
+import org.mgroko.backend.storage.servicio.HuellaImagenService;
 import org.mgroko.backend.storage.servicio.StorageService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +34,7 @@ public class CrearPublicacionService {
     private final PublicacionDatosService publicacionDatosService;
     private final StorageService storageService;
     private final BorradoArchivosDiferido borradoArchivosDiferido;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CrearPublicacionService(
             PublicacionRepository publicacionRepository,
@@ -38,13 +42,15 @@ public class CrearPublicacionService {
             ProyectoVisibilidadService proyectoVisibilidadService,
             PublicacionDatosService publicacionDatosService,
             StorageService storageService,
-            BorradoArchivosDiferido borradoArchivosDiferido) {
+            BorradoArchivosDiferido borradoArchivosDiferido,
+            ApplicationEventPublisher eventPublisher) {
         this.publicacionRepository = publicacionRepository;
         this.imagenRepository = imagenRepository;
         this.proyectoVisibilidadService = proyectoVisibilidadService;
         this.publicacionDatosService = publicacionDatosService;
         this.storageService = storageService;
         this.borradoArchivosDiferido = borradoArchivosDiferido;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -83,12 +89,23 @@ public class CrearPublicacionService {
                     .tipoImagen(almacenado.tipoMime())
                     .tamanoBytes((int) almacenado.tamanoBytes())
                     .estado(PublicacionDatosService.ESTADO_IMAGEN_ACTIVA)
+                    .sha256Original(almacenado.sha256Original())
+                    .sha256Contenido(almacenado.sha256Contenido())
+                    .phash(almacenado.phash())
+                    .phashVersion(HuellaImagenService.PHASH_VERSION)
                     .build());
 
             publicacion.getImagenes().add(imagen);
         }
 
         publicacion = publicacionRepository.save(publicacion);
+
+        eventPublisher.publishEvent(new ColaboracionAutomaticaSolicitadaEvent(
+                publicacion.getIdPublicacion(),
+                publicacion.getImagenes().stream()
+                        .map(Imagen::getIdImagen)
+                        .filter(id -> id != null)
+                        .toList()));
 
         boolean puedeVerProyecto = proyecto != null
                 && proyectoVisibilidadService.puedeVer(proyecto, perfil.getIdPerfil());

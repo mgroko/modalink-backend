@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -20,7 +19,6 @@ import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,33 +65,10 @@ class AdminDashboardServiceTest {
     }
 
     @Test
-    void listarProyectos_sinFiltroExcluyeBorradores() {
-        when(proyectoRepository.findByEstadoNot(eq(EstadoProyecto.BORRADOR), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
-
-        service.listarProyectos(null, 0, 20);
-
-        verify(proyectoRepository).findByEstadoNot(eq(EstadoProyecto.BORRADOR), any(Pageable.class));
-    }
-
-    @Test
-    void listarProyectos_conFiltroRespetaBorradorExplicito() {
-        when(proyectoRepository.findByEstadoIn(eq(List.of(EstadoProyecto.BORRADOR)), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
-
-        service.listarProyectos(new EstadoProyecto[] {EstadoProyecto.BORRADOR}, 0, 20);
-
-        verify(proyectoRepository).findByEstadoIn(
-                eq(List.of(EstadoProyecto.BORRADOR)), any(Pageable.class));
-    }
-
-    @Test
-    void listarProyectos_rechazaParametrosFueraDeRango() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.listarProyectos(null, -1, 20));
-        assertThrows(IllegalArgumentException.class,
-                () -> service.listarProyectos(null, 0, 0));
+    void resumen_rechazaSizeFueraDeRango() {
         assertThrows(IllegalArgumentException.class,
                 () -> service.obtenerResumen(101));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.obtenerResumen(0));
     }
 }

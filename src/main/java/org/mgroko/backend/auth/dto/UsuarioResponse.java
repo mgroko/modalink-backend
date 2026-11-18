@@ -1,5 +1,7 @@
 package org.mgroko.backend.auth.dto;
+
 import java.time.LocalDate;
+import java.util.List;
 
 public record UsuarioResponse(
         Long idUsuario,
@@ -12,6 +14,7 @@ public record UsuarioResponse(
         LocalDate fechaNacimiento,
         String estado,
         Long idPerfilActivo,
-        String nombreArtisticoActivo
+        String nombreArtisticoActivo,
+        List<String> permisosGlobales
 ) {
 }

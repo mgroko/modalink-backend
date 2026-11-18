@@ -60,6 +60,9 @@ public class Auditoria {
     @Column(name = "id_usuario")
     private Long idUsuario;
 
+    @Column(name = "operador_nombre", length = 255)
+    private String operadorNombre;
+
     @Column(name = "tipo_evento", length = 60)
     private String tipoEvento;
 

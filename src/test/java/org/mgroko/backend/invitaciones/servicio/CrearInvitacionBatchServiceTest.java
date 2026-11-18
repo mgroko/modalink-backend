@@ -163,7 +163,7 @@ class CrearInvitacionBatchServiceTest {
     }
 
     private void prepararContextoGeneral() {
-        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
+        when(perfilRepository.findByIdPerfilAndUsuarioIdUsuarioConUsuario(ID_PERFIL, ID_USUARIO))
                 .thenReturn(Optional.of(perfilActivo()));
         when(proyectoRepository.findById(ID_PROYECTO))
                 .thenReturn(Optional.of(proyecto()));

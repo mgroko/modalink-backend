@@ -1,6 +1,9 @@
 package org.mgroko.backend.auth.mapper;
 
+import java.util.List;
+
 import org.mgroko.backend.auth.dto.UsuarioResponse;
+import org.mgroko.backend.modelo.PermisoGlobal;
 import org.mgroko.backend.modelo.Usuario;
 
 public final class UsuarioMapper {
@@ -25,6 +28,18 @@ public final class UsuarioMapper {
                 usuario.getFechaNacimiento(),
                 usuario.getEstado() != null ? usuario.getEstado().name() : null,
                 idPerfilActivo,
-                nombreArtisticoActivo);
+                nombreArtisticoActivo,
+                permisosGlobales(usuario));
+    }
+
+    private static List<String> permisosGlobales(Usuario usuario) {
+        if (usuario.getRolGlobal() == null || usuario.getRolGlobal().getPermisos() == null) {
+            return List.of();
+        }
+        return usuario.getRolGlobal().getPermisos().stream()
+                .map(PermisoGlobal::getNombre)
+                .filter(nombre -> nombre != null && !nombre.isBlank())
+                .sorted()
+                .toList();
     }
 }

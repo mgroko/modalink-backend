@@ -24,6 +24,31 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     @EntityGraph(attributePaths = {"perfil", "rolProyecto"})
     List<MiembroProyecto> findByProyectoIdProyecto(Long idProyecto);
 
+    /**
+     * Detalle administrativo: todos los miembros del proyecto, activos e
+     * historicos, con perfil, usuario, profesion y rol inicializados.
+     */
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion pr
+        JOIN FETCH mp.rolProyecto r
+        WHERE mp.proyecto.idProyecto = :idProyecto
+        ORDER BY mp.fechaAlta ASC, mp.idMiembro ASC
+    """)
+    List<MiembroProyecto> buscarTodosDeProyectoConPerfilProfesionYRol(
+            @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Proyectos relacionados de un perfil para el detalle administrativo.
+     * Incluye membresias activas e historicas.
+     */
+    @EntityGraph(attributePaths = {"proyecto", "rolProyecto"})
+    List<MiembroProyecto> findTop20ByPerfilIdPerfilOrderByFechaAltaDesc(Long idPerfil);
+
+    long countByPerfilIdPerfil(Long idPerfil);
+
     boolean existsByProyectoIdProyectoAndPerfilIdPerfil(Long idProyecto, Long idPerfil);
 
     Optional<MiembroProyecto> findFirstByProyectoIdProyectoAndPerfilIdPerfilOrderByFechaAltaDesc(

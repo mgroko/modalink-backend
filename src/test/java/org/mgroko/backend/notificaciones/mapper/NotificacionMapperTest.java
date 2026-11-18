@@ -228,6 +228,19 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void colaboracionAutomatica_enlazaALaPestanaDeColaboraciones() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("COLABORACION_AUTOMATICA_DETECTADA",
+                        "COLABORACION_AUTOMATICA", 77L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/colaboraciones-automaticas/77");
+        assertThat(response.titulo())
+                .isEqualTo("Posible colaboración detectada");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");

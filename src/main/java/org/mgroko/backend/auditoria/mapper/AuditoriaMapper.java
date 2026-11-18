@@ -44,9 +44,9 @@ public class AuditoriaMapper {
                 && auditoria.getTipoEventoOriginal() == null;
 
         String operador = resolverOperador(auditoria, usuario, legacy);
-        String usuarioNombre = legacy || usuario == null
+        String usuarioNombre = legacy || (usuario == null && esBlanco(auditoria.getOperadorNombre()))
                 ? null
-                : nombreCompleto(usuario);
+                : nombreOperador(auditoria, usuario);
 
         List<AuditoriaDetalleResponse> detalle = detallesPorAuditoria
                 .getOrDefault(auditoria.getIdAuditoria(), Collections.emptyList())
@@ -82,11 +82,31 @@ public class AuditoriaMapper {
         if (auditoria.getIdUsuario() == null) {
             return OPERADOR_SISTEMA;
         }
+        String snapshot = auditoria.getOperadorNombre();
+        if (!esBlanco(snapshot)) {
+            return snapshot.trim();
+        }
         if (usuario == null) {
             return "Usuario #" + auditoria.getIdUsuario();
         }
         String nombre = nombreCompleto(usuario);
         return nombre.isEmpty() ? "Usuario #" + auditoria.getIdUsuario() : nombre;
+    }
+
+    private String nombreOperador(Auditoria auditoria, Usuario usuario) {
+        String snapshot = auditoria.getOperadorNombre();
+        if (!esBlanco(snapshot)) {
+            return snapshot.trim();
+        }
+        if (usuario == null) {
+            return null;
+        }
+        String nombre = nombreCompleto(usuario);
+        return nombre.isEmpty() ? null : nombre;
+    }
+
+    private boolean esBlanco(String valor) {
+        return valor == null || valor.isBlank();
     }
 
     private String nombreCompleto(Usuario usuario) {

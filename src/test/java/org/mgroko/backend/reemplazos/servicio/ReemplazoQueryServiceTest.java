@@ -42,6 +42,10 @@ class ReemplazoQueryServiceTest {
     private PerfilRepository perfilRepository;
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
+    @Mock
+    private CatalogoRequisitoService catalogoRequisitoService;
+    @Mock
+    private CandidatoMatchingService candidatoMatchingService;
 
     @InjectMocks
     private ReemplazoQueryService servicio;

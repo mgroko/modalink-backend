@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.Imagen;
@@ -17,6 +18,7 @@ import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.OrigenColaboracion;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
 
 class PublicacionMapperTest {
@@ -89,5 +91,20 @@ class PublicacionMapperTest {
         assertEquals(1, response.imagenes().get(1).orden());
         assertEquals(1, response.colaboradores().size());
         assertEquals(8L, response.colaboradores().get(0).idPerfil());
+    }
+
+    @Test
+    void toResponse_incluyeOrigenDeColaborador() {
+        Perfil colaborador = perfil(8L, "Sol", EstadoPerfil.Activo);
+        Publicacion publicacion = publicacion(List.of());
+        publicacion.setColaboradores(new LinkedHashSet<>(List.of(colaborador)));
+
+        PublicacionResponse response = PublicacionMapper.toResponse(
+                publicacion,
+                true,
+                org.mgroko.backend.publicaciones.dto.ResumenInteraccionPublicacion.vacio(),
+                Map.of(8L, OrigenColaboracion.AUTOMATICA));
+
+        assertEquals("AUTOMATICA", response.colaboradores().get(0).origen());
     }
 }

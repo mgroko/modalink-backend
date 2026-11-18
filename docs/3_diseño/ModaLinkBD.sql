@@ -1042,9 +1042,21 @@ CREATE TABLE imagen(
     tipo_imagen       varchar(255)     NOT NULL,
     tamano_bytes      int4             NOT NULL,
     fecha_subida      timestamp        DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    sha256_original   varchar(64),
+    sha256_contenido  varchar(64),
+    phash             int8,
+    phash_version     int2,
     CONSTRAINT "PK_imagen" PRIMARY KEY (id_imagen)
 )
 ;
+
+CREATE INDEX "IDX_imagen_sha256_contenido"
+    ON imagen (sha256_contenido)
+    WHERE sha256_contenido IS NOT NULL;
+
+CREATE INDEX "IDX_imagen_sha256_original"
+    ON imagen (sha256_original)
+    WHERE sha256_original IS NOT NULL;
 
 
 
@@ -1684,82 +1696,9 @@ CREATE TABLE postulacion_actividad(
     CONSTRAINT "PK_postulacion_actividad" PRIMARY KEY (id_postulacion)
 )
 ;
--- Control de postulaciones y cupos cada vez que se acepta una postulacion 
-CREATE OR REPLACE FUNCTION fn_control_cupo_postulacion_actividad() RETURNS trigger AS $$
-DECLARE
-    v_cantidad_requerida INT;
-    v_cubiertos INT;
-BEGIN
-    IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-
-        SELECT ra.cantidad INTO v_cantidad_requerida
-        FROM requerimiento_actividad ra
-        WHERE ra.id_requerimiento_act = NEW.id_requerimiento_act;
-
-        SELECT COUNT(*) INTO v_cubiertos
-        FROM asignacion_actividad aa
-        JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
-        WHERE aa.id_requerimiento_act = NEW.id_requerimiento_act
-          AND mp.estado_participacion = 'ACTIVO';
-
-        IF v_cantidad_requerida IS NOT NULL AND v_cubiertos >= v_cantidad_requerida THEN
-
-            WITH rechazadas AS (
-                UPDATE postulacion_actividad pa
-                SET estado = 'RECHAZADA'
-                WHERE pa.id_requerimiento_act = NEW.id_requerimiento_act
-                  AND pa.id_postulacion <> NEW.id_postulacion
-                  AND pa.estado = 'PENDIENTE'
-                RETURNING pa.id_postulacion, pa.id_perfil, pa.id_requerimiento_act
-            )
-            INSERT INTO notificacion (
-                id_usuario_destino,
-                id_perfil_contexto,
-                tipo,
-                mensaje,
-                entidad_tipo,
-                entidad_id,
-                leida,
-                fecha_leida,
-                origen,
-                fecha_generada
-            )
-            SELECT p.id_usuario,
-                   r.id_perfil,
-                   'POSTULACION_RECHAZADA',
-                   'Tu postulación a la actividad "' || a.nombre
-                       || '" del proyecto "' || proy.nombre
-                       || '" fue rechazada porque el cupo ya fue cubierto.',
-                   'POSTULACION_ACTIVIDAD',
-                   r.id_postulacion,
-                   false,
-                   NULL,
-                   'TRIGGER',
-                   clock_timestamp()
-            FROM rechazadas r
-            JOIN perfil p ON p.id_perfil = r.id_perfil
-            JOIN requerimiento_actividad ra ON ra.id_requerimiento_act = r.id_requerimiento_act
-            JOIN actividad a ON a.id_actividad = ra.id_actividad
-            JOIN planificacion pl ON pl.id_planificacion = a.id_planificacion
-            JOIN proyecto proy ON proy.id_proyecto = pl.id_proyecto
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM notificacion n
-                WHERE n.id_usuario_destino = p.id_usuario
-                  AND n.tipo = 'POSTULACION_RECHAZADA'
-                  AND n.entidad_tipo = 'POSTULACION_ACTIVIDAD'
-                  AND n.entidad_id = r.id_postulacion
-            );
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_control_cupo_postulacion_actividad ON postulacion_actividad;
-CREATE TRIGGER trg_control_cupo_postulacion_actividad
-    AFTER UPDATE OF estado ON postulacion_actividad
-    FOR EACH ROW EXECUTE FUNCTION fn_control_cupo_postulacion_actividad();
+-- El rechazo automático de postulaciones e invitaciones al cubrirse el cupo
+-- se implementa en la capa de servicio (RechazoAutomaticoCupoService) para
+-- notificar de forma idempotente y abarcar también las invitaciones.
 
 -- 
 -- TABLE: postulacion_gral 
@@ -1775,79 +1714,9 @@ CREATE TABLE postulacion_gral(
     CONSTRAINT "PK_postulacion_general" PRIMARY KEY (id_postulacion_gral)
 )
 ;
--- Control de cupo para postulaciones generales
-CREATE OR REPLACE FUNCTION fn_control_cupo_postulacion_gral() RETURNS trigger AS $$
-DECLARE
-    v_cantidad_requerida INT;
-    v_cubiertos INT;
-BEGIN
-    IF NEW.estado = 'ACEPTADA' AND (OLD.estado IS NULL OR OLD.estado <> 'ACEPTADA') THEN
-
-        SELECT rgp.cantidad INTO v_cantidad_requerida
-        FROM requerimiento_gral_proyecto rgp
-        WHERE rgp.id_requerimiento_gral = NEW.id_requerimiento_gral;
-
-        SELECT COUNT(*) INTO v_cubiertos
-        FROM miembros_proyecto mp
-        WHERE mp.id_requerimiento_gral = NEW.id_requerimiento_gral
-          AND mp.estado_participacion = 'ACTIVO';
-
-        IF v_cantidad_requerida IS NOT NULL AND v_cubiertos >= v_cantidad_requerida THEN
-
-            WITH rechazadas AS (
-                UPDATE postulacion_gral post
-                SET estado = 'RECHAZADA'
-                WHERE post.id_requerimiento_gral = NEW.id_requerimiento_gral
-                  AND post.id_postulacion_gral <> NEW.id_postulacion_gral
-                  AND post.estado = 'PENDIENTE'
-                RETURNING post.id_postulacion_gral, post.id_perfil, post.id_requerimiento_gral
-            )
-            INSERT INTO notificacion (
-                id_usuario_destino,
-                id_perfil_contexto,
-                tipo,
-                mensaje,
-                entidad_tipo,
-                entidad_id,
-                leida,
-                fecha_leida,
-                origen,
-                fecha_generada
-            )
-            SELECT p.id_usuario,
-                   r.id_perfil,
-                   'POSTULACION_RECHAZADA',
-                   'Tu postulación al proyecto "' || proy.nombre
-                       || '" fue rechazada porque el cupo ya fue cubierto.',
-                   'POSTULACION_GRAL',
-                   r.id_postulacion_gral,
-                   false,
-                   NULL,
-                   'TRIGGER',
-                   clock_timestamp()
-            FROM rechazadas r
-            JOIN perfil p ON p.id_perfil = r.id_perfil
-            JOIN requerimiento_gral_proyecto rgp
-              ON rgp.id_requerimiento_gral = r.id_requerimiento_gral
-            JOIN proyecto proy ON proy.id_proyecto = rgp.id_proyecto
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM notificacion n
-                WHERE n.id_usuario_destino = p.id_usuario
-                  AND n.tipo = 'POSTULACION_RECHAZADA'
-                  AND n.entidad_tipo = 'POSTULACION_GRAL'
-                  AND n.entidad_id = r.id_postulacion_gral
-            );
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_control_cupo_postulacion_gral ON postulacion_gral;
-CREATE TRIGGER trg_control_cupo_postulacion_gral
-    AFTER UPDATE OF estado ON postulacion_gral
-    FOR EACH ROW EXECUTE FUNCTION fn_control_cupo_postulacion_gral();
+-- El rechazo automático de postulaciones e invitaciones al cubrirse el cupo
+-- se implementa en la capa de servicio (RechazoAutomaticoCupoService) para
+-- notificar de forma idempotente y abarcar también las invitaciones.
 
 -- 
 -- TABLE: profesion 
@@ -3255,14 +3124,22 @@ CREATE UNIQUE INDEX "UQ_jornada_agenda_dia_semana" ON jornada_agenda(id_agenda, 
 -- INDEX: "UQ_perfil_postulacion_act" 
 --
 
-CREATE UNIQUE INDEX "UQ_perfil_postulacion_act" ON postulacion_actividad(id_perfil, id_requerimiento_act)
+-- Índice parcial: una postulación RECHAZADA no bloquea un nuevo intento si
+-- el cupo se libera. Sólo PENDIENTE y ACEPTADA son estados vigentes.
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_act"
+    ON postulacion_actividad(id_perfil, id_requerimiento_act)
+    WHERE estado IN ('PENDIENTE', 'ACEPTADA')
 ;
 
 -- 
 -- INDEX: "UQ_perfil_postulacion_gral" 
 --
 
-CREATE UNIQUE INDEX "UQ_perfil_postulacion_gral" ON postulacion_gral(id_perfil, id_requerimiento_gral)
+-- Índice parcial: una postulación RECHAZADA no bloquea un nuevo intento si
+-- el cupo se libera. Sólo PENDIENTE y ACEPTADA son estados vigentes.
+CREATE UNIQUE INDEX "UQ_perfil_postulacion_gral"
+    ON postulacion_gral(id_perfil, id_requerimiento_gral)
+    WHERE estado IN ('PENDIENTE', 'ACEPTADA')
 ;
 
 --
@@ -8891,3 +8768,514 @@ ON CONFLICT (codigo) DO UPDATE
         descripcion = EXCLUDED.descripcion,
         modulo = EXCLUDED.modulo,
         activo = true;
+
+-- ============================================================================
+-- Colaboraciones automaticas
+-- ============================================================================
+
+CREATE TABLE colaborador_publicacion_origen (
+    id_publicacion             int8         NOT NULL,
+    id_perfil                  int8         NOT NULL,
+    origen                     varchar(20)  NOT NULL DEFAULT 'MANUAL',
+    id_colaboracion_automatica int8,
+    fecha_alta                 timestamp    DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "PK_colaborador_publicacion_origen" PRIMARY KEY (id_publicacion, id_perfil),
+    CONSTRAINT chk_colaborador_origen CHECK (origen IN ('MANUAL', 'AUTOMATICA', 'AMBOS')),
+    CONSTRAINT fk_colaborador_origen_tag
+        FOREIGN KEY (id_publicacion, id_perfil)
+        REFERENCES colaborador_publicacion(id_publicacion, id_perfil)
+        ON DELETE CASCADE
+);
+
+INSERT INTO colaborador_publicacion_origen (id_publicacion, id_perfil, origen)
+SELECT id_publicacion, id_perfil, 'MANUAL'
+FROM colaborador_publicacion
+ON CONFLICT (id_publicacion, id_perfil) DO NOTHING;
+
+CREATE TABLE colaboracion_automatica (
+    id_colaboracion_automatica int8         GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+    id_imagen                   int8,
+    sha256_evidencia            varchar(64),
+    phash_version               int2,
+    distancia_phash             int4,
+    distancia_multicrop         int4,
+    orb_matches                 int4,
+    orb_inliers                 int4,
+    tipo_coincidencia           varchar(30),
+    id_publicacion_a            int8,
+    id_publicacion_b            int8,
+    id_perfil_a                 int8         NOT NULL,
+    id_perfil_b                 int8         NOT NULL,
+    estado                      varchar(20)  NOT NULL DEFAULT 'PENDIENTE',
+    estado_perfil_a             varchar(20)  NOT NULL DEFAULT 'PENDIENTE',
+    estado_perfil_b             varchar(20)  NOT NULL DEFAULT 'PENDIENTE',
+    fecha_deteccion             timestamp    DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    fecha_respuesta_a           timestamp,
+    fecha_respuesta_b           timestamp,
+    fecha_confirmacion          timestamp,
+    fecha_disolucion            timestamp,
+    CONSTRAINT "PK_colaboracion_automatica" PRIMARY KEY (id_colaboracion_automatica),
+    CONSTRAINT fk_colab_auto_imagen FOREIGN KEY (id_imagen)
+        REFERENCES imagen(id_imagen) ON DELETE SET NULL,
+    CONSTRAINT fk_colab_auto_pub_a FOREIGN KEY (id_publicacion_a)
+        REFERENCES publicacion(id_publicacion) ON DELETE SET NULL,
+    CONSTRAINT fk_colab_auto_pub_b FOREIGN KEY (id_publicacion_b)
+        REFERENCES publicacion(id_publicacion) ON DELETE SET NULL,
+    CONSTRAINT fk_colab_auto_perfil_a FOREIGN KEY (id_perfil_a)
+        REFERENCES perfil(id_perfil),
+    CONSTRAINT fk_colab_auto_perfil_b FOREIGN KEY (id_perfil_b)
+        REFERENCES perfil(id_perfil),
+    CONSTRAINT chk_colab_auto_estado
+        CHECK (estado IN ('PENDIENTE', 'CONFIRMADA', 'RECHAZADA', 'CANCELADA', 'DISUELTA')),
+    CONSTRAINT chk_colab_auto_estado_a
+        CHECK (estado_perfil_a IN ('PENDIENTE', 'CONFIRMADA', 'RECHAZADA')),
+    CONSTRAINT chk_colab_auto_estado_b
+        CHECK (estado_perfil_b IN ('PENDIENTE', 'CONFIRMADA', 'RECHAZADA')),
+    CONSTRAINT chk_colab_auto_tipo
+        CHECK (tipo_coincidencia IS NULL OR tipo_coincidencia IN
+               ('EXACTA', 'PERCEPTUAL_ALTA', 'PERCEPTUAL_ORB', 'PERCEPTUAL_MULTICROP')),
+    CONSTRAINT chk_colab_auto_pubs_distintas
+        CHECK (id_publicacion_a IS NULL OR id_publicacion_b IS NULL
+               OR id_publicacion_a <> id_publicacion_b),
+    CONSTRAINT chk_colab_auto_perfiles_distintos
+        CHECK (id_perfil_a <> id_perfil_b)
+);
+
+CREATE UNIQUE INDEX "UQ_colaboracion_automatica_pendiente"
+    ON colaboracion_automatica (id_publicacion_a, id_publicacion_b)
+    WHERE estado = 'PENDIENTE';
+
+CREATE INDEX "IDX_colab_auto_publicacion_a"
+    ON colaboracion_automatica (id_publicacion_a, estado, fecha_deteccion DESC);
+CREATE INDEX "IDX_colab_auto_publicacion_b"
+    ON colaboracion_automatica (id_publicacion_b, estado, fecha_deteccion DESC);
+CREATE INDEX "IDX_colab_auto_perfil_a"
+    ON colaboracion_automatica (id_perfil_a, estado, fecha_deteccion DESC);
+CREATE INDEX "IDX_colab_auto_perfil_b"
+    ON colaboracion_automatica (id_perfil_b, estado, fecha_deteccion DESC);
+
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
+    ('COLABORACION_AUTOMATICA_DETECTADA', 'Posible colaboracion detectada', 'SOCIAL', 'ALTA'),
+    ('COLABORACION_AUTOMATICA_CONFIRMADA', 'Colaboracion confirmada', 'SOCIAL', 'ALTA'),
+    ('COLABORACION_AUTOMATICA_RECHAZADA', 'Colaboracion rechazada', 'SOCIAL', 'MEDIA'),
+    ('COLABORACION_AUTOMATICA_CANCELADA', 'Colaboracion cancelada', 'SOCIAL', 'MEDIA'),
+    ('COLABORACION_AUTOMATICA_DISUELTA', 'Colaboracion disuelta', 'SOCIAL', 'MEDIA')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        categoria = EXCLUDED.categoria,
+        prioridad = EXCLUDED.prioridad,
+        activo = true;
+
+ALTER TABLE colaborador_publicacion_origen
+    ADD CONSTRAINT fk_colaborador_origen_colab_auto
+    FOREIGN KEY (id_colaboracion_automatica)
+    REFERENCES colaboracion_automatica(id_colaboracion_automatica)
+    ON DELETE SET NULL;
+
+-- ============================================================================
+-- Notificaciones por email - migracion 2026-11-11
+-- ============================================================================
+-- ============================================================================
+-- Notificaciones por email (Mailpit en desarrollo)
+-- ============================================================================
+-- Este script es idempotente. Se puede aplicar sobre una base existente o
+-- cargarse al final de ModaLinkBD.sql.
+--
+-- Cambios:
+--   1. Prioridades de notificacion_tipo para la politica global de email.
+--   2. Estado ENVIANDO en notificacion_entrega.
+--   3. Trigger que encola entregas EMAIL para notificaciones de prioridad ALTA.
+--   4. Tabla de tokens de acceso por email (auto-login).
+--   5. Claves de configuracion del scheduler de emails.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 1. Prioridades
+-- ----------------------------------------------------------------------------
+UPDATE notificacion_tipo SET prioridad = 'ALTA'  WHERE codigo = 'ACTIVIDAD_ASIGNADA';
+UPDATE notificacion_tipo SET prioridad = 'ALTA'  WHERE codigo = 'CONTRATO_FIRMADO';
+UPDATE notificacion_tipo SET prioridad = 'MEDIA' WHERE codigo = 'PUBLICACION_COMENTARIO';
+UPDATE notificacion_tipo SET prioridad = 'MEDIA' WHERE codigo = 'PUBLICACION_MEGUSTA';
+
+-- UC-04: los avisos de deshabilitación/habilitación de cuenta son de
+-- prioridad ALTA, por lo que el trigger de outbox los envía por email.
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
+    ('USUARIO_DESHABILITADO', 'Cuenta deshabilitada', 'CUENTA', 'ALTA'),
+    ('USUARIO_HABILITADO',    'Cuenta habilitada',    'CUENTA', 'ALTA')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        categoria = EXCLUDED.categoria,
+        prioridad = EXCLUDED.prioridad,
+        activo = true;
+
+-- ----------------------------------------------------------------------------
+-- 2. Estado ENVIANDO
+-- ----------------------------------------------------------------------------
+ALTER TABLE notificacion_entrega
+    DROP CONSTRAINT IF EXISTS chk_notif_entrega_estado;
+
+ALTER TABLE notificacion_entrega
+    ADD CONSTRAINT chk_notif_entrega_estado
+    CHECK (estado IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'FALLIDO', 'CANCELADO'));
+
+CREATE INDEX IF NOT EXISTS idx_entrega_enviando
+    ON notificacion_entrega(fecha_ultimo_intento)
+    WHERE estado = 'ENVIANDO';
+
+-- ----------------------------------------------------------------------------
+-- 3. Outbox automatico
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_encolar_entrega_email_notificacion()
+RETURNS trigger AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM notificacion_tipo nt
+        WHERE nt.codigo = NEW.tipo
+          AND nt.activo = true
+          AND nt.prioridad = 'ALTA'
+    ) THEN
+        INSERT INTO notificacion_entrega (id_notificacion, canal, estado)
+        VALUES (NEW.id_notificacion, 'EMAIL', 'PENDIENTE')
+        ON CONFLICT (id_notificacion, canal) DO NOTHING;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_encolar_entrega_email_notificacion ON notificacion;
+
+CREATE TRIGGER trg_encolar_entrega_email_notificacion
+AFTER INSERT ON notificacion
+FOR EACH ROW
+EXECUTE FUNCTION fn_encolar_entrega_email_notificacion();
+
+-- ----------------------------------------------------------------------------
+-- 4. Tokens de acceso por email
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS token_acceso_email (
+    id_token             bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+    id_entrega           bigint NOT NULL,
+    id_usuario           bigint NOT NULL,
+    id_perfil_contexto   bigint,
+    token_hash           varchar(64) NOT NULL,
+    creado_en            timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expira_en            timestamp NOT NULL,
+    usado_en             timestamp,
+    CONSTRAINT "PK_token_acceso_email" PRIMARY KEY (id_token),
+    CONSTRAINT uq_token_acceso_email_entrega UNIQUE (id_entrega),
+    CONSTRAINT uq_token_acceso_email_hash UNIQUE (token_hash),
+    CONSTRAINT fk_token_email_entrega
+        FOREIGN KEY (id_entrega)
+        REFERENCES notificacion_entrega(id_entrega)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_token_email_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuario(id_usuario)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_token_email_perfil
+        FOREIGN KEY (id_perfil_contexto)
+        REFERENCES perfil(id_perfil)
+        ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_email_expira
+    ON token_acceso_email(expira_en);
+
+CREATE INDEX IF NOT EXISTS idx_token_email_usuario
+    ON token_acceso_email(id_usuario, expira_en);
+
+-- ----------------------------------------------------------------------------
+-- 5. Configuracion
+-- ----------------------------------------------------------------------------
+INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
+    ('NOTIFICACION_EMAIL_REINTENTOS_MAX', '5',
+     'Reintentos maximos de envio por email'),
+    ('NOTIFICACION_EMAIL_BACKOFF_MINUTOS', '15',
+     'Espera base en minutos entre reintentos de email'),
+    ('NOTIFICACION_EMAIL_LOTE', '50',
+     'Cantidad maxima de emails a procesar por ciclo'),
+    ('NOTIFICACION_EMAIL_INTERVALO_SEGUNDOS', '30',
+     'Intervalo en segundos entre ejecuciones del scheduler de emails'),
+    ('NOTIFICACION_EMAIL_TOKEN_TTL_MINUTOS', '60',
+     'Minutos de validez del token de acceso por email'),
+    ('NOTIFICACION_EMAIL_TOKEN_LIMPIEZA_DIAS', '7',
+     'Dias que se conservan tokens usados o vencidos antes de purgarlos')
+ON CONFLICT (clave) DO UPDATE
+    SET valor = EXCLUDED.valor,
+        descripcion = EXCLUDED.descripcion;
+
+-- ============================================================================
+-- UC-67 - Operador snapshot, búsqueda de texto y auditoría de mensajes
+-- ============================================================================
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $$
+    SELECT public.unaccent('public.unaccent', $1)
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+ALTER TABLE auditoria
+    ADD COLUMN IF NOT EXISTS operador_nombre varchar(255);
+
+CREATE OR REPLACE FUNCTION fn_auditoria_registrar(
+    p_entidad varchar,
+    p_id bigint,
+    p_evento varchar,
+    p_accion varchar,
+    p_detalle jsonb DEFAULT '[]'::jsonb
+) RETURNS bigint AS $$
+DECLARE
+    v_id_tipo_auditoria bigint;
+    v_id_auditoria bigint;
+    v_elemento jsonb;
+    v_id_usuario bigint;
+    v_operador_nombre varchar(255);
+BEGIN
+    SELECT id_tipo_auditoria INTO v_id_tipo_auditoria
+    FROM tipo_accion_auditoria
+    WHERE upper(nombre) = upper(p_accion);
+
+    IF v_id_tipo_auditoria IS NULL THEN
+        RAISE EXCEPTION 'No se encontro el tipo de accion de auditoria %', p_accion;
+    END IF;
+
+    v_id_usuario := fn_auditoria_usuario_actual();
+
+    IF v_id_usuario IS NOT NULL THEN
+        SELECT btrim(COALESCE(nombre, '') || ' ' || COALESCE(apellido, ''))
+          INTO v_operador_nombre
+          FROM usuario
+         WHERE id_usuario = v_id_usuario;
+
+        IF v_operador_nombre = '' THEN
+            v_operador_nombre := NULL;
+        END IF;
+    END IF;
+
+    INSERT INTO auditoria (
+        usuario_bd,
+        entidad_afectada,
+        id_afectado,
+        fecha_hora,
+        ip_usuario,
+        id_tipo_auditoria,
+        id_usuario,
+        operador_nombre,
+        tipo_evento,
+        tipo_evento_original
+    ) VALUES (
+        CURRENT_USER,
+        p_entidad,
+        p_id,
+        clock_timestamp(),
+        inet_client_addr()::varchar,
+        v_id_tipo_auditoria,
+        v_id_usuario,
+        v_operador_nombre,
+        fn_evento_auditoria(p_evento),
+        p_evento
+    ) RETURNING id_auditoria INTO v_id_auditoria;
+
+    IF p_detalle IS NOT NULL THEN
+        FOR v_elemento IN SELECT * FROM jsonb_array_elements(p_detalle)
+        LOOP
+            IF v_elemento ? 'campo' THEN
+                INSERT INTO detalle_auditoria (
+                    campo,
+                    valor_anterior,
+                    valor_nuevo,
+                    id_auditoria
+                ) VALUES (
+                    v_elemento->>'campo',
+                    CASE WHEN v_elemento ? 'anterior' THEN v_elemento->>'anterior' ELSE NULL END,
+                    CASE WHEN v_elemento ? 'nuevo' THEN v_elemento->>'nuevo' ELSE NULL END,
+                    v_id_auditoria
+                );
+            END IF;
+        END LOOP;
+    END IF;
+
+    RETURN v_id_auditoria;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_auditoria_completar_operador() RETURNS trigger AS $$
+BEGIN
+    IF NEW.operador_nombre IS NULL AND NEW.id_usuario IS NOT NULL THEN
+        SELECT btrim(COALESCE(nombre, '') || ' ' || COALESCE(apellido, ''))
+          INTO NEW.operador_nombre
+          FROM usuario
+         WHERE id_usuario = NEW.id_usuario;
+
+        IF NEW.operador_nombre = '' THEN
+            NEW.operador_nombre := NULL;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_auditoria_completar_operador ON auditoria;
+CREATE TRIGGER trg_auditoria_completar_operador
+    BEFORE INSERT ON auditoria
+    FOR EACH ROW EXECUTE FUNCTION fn_auditoria_completar_operador();
+
+INSERT INTO tipo_evento_auditoria (codigo, nombre, descripcion, modulo) VALUES
+    ('MENSAJE_PRIVADO_ENVIADO', 'Envío de mensaje privado', 'Alta de un mensaje en una conversación privada', 'MENSAJERIA'),
+    ('MENSAJE_PROYECTO_ENVIADO', 'Envío de mensaje de proyecto', 'Alta de un mensaje en el chat grupal de un proyecto', 'MENSAJERIA')
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre = EXCLUDED.nombre,
+        descripcion = EXCLUDED.descripcion,
+        modulo = EXCLUDED.modulo,
+        activo = true;
+
+CREATE OR REPLACE FUNCTION fn_auditar_mensaje_privado() RETURNS trigger AS $$
+DECLARE
+    v_detalle jsonb;
+BEGIN
+    v_detalle := jsonb_build_array(
+        jsonb_build_object('campo', 'idConversacion', 'nuevo', NEW.id_conversacion::text),
+        jsonb_build_object('campo', 'idPerfilEmisor', 'nuevo', NEW.id_perfil_emisor::text),
+        jsonb_build_object('campo', 'contenido', 'nuevo', NEW.contenido),
+        jsonb_build_object('campo', 'fechaEnvio', 'nuevo', NEW.fecha_envio::text)
+    );
+    PERFORM fn_auditoria_registrar(
+        'mensaje', NEW.id_mensaje, 'MENSAJE_PRIVADO_ENVIADO', 'INSERT', v_detalle);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_auditar_mensaje_privado ON mensaje;
+CREATE TRIGGER trg_auditar_mensaje_privado
+    AFTER INSERT ON mensaje
+    FOR EACH ROW EXECUTE FUNCTION fn_auditar_mensaje_privado();
+
+CREATE OR REPLACE FUNCTION fn_auditar_mensaje_proyecto() RETURNS trigger AS $$
+DECLARE
+    v_detalle jsonb;
+BEGIN
+    v_detalle := jsonb_build_array(
+        jsonb_build_object('campo', 'idProyecto', 'nuevo', NEW.id_proyecto::text),
+        jsonb_build_object('campo', 'idPerfilEmisor', 'nuevo', NEW.id_perfil_emisor::text),
+        jsonb_build_object('campo', 'contenido', 'nuevo', NEW.contenido),
+        jsonb_build_object('campo', 'fechaEnvio', 'nuevo', NEW.fecha_envio::text)
+    );
+    PERFORM fn_auditoria_registrar(
+        'mensaje_proyecto', NEW.id_mensaje_proyecto, 'MENSAJE_PROYECTO_ENVIADO', 'INSERT', v_detalle);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_auditar_mensaje_proyecto ON mensaje_proyecto;
+CREATE TRIGGER trg_auditar_mensaje_proyecto
+    AFTER INSERT ON mensaje_proyecto
+    FOR EACH ROW EXECUTE FUNCTION fn_auditar_mensaje_proyecto();
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_operador_nombre
+    ON auditoria USING gin (lower(f_unaccent(operador_nombre)) gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_busqueda_metadata
+    ON auditoria USING gin (
+        lower(f_unaccent(
+            coalesce(entidad_afectada, '') || ' ' ||
+            coalesce(entidad_clave, '') || ' ' ||
+            coalesce(tipo_evento, '') || ' ' ||
+            coalesce(tipo_evento_original, '')
+        )) gin_trgm_ops
+    );
+
+CREATE INDEX IF NOT EXISTS idx_detalle_auditoria_busqueda
+    ON detalle_auditoria USING gin (
+        lower(f_unaccent(
+            coalesce(campo, '') || ' ' ||
+            coalesce(valor_anterior, '') || ' ' ||
+            coalesce(valor_nuevo, '')
+        )) gin_trgm_ops
+    );
+
+-- ============================================================================
+-- Procesamiento historico de colaboraciones automaticas
+-- ============================================================================
+
+CREATE TABLE procesamiento_colaboracion_historica (
+    id_procesamiento          int8         GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+    estado                    varchar(30)  NOT NULL,
+    modo                      varchar(20)  NOT NULL,
+    filtro_id_publicacion     int8,
+    filtro_id_perfil          int8,
+    filtro_fecha_desde        timestamp,
+    filtro_fecha_hasta        timestamp,
+    notificar                 boolean      NOT NULL DEFAULT false,
+    tamano_lote               int4         NOT NULL DEFAULT 50,
+    limite_publicaciones      int4,
+    total_publicaciones       int4         NOT NULL DEFAULT 0,
+    publicaciones_procesadas  int4         NOT NULL DEFAULT 0,
+    total_imagenes            int4         NOT NULL DEFAULT 0,
+    imagenes_procesadas       int4         NOT NULL DEFAULT 0,
+    hashes_calculados         int4         NOT NULL DEFAULT 0,
+    propuestas_creadas        int4         NOT NULL DEFAULT 0,
+    propuestas_omitidas       int4         NOT NULL DEFAULT 0,
+    errores                   int4         NOT NULL DEFAULT 0,
+    ultimo_id_publicacion     int8,
+    id_usuario_admin          int8         NOT NULL,
+    fecha_inicio              timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_fin                 timestamp,
+    mensaje_error             varchar(1000),
+    CONSTRAINT "PK_procesamiento_colaboracion_historica"
+        PRIMARY KEY (id_procesamiento),
+    CONSTRAINT chk_proc_colab_hist_estado
+        CHECK (estado IN ('PENDIENTE', 'EN_PROGRESO', 'COMPLETADO',
+                          'COMPLETADO_CON_ERRORES', 'CANCELADO', 'FALLIDO',
+                          'INTERRUMPIDO')),
+    CONSTRAINT chk_proc_colab_hist_modo
+        CHECK (modo IN ('HUELLAS', 'DETECCION', 'AMBOS'))
+);
+
+CREATE INDEX idx_proc_colab_hist_estado
+    ON procesamiento_colaboracion_historica(estado);
+
+CREATE INDEX idx_proc_colab_hist_fecha
+    ON procesamiento_colaboracion_historica(fecha_inicio DESC);
+
+CREATE TABLE procesamiento_colaboracion_historica_error (
+    id_error          int8         GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+    id_procesamiento  int8         NOT NULL,
+    id_publicacion    int8,
+    id_imagen         int8,
+    nombre_archivo    varchar(255),
+    mensaje           varchar(1000) NOT NULL,
+    fecha_registro    timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PK_proc_colab_hist_error" PRIMARY KEY (id_error),
+    CONSTRAINT "FK_proc_colab_hist_error_job"
+        FOREIGN KEY (id_procesamiento)
+        REFERENCES procesamiento_colaboracion_historica(id_procesamiento)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX idx_proc_colab_hist_error_job
+    ON procesamiento_colaboracion_historica_error(id_procesamiento);
+
+-- ============================================================================
+-- Consulta administrativa de solo lectura: perfiles, proyectos y contratos
+-- ============================================================================
+
+INSERT INTO permiso_global (nombre)
+SELECT v.nombre
+FROM (VALUES
+    ('VER_PERFILES'),
+    ('VER_PROYECTOS'),
+    ('VER_CONTRATOS')
+) AS v(nombre)
+WHERE NOT EXISTS (
+    SELECT 1 FROM permiso_global pg WHERE pg.nombre = v.nombre
+);
+
+INSERT INTO rol_global_permiso (id_rol_global, id_permiso_global)
+SELECT rg.id_rol_global, pg.id_permiso_global
+FROM rol_global rg
+CROSS JOIN permiso_global pg
+WHERE rg.nombre = 'Administrador'
+  AND pg.nombre IN ('VER_PERFILES', 'VER_PROYECTOS', 'VER_CONTRATOS')
+ON CONFLICT DO NOTHING;

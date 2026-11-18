@@ -7,7 +7,9 @@ import java.util.List;
 
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.reemplazos.servicio.modelo.CandidatoPerfil;
+import org.mgroko.backend.reemplazos.servicio.modelo.CaracteristicaEvaluada;
 import org.mgroko.backend.reemplazos.servicio.modelo.CaracteristicaRequerida;
+import org.mgroko.backend.reemplazos.servicio.modelo.HabilidadEvaluada;
 import org.mgroko.backend.reemplazos.servicio.modelo.RequisitoReemplazo;
 import org.mgroko.backend.reemplazos.servicio.modelo.ResultadoConcordancia;
 import org.mgroko.backend.reemplazos.servicio.modelo.ValorPerfil;
@@ -33,40 +35,59 @@ public final class EvaluadorConcordancia {
             CandidatoPerfil candidato) {
 
         List<String> faltantes = new ArrayList<>();
-        boolean alternativo = false;
+        List<HabilidadEvaluada> habilidadesEvaluadas = new ArrayList<>();
 
-        double puntajeHabilidades = 1.0;
+        long habilidadesCumplidas = 0;
         if (!requisito.idsHabilidades().isEmpty()) {
-            long coincidencias = requisito.idsHabilidades().stream()
-                    .filter(candidato.idsHabilidades()::contains)
-                    .count();
-            puntajeHabilidades = coincidencias
-                    / (double) requisito.idsHabilidades().size();
+            List<Long> idsOrdenados = requisito.idsHabilidades().stream()
+                    .sorted(java.util.Comparator.comparing(
+                            id -> requisito.nombresHabilidades()
+                                    .getOrDefault(id, ""),
+                            String.CASE_INSENSITIVE_ORDER))
+                    .toList();
 
-            if (coincidencias < requisito.idsHabilidades().size()) {
-                alternativo = true;
-                for (Long idHabilidad : requisito.idsHabilidades()) {
-                    if (!candidato.idsHabilidades().contains(idHabilidad)) {
-                        String nombre = requisito.nombresHabilidades()
-                                .getOrDefault(idHabilidad, "Habilidad " + idHabilidad);
-                        faltantes.add("Habilidad faltante: " + nombre);
-                    }
+            for (Long idHabilidad : idsOrdenados) {
+                String nombre = requisito.nombresHabilidades()
+                        .getOrDefault(idHabilidad, "Habilidad " + idHabilidad);
+                boolean cumple = candidato.idsHabilidades().contains(idHabilidad);
+                habilidadesEvaluadas.add(new HabilidadEvaluada(
+                        idHabilidad,
+                        nombre,
+                        true,
+                        cumple));
+                if (cumple) {
+                    habilidadesCumplidas++;
+                } else {
+                    faltantes.add("Habilidad faltante: " + nombre);
                 }
             }
         }
 
+        double puntajeHabilidades = requisito.idsHabilidades().isEmpty()
+                ? 1.0
+                : habilidadesCumplidas
+                        / (double) requisito.idsHabilidades().size();
+
         double puntajeCaracteristicas = 1.0;
+        List<CaracteristicaEvaluada> caracteristicasEvaluadas = new ArrayList<>();
+        long caracteristicasCumplidas = 0;
         if (!requisito.caracteristicas().isEmpty()) {
             double suma = 0.0;
             for (CaracteristicaRequerida caracteristica : requisito.caracteristicas()) {
                 EvaluacionCaracteristica evaluacion =
                         evaluarCaracteristica(caracteristica, candidato);
                 suma += evaluacion.puntaje();
-                if (!evaluacion.cumple()) {
-                    alternativo = true;
-                    if (evaluacion.detalle() != null) {
-                        faltantes.add(evaluacion.detalle());
-                    }
+                caracteristicasEvaluadas.add(new CaracteristicaEvaluada(
+                        caracteristica.idCaracteristica(),
+                        caracteristica.codigo(),
+                        caracteristica.nombre(),
+                        true,
+                        evaluacion.cumple(),
+                        caracteristica.valorPedido()));
+                if (evaluacion.cumple()) {
+                    caracteristicasCumplidas++;
+                } else if (evaluacion.detalle() != null) {
+                    faltantes.add(evaluacion.detalle());
                 }
             }
             puntajeCaracteristicas = suma / requisito.caracteristicas().size();
@@ -85,7 +106,21 @@ public final class EvaluadorConcordancia {
         BigDecimal puntaje = BigDecimal.valueOf(puntajeFinal * 100.0)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        return new ResultadoConcordancia(puntaje, alternativo, faltantes);
+        int requisitosTotales = habilidadesEvaluadas.size()
+                + caracteristicasEvaluadas.size();
+        int requisitosCumplidos = (int) (habilidadesCumplidas
+                + caracteristicasCumplidas);
+        boolean cumpleTodo = requisitosCumplidos >= requisitosTotales;
+
+        return new ResultadoConcordancia(
+                puntaje,
+                !cumpleTodo,
+                faltantes,
+                requisitosCumplidos,
+                requisitosTotales,
+                cumpleTodo,
+                habilidadesEvaluadas,
+                caracteristicasEvaluadas);
     }
 
     private static EvaluacionCaracteristica evaluarCaracteristica(

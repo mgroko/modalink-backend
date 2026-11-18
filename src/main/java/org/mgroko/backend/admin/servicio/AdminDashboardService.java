@@ -6,14 +6,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.mgroko.backend.admin.dto.AdminDashboardResumen;
 import org.mgroko.backend.admin.dto.AdminDashboardProvinciaRow;
-import org.mgroko.backend.admin.dto.AdminProyectoList;
-import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -64,28 +61,6 @@ public class AdminDashboardService {
                 topProvincias,
                 listaNuevosProyectos
         );
-    }
-
-    public PaginaResponse<AdminProyectoList> listarProyectos(
-            EstadoProyecto[] estado, int page, int size) {
-        if (page < 0) {
-            throw new IllegalArgumentException("page debe ser mayor o igual a cero.");
-        }
-        validarSize(size);
-
-        PageRequest pageRequest = PageRequest.of(
-                page,
-                size,
-                Sort.by(Sort.Direction.DESC, "fechaInicio"));
-        Page<Proyecto> proyectos;
-
-        if (estado != null && estado.length > 0) {
-            proyectos = proyectoRepository.findByEstadoIn(List.of(estado), pageRequest);
-        } else {
-            proyectos = proyectoRepository.findByEstadoNot(EstadoProyecto.BORRADOR, pageRequest);
-        }
-
-        return PaginaResponse.fromPage(proyectos.map(this::toProyectoList));
     }
 
     private Long countTotalUsuarios() {
@@ -177,15 +152,6 @@ public class AdminDashboardService {
         if (size < 1 || size > 100) {
             throw new IllegalArgumentException("size debe estar entre 1 y 100.");
         }
-    }
-
-    private AdminProyectoList toProyectoList(Proyecto proyecto) {
-        return new AdminProyectoList(
-                proyecto.getIdProyecto(),
-                proyecto.getNombre(),
-                proyecto.getFechaInicio(),
-                proyecto.getEstado(),
-                proyecto.getPrivacidad() != null ? proyecto.getPrivacidad().name() : null);
     }
 
     private AdminDashboardResumen.AdminUltimoProyecto toUltimoProyecto(Proyecto proyecto) {

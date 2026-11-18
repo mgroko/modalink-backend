@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.mensajeria.dto.ConversacionLeidaEvento;
 import org.mgroko.backend.mensajeria.dto.ConversacionResponse;
@@ -261,6 +262,7 @@ public class MensajeriaService {
     }
 
     @Transactional
+    @AuditarOperacion
     public MensajeResponse enviarMensaje(
             Long idUsuario,
             Long idPerfilActivo,

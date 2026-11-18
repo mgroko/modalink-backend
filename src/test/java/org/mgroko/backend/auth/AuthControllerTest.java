@@ -83,7 +83,7 @@ class AuthControllerTest {
         private UsuarioResponse usuarioResponse(Long id, String correo) {
                 return new UsuarioResponse(
                                 id, "Juan", "Perez", "12345678", correo, "Usuario", "hombre",
-                                LocalDate.of(2003, 12, 10), "Activo", null, null);
+                                LocalDate.of(2003, 12, 10), "Activo", null, null, List.of());
         }
 
         // ---------------------------------------------------------------
@@ -207,7 +207,7 @@ class AuthControllerTest {
         void login_conPerfilActivo_devuelvePerfilActivoEnUsuario() throws Exception {
                 UsuarioResponse usuarioResponse = new UsuarioResponse(
                                 1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre",
-                                LocalDate.of(2003, 12, 10), "Activo", 10L, "Luna");
+                                LocalDate.of(2003, 12, 10), "Activo", 10L, "Luna", List.of());
                 when(authService.login(any(LoginRequest.class)))
                                 .thenReturn(new AuthService.LoginResultado("token-simulado",
                                                 new AuthResponse(usuarioResponse)));
@@ -347,7 +347,7 @@ class AuthControllerTest {
         void me_autenticado_conPerfilActivo_pasaContextoAlServicio() throws Exception {
                 UsuarioResponse usuarioResponse = new UsuarioResponse(
                                 1L, "Juan", "Perez", "12345678", "juan@test.com", "Usuario", "hombre",
-                                LocalDate.of(2003, 12, 10), "Activo", 10L, "Luna");
+                                LocalDate.of(2003, 12, 10), "Activo", 10L, "Luna", List.of());
                 when(authService.obtenerUsuarioActual(anyLong(), any(), any())).thenReturn(usuarioResponse);
 
                 var authentication = new UsernamePasswordAuthenticationToken("1", null, List.of());

@@ -342,6 +342,25 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 """, Long.class, postulanteB.idUsuario(), postulacionB.idPostulacion());
         assertThat(notificacionB).isEqualTo(1L);
 
+        // Al liberarse el cupo, el perfil rechazado puede volver a postularse.
+        jdbcTemplate.update("""
+                UPDATE miembros_proyecto
+                   SET estado_participacion = 'BAJA_VOLUNTARIA'
+                 WHERE id_requerimiento_gral = ? AND id_perfil = ?
+                """, idRequerimiento, postulanteA.idPerfil());
+
+        PostulacionResponse reintentoB = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteB.idUsuario(), postulanteB.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        assertThat(reintentoB.estado()).isEqualTo(EstadoSolicitud.PENDIENTE);
+
+        Long postulacionesB = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM postulacion_gral
+                WHERE id_perfil = ? AND id_requerimiento_gral = ?
+                """, Long.class, postulanteB.idPerfil(), idRequerimiento);
+        assertThat(postulacionesB).isEqualTo(2L);
+
         assertThatThrownBy(() -> aceptarPostulacionService.aceptarGeneral(
                 director.idUsuario(), director.idPerfil(),
                 publicado.idProyecto(), postulacionA.idPostulacion()))

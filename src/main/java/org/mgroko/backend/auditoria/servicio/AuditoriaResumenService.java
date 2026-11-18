@@ -36,16 +36,22 @@ public class AuditoriaResumenService {
     public AuditoriaResumenResponse obtenerResumen(
             LocalDate fechaDesde,
             LocalDate fechaHasta,
-            List<String> tiposEvento) {
+            List<String> tiposEvento,
+            String operador,
+            String texto) {
 
         AuditoriaFiltroResuelto filtro =
-                auditoriaFiltroService.resolver(fechaDesde, fechaHasta, tiposEvento);
+                auditoriaFiltroService.resolver(
+                        fechaDesde, fechaHasta, tiposEvento, operador, texto);
 
         long total = auditoriaRepository.count(AuditoriaSpecifications.conFiltros(
-                filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos()));
+                filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos(),
+                filtro.operador(), filtro.texto()));
 
         List<AuditoriaResumenTipoResponse> porTipo = auditoriaRepository
-                .contarPorTipo(filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos())
+                .contarPorTipo(
+                        filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos(),
+                        filtro.operador(), filtro.texto())
                 .stream()
                 .map(fila -> {
                     String codigo = (String) fila[0];
@@ -58,7 +64,9 @@ public class AuditoriaResumenService {
                 .toList();
 
         List<AuditoriaResumenEntidadResponse> porEntidad = auditoriaRepository
-                .contarPorEntidad(filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos())
+                .contarPorEntidad(
+                        filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos(),
+                        filtro.operador(), filtro.texto())
                 .stream()
                 .map(fila -> new AuditoriaResumenEntidadResponse(
                         (String) fila[0],

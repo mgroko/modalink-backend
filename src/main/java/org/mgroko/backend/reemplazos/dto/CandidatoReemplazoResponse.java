@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.mgroko.backend.perfiles.dto.CaracteristicaResponse;
 import org.mgroko.backend.reemplazos.enums.EstadoCandidatoReemplazo;
 import org.mgroko.backend.reemplazos.enums.NivelUbicacion;
 import org.mgroko.backend.reemplazos.enums.TipoDisponibilidad;
@@ -21,7 +20,7 @@ public record CandidatoReemplazoResponse(
         String fotoUrl,
         CiudadResponse ciudad,
         List<String> habilidades,
-        List<CaracteristicaResponse> caracteristicas,
+        List<CaracteristicaEvaluadaResponse> caracteristicas,
         BigDecimal puntaje,
         NivelUbicacion nivelUbicacion,
         boolean alternativo,
@@ -35,5 +34,9 @@ public record CandidatoReemplazoResponse(
         LocalDateTime fechaRespuesta,
         LocalDateTime fechaDecision,
         String motivoDecision,
-        Long idTycAceptado) {
+        Long idTycAceptado,
+        List<HabilidadEvaluadaResponse> habilidadesEvaluadas,
+        Integer requisitosCumplidos,
+        Integer requisitosTotales,
+        Boolean cumpleTodo) {
 }

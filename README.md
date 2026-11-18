@@ -1,14 +1,14 @@
 # ModaLink — Backend
 
-Backend de **ModaLink**, una plataforma de networking profesional para la industria creativa y de la moda. Permite gestionar múltiples perfiles, crear proyectos, reclutar equipos, coordinar agendas, firmar contratos y comunicarse mediante chat privado y grupal.
+Backend de **ModaLink**, una plataforma de networking profesional para la industria creativa y de la moda. Permite gestionar múltiples perfiles, publicar trabajo, crear proyectos, reclutar equipos, coordinar agendas, firmar contratos, construir una red de contactos y comunicarse mediante chat privado y grupal.
 
 Proyecto final de la carrera **Analista en Sistemas de Computación**, desarrollado con **Proceso Unificado (UP)**, foco en testing, validaciones de negocio en backend y persistencia, y trazabilidad mediante auditoría.
 
-> **Estado actual (2026-11-11):** **75 de 76 casos de uso implementados y testeados (98,7 %)**.
+> **Estado actual (2026-11-17):** **76 de 76 casos de uso implementados y testeados (100 %)**.
 >
-> Módulos completos: autenticación y usuarios, administración, perfiles y disponibilidad, proyectos y equipo, actividades y cronograma, contratos, conexiones, presencia y mensajería.
+> Módulos completos: autenticación y usuarios, administración, perfiles y disponibilidad, publicaciones, proyectos y equipo, actividades y cronograma, contratos, conexiones, presencia y mensajería.
 >
-> Pendientes: el **UC del módulo de publicaciones** (`UC-69`).
+> Extensiones fuera del catálogo numerado: detalle administrativo de solo lectura (perfiles, proyectos y contratos), colaboraciones automáticas por similitud de imágenes y presencia por perfil.
 >
 > Seguimiento detallado: [`docs/5_estado_sistema/estado_uc.md`](docs/5_estado_sistema/estado_uc.md).
 
@@ -23,7 +23,9 @@ Proyecto final de la carrera **Analista en Sistemas de Computación**, desarroll
 | Autenticación federada | Google OAuth2 (Authorization Code) + `usuario_identidad` |
 | Hashing de contraseñas | BCrypt |
 | Imágenes | Thumbnailator, TwelveMonkeys (JPEG/WebP) y WebP ImageIO |
+| Coincidencia de imágenes | OpenCV (pHash, ORB y multicrop) para colaboraciones automáticas |
 | Exportación PDF | OpenPDF |
+| Email | Spring Boot Mail (SMTP) + Mailpit en desarrollo |
 | Testing | JUnit Jupiter, Mockito, MockMvc, Spring Security Test, Testcontainers (PostgreSQL 17), JaCoCo |
 | Build | Maven 3.9+ |
 | Frontend relacionado | [modalink-frontend](https://github.com/mgroko/modalink-frontend) (Vue 3 + Vite) |
@@ -39,6 +41,7 @@ src/main/java/org/mgroko/backend/
 ├── auth/                # Login local, registro, Google OAuth2 y sesión
 ├── calendario/          # Agenda, jornada laboral y bloqueos
 ├── common/              # DTOs compartidos, errores y excepciones globales
+├── config/              # Configuración de async, reloj y recursos web
 ├── conexiones/          # Solicitudes de conexión y red de contactos
 ├── contratos/           # Generación, modificación, firma, baja y búsqueda de contratos
 ├── home/                # Resumen de inicio y oportunidades
@@ -47,9 +50,11 @@ src/main/java/org/mgroko/backend/
 ├── modelo/              # Entidades JPA y enums del dominio
 ├── notificaciones/      # Bandeja, resumen y marcado de notificaciones
 ├── perfiles/            # Perfiles, T&C, habilidades, fotos y reseñas
+├── polaroids/           # Polaroids del perfil y su orden
 ├── postulaciones/       # Postulaciones generales y por actividad
 ├── presencia/           # Heartbeat, snapshot y SSE de presencia
 ├── proyectos/           # Proyectos, miembros, cronograma, reemplazos, historial y calificaciones
+├── publicaciones/       # Publicaciones, interacciones, colaboradores y solicitudes de colaboración
 ├── reemplazos/          # Reemplazo automático de integrantes
 ├── reportes/            # Reportes de perfil y publicación
 ├── requerimientos/      # Búsqueda global de requerimientos y elegibilidad
@@ -104,6 +109,10 @@ Variables de entorno principales:
 | `ADMIN_EMAIL` | Correo del administrador inicial | `admin@modalink.com` |
 | `ADMIN_PASSWORD` | Contraseña del administrador inicial | `admin123` |
 | `ADMIN_DNI` | DNI del administrador inicial | `00000000` |
+| `NOTIFICACIONES_EMAIL_HABILITADO` | Activa el scheduler de emails | `false` |
+| `NOTIFICACIONES_EMAIL_REMITENTE` | Remitente de los emails | `no-responder@modalink.local` |
+| `MAIL_HOST` | Host SMTP (Mailpit en desarrollo) | `localhost` |
+| `MAIL_PORT` | Puerto SMTP (Mailpit en desarrollo) | `1025` |
 | `DB_API_USER` | Usuario restringido para auditoría en producción | Comentado |
 | `DB_API_PASSWORD` | Password del usuario restringido | Comentado |
 
@@ -120,6 +129,9 @@ Propiedades funcionales relevantes:
 | `agenda.reprogramacion-automatica` | Reprogramación al cambiar jornada/margen |
 | `agenda.reconciliacion-cronograma.cron` | Reconciliación periódica de cronogramas |
 | `reemplazos.max-candidatos` | Máximo de candidatos por vacante |
+| `app.colaboracion-automatica.habilitada` | Activa la detección automática de colaboraciones por imágenes |
+| `app.colaboracion-automatica.*` | Umbrales de pHash/ORB, multicrop y pools async/histórico |
+| `app.polaroids.max-por-perfil` | Máximo de polaroids por perfil |
 
 ## Puesta en marcha
 
@@ -143,6 +155,13 @@ Luego cargar el esquema canónico:
 psql -U postgres -d modalink -f "docs/3_diseño/ModaLinkBD.sql"
 ```
 
+Si la base ya existía antes del rechazo automático de postulaciones e
+invitaciones, aplicar una vez la migración:
+
+```bash
+psql -U postgres -d modalink -f "docs/3_diseño/migraciones/migracion-rechazo-automatico-cupo.sql"
+```
+
 ### 2. Backend
 
 ```bash
@@ -150,6 +169,49 @@ mvn spring-boot:run
 ```
 
 La API queda disponible en `http://localhost:8080`.
+
+### 3. Mailpit (solo desarrollo/testing)
+
+Las notificaciones de prioridad ALTA se envían por email. En desarrollo se
+capturan con [Mailpit](https://mailpit.axllent.org/), que no entrega correos
+reales: los muestra en una UI web.
+
+```bash
+docker compose --profile mail up -d
+```
+
+- SMTP: `localhost:1025`
+- UI: `http://localhost:8025`
+
+Luego levantar el backend con el scheduler habilitado:
+
+```bash
+NOTIFICACIONES_EMAIL_HABILITADO=true mvn spring-boot:run
+```
+
+En PowerShell:
+
+```powershell
+$env:NOTIFICACIONES_EMAIL_HABILITADO="true"; mvn spring-boot:run
+```
+
+Variables opcionales:
+
+```properties
+MAIL_HOST=localhost
+MAIL_PORT=1025
+NOTIFICACIONES_EMAIL_REMITENTE=no-responder@modalink.local
+```
+
+El scheduler está deshabilitado por defecto. La política actual envía solo
+notificaciones de prioridad `ALTA`; los tipos `MEDIA` y `BAJA` quedan solo
+in-app. Las entregas se persisten en `notificacion_entrega` y los reintentos se
+configuran con `NOTIFICACION_EMAIL_REINTENTOS_MAX` y
+`NOTIFICACION_EMAIL_BACKOFF_MINUTOS` en `configuracion_sistema`.
+
+Cada email incluye un token de un solo uso (60 minutos) que auto-inicia sesión
+al abrir el enlace. El token viaja en el fragmento de la URL del frontend y se
+intercambia en `POST /auth/email/validar`.
 
 Verificación rápida:
 
@@ -221,15 +283,19 @@ http://localhost:8080/login/oauth2/code/google
 | `POST` | `/perfiles` | Crear perfil profesional |
 | `GET` | `/perfiles/buscar` | Buscar perfiles |
 | `GET` | `/perfiles/{idPerfil}` | Ver perfil |
+| `GET` | `/perfiles/activo` | Perfil activo del usuario |
 | `PUT` | `/perfiles/{idPerfil}` | Editar perfil propio |
 | `DELETE` | `/perfiles/{idPerfil}` | Solicitar baja del perfil |
 | `POST` | `/perfiles/{idPerfil}/reactivar` | Reactivar perfil |
 | `PATCH` | `/perfiles/{idPerfil}/activar` | Cambiar perfil activo |
 | `GET` | `/usuarios/me/perfiles` | Perfiles del usuario autenticado |
 | `POST` | `/perfiles/{idPerfil}/foto` | Subir foto de perfil |
+| `DELETE` | `/perfiles/{idPerfil}/foto` | Eliminar foto de perfil |
+| `GET/POST/DELETE` | `/perfiles/{idPerfil}/polaroids`, `/perfiles/{idPerfil}/polaroids/orden` | Gestionar polaroids y su orden |
 | `GET/PUT` | `/perfiles/{idPerfil}/terminos-condiciones` | Consultar o guardar T&C |
 | `GET/POST` | `/perfiles/{idPerfil}/habilidades` | Gestionar habilidades del perfil |
 | `GET` | `/perfiles/{idPerfil}/calificaciones` | Reseñas del perfil |
+| `GET` | `/perfiles/{idPerfil}/calificaciones/{idCalificacion}` | Detalle de una reseña |
 | `GET` | `/profesiones` | Catálogo de profesiones |
 | `GET` | `/profesiones/{id}/caracteristicas-tecnicas` | Características técnicas |
 | `GET` | `/habilidades` | Catálogo de habilidades |
@@ -239,6 +305,7 @@ Calendario y jornada:
 
 | Método | Endpoint | Descripción |
 |---|---|---|
+| `GET` | `/calendario` | Agenda completa del perfil activo |
 | `GET` | `/calendario/perfil/{id}` | Agenda del perfil |
 | `PUT` | `/calendario/jornada` | Configurar jornada laboral y margen |
 | `POST` | `/calendario/bloqueos` | Crear bloqueo manual |
@@ -290,6 +357,43 @@ Calendario y jornada:
 | `GET` | `/requerimientos-generales/buscar` | Buscar requerimientos generales |
 | `GET` | `/requerimientos-actividad/buscar` | Buscar requerimientos de actividad |
 | `GET` | `/home/resumen` | Oportunidades y resumen de inicio |
+
+### Publicaciones, interacciones y colaboraciones
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `POST` | `/publicaciones` | Crear publicación (`multipart/form-data`, 1-10 imágenes de hasta 10 MB) |
+| `GET` | `/publicaciones/{idPublicacion}` | Ver publicación |
+| `GET` | `/publicaciones/{idPublicacion}/detalle` | Detalle con contadores e interacciones |
+| `PUT` | `/publicaciones/{idPublicacion}` | Modificar publicación e imágenes |
+| `DELETE` | `/publicaciones/{idPublicacion}` | Eliminar publicación o la etiqueta de colaborador |
+| `GET` | `/publicaciones/feed` | Feed de contactos activos y publicaciones propias |
+| `GET` | `/perfiles/{idPerfil}/publicaciones` | Buscar publicaciones del perfil |
+| `GET` | `/perfiles/{idPerfil}/publicaciones/proyectos` | Proyectos para el filtro de publicaciones |
+| `GET` | `/publicaciones/ocultas` | Publicaciones ocultas del perfil activo |
+| `POST/DELETE` | `/publicaciones/{idPublicacion}/me-gusta` | Dar o quitar me gusta |
+| `GET/POST` | `/publicaciones/{idPublicacion}/comentarios` | Listar o crear comentarios |
+| `POST` | `/publicaciones/{idPublicacion}/solicitudes-colaboracion` | Enviar solicitud de colaboración |
+| `POST` | `/publicaciones/{idPublicacion}/colaboradores/propios` | Agregar colaborador propio |
+| `GET` | `/solicitudes-colaboracion` | Buscar solicitudes enviadas y recibidas |
+| `GET` | `/solicitudes-colaboracion/publicaciones` | Publicaciones para el filtro de solicitudes |
+| `POST` | `/solicitudes-colaboracion/{id}/aceptar` | Aceptar solicitud |
+| `POST` | `/solicitudes-colaboracion/{id}/rechazar` | Rechazar solicitud |
+| `DELETE` | `/solicitudes-colaboracion/{id}` | Eliminar solicitud enviada |
+| `POST` | `/publicaciones/{idPublicacion}/reportes` | Reportar publicación |
+| `GET` | `/colaboraciones-automaticas` | Propuestas de colaboración automática |
+| `GET` | `/colaboraciones-automaticas/{id}` | Detalle de una propuesta |
+| `POST` | `/colaboraciones-automaticas/{id}/confirmar` | Confirmar propuesta |
+| `POST` | `/colaboraciones-automaticas/{id}/rechazar` | Rechazar propuesta |
+
+Reglas generales de publicaciones:
+
+- Cada publicación admite entre 1 y 10 imágenes y queda en estado `ACTIVA` u `OCULTA`.
+- Solo el perfil dueño puede modificar o eliminar la publicación; los colaboradores la ven en modo lectura.
+- Proyecto asociado solo si está `CONFIRMADO` o `FINALIZADO` y el perfil es miembro activo.
+- Me gusta idempotente por perfil; comentarios obligatorios de hasta 1000 caracteres.
+- Solicitudes de colaboración solo entre contactos activos y una `PENDIENTE` por publicación.
+- Las colaboraciones automáticas comparan imágenes (pHash/ORB) y requieren confirmación del perfil para incorporar al colaborador.
 
 ### Contratos
 
@@ -347,7 +451,7 @@ Reglas generales de mensajería:
 - Los mensajes admiten hasta 1000 caracteres.
 - El historial de un chat privado queda en solo lectura si se elimina la conexión.
 - En el chat grupal se puede leer el historial después de finalizar o cancelar el proyecto, pero no enviar.
-- No se audita el contenido de los mensajes.
+- Se audita el envío de mensajes privados y grupales (contenido y operador); las lecturas no se auditan.
 - Los buses SSE son en memoria y asumen una única instancia. Para escalar horizontalmente hace falta Redis Pub/Sub o PostgreSQL `LISTEN/NOTIFY`.
 
 ### Notificaciones, reportes y administración
@@ -360,7 +464,11 @@ Reglas generales de mensajería:
 | `PATCH` | `/notificaciones/leidas` | Marcar todas como leídas |
 | `POST` | `/perfiles/{idPerfil}/reportes` | Reportar perfil |
 | `GET` | `/admin/reportes-perfil` | Bandeja de reportes de perfil |
-| `PATCH` | `/admin/reportes-perfil/{id}/estado` | Resolver o descartar reporte |
+| `GET` | `/admin/reportes-perfil/{idReporte}` | Detalle de reporte de perfil |
+| `PATCH` | `/admin/reportes-perfil/{idReporte}/estado` | Resolver o descartar reporte |
+| `GET` | `/admin/reportes-publicacion` | Bandeja de reportes de publicación |
+| `GET` | `/admin/reportes-publicacion/{idReporte}` | Detalle de reporte de publicación |
+| `PATCH` | `/admin/reportes-publicacion/{idReporte}/estado` | Resolver o descartar reporte |
 | `PATCH` | `/admin/publicaciones/{idPublicacion}/estado` | Ocultar o reactivar publicación reportada |
 | `GET` | `/publicaciones/ocultas` | Búsqueda específica de publicaciones ocultas del perfil activo |
 
@@ -370,8 +478,17 @@ Catálogos administrativos:
 - `/admin/caracteristicas-tecnicas`
 - `/admin/unidades-medida`
 - `/admin/tipos-contrato`
-- `/admin/configuracion/schedulers/baja`
+- `/admin/configuracion/schedulers/deshabilitacion`
 - `/admin/cronograma`
+- `/admin/colaboraciones-automaticas/historicas`
+
+Detalle administrativo de solo lectura:
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/admin/perfiles`, `/admin/perfiles/{idPerfil}` | Listado y detalle de perfiles con filtros y relaciones |
+| `GET` | `/admin/proyectos`, `/admin/proyectos/{idProyecto}` | Listado y detalle de proyectos en cualquier estado |
+| `GET` | `/admin/contratos`, `/admin/contratos/{idContrato}`, `/admin/contratos/{idContrato}/eventos` | Listado, detalle y eventos de contratos |
 
 ## Testing
 
@@ -386,10 +503,10 @@ mvn verify
 - Tests de concurrencia en flujos críticos de conexiones y aceptación de postulaciones.
 - Reporte de cobertura con JaCoCo en `target/site/jacoco/index.html`.
 
-Última ejecución completa de la suite:
+Última ejecución completa de la suite (2026-11-17):
 
 ```text
-2714 tests, 0 failures, 0 errors
+2922 tests, 0 failures, 0 errors (4 omitidos)
 ```
 
 > Los tests de integración requieren Docker disponible. Si Docker no está corriendo, los tests que extienden `AbstractPostgresIntegrationTest` fallan.
@@ -398,20 +515,28 @@ mvn verify
 
 - Requisitos y casos de uso: [`docs/1_requisitos/casos_de_uso.md`](docs/1_requisitos/casos_de_uso.md)
 - Estado de cada UC: [`docs/5_estado_sistema/estado_uc.md`](docs/5_estado_sistema/estado_uc.md)
-- Análisis: [`docs/2_analisis/`](docs/2_analisis/)
+- Análisis y diagramas de secuencia: [`docs/2_analisis/`](docs/2_analisis/)
 - Diseño y esquema: [`docs/3_diseño/`](docs/3_diseño/)
-- Controles de base de datos: [`docs/calidad/`](docs/calidad/)
-- Fichas de frontend: [`docs/frontend/`](docs/frontend/)
+- Controles y fichas de calidad: [`docs/3_diseño/temp/`](docs/3_diseño/temp/)
+- Planes de prueba: [`docs/calidad/plan_de_pruebas.md`](docs/calidad/plan_de_pruebas.md) y [`docs/calidad/plan_pruebas_despliegue.md`](docs/calidad/plan_pruebas_despliegue.md)
+- Manual de usuario: [`docs/manual/`](docs/manual/) ([PDF](docs/manual/Manual-ModaLink-v1.0.pdf))
+- Fichas de frontend aplicadas: [`docs/frontend/aplicadas/`](docs/frontend/aplicadas/)
 - Informe de testing: [`docs/6_presentaciones/tests.md`](docs/6_presentaciones/tests.md)
+- Informe de colaboraciones automáticas: [`docs/6_presentaciones/informe-colaboraciones-automaticas.md`](docs/6_presentaciones/informe-colaboraciones-automaticas.md)
 
 Fichas específicas:
 
-- [`docs/frontend/ficha-tecnica-mensajes-privados.md`](docs/frontend/ficha-tecnica-mensajes-privados.md)
-- [`docs/frontend/ficha-tecnica-chat-grupal.md`](docs/frontend/ficha-tecnica-chat-grupal.md)
-- [`docs/calidad/controles_mensajeria.md`](docs/calidad/controles_mensajeria.md)
-- [`docs/calidad/controles_chat_grupal.md`](docs/calidad/controles_chat_grupal.md)
-- [`docs/calidad/controles_conexiones.md`](docs/calidad/controles_conexiones.md)
-- [`docs/calidad/controles_presencia.md`](docs/calidad/controles_presencia.md)
+- [`docs/3_diseño/temp/controles_mensajeria.md`](docs/3_diseño/temp/controles_mensajeria.md)
+- [`docs/3_diseño/temp/controles_chat_grupal.md`](docs/3_diseño/temp/controles_chat_grupal.md)
+- [`docs/3_diseño/temp/controles_conexiones.md`](docs/3_diseño/temp/controles_conexiones.md)
+- [`docs/3_diseño/temp/controles_presencia.md`](docs/3_diseño/temp/controles_presencia.md)
+- [`docs/3_diseño/temp/controles_notificaciones_email.md`](docs/3_diseño/temp/controles_notificaciones_email.md)
+- [`docs/frontend/aplicadas/ficha-tecnica-email-login.md`](docs/frontend/aplicadas/ficha-tecnica-email-login.md)
+- [`docs/frontend/aplicadas/ficha-tecnica-eliminar-publicacion.md`](docs/frontend/aplicadas/ficha-tecnica-eliminar-publicacion.md)
+- [`docs/frontend/aplicadas/ficha-tecnica-interactuar-publicacion.md`](docs/frontend/aplicadas/ficha-tecnica-interactuar-publicacion.md)
+- [`docs/frontend/aplicadas/ficha-tecnica-reportar-publicacion.md`](docs/frontend/aplicadas/ficha-tecnica-reportar-publicacion.md)
+- [`docs/frontend/aplicadas/ficha-tecnica-colaboraciones-automaticas.md`](docs/frontend/aplicadas/ficha-tecnica-colaboraciones-automaticas.md)
+- [`docs/frontend/aplicadas/ficha-tecnica-colaboraciones-automaticas-historicas.md`](docs/frontend/aplicadas/ficha-tecnica-colaboraciones-automaticas-historicas.md)
 
 ## Convenciones del proyecto
 
@@ -422,7 +547,7 @@ Fichas específicas:
 - Los flujos críticos usan transacciones y locks pesimistas cuando hay riesgo de concurrencia.
 - Las excepciones de dominio se manejan centralizadamente en `GlobalExceptionHandler`.
 - Los cambios críticos se auditan mediante triggers de PostgreSQL.
-- No se audita el contenido de mensajes.
+- La mensajería se audita al enviar (contenido y operador); no se auditan las lecturas.
 - Cada módulo nuevo debe incluir tests unitarios, MVC y de integración antes de considerarse cerrado.
 
 ## Roadmap
@@ -435,7 +560,10 @@ Fichas específicas:
 - [x] Contratos: generación, modificación, firma, baja y búsqueda
 - [x] Conexiones, presencia y red de contactos
 - [x] Mensajería privada y chat grupal
-- [x] Notificaciones, reportes de perfil, auditoría y administración
+- [x] Notificaciones, reportes de perfil y publicación, auditoría y administración
 - [x] Búsqueda global de requerimientos generales y de actividad
 - [x] Publicaciones: alta, baja, búsqueda, modificación, interacción, envío/búsqueda, aceptación/rechazo y eliminación de solicitudes de colaboración
-- [ ] Publicaciones: reporte
+- [x] Publicaciones: reporte y moderación (UC-69)
+- [x] Colaboraciones automáticas por similitud de imágenes
+- [x] Detalle administrativo de solo lectura de perfiles, proyectos y contratos
+- [x] Manual de usuario y documentación final

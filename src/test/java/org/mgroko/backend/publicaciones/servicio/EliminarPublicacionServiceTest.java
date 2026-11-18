@@ -66,6 +66,12 @@ class EliminarPublicacionServiceTest {
     private BorradoArchivosDiferido borradoArchivosDiferido;
 
     @Mock
+    private ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
+
+    @Mock
+    private ColaboradorPublicacionOrigenService colaboradorOrigenService;
+
+    @Mock
     private EntityManager entityManager;
 
     private EliminarPublicacionService servicio;
@@ -85,6 +91,8 @@ class EliminarPublicacionServiceTest {
                 solicitudColaboracionRepository,
                 notificacionService,
                 borradoArchivosDiferido,
+                colaboracionLifecycleService,
+                colaboradorOrigenService,
                 entityManager);
 
         duenio = crearPerfil(ID_PERFIL_DUENIO, 1L, "Luna Diseños");

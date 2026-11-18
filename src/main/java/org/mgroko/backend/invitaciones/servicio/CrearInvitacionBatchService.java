@@ -234,8 +234,11 @@ public class CrearInvitacionBatchService {
             throw new PerfilActivoNoSeleccionadoException();
         }
 
+        // Este servicio no abre transacción (el batch se apoya en la que abre
+        // CrearInvitacionService por cada perfil), así que el usuario dueño
+        // debe venir inicializado desde la consulta.
         Perfil perfil = perfilRepository
-                .findByIdPerfilAndUsuarioIdUsuario(idPerfilActivo, idUsuario)
+                .findByIdPerfilAndUsuarioIdUsuarioConUsuario(idPerfilActivo, idUsuario)
                 .orElseThrow(PerfilNoEncontradoException::new);
 
         if (perfil.getEstado() != EstadoPerfil.ACTIVO) {

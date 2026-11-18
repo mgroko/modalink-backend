@@ -56,6 +56,9 @@ class ListarPublicacionesPerfilServiceTest {
     @Mock
     private PublicacionInteraccionResumenService interaccionResumenService;
 
+    @Mock
+    private ColaboradorPublicacionOrigenService colaboradorOrigenService;
+
     private ListarPublicacionesPerfilService servicio;
     private Perfil perfil;
 
@@ -65,9 +68,12 @@ class ListarPublicacionesPerfilServiceTest {
                 verPerfilService,
                 publicacionRepository,
                 proyectoVisibilidadService,
-                interaccionResumenService);
+                interaccionResumenService,
+                colaboradorOrigenService);
 
         when(interaccionResumenService.resumir(any(), any()))
+                .thenReturn(java.util.Map.of());
+        when(colaboradorOrigenService.obtenerOrigenes(any()))
                 .thenReturn(java.util.Map.of());
 
         perfil = Perfil.builder()

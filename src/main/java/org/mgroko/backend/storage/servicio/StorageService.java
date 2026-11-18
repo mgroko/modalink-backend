@@ -56,6 +56,15 @@ public interface StorageService {
     void eliminarFotoPerfil(String nombreArchivo);
 
     /**
+     * Lee un archivo por nombre simple, buscándolo en todos los directorios
+     * gestionados.
+     *
+     * @param nombreArchivo nombre simple del archivo
+     * @return bytes del archivo, o {@code null} si no existe
+     */
+    byte[] leerArchivo(String nombreArchivo);
+
+    /**
      * Elimina un archivo de un subdirectorio concreto.
      *
      * @param subdirectorio carpeta relativa dentro de {@code uploads}

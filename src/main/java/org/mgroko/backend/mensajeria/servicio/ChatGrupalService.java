@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.mensajeria.dto.ChatGrupalResponse;
 import org.mgroko.backend.mensajeria.dto.MensajeGrupalEvento;
 import org.mgroko.backend.mensajeria.dto.MensajeGrupalResponse;
@@ -125,6 +126,7 @@ public class ChatGrupalService {
     }
 
     @Transactional
+    @AuditarOperacion
     public MensajeGrupalResponse enviarMensaje(
             Long idUsuario,
             Long idPerfilActivo,

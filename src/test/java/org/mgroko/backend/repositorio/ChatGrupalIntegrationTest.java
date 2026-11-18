@@ -8,10 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.mgroko.backend.mensajeria.dto.ChatGrupalResponse;
 import org.mgroko.backend.mensajeria.dto.MensajeGrupalResponse;
 import org.mgroko.backend.mensajeria.exception.MensajeNoPermitidoException;
@@ -135,6 +138,47 @@ class ChatGrupalIntegrationTest extends AbstractPostgresIntegrationTest {
                   AND entidad_id = ?
                 """, Integer.class, director.idUsuario(), proyecto.getIdProyecto());
         assertEquals(0, notificacionesDirector);
+    }
+
+    @Test
+    void enviarMensaje_registraAuditoriaConOperadorYContenido() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        String.valueOf(director.idUsuario()), null, List.of()));
+
+        MensajeGrupalResponse mensaje;
+        try {
+            mensaje = chatGrupalService.enviarMensaje(
+                    director.idUsuario(),
+                    director.perfil().getIdPerfil(),
+                    proyecto.getIdProyecto(),
+                    "Contenido grupal auditado");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        Map<String, Object> evento = jdbcTemplate.queryForMap("""
+                SELECT id_auditoria, tipo_evento, id_usuario, operador_nombre
+                FROM auditoria
+                WHERE entidad_afectada = 'mensaje_proyecto'
+                  AND id_afectado = ?
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, mensaje.idMensajeProyecto());
+
+        assertEquals("MENSAJE_PROYECTO_ENVIADO", evento.get("tipo_evento"));
+        assertEquals(director.idUsuario(),
+                ((Number) evento.get("id_usuario")).longValue());
+        assertEquals("Ana Pérez", evento.get("operador_nombre"));
+
+        String contenido = jdbcTemplate.queryForObject("""
+                SELECT valor_nuevo
+                FROM detalle_auditoria
+                WHERE id_auditoria = ?
+                  AND campo = 'contenido'
+                """, String.class, ((Number) evento.get("id_auditoria")).longValue());
+
+        assertEquals("Contenido grupal auditado", contenido);
     }
 
     @Test

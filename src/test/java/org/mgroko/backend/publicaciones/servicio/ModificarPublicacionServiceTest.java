@@ -36,6 +36,7 @@ import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExced
 import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
 import org.mgroko.backend.publicaciones.exception.PublicacionNoEncontradaException;
+import org.mgroko.backend.publicaciones.evento.ColaboracionAutomaticaSolicitadaEvent;
 import org.mgroko.backend.repositorio.ImagenRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
@@ -44,10 +45,12 @@ import org.mgroko.backend.storage.dto.ArchivoAlmacenado;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.mgroko.backend.storage.servicio.StorageService;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -87,6 +90,15 @@ class ModificarPublicacionServiceTest {
     @Mock
     private PublicacionInteraccionResumenService interaccionResumenService;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ColaboracionAutomaticaLifecycleService colaboracionLifecycleService;
+
+    @Mock
+    private ColaboradorPublicacionOrigenService colaboradorOrigenService;
+
     private ModificarPublicacionService servicio;
     private Perfil perfil;
     private Publicacion publicacion;
@@ -109,7 +121,13 @@ class ModificarPublicacionServiceTest {
                 storageService,
                 borradoArchivosDiferido,
                 entityManager,
-                interaccionResumenService);
+                interaccionResumenService,
+                eventPublisher,
+                colaboracionLifecycleService,
+                colaboradorOrigenService);
+
+        when(colaboradorOrigenService.obtenerOrigenes(any()))
+                .thenReturn(java.util.Map.of());
 
         perfil = Perfil.builder()
                 .idPerfil(7L)
@@ -271,6 +289,28 @@ class ModificarPublicacionServiceTest {
         assertEquals(3, response.imagenes().size());
         assertEquals(30L, response.imagenes().get(2).idImagen());
         verify(borradoArchivosDiferido).registrarBorrados("publicacion_nueva.webp", null);
+    }
+
+    @Test
+    void modificar_agregaImagenesNuevas_publicaEventoDeDeteccion() {
+        ModificarPublicacionRequest request = request("Editorial", List.of(10L, 20L));
+        request.setArchivos(List.of(archivo("nueva.jpg")));
+
+        servicio.modificar(1L, 7L, 99L, request);
+
+        ArgumentCaptor<ColaboracionAutomaticaSolicitadaEvent> captor =
+                ArgumentCaptor.forClass(ColaboracionAutomaticaSolicitadaEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+
+        assertEquals(99L, captor.getValue().idPublicacion());
+        assertEquals(List.of(30L), captor.getValue().idsImagenes());
+    }
+
+    @Test
+    void modificar_sinImagenesNuevas_noPublicaEventoDeDeteccion() {
+        servicio.modificar(1L, 7L, 99L, request("Editorial", List.of(10L)));
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test

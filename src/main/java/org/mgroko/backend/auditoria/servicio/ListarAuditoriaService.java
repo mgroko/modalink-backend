@@ -62,11 +62,14 @@ public class ListarAuditoriaService {
             LocalDate fechaDesde,
             LocalDate fechaHasta,
             List<String> tiposEvento,
+            String operador,
+            String texto,
             int page,
             int size) {
 
         AuditoriaFiltroResuelto filtro =
-                auditoriaFiltroService.resolver(fechaDesde, fechaHasta, tiposEvento);
+                auditoriaFiltroService.resolver(
+                        fechaDesde, fechaHasta, tiposEvento, operador, texto);
         auditoriaFiltroService.validarPaginacion(page, size);
 
         Pageable pageable = PageRequest.of(
@@ -78,7 +81,8 @@ public class ListarAuditoriaService {
 
         Page<Auditoria> pagina = auditoriaRepository.findAll(
                 AuditoriaSpecifications.conFiltros(
-                        filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos()),
+                        filtro.fechaDesde(), filtro.fechaHasta(), filtro.tipos(),
+                        filtro.operador(), filtro.texto()),
                 pageable);
 
         if (pagina.isEmpty()) {

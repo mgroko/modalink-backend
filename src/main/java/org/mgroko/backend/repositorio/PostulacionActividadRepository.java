@@ -91,20 +91,24 @@ public interface PostulacionActividadRepository
     void deleteByRequerimiento_IdRequerimiento(Long idRequerimiento);
 
     /**
-     * Indica si el perfil ya se postuló al requerimiento, sin importar el
-     * estado de la postulación. La base también lo garantiza con el índice
-     * único sobre (id_perfil, id_requerimiento_act).
+     * Indica si el perfil ya tiene una postulación vigente al requerimiento.
+     * Las postulaciones {@code RECHAZADA} no bloquean un nuevo intento: si el
+     * cupo se libera, el perfil puede volver a postularse. La base garantiza la
+     * unicidad únicamente para los estados vigentes con el índice parcial
+     * {@code UQ_perfil_postulacion_act}.
      *
      * @param idPerfil         perfil postulante
      * @param idRequerimiento  requerimiento de actividad
-     * @return true si ya existe una postulación
+     * @param estados          estados que se consideran vigentes
+     * @return true si ya existe una postulación vigente
      */
-    boolean existsByPerfil_IdPerfilAndRequerimiento_IdRequerimiento(
-            Long idPerfil, Long idRequerimiento);
+    boolean existsByPerfil_IdPerfilAndRequerimiento_IdRequerimientoAndEstadoIn(
+            Long idPerfil, Long idRequerimiento, Collection<EstadoSolicitud> estados);
 
     /**
-     * Estados de las postulaciones del perfil para los requerimientos de
-     * actividad indicados, en una sola consulta.
+     * Estados de las postulaciones vigentes del perfil para los requerimientos
+     * de actividad indicados, en una sola consulta. Las rechazadas se omiten
+     * para que el perfil pueda volver a postularse tras liberarse el cupo.
      */
     @Query("""
         SELECT p.requerimiento.idRequerimiento AS entidadId,
@@ -112,6 +116,7 @@ public interface PostulacionActividadRepository
         FROM PostulacionActividad p
         WHERE p.perfil.idPerfil = :idPerfil
           AND p.requerimiento.idRequerimiento IN :ids
+          AND p.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.RECHAZADA
     """)
     List<EstadoPostulacionProyeccion> findEstadosPorPerfilYRequerimientos(
             @Param("idPerfil") Long idPerfil,
@@ -144,6 +149,27 @@ public interface PostulacionActividadRepository
           AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
     """)
     List<PostulacionActividad> findPendientesDeProyectoConPerfil(@Param("idProyecto") Long idProyecto);
+
+    /**
+     * Postulaciones pendientes de un requerimiento bloqueadas para el rechazo
+     * automático al cubrirse el cupo. Se ordenan por id para que dos
+     * transacciones concurrentes tomen los locks en el mismo orden.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT p FROM PostulacionActividad p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH p.requerimiento requerimiento
+        JOIN FETCH requerimiento.actividad actividad
+        JOIN FETCH actividad.planificacion planificacion
+        JOIN FETCH planificacion.proyecto
+        WHERE requerimiento.idRequerimiento = :idRequerimiento
+          AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+        ORDER BY p.idPostulacion ASC
+    """)
+    List<PostulacionActividad> findPendientesPorRequerimientoParaActualizar(
+            @Param("idRequerimiento") Long idRequerimiento);
 
     @Query("""
         SELECT p FROM PostulacionActividad p

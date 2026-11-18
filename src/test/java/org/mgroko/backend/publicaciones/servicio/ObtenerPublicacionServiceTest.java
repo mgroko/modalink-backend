@@ -60,6 +60,9 @@ class ObtenerPublicacionServiceTest {
     @Mock
     private PublicacionInteraccionResumenService interaccionResumenService;
 
+    @Mock
+    private ColaboradorPublicacionOrigenService colaboradorOrigenService;
+
     private ObtenerPublicacionService servicio;
     private Perfil perfil;
     private Publicacion publicacion;
@@ -75,7 +78,11 @@ class ObtenerPublicacionServiceTest {
                 publicacionRepository,
                 datosService,
                 proyectoVisibilidadService,
-                interaccionResumenService);
+                interaccionResumenService,
+                colaboradorOrigenService);
+
+        when(colaboradorOrigenService.obtenerOrigenes(any()))
+                .thenReturn(java.util.Map.of());
 
         perfil = Perfil.builder()
                 .idPerfil(7L)

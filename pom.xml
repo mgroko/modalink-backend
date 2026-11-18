@@ -18,6 +18,7 @@
 
     <properties>
         <java.version>25</java.version>
+        <opencv.version>4.14.0-1.5.14</opencv.version>
     </properties>
 
     <dependencyManagement>
@@ -44,6 +45,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Envio de notificaciones por email (Mailpit en desarrollo) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
         <dependency>
@@ -179,7 +186,12 @@
             <version>0.1.6</version>
         </dependency>
 
-
+        <!-- OpenCV + JavaCPP: pHash (módulo img_hash de opencv_contrib). -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>opencv-platform</artifactId>
+            <version>${opencv.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -231,4 +243,5 @@
 
         </plugins>
     </build>
+
 </project>

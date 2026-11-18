@@ -30,6 +30,7 @@ import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.ProyectoVisibilidadService;
 import org.mgroko.backend.publicaciones.dto.CrearPublicacionRequest;
 import org.mgroko.backend.publicaciones.dto.PublicacionResponse;
+import org.mgroko.backend.publicaciones.evento.ColaboracionAutomaticaSolicitadaEvent;
 import org.mgroko.backend.publicaciones.exception.LimiteImagenesPublicacionExcedidoException;
 import org.mgroko.backend.publicaciones.exception.ProyectoNoAsociableException;
 import org.mgroko.backend.publicaciones.exception.PublicacionInvalidaException;
@@ -42,8 +43,10 @@ import org.mgroko.backend.storage.exception.ArchivoVacioException;
 import org.mgroko.backend.storage.servicio.BorradoArchivosDiferido;
 import org.mgroko.backend.storage.servicio.StorageService;
 import org.mgroko.backend.ubicacion.servicio.UbicacionService;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.mock.web.MockMultipartFile;
@@ -77,6 +80,9 @@ class CrearPublicacionServiceTest {
     @Mock
     private BorradoArchivosDiferido borradoArchivosDiferido;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private CrearPublicacionService servicio;
     private Perfil perfil;
 
@@ -94,7 +100,8 @@ class CrearPublicacionServiceTest {
                 proyectoVisibilidadService,
                 publicacionDatosService,
                 storageService,
-                borradoArchivosDiferido);
+                borradoArchivosDiferido,
+                eventPublisher);
 
         perfil = Perfil.builder()
                 .idPerfil(7L)
@@ -260,6 +267,18 @@ class CrearPublicacionServiceTest {
         request.setIdProyecto(25L);
 
         assertThrows(ProyectoNoAsociableException.class, () -> servicio.crear(1L, 7L, request));
+    }
+
+    @Test
+    void crear_publicaEventoDeDeteccionConPublicacionEImagenes() {
+        servicio.crear(1L, 7L, request("Editorial"));
+
+        ArgumentCaptor<ColaboracionAutomaticaSolicitadaEvent> captor =
+                ArgumentCaptor.forClass(ColaboracionAutomaticaSolicitadaEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+
+        assertEquals(99L, captor.getValue().idPublicacion());
+        assertEquals(List.of(10L), captor.getValue().idsImagenes());
     }
 
     @Test

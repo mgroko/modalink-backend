@@ -32,4 +32,29 @@ public class Imagen {
     @Column(name = "fecha_subida", nullable = false)
     @Builder.Default
     private LocalDateTime fechaSubida = LocalDateTime.now();
+
+    /**
+     * SHA-256 de los bytes originales subidos. Permite detectar el mismo
+     * archivo aunque cambie la configuración de procesamiento.
+     */
+    @Column(name = "sha256_original", length = 64)
+    private String sha256Original;
+
+    /**
+     * SHA-256 del WebP procesado y almacenado.
+     */
+    @Column(name = "sha256_contenido", length = 64)
+    private String sha256Contenido;
+
+    /**
+     * pHash OpenCV de 64 bits. Se guarda como 8 bytes.
+     */
+    @Column(name = "phash")
+    private Long phash;
+
+    /**
+     * Versión del algoritmo de pHash para invalidar hashes incompatibles.
+     */
+    @Column(name = "phash_version")
+    private Short phashVersion;
 }

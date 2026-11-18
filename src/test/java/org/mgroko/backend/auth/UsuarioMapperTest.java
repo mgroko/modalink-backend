@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.auth.dto.UsuarioResponse;
 import org.mgroko.backend.auth.mapper.UsuarioMapper;
+import java.util.Set;
+
 import org.mgroko.backend.modelo.Genero;
+import org.mgroko.backend.modelo.PermisoGlobal;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.Usuario;
 import static org.mockito.Mockito.mock;
@@ -44,6 +47,31 @@ class UsuarioMapperTest {
         assertEquals("maria.flores@test.com", response.correo());
         assertEquals("Usuario", response.rolGlobal());
         assertEquals("mujer", response.genero());
+    }
+
+    @Test
+    void toResponse_conPermisosGlobales_losDevuelveOrdenados() {
+        PermisoGlobal verUsuarios = mock(PermisoGlobal.class);
+        when(verUsuarios.getNombre()).thenReturn("VER_USUARIOS");
+        PermisoGlobal verPerfiles = mock(PermisoGlobal.class);
+        when(verPerfiles.getNombre()).thenReturn("VER_PERFILES");
+
+        RolGlobal rol = mock(RolGlobal.class);
+        when(rol.getNombre()).thenReturn("Administrador");
+        when(rol.getPermisos()).thenReturn(Set.of(verUsuarios, verPerfiles));
+
+        Usuario usuario = Usuario.builder()
+                .nombre("Admin")
+                .apellido("Sistema")
+                .dni("11111111")
+                .correo("admin@test.com")
+                .rolGlobal(rol)
+                .build();
+
+        UsuarioResponse response = UsuarioMapper.toResponse(usuario);
+
+        assertEquals(java.util.List.of("VER_PERFILES", "VER_USUARIOS"),
+                response.permisosGlobales());
     }
 
     @Test

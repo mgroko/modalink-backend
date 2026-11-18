@@ -97,21 +97,25 @@ public interface PostulacionGralRepository
             @Param("estado") EstadoSolicitud estado);
 
     /**
-     * Indica si el perfil ya se postuló al requerimiento general, sin importar
-     * el estado de la postulación. La base también lo garantiza con el índice
-     * único sobre (id_perfil, id_requerimiento_gral).
+     * Indica si el perfil ya tiene una postulación vigente al requerimiento
+     * general. Las postulaciones {@code RECHAZADA} no bloquean un nuevo
+     * intento: si el cupo se libera, el perfil puede volver a postularse. La
+     * base garantiza la unicidad únicamente para los estados vigentes con el
+     * índice parcial {@code UQ_perfil_postulacion_gral}.
      *
-     * @param idPerfil           perfil postulante
+     * @param idPerfil            perfil postulante
      * @param idRequerimientoGral requerimiento general
-     * @return true si ya existe una postulación
+     * @param estados             estados que se consideran vigentes
+     * @return true si ya existe una postulación vigente
      */
-    boolean existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGral(
-            Long idPerfil, Long idRequerimientoGral);
+    boolean existsByPerfil_IdPerfilAndRequerimientoGral_IdRequerimientoGralAndEstadoIn(
+            Long idPerfil, Long idRequerimientoGral, Collection<EstadoSolicitud> estados);
 
     /**
-     * Estados de las postulaciones del perfil para los requerimientos
+     * Estados de las postulaciones vigentes del perfil para los requerimientos
      * indicados, en una sola consulta. Se usa para marcar {@code yaPostulado}
-     * en el buscador de oportunidades.
+     * en el buscador de oportunidades. Las rechazadas se omiten para permitir
+     * volver a postularse cuando se libera el cupo.
      */
     @Query("""
         SELECT p.requerimientoGral.idRequerimientoGral AS entidadId,
@@ -119,6 +123,7 @@ public interface PostulacionGralRepository
         FROM PostulacionGral p
         WHERE p.perfil.idPerfil = :idPerfil
           AND p.requerimientoGral.idRequerimientoGral IN :ids
+          AND p.estado <> org.mgroko.backend.modelo.enums.EstadoSolicitud.RECHAZADA
     """)
     List<EstadoPostulacionProyeccion> findEstadosPorPerfilYRequerimientos(
             @Param("idPerfil") Long idPerfil,
@@ -150,6 +155,25 @@ public interface PostulacionGralRepository
           AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
     """)
     List<PostulacionGral> findPendientesDeProyectoConPerfil(@Param("idProyecto") Long idProyecto);
+
+    /**
+     * Postulaciones pendientes de un requerimiento general bloqueadas para el
+     * rechazo automático al cubrirse el cupo. Se ordenan por id para que dos
+     * transacciones concurrentes tomen los locks en el mismo orden.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT p FROM PostulacionGral p
+        JOIN FETCH p.perfil perfil
+        JOIN FETCH perfil.usuario
+        JOIN FETCH p.requerimientoGral requerimiento
+        JOIN FETCH requerimiento.proyecto
+        WHERE requerimiento.idRequerimientoGral = :idRequerimientoGral
+          AND p.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+        ORDER BY p.idPostulacionGral ASC
+    """)
+    List<PostulacionGral> findPendientesPorRequerimientoGralParaActualizar(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
 
     @Query("""
         SELECT p FROM PostulacionGral p

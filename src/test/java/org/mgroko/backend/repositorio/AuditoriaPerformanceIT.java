@@ -49,13 +49,14 @@ class AuditoriaPerformanceIT extends AbstractPostgresIntegrationTest {
         sembrarEventos();
 
         for (int i = 0; i < 3; i++) {
-            listarAuditoriaService.listar(DESDE, HASTA, TIPOS, 0, 20);
+            listarAuditoriaService.listar(DESDE, HASTA, TIPOS, null, null, 0, 20);
         }
 
         List<Long> duracionesMs = new ArrayList<>();
         for (int i = 0; i < MEDICIONES; i++) {
             long inicio = System.nanoTime();
-            var pagina = listarAuditoriaService.listar(DESDE, HASTA, TIPOS, 0, 20);
+            var pagina = listarAuditoriaService.listar(
+                    DESDE, HASTA, TIPOS, null, null, 0, 20);
             long fin = System.nanoTime();
             assertThat(pagina.contenido()).hasSize(20);
             duracionesMs.add(Duration.ofNanos(fin - inicio).toMillis());

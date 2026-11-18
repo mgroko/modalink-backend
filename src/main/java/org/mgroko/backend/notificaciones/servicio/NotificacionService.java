@@ -28,6 +28,9 @@ public class NotificacionService {
 
     public static final String TIPO_PROYECTO_CANCELADO = "PROYECTO_CANCELADO";
     public static final String TIPO_PROYECTO_CONFIRMADO = "PROYECTO_CONFIRMADO";
+    public static final String TIPO_PROYECTO_FINALIZADO = "PROYECTO_FINALIZADO";
+    public static final String TIPO_PROYECTO_PUBLICADO = "PROYECTO_PUBLICADO";
+    public static final String TIPO_ACTIVIDAD_ASIGNADA = "ACTIVIDAD_ASIGNADA";
     public static final String TIPO_CALIFICACION_SOLICITADA = "CALIFICACION_SOLICITADA";
     public static final String TIPO_ACTIVIDAD_MODIFICADA = "ACTIVIDAD_MODIFICADA";
     public static final String TIPO_ACTIVIDAD_ELIMINADA = "ACTIVIDAD_ELIMINADA";
@@ -104,12 +107,29 @@ public class NotificacionService {
             "PUBLICACION_MEGUSTA";
     public static final String TIPO_PUBLICACION_COMENTARIO =
             "PUBLICACION_COMENTARIO";
+    public static final String TIPO_COLABORACION_AUTOMATICA_DETECTADA =
+            "COLABORACION_AUTOMATICA_DETECTADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_CONFIRMADA =
+            "COLABORACION_AUTOMATICA_CONFIRMADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_RECHAZADA =
+            "COLABORACION_AUTOMATICA_RECHAZADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_CANCELADA =
+            "COLABORACION_AUTOMATICA_CANCELADA";
+    public static final String TIPO_COLABORACION_AUTOMATICA_DISUELTA =
+            "COLABORACION_AUTOMATICA_DISUELTA";
+    public static final String TIPO_USUARIO_DESHABILITADO =
+            "USUARIO_DESHABILITADO";
+    public static final String TIPO_USUARIO_HABILITADO =
+            "USUARIO_HABILITADO";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";
     public static final String ENTIDAD_CONVERSACION = "CONVERSACION";
     public static final String ENTIDAD_PROYECTO = "PROYECTO";
     public static final String ENTIDAD_PUBLICACION = "PUBLICACION";
+    public static final String ENTIDAD_COLABORACION_AUTOMATICA =
+            "COLABORACION_AUTOMATICA";
+    public static final String ENTIDAD_USUARIO = "USUARIO";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;

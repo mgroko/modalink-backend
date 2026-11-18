@@ -8,10 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.mgroko.backend.conexiones.dto.EnviarSolicitudConexionRequest;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionGestionadaResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionResponse;
@@ -140,6 +143,47 @@ class MensajeriaIntegrationTest extends AbstractPostgresIntegrationTest {
                 .contenido().get(0);
         assertTrue(conversacion.tieneNoLeidos());
         assertTrue(conversacion.puedeEnviar());
+    }
+
+    @Test
+    void enviarMensaje_registraAuditoriaConOperadorYContenido() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        String.valueOf(perfilA.idUsuario()), null, List.of()));
+
+        MensajeResponse mensaje;
+        try {
+            mensaje = mensajeriaService.enviarMensaje(
+                    perfilA.idUsuario(),
+                    perfilA.idPerfil(),
+                    idConversacion,
+                    "Contenido auditado");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        Map<String, Object> evento = jdbcTemplate.queryForMap("""
+                SELECT id_auditoria, tipo_evento, id_usuario, operador_nombre
+                FROM auditoria
+                WHERE entidad_afectada = 'mensaje'
+                  AND id_afectado = ?
+                ORDER BY id_auditoria DESC
+                LIMIT 1
+                """, mensaje.idMensaje());
+
+        assertEquals("MENSAJE_PRIVADO_ENVIADO", evento.get("tipo_evento"));
+        assertEquals(perfilA.idUsuario(),
+                ((Number) evento.get("id_usuario")).longValue());
+        assertEquals("Ana Pérez", evento.get("operador_nombre"));
+
+        String contenido = jdbcTemplate.queryForObject("""
+                SELECT valor_nuevo
+                FROM detalle_auditoria
+                WHERE id_auditoria = ?
+                  AND campo = 'contenido'
+                """, String.class, ((Number) evento.get("id_auditoria")).longValue());
+
+        assertEquals("Contenido auditado", contenido);
     }
 
     @Test
@@ -301,7 +345,7 @@ class MensajeriaIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
-    void mensaje_noGeneraAuditoria() {
+    void mensaje_generaAuditoria() {
         Integer antes = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM auditoria
                 WHERE entidad_afectada = 'mensaje'
@@ -313,9 +357,10 @@ class MensajeriaIntegrationTest extends AbstractPostgresIntegrationTest {
         Integer despues = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM auditoria
                 WHERE entidad_afectada = 'mensaje'
+                  AND tipo_evento = 'MENSAJE_PRIVADO_ENVIADO'
                 """, Integer.class);
 
-        assertEquals(antes, despues);
+        assertEquals(antes + 1, despues);
     }
 
     private Long crearConexion(PerfilCreado remitente, PerfilCreado destinatario) {
