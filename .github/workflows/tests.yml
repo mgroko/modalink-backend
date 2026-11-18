@@ -12,6 +12,9 @@ jobs:
           java-version: "25"
           distribution: "temurin"
 
+      - name: Instalar dependencias nativas de OpenCV
+        run: sudo apt-get update && sudo apt-get install -y libgtk2.0-0
+
       - name: Comprobar Docker y pre-descargar imágenes de test
         run: |
           docker version
