@@ -2,6 +2,7 @@ package org.mgroko.backend.calendario.controlador;
 
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -26,6 +27,7 @@ import org.mgroko.backend.calendario.exception.BloqueoNoEncontradoException;
 import org.mgroko.backend.calendario.exception.BloqueoSolapadoException;
 import org.mgroko.backend.calendario.exception.HorarioComprometidoException;
 import org.mgroko.backend.calendario.exception.JornadaInvalidaException;
+import org.mgroko.backend.calendario.exception.RangoInvalidoException;
 import org.mgroko.backend.calendario.servicio.CalendarioService;
 import org.mgroko.backend.proyectos.dto.ResumenReprogramacionResponse;
 import org.mgroko.backend.proyectos.servicio.JornadaReprogramacionService;
@@ -230,9 +232,10 @@ class CalendarioControllerTest {
 
     @Test
     void marcarNoDisponible_valido_devuelve200() throws Exception {
+        LocalDateTime inicio = LocalDate.now().plusDays(7).atTime(10, 0);
+        LocalDateTime fin = LocalDate.now().plusDays(7).atTime(14, 0);
         MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
-                LocalDateTime.of(2026, 9, 15, 10, 0),
-                LocalDateTime.of(2026, 9, 15, 14, 0), "X");
+                inicio, fin, "X");
         when(calendarioService.marcarNoDisponible(anyLong(), any(MarcarNoDisponibleRequest.class)))
                 .thenReturn(new BloqueoResponse(3L, request.fechaHoraInicio(), request.fechaHoraFin(), "X"));
 
@@ -245,6 +248,27 @@ class CalendarioControllerTest {
 
         verify(jornadaReprogramacionService).reprogramarAfectados(
                 1L, MotivoReprogramacion.CAMBIO_BLOQUEO);
+    }
+
+    @Test
+    void marcarNoDisponible_fechaPasada_devuelve400() throws Exception {
+        MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
+                LocalDate.now().minusDays(2).atTime(10, 0),
+                LocalDate.now().minusDays(1).atTime(14, 0), "X");
+        when(calendarioService.marcarNoDisponible(anyLong(), any(MarcarNoDisponibleRequest.class)))
+                .thenThrow(new RangoInvalidoException(
+                        "No se puede crear un bloqueo en una fecha pasada."));
+
+        mockMvc.perform(post("/calendario/bloqueos")
+                        .principal(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        "No se puede crear un bloqueo en una fecha pasada."));
+
+        verify(jornadaReprogramacionService, never())
+                .reprogramarAfectados(anyLong(), any());
     }
 
     @Test

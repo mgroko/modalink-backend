@@ -210,6 +210,7 @@
   1. El actor envía el mensaje `marcarComoNoDisponible(fechaHoraInicio, fechaHoraFin, motivo)`.
   2. **Bloque Alternativo (`alt`)**:
      - `[Bloque coincide con actividad]`: El sistema retorna `excepción(registro duplicado)`.
+     - `[Fecha y hora de fin en el pasado]`: El sistema retorna `excepción(fecha pasada)`.
      - `[Bloqueo registrado]`: El sistema retorna `bloqueoRegistrado(idBloqueo)`.
 
 ---
