@@ -4,15 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP;
+import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_HABILITADO;
+import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_LADO_SALIDA_PX;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_LADO_PX;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_MEGAPIXELES;
 import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_TAMANO_BYTES;
+import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_HABILITADO;
+import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_UMBRAL;
+import static org.mgroko.backend.admin.servicio.ConfiguracionSistemaService.CLAVE_IMAGEN_WEBP_METHOD;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -21,10 +26,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Optional;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriter;
@@ -53,6 +58,11 @@ class ProcesadorImagenTest {
         valoresPorDefecto.put(CLAVE_IMAGEN_LADO_SALIDA_PX, String.valueOf(LADO_SALIDA));
         valoresPorDefecto.put(CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX, "480");
         valoresPorDefecto.put(CLAVE_IMAGEN_CALIDAD_WEBP, "85");
+        valoresPorDefecto.put(CLAVE_IMAGEN_SUBSAMPLING_HABILITADO, "true");
+        valoresPorDefecto.put(CLAVE_IMAGEN_SUBSAMPLING_UMBRAL, "2");
+        valoresPorDefecto.put(CLAVE_IMAGEN_EXIF_HABILITADO, "true");
+        valoresPorDefecto.put(CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES, "65536");
+        valoresPorDefecto.put(CLAVE_IMAGEN_WEBP_METHOD, "1");
     }
 
     @Test
@@ -228,6 +238,13 @@ class ProcesadorImagenTest {
         assertErrorExplicito(CLAVE_IMAGEN_CALIDAD_WEBP, "muyAlta");
         assertErrorExplicito(CLAVE_IMAGEN_CALIDAD_WEBP, "150");
         assertErrorExplicito(CLAVE_IMAGEN_CALIDAD_WEBP, "-1");
+        assertErrorExplicito(CLAVE_IMAGEN_SUBSAMPLING_UMBRAL, "0");
+        assertErrorExplicito(CLAVE_IMAGEN_SUBSAMPLING_UMBRAL, "11");
+        assertErrorExplicito(CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES, "100");
+        assertErrorExplicito(CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES, "2000000");
+        assertErrorExplicito(CLAVE_IMAGEN_WEBP_METHOD, "7");
+        assertErrorExplicito(CLAVE_IMAGEN_WEBP_METHOD, "-1");
+        assertErrorExplicito(CLAVE_IMAGEN_SUBSAMPLING_HABILITADO, "si");
     }
 
     @Test
@@ -259,13 +276,15 @@ class ProcesadorImagenTest {
 
     private ProcesadorImagen procesadorCon(Map<String, String> valores) {
         ConfiguracionSistemaRepository repositorio = mock(ConfiguracionSistemaRepository.class);
-        when(repositorio.findByClave(anyString())).thenAnswer(invocacion -> {
-            String clave = invocacion.getArgument(0);
-            String valor = valores.get(clave);
-            if (valor == null) {
-                return Optional.empty();
-            }
-            return Optional.of(ConfiguracionSistema.builder().clave(clave).valor(valor).build());
+        when(repositorio.findByClaveIn(anyCollection())).thenAnswer(invocacion -> {
+            Collection<String> claves = invocacion.getArgument(0);
+            return claves.stream()
+                    .filter(valores::containsKey)
+                    .map(clave -> ConfiguracionSistema.builder()
+                            .clave(clave)
+                            .valor(valores.get(clave))
+                            .build())
+                    .toList();
         });
         return new ProcesadorImagen(repositorio);
     }

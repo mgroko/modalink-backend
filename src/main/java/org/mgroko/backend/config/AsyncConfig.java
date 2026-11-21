@@ -1,5 +1,7 @@
 package org.mgroko.backend.config;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +26,8 @@ public class AsyncConfig {
             @Value("${app.colaboracion-automatica.async.queue-capacity:100}") int queueCapacity,
             @Value("${app.colaboracion-automatica.async.thread-name-prefix:colab-auto-}")
             String threadNamePrefix,
+            @Value("${app.colaboracion-automatica.async.thread-priority:5}")
+            int threadPriority,
             @Value("${app.colaboracion-automatica.async.await-termination-seconds:60}")
             int awaitTerminationSeconds) {
 
@@ -32,6 +36,17 @@ public class AsyncConfig {
         executor.setMaxPoolSize(maxPoolSize);
         executor.setQueueCapacity(queueCapacity);
         executor.setThreadNamePrefix(threadNamePrefix);
+        AtomicInteger contadorHilos = new AtomicInteger();
+        executor.setThreadFactory(runnable -> {
+            Thread hilo = new Thread(
+                    runnable,
+                    threadNamePrefix + contadorHilos.incrementAndGet());
+            hilo.setDaemon(true);
+            hilo.setPriority(Math.max(
+                    Thread.MIN_PRIORITY,
+                    Math.min(Thread.MAX_PRIORITY, threadPriority)));
+            return hilo;
+        });
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(awaitTerminationSeconds);
         executor.initialize();

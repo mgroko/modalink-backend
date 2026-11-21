@@ -4196,6 +4196,19 @@ ON CONFLICT (clave) DO UPDATE
     SET valor       = EXCLUDED.valor,
         descripcion = EXCLUDED.descripcion;
 
+INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
+    ('IMAGEN_SUBSAMPLING_HABILITADO', 'true',
+     'Activa el subsampling al decodificar imágenes grandes'),
+    ('IMAGEN_SUBSAMPLING_UMBRAL', '2',
+     'Factor mínimo entre el lado menor de la imagen y el lado de salida para aplicar subsampling (1-10)'),
+    ('IMAGEN_EXIF_HABILITADO', 'true',
+     'Activa la orientación EXIF al procesar imágenes'),
+    ('IMAGEN_EXIF_SCAN_MAX_BYTES', '65536',
+     'Máximo de bytes a escanear buscando el bloque APP1/EXIF (1024-1048576)'),
+    ('IMAGEN_WEBP_METHOD', '1',
+     'Método del encoder WebP: 0 = más rápido, 6 = mejor compresión (0-6)')
+ON CONFLICT (clave) DO NOTHING;
+
 INSERT INTO configuracion_sistema (clave, valor, descripcion)
 VALUES (
     'PERFIL_TYC_PLANTILLA',

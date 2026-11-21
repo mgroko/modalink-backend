@@ -119,10 +119,10 @@ class CrearPublicacionServiceTest {
             }
             return publicacion;
         });
-        when(imagenRepository.save(any(Imagen.class))).thenAnswer(invocation -> {
-            Imagen imagen = invocation.getArgument(0);
-            imagen.setIdImagen(10L);
-            return imagen;
+        when(imagenRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<Imagen> imagenes = invocation.getArgument(0);
+            imagenes.forEach(imagen -> imagen.setIdImagen(10L));
+            return imagenes;
         });
         when(storageService.almacenarImagenPublicacion(any()))
                 .thenReturn(new ArchivoAlmacenado(

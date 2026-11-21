@@ -4,15 +4,22 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
 
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.ConfiguracionSistema;
@@ -22,6 +29,8 @@ import org.mgroko.backend.storage.exception.DimensionesImagenExcedidasException;
 import org.mgroko.backend.storage.exception.ErrorAlmacenamientoException;
 import org.mgroko.backend.storage.exception.FormatoImagenInvalidoException;
 import org.springframework.stereotype.Service;
+
+import com.luciad.imageio.webp.WebPWriteParam;
 
 import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.geometry.Positions;
@@ -113,15 +122,30 @@ public class ProcesadorImagen {
 
         validarMagicBytes(bytes);
 
-        validarDimensiones(bytes, parametros);
+        Dimensiones dimensiones = validarDimensiones(bytes, parametros);
 
         int ladoSalida = paraPublicacion
                 ? parametros.ladoSalidaPublicacionPx()
                 : parametros.ladoSalidaPx();
 
-        BufferedImage reescalada = decodificarYReescalar(bytes, ladoSalida, !paraPublicacion);
+        boolean aplicarExif = tieneExif(
+                bytes,
+                parametros.exifHabilitado(),
+                parametros.exifScanMaxBytes());
 
-        return codificarWebP(reescalada, parametros.calidadWebp());
+        BufferedImage reescalada = decodificarYReescalar(
+                bytes,
+                ladoSalida,
+                !paraPublicacion,
+                aplicarExif,
+                dimensiones,
+                parametros.subsamplingHabilitado(),
+                parametros.subsamplingUmbral());
+
+        return codificarWebP(
+                reescalada,
+                parametros.calidadWebp(),
+                parametros.metodoWebp());
     }
 
     private void validarMagicBytes(byte[] bytes) {
@@ -136,7 +160,7 @@ public class ProcesadorImagen {
                 "El archivo no corresponde a una imagen JPEG, PNG o WEBP válida.");
     }
 
-    private void validarDimensiones(byte[] bytes, ParametrosImagen parametros) {
+    private Dimensiones validarDimensiones(byte[] bytes, ParametrosImagen parametros) {
         try (ImageInputStream flujo = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             if (flujo == null) {
                 throw new FormatoImagenInvalidoException("No se pudo interpretar el archivo como una imagen válida.");
@@ -172,6 +196,8 @@ public class ProcesadorImagen {
                     throw new DimensionesImagenExcedidasException("La imagen tiene " + pixeles
                             + " px y supera el máximo de " + parametros.maxPixeles() + " px.");
                 }
+
+                return new Dimensiones(ancho, alto);
             } finally {
                 lector.dispose();
             }
@@ -185,10 +211,34 @@ public class ProcesadorImagen {
      * la orientación EXIF antes de reescalar (si se decodifica antes con ImageIO y se
      * pasa el BufferedImage, la orientación se pierde).
      */
-    private BufferedImage decodificarYReescalar(byte[] bytes, int ladoSalidaPx, boolean recortarCuadrado) {
+    private BufferedImage decodificarYReescalar(
+            byte[] bytes,
+            int ladoSalidaPx,
+            boolean recortarCuadrado,
+            boolean aplicarExif,
+            Dimensiones dimensiones,
+            boolean subsamplingHabilitado,
+            int subsamplingUmbral) {
+
+        // El subsampling solo se usa cuando no hay EXIF (para no perder la
+        // orientación), está habilitado y la imagen tiene al menos el umbral
+        // configurado respecto del tamaño objetivo. El factor se limita para
+        // que el resultado nunca quede por debajo del tamaño final.
+        if (subsamplingHabilitado && !aplicarExif) {
+            int factor = factorSubsampling(dimensiones, ladoSalidaPx, subsamplingUmbral);
+            if (factor >= Math.max(2, subsamplingUmbral)) {
+                BufferedImage submuestreada = leerConSubsampling(bytes, factor);
+                if (submuestreada != null
+                        && submuestreada.getWidth() >= ladoSalidaPx
+                        && submuestreada.getHeight() >= ladoSalidaPx) {
+                    return redimensionar(submuestreada, ladoSalidaPx, recortarCuadrado);
+                }
+            }
+        }
+
         try {
             var builder = Thumbnails.of(new ByteArrayInputStream(bytes))
-                    .useExifOrientation(true)
+                    .useExifOrientation(aplicarExif)
                     .size(ladoSalidaPx, ladoSalidaPx);
 
             if (recortarCuadrado) {
@@ -201,7 +251,64 @@ public class ProcesadorImagen {
         }
     }
 
-    private byte[] codificarWebP(BufferedImage imagen, int calidadWebp) {
+    private int factorSubsampling(
+            Dimensiones dimensiones,
+            int ladoSalidaPx,
+            int subsamplingUmbral) {
+        int menor = Math.min(dimensiones.ancho(), dimensiones.alto());
+        if (ladoSalidaPx <= 0 || menor < (long) ladoSalidaPx * subsamplingUmbral) {
+            return 1;
+        }
+
+        int factor = Math.min(
+                dimensiones.ancho() / ladoSalidaPx,
+                dimensiones.alto() / ladoSalidaPx);
+        return Math.max(1, factor);
+    }
+
+    private BufferedImage leerConSubsampling(byte[] bytes, int factor) {
+        try (ImageInputStream flujo = ImageIO.createImageInputStream(
+                new ByteArrayInputStream(bytes))) {
+            if (flujo == null) {
+                return null;
+            }
+
+            Iterator<ImageReader> lectores = ImageIO.getImageReaders(flujo);
+            if (!lectores.hasNext()) {
+                return null;
+            }
+
+            ImageReader lector = lectores.next();
+            try {
+                lector.setInput(flujo, true, true);
+                ImageReadParam parametrosLectura = lector.getDefaultReadParam();
+                parametrosLectura.setSourceSubsampling(factor, factor, 0, 0);
+                return lector.read(0, parametrosLectura);
+            } finally {
+                lector.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private BufferedImage redimensionar(
+            BufferedImage imagen,
+            int ladoSalidaPx,
+            boolean recortarCuadrado) {
+        try {
+            var builder = Thumbnails.of(imagen).size(ladoSalidaPx, ladoSalidaPx);
+            if (recortarCuadrado) {
+                builder.crop(Positions.CENTER);
+            }
+            return builder.asBufferedImage();
+        } catch (IOException e) {
+            throw new FormatoImagenInvalidoException(
+                    "No se pudo redimensionar la imagen.");
+        }
+    }
+
+    private byte[] codificarWebP(BufferedImage imagen, int calidadWebp, int metodoWebp) {
         Iterator<ImageWriter> escritores = ImageIO.getImageWritersByMIMEType(MIME_SALIDA);
         if (!escritores.hasNext()) {
             throw new ErrorAlmacenamientoException("No hay ningún codificador WebP disponible.", null);
@@ -209,16 +316,19 @@ public class ProcesadorImagen {
 
         ImageWriter escritor = escritores.next();
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        try (ImageOutputStream salida = ImageIO.createImageOutputStream(buffer)) {
-            if (salida == null) {
-                throw new ErrorAlmacenamientoException("No se pudo crear el flujo de salida de la imagen.", null);
-            }
+        try (ImageOutputStream salida = new MemoryCacheImageOutputStream(buffer)) {
             escritor.setOutput(salida);
 
             ImageWriteParam parametros = escritor.getDefaultWriteParam();
             parametros.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
             parametros.setCompressionType(COMPRESION_LOSSY);
             parametros.setCompressionQuality(calidadWebp / (float) PORCENTAJE_CALIDAD);
+
+            if (parametros instanceof WebPWriteParam webpParametros) {
+                // 0 = más rápido, 6 = mejor compresión. El valor se valida al
+                // leerlo desde configuracion_sistema.
+                webpParametros.setMethod(Math.max(0, Math.min(6, metodoWebp)));
+            }
 
             escritor.write(null, new IIOImage(imagen, null, null), parametros);
         } catch (IOException e) {
@@ -231,30 +341,84 @@ public class ProcesadorImagen {
     }
 
     private ParametrosImagen leerParametros(boolean paraPublicacion) {
-        int maxLadoPx = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_LADO_PX);
-        int megapixeles = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_MEGAPIXELES);
-        int maxTamanoBytes = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_TAMANO_BYTES);
-        int ladoSalidaPx = leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_LADO_SALIDA_PX);
+        List<String> claves = new ArrayList<>(List.of(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_LADO_PX,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_MEGAPIXELES,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_TAMANO_BYTES,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_LADO_SALIDA_PX,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_HABILITADO,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_UMBRAL,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_HABILITADO,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_WEBP_METHOD));
+        if (paraPublicacion) {
+            claves.add(ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX);
+        }
+
+        Map<String, String> valores = new HashMap<>();
+        for (ConfiguracionSistema configuracion : configuracionSistemaRepository
+                .findByClaveIn(claves)) {
+            valores.put(configuracion.getClave(), configuracion.getValor());
+        }
+
+        int maxLadoPx = leerEnteroPositivo(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_LADO_PX);
+        int megapixeles = leerEnteroPositivo(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_MEGAPIXELES);
+        int maxTamanoBytes = leerEnteroPositivo(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_TAMANO_BYTES);
+        int ladoSalidaPx = leerEnteroPositivo(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_LADO_SALIDA_PX);
         int ladoSalidaPublicacionPx = paraPublicacion
-                ? leerEnteroPositivo(ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX)
+                ? leerEnteroPositivo(valores,
+                        ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX)
                 : 0;
-        int calidadWebp = leerEnteroEnRango(ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP,
+        int calidadWebp = leerEnteroEnRango(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP,
                 0, PORCENTAJE_CALIDAD);
+        boolean subsamplingHabilitado = leerBooleano(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_HABILITADO);
+        int subsamplingUmbral = leerEnteroEnRango(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_UMBRAL,
+                1, 10);
+        boolean exifHabilitado = leerBooleano(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_HABILITADO);
+        int exifScanMaxBytes = leerEnteroEnRango(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES,
+                1024, 1048576);
+        int metodoWebp = leerEnteroEnRango(valores,
+                ConfiguracionSistemaService.CLAVE_IMAGEN_WEBP_METHOD,
+                0, 6);
 
-        return new ParametrosImagen(maxLadoPx, megapixeles * PIXELES_POR_MEGAPIXEL,
-                maxTamanoBytes, ladoSalidaPx, ladoSalidaPublicacionPx, calidadWebp);
+        return new ParametrosImagen(
+                maxLadoPx,
+                megapixeles * PIXELES_POR_MEGAPIXEL,
+                maxTamanoBytes,
+                ladoSalidaPx,
+                ladoSalidaPublicacionPx,
+                calidadWebp,
+                subsamplingHabilitado,
+                subsamplingUmbral,
+                exifHabilitado,
+                exifScanMaxBytes,
+                metodoWebp);
     }
 
-    private int leerEnteroPositivo(String clave) {
-        return leerEnteroEnRango(clave, 1, Integer.MAX_VALUE);
+    private int leerEnteroPositivo(Map<String, String> valores, String clave) {
+        return leerEnteroEnRango(valores, clave, 1, Integer.MAX_VALUE);
     }
 
-    private int leerEnteroEnRango(String clave, int minimo, int maximo) {
-        String valor = configuracionSistemaRepository.findByClave(clave)
-                .map(ConfiguracionSistema::getValor)
-                .filter(valorObtenido -> !valorObtenido.isBlank())
-                .orElseThrow(() -> new IllegalStateException(
-                        "Falta el valor de '" + clave + "' en configuracion_sistema."));
+    private int leerEnteroEnRango(
+            Map<String, String> valores,
+            String clave,
+            int minimo,
+            int maximo) {
+        String valor = valores.get(clave);
+        if (valor == null || valor.isBlank()) {
+            throw new IllegalStateException(
+                    "Falta el valor de '" + clave + "' en configuracion_sistema.");
+        }
 
         int numero;
         try {
@@ -269,6 +433,52 @@ public class ProcesadorImagen {
                     + minimo + " y " + maximo + ": " + numero);
         }
         return numero;
+    }
+
+    private boolean leerBooleano(Map<String, String> valores, String clave) {
+        String valor = valores.get(clave);
+        if (valor == null || valor.isBlank()) {
+            throw new IllegalStateException(
+                    "Falta el valor de '" + clave + "' en configuracion_sistema.");
+        }
+
+        String normalizado = valor.trim().toLowerCase(Locale.ROOT);
+        if ("true".equals(normalizado)) {
+            return true;
+        }
+        if ("false".equals(normalizado)) {
+            return false;
+        }
+        throw new IllegalStateException("El valor de '" + clave
+                + "' en configuracion_sistema debe ser true o false: " + valor);
+    }
+
+    /**
+     * Detecta si un JPEG contiene un bloque APP1/EXIF. Evita pagar el costo de
+     * {@code useExifOrientation(true)} en PNG, WebP y JPEG sin EXIF.
+     */
+    private static boolean tieneExif(
+            byte[] bytes,
+            boolean exifHabilitado,
+            int maxBytesEscaneo) {
+        if (!exifHabilitado || !empiezaCon(bytes, MAGIC_JPEG)) {
+            return false;
+        }
+
+        int limite = Math.min(bytes.length - 10, maxBytesEscaneo);
+        for (int i = 2; i <= limite; i++) {
+            if ((bytes[i] & 0xFF) == 0xFF
+                    && (bytes[i + 1] & 0xFF) == 0xE1
+                    && bytes[i + 4] == 'E'
+                    && bytes[i + 5] == 'x'
+                    && bytes[i + 6] == 'i'
+                    && bytes[i + 7] == 'f'
+                    && bytes[i + 8] == 0
+                    && bytes[i + 9] == 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean empiezaCon(byte[] bytes, byte[] prefijo) {
@@ -287,7 +497,20 @@ public class ProcesadorImagen {
         return true;
     }
 
-    private record ParametrosImagen(int maxLadoPx, long maxPixeles, int maxTamanoBytes,
-            int ladoSalidaPx, int ladoSalidaPublicacionPx, int calidadWebp) {
+    private record ParametrosImagen(
+            int maxLadoPx,
+            long maxPixeles,
+            int maxTamanoBytes,
+            int ladoSalidaPx,
+            int ladoSalidaPublicacionPx,
+            int calidadWebp,
+            boolean subsamplingHabilitado,
+            int subsamplingUmbral,
+            boolean exifHabilitado,
+            int exifScanMaxBytes,
+            int metodoWebp) {
+    }
+
+    private record Dimensiones(int ancho, int alto) {
     }
 }

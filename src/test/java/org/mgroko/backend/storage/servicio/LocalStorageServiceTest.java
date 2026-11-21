@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,9 +19,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import javax.imageio.ImageIO;
 
@@ -47,13 +47,18 @@ class LocalStorageServiceTest {
             ConfiguracionSistemaService.CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX;
     private static final String CLAVE_CALIDAD_WEBP = ConfiguracionSistemaService.CLAVE_IMAGEN_CALIDAD_WEBP;
 
-    private static final Map<String, String> CONFIGURACION = Map.of(
-            CLAVE_MAX_LADO_PX, "8000",
-            CLAVE_MAX_MEGAPIXELES, "24",
-            CLAVE_MAX_TAMANO_BYTES, "10485760",
-            CLAVE_LADO_SALIDA_PX, "600",
-            CLAVE_PUBLICACION_LADO_SALIDA_PX, "1200",
-            CLAVE_CALIDAD_WEBP, "85");
+    private static final Map<String, String> CONFIGURACION = Map.ofEntries(
+            Map.entry(CLAVE_MAX_LADO_PX, "8000"),
+            Map.entry(CLAVE_MAX_MEGAPIXELES, "24"),
+            Map.entry(CLAVE_MAX_TAMANO_BYTES, "10485760"),
+            Map.entry(CLAVE_LADO_SALIDA_PX, "600"),
+            Map.entry(CLAVE_PUBLICACION_LADO_SALIDA_PX, "1200"),
+            Map.entry(CLAVE_CALIDAD_WEBP, "85"),
+            Map.entry(ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_HABILITADO, "true"),
+            Map.entry(ConfiguracionSistemaService.CLAVE_IMAGEN_SUBSAMPLING_UMBRAL, "2"),
+            Map.entry(ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_HABILITADO, "true"),
+            Map.entry(ConfiguracionSistemaService.CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES, "65536"),
+            Map.entry(ConfiguracionSistemaService.CLAVE_IMAGEN_WEBP_METHOD, "1"));
 
     @TempDir
     Path tempDir;
@@ -63,13 +68,15 @@ class LocalStorageServiceTest {
     @BeforeEach
     void setUp() {
         ConfiguracionSistemaRepository repositorio = mock(ConfiguracionSistemaRepository.class);
-        when(repositorio.findByClave(anyString())).thenAnswer(invocacion -> {
-            String clave = invocacion.getArgument(0);
-            String valor = CONFIGURACION.get(clave);
-            if (valor == null) {
-                return Optional.empty();
-            }
-            return Optional.of(ConfiguracionSistema.builder().clave(clave).valor(valor).build());
+        when(repositorio.findByClaveIn(anyCollection())).thenAnswer(invocacion -> {
+            Collection<String> claves = invocacion.getArgument(0);
+            return claves.stream()
+                    .filter(CONFIGURACION::containsKey)
+                    .map(clave -> ConfiguracionSistema.builder()
+                            .clave(clave)
+                            .valor(CONFIGURACION.get(clave))
+                            .build())
+                    .toList();
         });
 
         storageService = new LocalStorageService(
@@ -78,6 +85,7 @@ class LocalStorageServiceTest {
                 "moodboard",
                 "publicaciones",
                 "polaroids",
+                true,
                 new ProcesadorImagen(repositorio),
                 mock(HuellaImagenService.class));
     }

@@ -1,6 +1,7 @@
 package org.mgroko.backend.publicaciones.servicio;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.mgroko.backend.modelo.Imagen;
@@ -77,13 +78,14 @@ public class CrearPublicacionService {
 
         publicacion = publicacionRepository.save(publicacion);
 
+        List<Imagen> imagenes = new ArrayList<>();
         for (MultipartFile archivo : archivos) {
             ArchivoAlmacenado almacenado = storageService.almacenarImagenPublicacion(archivo);
 
             // Si la transacción no commitea, el archivo nuevo se borra.
             borradoArchivosDiferido.registrarBorrados(almacenado.nombreArchivo(), null);
 
-            Imagen imagen = imagenRepository.save(Imagen.builder()
+            imagenes.add(Imagen.builder()
                     .nombreArchivo(almacenado.nombreArchivo())
                     .url(almacenado.url())
                     .tipoImagen(almacenado.tipoMime())
@@ -94,10 +96,9 @@ public class CrearPublicacionService {
                     .phash(almacenado.phash())
                     .phashVersion(HuellaImagenService.PHASH_VERSION)
                     .build());
-
-            publicacion.getImagenes().add(imagen);
         }
 
+        publicacion.getImagenes().addAll(imagenRepository.saveAll(imagenes));
         publicacion = publicacionRepository.save(publicacion);
 
         eventPublisher.publishEvent(new ColaboracionAutomaticaSolicitadaEvent(
