@@ -149,3 +149,26 @@ Las notificaciones se agrupan en estas familias:
 | “No se pudieron marcar las notificaciones.” | Problema de conexión. | Volvé a intentar. |
 
 [CAPTURA: notificacion-no-leida - tarjeta con el botón Marcar leída]
+
+## 9.6. Avisos de cambios en características técnicas
+
+**Objetivo:** mantener actualizados los datos técnicos del perfil cuando el administrador cambia el catálogo de su profesión.
+
+**Quién puede hacerlo:** usuario con un perfil activo de la profesión afectada.
+
+**Pasos:**
+
+1. Abrí la campana de notificaciones del perfil.
+2. Buscá el aviso **Nueva característica técnica** o **Característica técnica modificada**.
+3. Hacé clic en **Completar perfil**.
+4. El sistema activa el perfil correspondiente y abre **Editar perfil** con el campo resaltado en amarillo.
+5. Completá o revisá el campo y guardá los cambios.
+
+**Resultado esperado:** el campo queda actualizado y el resaltado desaparece.
+
+**Reglas y restricciones:**
+
+- Solo se notifica a perfiles activos de la profesión de la característica.
+- Los perfiles de otras profesiones no reciben el aviso.
+- Si la misma característica se modifica varias veces antes de leer el aviso, se mantiene una sola notificación no leída y se actualiza el mensaje.
+- Si ya leíste el aviso, una modificación posterior genera uno nuevo.

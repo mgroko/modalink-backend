@@ -193,6 +193,24 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
     List<Long> findIdsPerfilByHabilidad(@Param("idHabilidad") Long idHabilidad);
 
     /**
+     * Perfiles activos de una profesión, con su usuario inicializado, para
+     * notificar cambios en el catálogo de características técnicas.
+     *
+     * @param idProfesion identificador de la profesión
+     * @return perfiles activos cuyo usuario también está activo
+     */
+    @Query("""
+        SELECT DISTINCT p FROM Perfil p
+        JOIN FETCH p.usuario u
+        WHERE p.profesion.idProfesion = :idProfesion
+          AND p.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+          AND u.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+        ORDER BY p.idPerfil
+    """)
+    List<Perfil> findActivosPorProfesionConUsuario(
+            @Param("idProfesion") Long idProfesion);
+
+    /**
      * Candidatos activos para cubrir una vacante de actividad.
      *
      * <p>La consulta aplica los filtros duros del módulo de reemplazos:

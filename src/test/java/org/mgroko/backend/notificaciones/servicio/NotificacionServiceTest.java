@@ -259,6 +259,68 @@ class NotificacionServiceTest {
     }
 
     @Test
+    void crearOActualizarNoLeida_sinExistente_creaNueva() {
+        when(notificacionRepository
+                .findFirstByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfilAndTipoAndEntidadTipoAndEntidadIdAndLeidaFalseOrderByIdNotificacionDesc(
+                        10L, 20L,
+                        NotificacionService.TIPO_CARACTERISTICA_TECNICA_CREADA,
+                        NotificacionService.ENTIDAD_CARACTERISTICA_TECNICA,
+                        55L))
+                .thenReturn(Optional.empty());
+
+        Notificacion creada = notificacionService.crearOActualizarNoLeida(
+                usuario,
+                perfil,
+                NotificacionService.TIPO_CARACTERISTICA_TECNICA_CREADA,
+                "Mensaje",
+                NotificacionService.ENTIDAD_CARACTERISTICA_TECNICA,
+                55L);
+
+        assertThat(creada.getMensaje()).isEqualTo("Mensaje");
+        assertThat(creada.getPerfilContexto()).isEqualTo(perfil);
+        assertThat(creada.getTipo())
+                .isEqualTo(NotificacionService.TIPO_CARACTERISTICA_TECNICA_CREADA);
+        assertThat(creada.getLeida()).isFalse();
+    }
+
+    @Test
+    void crearOActualizarNoLeida_conExistente_actualizaMensajeYFechaSinCrearOtra() {
+        Notificacion existente = Notificacion.builder()
+                .idNotificacion(99L)
+                .usuarioDestino(usuario)
+                .perfilContexto(perfil)
+                .tipo(NotificacionService.TIPO_CARACTERISTICA_TECNICA_MODIFICADA)
+                .mensaje("Mensaje viejo")
+                .entidadTipo(NotificacionService.ENTIDAD_CARACTERISTICA_TECNICA)
+                .entidadId(55L)
+                .leida(false)
+                .fechaGenerada(LocalDateTime.of(2026, 1, 1, 0, 0))
+                .build();
+
+        when(notificacionRepository
+                .findFirstByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfilAndTipoAndEntidadTipoAndEntidadIdAndLeidaFalseOrderByIdNotificacionDesc(
+                        10L, 20L,
+                        NotificacionService.TIPO_CARACTERISTICA_TECNICA_MODIFICADA,
+                        NotificacionService.ENTIDAD_CARACTERISTICA_TECNICA,
+                        55L))
+                .thenReturn(Optional.of(existente));
+
+        Notificacion resultado = notificacionService.crearOActualizarNoLeida(
+                usuario,
+                perfil,
+                NotificacionService.TIPO_CARACTERISTICA_TECNICA_MODIFICADA,
+                "Mensaje nuevo",
+                NotificacionService.ENTIDAD_CARACTERISTICA_TECNICA,
+                55L);
+
+        assertThat(resultado).isSameAs(existente);
+        assertThat(resultado.getMensaje()).isEqualTo("Mensaje nuevo");
+        assertThat(resultado.getFechaGenerada())
+                .isAfter(LocalDateTime.of(2026, 1, 1, 0, 0));
+        assertThat(resultado.getLeida()).isFalse();
+    }
+
+    @Test
     void eliminarPorEntidadYPerfil_conParametrosValidos_delegaEnRepositorio() {
         when(notificacionRepository.deleteByTipoAndEntidadTipoAndEntidadIdYPerfil(
                 "SOLICITUD_COLABORACION_RECIBIDA", "PUBLICACION", 50L, 10L, 20L))

@@ -40,6 +40,8 @@ public final class NotificacionTitulos {
             Map.entry("PUBLICACION_REACTIVADA", "Publicación reactivada"),
             Map.entry("HABILIDAD_MODIFICADA", "Habilidad modificada"),
             Map.entry("HABILIDAD_ELIMINADA", "Habilidad eliminada"),
+            Map.entry("CARACTERISTICA_TECNICA_CREADA", "Nueva característica técnica"),
+            Map.entry("CARACTERISTICA_TECNICA_MODIFICADA", "Característica técnica modificada"),
             Map.entry("INTEGRANTE_ELIMINADO", "Integrante eliminado"),
             Map.entry("INTEGRANTE_BAJA_VOLUNTARIA", "Baja voluntaria de integrante"),
             Map.entry("REEMPLAZO_CANDIDATOS_DISPONIBLES", "Candidatos de reemplazo"),

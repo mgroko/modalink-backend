@@ -121,6 +121,10 @@ public class NotificacionService {
             "USUARIO_DESHABILITADO";
     public static final String TIPO_USUARIO_HABILITADO =
             "USUARIO_HABILITADO";
+    public static final String TIPO_CARACTERISTICA_TECNICA_CREADA =
+            "CARACTERISTICA_TECNICA_CREADA";
+    public static final String TIPO_CARACTERISTICA_TECNICA_MODIFICADA =
+            "CARACTERISTICA_TECNICA_MODIFICADA";
     public static final String ENTIDAD_SOLICITUD_CONEXION =
             "SOLICITUD_CONEXION";
     public static final String ENTIDAD_CONEXION = "CONEXION";
@@ -130,6 +134,8 @@ public class NotificacionService {
     public static final String ENTIDAD_COLABORACION_AUTOMATICA =
             "COLABORACION_AUTOMATICA";
     public static final String ENTIDAD_USUARIO = "USUARIO";
+    public static final String ENTIDAD_CARACTERISTICA_TECNICA =
+            "CARACTERISTICA_TECNICA";
     public static final String ORIGEN_SERVICIO = "SERVICIO";
 
     private static final int TAMANO_PAGINA_POR_DEFECTO = 20;
@@ -201,6 +207,56 @@ public class NotificacionService {
                 .fechaLeida(null)
                 .origen(ORIGEN_SERVICIO)
                 .build();
+    }
+
+    /**
+     * Crea una notificación o actualiza la existente no leída del mismo tipo y
+     * entidad para el mismo perfil.
+     *
+     * <p>Se usa para avisos de catálogo: si el administrador modifica la misma
+     * característica varias veces antes de que el usuario la lea, no se
+     * acumulan filas duplicadas. La fecha se refresca para que el aviso vuelva
+     * al principio del listado con el mensaje más reciente.</p>
+     */
+    @Transactional
+    public Notificacion crearOActualizarNoLeida(
+            Usuario usuarioDestino,
+            Perfil perfilContexto,
+            String tipo,
+            String mensaje,
+            String entidadTipo,
+            Long entidadId) {
+
+        if (usuarioDestino == null
+                || usuarioDestino.getIdUsuario() == null
+                || perfilContexto == null
+                || perfilContexto.getIdPerfil() == null
+                || tipo == null
+                || entidadTipo == null
+                || entidadId == null) {
+            return crear(usuarioDestino, perfilContexto, tipo, mensaje,
+                    entidadTipo, entidadId);
+        }
+
+        return notificacionRepository
+                .findFirstByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfilAndTipoAndEntidadTipoAndEntidadIdAndLeidaFalseOrderByIdNotificacionDesc(
+                        usuarioDestino.getIdUsuario(),
+                        perfilContexto.getIdPerfil(),
+                        tipo,
+                        entidadTipo,
+                        entidadId)
+                .map(existente -> {
+                    existente.setMensaje(mensaje);
+                    existente.setFechaGenerada(LocalDateTime.now());
+                    return existente;
+                })
+                .orElseGet(() -> crear(
+                        usuarioDestino,
+                        perfilContexto,
+                        tipo,
+                        mensaje,
+                        entidadTipo,
+                        entidadId));
     }
 
     /**

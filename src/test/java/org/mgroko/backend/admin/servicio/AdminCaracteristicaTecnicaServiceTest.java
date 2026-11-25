@@ -29,6 +29,8 @@ import org.mgroko.backend.modelo.ValorCaracteristica;
 import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
 import org.mgroko.backend.perfiles.dto.ValorCaracteristicaResponse;
+import org.mgroko.backend.perfiles.evento.CaracteristicaTecnicaCreadaEvent;
+import org.mgroko.backend.perfiles.evento.CaracteristicaTecnicaModificadaEvent;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.repositorio.CaracteristicaPerfilRepository;
 import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
@@ -36,12 +38,14 @@ import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.UnidadMedidaRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class AdminCaracteristicaTecnicaServiceTest {
@@ -60,6 +64,9 @@ class AdminCaracteristicaTecnicaServiceTest {
 
     @Mock
     private UnidadMedidaRepository unidadMedidaRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private AdminCaracteristicaTecnicaService service;
@@ -158,6 +165,11 @@ class AdminCaracteristicaTecnicaServiceTest {
         assertNotNull(response.unidad());
         assertEquals("cm", response.unidad().simbolo());
         verify(caracteristicaTecnicaRepository).save(any(CaracteristicaTecnica.class));
+        ArgumentCaptor<CaracteristicaTecnicaCreadaEvent> evento =
+                ArgumentCaptor.forClass(CaracteristicaTecnicaCreadaEvent.class);
+        verify(eventPublisher).publishEvent(evento.capture());
+        assertEquals(10L, evento.getValue().idCaracteristica());
+        assertEquals(1L, evento.getValue().idProfesion());
     }
 
     @Test
@@ -305,6 +317,11 @@ class AdminCaracteristicaTecnicaServiceTest {
         assertNotNull(response.unidad());
         assertEquals("cm", response.unidad().simbolo());
         assertEquals(Boolean.FALSE, response.enUso());
+        ArgumentCaptor<CaracteristicaTecnicaModificadaEvent> evento =
+                ArgumentCaptor.forClass(CaracteristicaTecnicaModificadaEvent.class);
+        verify(eventPublisher).publishEvent(evento.capture());
+        assertEquals(10L, evento.getValue().idCaracteristica());
+        assertEquals("DATOS", evento.getValue().motivo());
     }
 
     @Test
@@ -455,6 +472,32 @@ class AdminCaracteristicaTecnicaServiceTest {
     }
 
     @Test
+    void actualizar_sinCambios_noPublicaEvento() {
+        CaracteristicaTecnica existente = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .codigo("ALTURA")
+                .nombre("Altura")
+                .unidadMedida(unidadCm)
+                .tipoDato("NUMERICO")
+                .profesion(profesion)
+                .valores(new ArrayList<>())
+                .build();
+
+        AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
+                "ALTURA", "Altura", 1L, 1L, "NUMERICO", null);
+
+        when(caracteristicaTecnicaRepository.findById(10L)).thenReturn(Optional.of(existente));
+        when(caracteristicaTecnicaRepository.existeEnUso(10L)).thenReturn(false);
+        when(profesionRepository.findById(1L)).thenReturn(Optional.of(profesion));
+        when(unidadMedidaRepository.findById(1L)).thenReturn(Optional.of(unidadCm));
+        when(caracteristicaTecnicaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.actualizar(10L, request);
+
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     void actualizar_inexistente_lanzaCaracteristicaTecnicaNoEncontradaException() {
         AdminCaracteristicaTecnicaRequest request = new AdminCaracteristicaTecnicaRequest(
                 "altura", "Altura", 1L, 1L, "NUMERICO", null);
@@ -539,6 +582,7 @@ class AdminCaracteristicaTecnicaServiceTest {
         CaracteristicaTecnica c = CaracteristicaTecnica.builder()
                 .idCaracteristica(10L)
                 .tipoDato("ENUMERADO")
+                .profesion(profesion)
                 .build();
         AdminValorCaracteristicaRequest req = new AdminValorCaracteristicaRequest(null, "VERDE", "#00FF00");
 
@@ -555,6 +599,10 @@ class AdminCaracteristicaTecnicaServiceTest {
 
         assertEquals("VERDE", response.codigo());
         assertEquals("#00FF00", response.colorHex());
+        ArgumentCaptor<CaracteristicaTecnicaModificadaEvent> evento =
+                ArgumentCaptor.forClass(CaracteristicaTecnicaModificadaEvent.class);
+        verify(eventPublisher).publishEvent(evento.capture());
+        assertEquals("VALOR_AGREGADO", evento.getValue().motivo());
     }
 
     @Test
@@ -591,7 +639,10 @@ class AdminCaracteristicaTecnicaServiceTest {
 
     @Test
     void actualizarValor_valido_modificaYGuarda() {
-        CaracteristicaTecnica c = CaracteristicaTecnica.builder().idCaracteristica(10L).build();
+        CaracteristicaTecnica c = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .profesion(profesion)
+                .build();
         ValorCaracteristica existente = ValorCaracteristica.builder()
                 .id(new ValorCaracteristicaId(50L, 10L))
                 .caracteristicaTecnica(c)
@@ -610,6 +661,33 @@ class AdminCaracteristicaTecnicaServiceTest {
 
         assertEquals("VERDE_CLARO", res.codigo());
         assertEquals("#80FF80", res.colorHex());
+        ArgumentCaptor<CaracteristicaTecnicaModificadaEvent> evento =
+                ArgumentCaptor.forClass(CaracteristicaTecnicaModificadaEvent.class);
+        verify(eventPublisher).publishEvent(evento.capture());
+        assertEquals("VALOR_MODIFICADO", evento.getValue().motivo());
+    }
+
+    @Test
+    void actualizarValor_soloColor_noPublicaEvento() {
+        CaracteristicaTecnica c = CaracteristicaTecnica.builder()
+                .idCaracteristica(10L)
+                .profesion(profesion)
+                .build();
+        ValorCaracteristica existente = ValorCaracteristica.builder()
+                .id(new ValorCaracteristicaId(50L, 10L))
+                .caracteristicaTecnica(c)
+                .etiqueta("VERDE")
+                .colorHex("#00FF00")
+                .build();
+
+        AdminValorCaracteristicaRequest req = new AdminValorCaracteristicaRequest(null, "VERDE", "#000000");
+
+        when(valorCaracteristicaRepository.findById(new ValorCaracteristicaId(50L, 10L))).thenReturn(Optional.of(existente));
+        when(valorCaracteristicaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.actualizarValor(10L, 50L, req);
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test

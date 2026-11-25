@@ -9321,3 +9321,31 @@ CROSS JOIN permiso_global pg
 WHERE rg.nombre = 'Administrador'
   AND pg.nombre IN ('VER_PERFILES', 'VER_PROYECTOS', 'VER_CONTRATOS')
 ON CONFLICT DO NOTHING;
+
+-- Notificaciones para cambios en el catálogo de características técnicas.
+INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad)
+VALUES
+    ('CARACTERISTICA_TECNICA_CREADA',
+     'Nueva característica técnica',
+     'ADMINISTRACION',
+     'MEDIA'),
+    ('CARACTERISTICA_TECNICA_MODIFICADA',
+     'Característica técnica modificada',
+     'ADMINISTRACION',
+     'MEDIA')
+ON CONFLICT (codigo) DO UPDATE
+SET nombre = EXCLUDED.nombre,
+    categoria = EXCLUDED.categoria,
+    prioridad = EXCLUDED.prioridad,
+    activo = true;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_notificacion_caracteristica_no_leida
+    ON notificacion (
+        id_usuario_destino,
+        id_perfil_contexto,
+        tipo,
+        entidad_tipo,
+        entidad_id
+    )
+    WHERE leida = false
+      AND entidad_tipo = 'CARACTERISTICA_TECNICA';

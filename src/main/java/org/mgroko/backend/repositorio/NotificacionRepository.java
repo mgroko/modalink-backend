@@ -22,6 +22,19 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     Optional<Notificacion> findByIdNotificacionAndUsuarioDestino_IdUsuario(
             Long idNotificacion, Long idUsuario);
 
+    /**
+     * Busca la notificación no leída más reciente de un tipo y entidad para un
+     * perfil concreto. Se usa para deduplicar avisos de catálogo: si ya existe
+     * una notificación no leída de la misma característica y perfil, se
+     * actualiza en lugar de crear otra.
+     */
+    Optional<Notificacion> findFirstByUsuarioDestino_IdUsuarioAndPerfilContexto_IdPerfilAndTipoAndEntidadTipoAndEntidadIdAndLeidaFalseOrderByIdNotificacionDesc(
+            Long idUsuario,
+            Long idPerfilContexto,
+            String tipo,
+            String entidadTipo,
+            Long entidadId);
+
     @Query(value = """
             SELECT EXISTS (
                 SELECT 1

@@ -23,6 +23,8 @@ import org.mgroko.backend.modelo.UnidadMedida;
 import org.mgroko.backend.modelo.ValorCaracteristica;
 import org.mgroko.backend.modelo.ValorCaracteristicaId;
 import org.mgroko.backend.perfiles.dto.CaracteristicaTecnicaResponse;
+import org.mgroko.backend.perfiles.evento.CaracteristicaTecnicaCreadaEvent;
+import org.mgroko.backend.perfiles.evento.CaracteristicaTecnicaModificadaEvent;
 import org.mgroko.backend.perfiles.exception.ProfesionNoEncontradaException;
 import org.mgroko.backend.perfiles.mapper.CaracteristicaTecnicaMapper;
 import org.mgroko.backend.perfiles.mapper.ValorCaracteristicaMapper;
@@ -32,6 +34,7 @@ import org.mgroko.backend.repositorio.CaracteristicaTecnicaRepository;
 import org.mgroko.backend.repositorio.ProfesionRepository;
 import org.mgroko.backend.repositorio.UnidadMedidaRepository;
 import org.mgroko.backend.repositorio.ValorCaracteristicaRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
@@ -49,17 +52,20 @@ public class AdminCaracteristicaTecnicaService {
     private final CaracteristicaPerfilRepository caracteristicaPerfilRepository;
     private final ProfesionRepository profesionRepository;
     private final UnidadMedidaRepository unidadMedidaRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminCaracteristicaTecnicaService(CaracteristicaTecnicaRepository caracteristicaTecnicaRepository,
             ValorCaracteristicaRepository valorCaracteristicaRepository,
             CaracteristicaPerfilRepository caracteristicaPerfilRepository,
             ProfesionRepository profesionRepository,
-            UnidadMedidaRepository unidadMedidaRepository) {
+            UnidadMedidaRepository unidadMedidaRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.caracteristicaTecnicaRepository = caracteristicaTecnicaRepository;
         this.valorCaracteristicaRepository = valorCaracteristicaRepository;
         this.caracteristicaPerfilRepository = caracteristicaPerfilRepository;
         this.profesionRepository = profesionRepository;
         this.unidadMedidaRepository = unidadMedidaRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -108,6 +114,13 @@ public class AdminCaracteristicaTecnicaService {
             agregarValoresIniciales(caracteristica, request.valores());
         }
 
+        eventPublisher.publishEvent(new CaracteristicaTecnicaCreadaEvent(
+                caracteristica.getIdCaracteristica(),
+                caracteristica.getCodigo(),
+                caracteristica.getNombre(),
+                profesion.getIdProfesion(),
+                profesion.getNombre()));
+
         return CaracteristicaTecnicaMapper.toResponse(caracteristica, false);
     }
 
@@ -149,14 +162,33 @@ public class AdminCaracteristicaTecnicaService {
         }
 
         UnidadMedida unidad = resolverYValidarUnidad(request.idUnidad(), tipoDato);
+        String nombre = request.nombre() != null ? request.nombre().trim() : null;
+
+        Long idUnidadActual = caracteristica.getUnidadMedida() != null
+                ? caracteristica.getUnidadMedida().getIdUnidad()
+                : null;
+        Long idProfesionActual = caracteristica.getProfesion() != null
+                ? caracteristica.getProfesion().getIdProfesion()
+                : null;
+        boolean huboCambios = !codigo.equals(caracteristica.getCodigo().toUpperCase(Locale.ROOT))
+                || !Objects.equals(nombre, caracteristica.getNombre())
+                || !tipoDato.equals(caracteristica.getTipoDato())
+                || !Objects.equals(request.idUnidad(), idUnidadActual)
+                || !Objects.equals(profesion.getIdProfesion(), idProfesionActual);
 
         caracteristica.setCodigo(codigo);
-        caracteristica.setNombre(request.nombre() != null ? request.nombre().trim() : null);
+        caracteristica.setNombre(nombre);
         caracteristica.setUnidadMedida(unidad);
         caracteristica.setTipoDato(tipoDato);
         caracteristica.setProfesion(profesion);
 
-        return CaracteristicaTecnicaMapper.toResponse(caracteristicaTecnicaRepository.save(caracteristica), enUso);
+        CaracteristicaTecnica guardada = caracteristicaTecnicaRepository.save(caracteristica);
+
+        if (huboCambios) {
+            publicarModificacion(guardada, "DATOS");
+        }
+
+        return CaracteristicaTecnicaMapper.toResponse(guardada, enUso);
     }
 
     @Transactional
@@ -195,7 +227,9 @@ public class AdminCaracteristicaTecnicaService {
                 .etiqueta(etiqueta)
                 .colorHex(request.colorHex())
                 .build();
-        return ValorCaracteristicaMapper.toResponse(valorCaracteristicaRepository.save(valor));
+        ValorCaracteristica guardado = valorCaracteristicaRepository.save(valor);
+        publicarModificacion(caracteristica, "VALOR_AGREGADO");
+        return ValorCaracteristicaMapper.toResponse(guardado);
     }
 
     @Transactional
@@ -215,9 +249,14 @@ public class AdminCaracteristicaTecnicaService {
                     "La característica ya posee un valor con el código " + etiqueta + ".");
         }
 
+        String etiquetaAnterior = valor.getEtiqueta();
         valor.setEtiqueta(etiqueta);
         valor.setColorHex(request.colorHex());
-        return ValorCaracteristicaMapper.toResponse(valorCaracteristicaRepository.save(valor));
+        ValorCaracteristica guardado = valorCaracteristicaRepository.save(valor);
+        if (!Objects.equals(etiquetaAnterior, guardado.getEtiqueta())) {
+            publicarModificacion(guardado.getCaracteristicaTecnica(), "VALOR_MODIFICADO");
+        }
+        return ValorCaracteristicaMapper.toResponse(guardado);
     }
 
     @Transactional
@@ -268,6 +307,19 @@ public class AdminCaracteristicaTecnicaService {
                     .colorHex(v.colorHex())
                     .build());
         }
+    }
+
+    private void publicarModificacion(CaracteristicaTecnica caracteristica, String motivo) {
+        if (caracteristica == null || caracteristica.getProfesion() == null) {
+            return;
+        }
+        eventPublisher.publishEvent(new CaracteristicaTecnicaModificadaEvent(
+                caracteristica.getIdCaracteristica(),
+                caracteristica.getCodigo(),
+                caracteristica.getNombre(),
+                caracteristica.getProfesion().getIdProfesion(),
+                caracteristica.getProfesion().getNombre(),
+                motivo));
     }
 
     private CaracteristicaTecnica buscarOFallar(Long idCaracteristica) {
