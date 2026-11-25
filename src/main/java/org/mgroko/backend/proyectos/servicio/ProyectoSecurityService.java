@@ -18,6 +18,7 @@ public class ProyectoSecurityService {
     public static final String PERMISO_ELIMINAR_INTEGRANTE = "ELIMINAR_INTEGRANTE";
     public static final String PERMISO_INVITAR_MIEMBRO = "INVITAR_MIEMBRO";
     public static final String PERMISO_ELIMINAR_INVITACION = "ELIMINAR_INVITACION";
+    public static final String PERMISO_ASIGNAR_REQUERIMIENTO = "ASIGNAR_REQUERIMIENTO";
 
     private final MiembroProyectoRepository miembroProyectoRepository;
 

@@ -29,6 +29,7 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -151,6 +152,23 @@ class AceptarInvitacionServiceTest {
         assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.ACEPTADA);
         assertThat(respuesta.idMiembro()).isEqualTo(88L);
         assertThat(invitacion.getEstado()).isEqualTo(EstadoSolicitud.ACEPTADA);
+    }
+
+    @Test
+    void aceptarProyecto_conInvitacionDeRequerimiento_lanzaTipoIncorrecto() {
+        InvitacionGral invitacion = generalSinRequerimiento();
+        invitacion.setRequerimientoGral(RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(ID_REQUERIMIENTO)
+                .cantidad(1)
+                .build());
+        when(invitacionGralRepository.findByIdForUpdate(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+
+        assertThatThrownBy(() -> servicio.aceptarProyecto(
+                ID_USUARIO, ID_PERFIL, ID_INVITACION))
+                .isInstanceOf(InvitacionNoPermitidaException.class)
+                .extracting("codigo")
+                .isEqualTo("TIPO_INVITACION_INCORRECTO");
     }
 
     @Test

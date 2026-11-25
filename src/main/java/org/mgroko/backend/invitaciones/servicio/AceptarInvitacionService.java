@@ -111,6 +111,10 @@ public class AceptarInvitacionService {
         this.reloj = reloj;
     }
 
+    /**
+     * Alias histórico: acepta una invitación general del proyecto o de un
+     * requerimiento general según la FK de la invitación.
+     */
     @Transactional
     @AuditarOperacion
     public InvitacionGestionadaResponse aceptarGeneral(
@@ -118,10 +122,59 @@ public class AceptarInvitacionService {
             Long idPerfilActivo,
             Long idInvitacion) {
 
+        return aceptarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion, null);
+    }
+
+    /**
+     * Acepta una invitación al proyecto sin requerimiento general asociado.
+     */
+    @Transactional
+    @AuditarOperacion
+    public InvitacionGestionadaResponse aceptarProyecto(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion) {
+
+        return aceptarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion, TipoInvitacion.GENERAL);
+    }
+
+    /**
+     * Acepta una invitación asociada a un requerimiento general.
+     */
+    @Transactional
+    @AuditarOperacion
+    public InvitacionGestionadaResponse aceptarRequerimientoGeneral(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion) {
+
+        return aceptarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion,
+                TipoInvitacion.REQUERIMIENTO_GENERAL);
+    }
+
+    private InvitacionGestionadaResponse aceptarInvitacionGral(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion,
+            TipoInvitacion tipoEsperado) {
+
         Perfil perfil = perfilActivo(idUsuario, idPerfilActivo);
 
         InvitacionGral invitacion = invitacionGralRepository.findByIdForUpdate(idInvitacion)
                 .orElseThrow(InvitacionNoEncontradaException::new);
+
+        TipoInvitacion tipoActual = invitacion.getRequerimientoGral() != null
+                ? TipoInvitacion.REQUERIMIENTO_GENERAL
+                : TipoInvitacion.GENERAL;
+
+        if (tipoEsperado != null && tipoEsperado != tipoActual) {
+            throw new InvitacionNoPermitidaException(
+                    "La invitación no corresponde al tipo indicado.",
+                    "TIPO_INVITACION_INCORRECTO");
+        }
 
         Proyecto proyecto = invitacion.getProyecto();
         validarInvitacionGeneral(invitacion, perfil, proyecto);
@@ -166,7 +219,7 @@ public class AceptarInvitacionService {
 
         return new InvitacionGestionadaResponse(
                 invitacion.getIdInvitacionGral(),
-                TipoInvitacion.GENERAL,
+                tipoActual,
                 invitacion.getEstado(),
                 proyecto.getIdProyecto(),
                 perfil.getIdPerfil(),

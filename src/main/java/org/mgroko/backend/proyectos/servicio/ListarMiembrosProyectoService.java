@@ -212,7 +212,14 @@ public class ListarMiembrosProyectoService {
                         : null,
                 motivoNoEliminable == null,
                 motivoNoEliminable,
-                miembro.getIdTycAceptado());
+                miembro.getIdTycAceptado(),
+                miembro.getRequerimientoGral() != null
+                        ? miembro.getRequerimientoGral().getIdRequerimientoGral()
+                        : null,
+                miembro.getRequerimientoGral() != null
+                        && miembro.getRequerimientoGral().getProfesion() != null
+                                ? miembro.getRequerimientoGral().getProfesion().getNombre()
+                                : null);
     }
 
     private String motivoNoEliminable(

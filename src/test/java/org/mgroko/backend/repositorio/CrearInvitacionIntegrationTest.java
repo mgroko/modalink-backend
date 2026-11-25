@@ -248,10 +248,13 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 new CrearInvitacionGralRequest(
                         destinatario.idPerfil(), idRequerimiento, null));
 
+        assertThat(invitacion.tipo()).isEqualTo(TipoInvitacion.REQUERIMIENTO_GENERAL);
+
         InvitacionGestionadaResponse respuesta = aceptarInvitacionService.aceptarGeneral(
                 destinatario.idUsuario(), destinatario.idPerfil(),
                 invitacion.idInvitacion());
 
+        assertThat(respuesta.tipo()).isEqualTo(TipoInvitacion.REQUERIMIENTO_GENERAL);
         assertThat(respuesta.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
         assertThat(respuesta.idMiembro()).isNotNull();
 
@@ -291,9 +294,13 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
                 new CrearInvitacionGralRequest(destinatario.idPerfil(), null));
 
-        aceptarInvitacionService.aceptarGeneral(
+        assertThat(invitacion.tipo()).isEqualTo(TipoInvitacion.GENERAL);
+
+        InvitacionGestionadaResponse respuesta = aceptarInvitacionService.aceptarGeneral(
                 destinatario.idUsuario(), destinatario.idPerfil(),
                 invitacion.idInvitacion());
+
+        assertThat(respuesta.tipo()).isEqualTo(TipoInvitacion.GENERAL);
 
         Long miembros = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM miembros_proyecto

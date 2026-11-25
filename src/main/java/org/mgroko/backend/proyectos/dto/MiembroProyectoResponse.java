@@ -16,7 +16,9 @@ public record MiembroProyectoResponse(
         String estadoParticipacion,
         Boolean eliminable,
         String motivoNoEliminable,
-        Long idTycAceptado
+        Long idTycAceptado,
+        Long idRequerimientoGral,
+        String nombreProfesionRequerimiento
 ) {
 
     public MiembroProyectoResponse(
@@ -41,6 +43,8 @@ public record MiembroProyectoResponse(
                 nombreProfesion,
                 rol,
                 estadoParticipacion,
+                null,
+                null,
                 null,
                 null,
                 null);
@@ -72,6 +76,8 @@ public record MiembroProyectoResponse(
                 estadoParticipacion,
                 eliminable,
                 motivoNoEliminable,
+                null,
+                null,
                 null);
     }
 }

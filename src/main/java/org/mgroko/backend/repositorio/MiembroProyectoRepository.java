@@ -98,6 +98,8 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
         JOIN FETCH p.usuario u
         JOIN FETCH p.profesion pr
         JOIN FETCH mp.rolProyecto r
+        LEFT JOIN FETCH mp.requerimientoGral rg
+        LEFT JOIN FETCH rg.profesion prg
         WHERE mp.proyecto.idProyecto = :idProyecto
           AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
         ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC

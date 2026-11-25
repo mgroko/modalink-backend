@@ -102,9 +102,12 @@ public class NotificacionLinkResolver {
             case NotificacionService.TIPO_PUBLICACION_REPORTADA ->
                     rutaEntidad("/admin/reportes-publicacion/", entidadId);
 
-            case NotificacionService.TIPO_INTEGRANTE_ELIMINADO,
+            case NotificacionService.TIPO_REQUERIMIENTO_ASIGNADO,
+                 NotificacionService.TIPO_REQUERIMIENTO_DESASIGNADO,
+                 NotificacionService.TIPO_REQUERIMIENTO_REASIGNADO,
+                 NotificacionService.TIPO_INTEGRANTE_ELIMINADO,
                  NotificacionService.TIPO_INTEGRANTE_BAJA_VOLUNTARIA ->
-                    FALLBACK;
+                    rutaProyecto(idProyecto, "");
 
             default -> FALLBACK;
         };

@@ -4305,7 +4305,10 @@ INSERT INTO notificacion_tipo (codigo, nombre, categoria, prioridad) VALUES
     ('REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION', 'Incorporación pendiente de aprobación', 'PROYECTO', 'ALTA'),
     ('REEMPLAZO_INCORPORACION_APROBADA', 'Incorporación aprobada', 'PROYECTO', 'ALTA'),
     ('REEMPLAZO_INCORPORACION_RECHAZADA', 'Incorporación rechazada', 'PROYECTO', 'ALTA'),
-    ('REEMPLAZO_CANCELADO', 'Reemplazo cancelado', 'PROYECTO', 'MEDIA')
+    ('REEMPLAZO_CANCELADO', 'Reemplazo cancelado', 'PROYECTO', 'MEDIA'),
+    ('REQUERIMIENTO_ASIGNADO', 'Requerimiento general asignado', 'PROYECTO', 'BAJA'),
+    ('REQUERIMIENTO_DESASIGNADO', 'Requerimiento general desasignado', 'PROYECTO', 'BAJA'),
+    ('REQUERIMIENTO_REASIGNADO', 'Requerimiento general reasignado', 'PROYECTO', 'BAJA')
 
 ON CONFLICT (codigo) DO UPDATE 
     SET nombre    = EXCLUDED.nombre,
@@ -4374,7 +4377,8 @@ INSERT INTO permiso_proyecto (id_permiso_proyecto, nombre) VALUES
     (11, 'GESTIONAR_POSTULACIONES'),
     (12, 'INVITAR_MIEMBRO'),
     (13, 'ELIMINAR_INVITACION'),
-    (14, 'ELIMINAR_INTEGRANTE')
+    (14, 'ELIMINAR_INTEGRANTE'),
+    (15, 'ASIGNAR_REQUERIMIENTO')
 ON CONFLICT (id_permiso_proyecto) DO UPDATE SET nombre = EXCLUDED.nombre;
 
 INSERT INTO rol_global (id_rol_global, nombre, codigo) VALUES
@@ -6916,6 +6920,9 @@ INSERT INTO tipo_evento_auditoria (codigo, nombre, descripcion, modulo) VALUES
     ('MIEMBRO_ELIMINADO',                'Eliminacion de miembro',            'Eliminacion de un perfil de un proyecto', 'PROYECTOS'),
     ('MIEMBRO_ROL_CAMBIADO',             'Cambio de rol de miembro',          'Cambio del rol de proyecto de un miembro', 'PROYECTOS'),
     ('MIEMBRO_REINCORPORADO',            'Reincorporacion de miembro',        'Reincorporacion de un perfil a un proyecto', 'PROYECTOS'),
+    ('MIEMBRO_REQUERIMIENTO_ASIGNADO',   'Requerimiento general asignado',    'Asignacion de un miembro a un requerimiento general', 'PROYECTOS'),
+    ('MIEMBRO_REQUERIMIENTO_DESASIGNADO','Requerimiento general desasignado', 'Desasignacion de un miembro de un requerimiento general', 'PROYECTOS'),
+    ('MIEMBRO_REQUERIMIENTO_CAMBIADO',   'Requerimiento general cambiado',    'Reasignacion de un miembro entre requerimientos generales', 'PROYECTOS'),
     ('PROYECTO_CREADO',                  'Alta de proyecto',                  'Creacion de un proyecto', 'PROYECTOS'),
     ('PROYECTO_MODIFICADO',              'Modificacion de proyecto',          'Cambio de datos editables de un proyecto', 'PROYECTOS'),
     ('PROYECTO_REPROGRAMADO',            'Reprogramacion de proyecto',        'Cambio de fechas de un proyecto', 'PROYECTOS'),
@@ -7187,6 +7194,19 @@ BEGIN
         v_detalle := v_detalle || jsonb_build_array(
             jsonb_build_object('campo', 'idRolProyecto', 'anterior', OLD.id_rol_proyecto::text, 'nuevo', NEW.id_rol_proyecto::text)
         );
+    ELSIF NEW.id_requerimiento_gral IS DISTINCT FROM OLD.id_requerimiento_gral THEN
+        v_evento := CASE
+            WHEN OLD.id_requerimiento_gral IS NULL
+                THEN 'MIEMBRO_REQUERIMIENTO_ASIGNADO'
+            WHEN NEW.id_requerimiento_gral IS NULL
+                THEN 'MIEMBRO_REQUERIMIENTO_DESASIGNADO'
+            ELSE 'MIEMBRO_REQUERIMIENTO_CAMBIADO'
+        END;
+        v_detalle := v_detalle || jsonb_build_array(
+            jsonb_build_object('campo', 'idRequerimientoGral',
+                'anterior', OLD.id_requerimiento_gral::text,
+                'nuevo', NEW.id_requerimiento_gral::text)
+        );
     ELSE
         RETURN NEW;
     END IF;
@@ -7199,7 +7219,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_auditar_cambio_miembro ON miembros_proyecto;
 CREATE TRIGGER trg_auditar_cambio_miembro
-    AFTER INSERT OR UPDATE OF estado_participacion, id_rol_proyecto OR DELETE ON miembros_proyecto
+    AFTER INSERT OR UPDATE OF estado_participacion, id_rol_proyecto, id_requerimiento_gral OR DELETE ON miembros_proyecto
     FOR EACH ROW EXECUTE FUNCTION fn_auditar_cambio_miembro();
 
 -- ----------------------------------------------------------------------------

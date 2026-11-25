@@ -53,6 +53,9 @@ public class NotificacionService {
     public static final String TIPO_HABILIDAD_MODIFICADA = "HABILIDAD_MODIFICADA";
     public static final String TIPO_HABILIDAD_ELIMINADA = "HABILIDAD_ELIMINADA";
     public static final String TIPO_INTEGRANTE_ELIMINADO = "INTEGRANTE_ELIMINADO";
+    public static final String TIPO_REQUERIMIENTO_ASIGNADO = "REQUERIMIENTO_ASIGNADO";
+    public static final String TIPO_REQUERIMIENTO_DESASIGNADO = "REQUERIMIENTO_DESASIGNADO";
+    public static final String TIPO_REQUERIMIENTO_REASIGNADO = "REQUERIMIENTO_REASIGNADO";
     public static final String TIPO_INTEGRANTE_BAJA_VOLUNTARIA =
             "INTEGRANTE_BAJA_VOLUNTARIA";
     public static final String TIPO_CONTRATO_PENDIENTE_FIRMA =

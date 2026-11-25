@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.proyectos.dto.AsignacionRequerimientoGralResponse;
+import org.mgroko.backend.proyectos.dto.AsignarRequerimientoGralRequest;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.DarseDeBajaProyectoRequest;
 import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.dto.MiembroProyectoResponse;
@@ -23,6 +27,7 @@ import org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException;
 import org.mgroko.backend.proyectos.servicio.DarseDeBajaProyectoService;
 import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ListarMiembrosProyectoService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -47,6 +52,9 @@ class MiembroProyectoControllerTest {
 
     @MockitoBean
     private DarseDeBajaProyectoService darseDeBajaProyectoService;
+
+    @MockitoBean
+    private RequerimientoGralAsignacionService requerimientoGralAsignacionService;
 
     @Test
     void listar_devuelveMiembrosActivos() throws Exception {
@@ -75,6 +83,55 @@ class MiembroProyectoControllerTest {
                 .andExpect(jsonPath("$.contenido[0].rol").value("MIEMBRO"))
                 .andExpect(jsonPath("$.contenido[0].eliminable").value(true))
                 .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void asignarRequerimientoGeneral_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        var response = new AsignacionRequerimientoGralResponse(
+                900L, 50L, 30L,
+                new CupoRequerimiento(1, 1, 0, true),
+                true, 0);
+
+        when(requerimientoGralAsignacionService.asignar(
+                1L, 10L, 100L, 900L, 30L)).thenReturn(response);
+
+        mockMvc.perform(put("/proyectos/100/miembros/900/requerimiento-general")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idRequerimientoGral":30}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idMiembro").value(900L))
+                .andExpect(jsonPath("$.idRequerimientoGral").value(30L))
+                .andExpect(jsonPath("$.satisfecho").value(true))
+                .andExpect(jsonPath("$.faltantes").value(0));
+    }
+
+    @Test
+    void desasignarRequerimientoGeneral_devuelve200() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        var response = new AsignacionRequerimientoGralResponse(
+                900L, 50L, null, null, true, 0);
+
+        when(requerimientoGralAsignacionService.asignar(
+                1L, 10L, 100L, 900L, null)).thenReturn(response);
+
+        mockMvc.perform(put("/proyectos/100/miembros/900/requerimiento-general")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idRequerimientoGral":null}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idMiembro").value(900L))
+                .andExpect(jsonPath("$.idRequerimientoGral")
+                        .value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
