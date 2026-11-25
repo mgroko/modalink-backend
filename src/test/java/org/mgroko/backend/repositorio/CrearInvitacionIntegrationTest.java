@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,8 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
     private CancelarProyectoService cancelarProyectoService;
     @Autowired
     private RequerimientoActividadRepository requerimientoActividadRepository;
+    @Autowired
+    private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -274,7 +277,7 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
-    void aceptarGeneralSinRequerimiento_creaMiembroSinConsumirCupo() {
+    void aceptarGeneralSinRequerimiento_conCupo_vinculaRequerimiento() {
         PerfilCreado director = crearPerfil(
                 "uc28.dir2@example.com", "88828003", "Directora UC28 Libre", "modelo");
         PerfilCreado destinatario = crearPerfil(
@@ -295,15 +298,369 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
         Long miembros = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM miembros_proyecto
                 WHERE id_proyecto = ? AND id_perfil = ?
-                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
-                """, Long.class, publicado.idProyecto(), destinatario.idPerfil());
+                  AND id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil(),
+                idRequerimiento);
         assertThat(miembros).isEqualTo(1L);
 
         Long cubiertos = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM miembros_proyecto
                 WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
                 """, Long.class, idRequerimiento);
-        assertThat(cubiertos).isZero();
+        assertThat(cubiertos).isEqualTo(1L);
+
+        Long requerimientos = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM requerimiento_gral_proyecto
+                WHERE id_proyecto = ?
+                """, Long.class, publicado.idProyecto());
+        assertThat(requerimientos).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneralSinRequerimiento_alLlenarCupo_rechazaPostulacionesPendientes() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2p@example.com", "88828037", "Directora UC28 Rechazo", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc28.dest2p@example.com", "88828038", "Postulante UC28 Rechazo", "modelo");
+        PerfilCreado invitado = crearPerfil(
+                "uc28.dest2q@example.com", "88828039", "Modelo UC28 Rechazo", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC28 Rechazo");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        jdbcTemplate.update("""
+                INSERT INTO postulacion_gral
+                    (id_perfil, id_requerimiento_gral, estado, fecha_postulacion)
+                VALUES (?, ?, 'PENDIENTE', NOW())
+                """, postulante.idPerfil(), idRequerimiento);
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(invitado.idPerfil(), null));
+        aceptarInvitacionService.aceptarGeneral(
+                invitado.idUsuario(), invitado.idPerfil(), invitacion.idInvitacion());
+
+        String estado = jdbcTemplate.queryForObject("""
+                SELECT estado FROM postulacion_gral
+                WHERE id_perfil = ? AND id_requerimiento_gral = ?
+                """, String.class, postulante.idPerfil(), idRequerimiento);
+        assertThat(estado).isEqualTo("RECHAZADA");
+    }
+
+    @Test
+    void aceptarGeneralSinRequerimiento_conCupoSatisfecho_creaMiembroSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2b@example.com", "88828013", "Directora UC28 Lleno", "modelo");
+        PerfilCreado primero = crearPerfil(
+                "uc28.dest2b@example.com", "88828014", "Modelo UC28 Lleno", "modelo");
+        PerfilCreado segundo = crearPerfil(
+                "uc28.dest2c@example.com", "88828015", "Modelo UC28 Extra", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC28 Lleno");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        InvitacionResponse primera = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(primero.idPerfil(), idRequerimiento, null));
+        aceptarInvitacionService.aceptarGeneral(
+                primero.idUsuario(), primero.idPerfil(), primera.idInvitacion());
+
+        InvitacionResponse segunda = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(segundo.idPerfil(), null));
+        aceptarInvitacionService.aceptarGeneral(
+                segundo.idUsuario(), segundo.idPerfil(), segunda.idInvitacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), segundo.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+
+        Long cubiertos = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, idRequerimiento);
+        assertThat(cubiertos).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneralSinRequerimiento_sinRequerimientoGeneral_creaMiembroSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2d@example.com", "88828016", "Directora UC28 Sin General", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest2d@example.com", "88828017", "Modelo UC28 Sin General", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC28 Sin General");
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatario.idPerfil(), null));
+        aceptarInvitacionService.aceptarGeneral(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneralSinRequerimiento_dosRequerimientosMismaProfesion_vinculaPrimero() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2e@example.com", "88828018", "Directora UC28 Dos", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest2e@example.com", "88828019", "Modelo UC28 Dos", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConDosRequerimientosGral(
+                director, "Desfile UC28 Dos");
+        Long primero = publicado.requerimientosGral().get(0).idRequerimientoGral();
+        Long segundo = publicado.requerimientosGral().get(1).idRequerimientoGral();
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatario.idPerfil(), null));
+        aceptarInvitacionService.aceptarGeneral(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        Long vinculadosPrimero = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, primero);
+        Long vinculadosSegundo = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, segundo);
+
+        assertThat(vinculadosPrimero).isEqualTo(1L);
+        assertThat(vinculadosSegundo).isZero();
+    }
+
+    @Test
+    void aceptarGeneralConRequerimientoLleno_vinculaOtroCompatible() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2f@example.com", "88828020", "Directora UC28 Fallback", "modelo");
+        PerfilCreado modeloUno = crearPerfil(
+                "uc28.dest2f@example.com", "88828021", "Modelo UC28 Fallback Uno", "modelo");
+        PerfilCreado modeloDos = crearPerfil(
+                "uc28.dest2g@example.com", "88828022", "Modelo UC28 Fallback Dos", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConDosRequerimientosGral(
+                director, "Desfile UC28 Fallback");
+        Long primero = publicado.requerimientosGral().get(0).idRequerimientoGral();
+        Long segundo = publicado.requerimientosGral().get(1).idRequerimientoGral();
+
+        InvitacionResponse invitacionPrimero = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(modeloUno.idPerfil(), primero, null));
+        aceptarInvitacionService.aceptarGeneral(
+                modeloUno.idUsuario(), modeloUno.idPerfil(), invitacionPrimero.idInvitacion());
+
+        InvitacionResponse invitacionSegundo = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(modeloDos.idPerfil(), primero, null));
+        aceptarInvitacionService.aceptarGeneral(
+                modeloDos.idUsuario(), modeloDos.idPerfil(), invitacionSegundo.idInvitacion());
+
+        Long vinculadosSegundo = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, segundo);
+        assertThat(vinculadosSegundo).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneralConRequerimientoLleno_sinOtroCompatible_creaMiembroSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2k@example.com", "88828029", "Directora UC28 Sin Compatible", "modelo");
+        PerfilCreado primero = crearPerfil(
+                "uc28.dest2k@example.com", "88828030", "Modelo UC28 Sin Compatible Uno", "modelo");
+        PerfilCreado segundo = crearPerfil(
+                "uc28.dest2l@example.com", "88828031", "Modelo UC28 Sin Compatible Dos", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC28 Sin Compatible");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        InvitacionResponse invitacionPrimero = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(primero.idPerfil(), idRequerimiento, null));
+        aceptarInvitacionService.aceptarGeneral(
+                primero.idUsuario(), primero.idPerfil(), invitacionPrimero.idInvitacion());
+
+        InvitacionResponse invitacionSegundo = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(segundo.idPerfil(), idRequerimiento, null));
+        aceptarInvitacionService.aceptarGeneral(
+                segundo.idUsuario(), segundo.idPerfil(), invitacionSegundo.idInvitacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), segundo.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneralConRequerimientoArchivado_creaMiembroSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2m@example.com", "88828032", "Directora UC28 Archivado", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest2m@example.com", "88828033", "Modelo UC28 Archivado", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC28 Archivado");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatario.idPerfil(), idRequerimiento, null));
+
+        var requerimiento = requerimientoGralProyectoRepository
+                .findById(idRequerimiento).orElseThrow();
+        requerimiento.setFechaArchivado(LocalDateTime.now());
+        requerimientoGralProyectoRepository.saveAndFlush(requerimiento);
+
+        aceptarInvitacionService.aceptarGeneral(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarInvitacionActividad_conRequerimientoGeneralSatisfecho_creaSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2n@example.com", "88828034", "Directora UC28 Act Llena", "modelo");
+        PerfilCreado modeloGeneral = crearPerfil(
+                "uc28.dest2n@example.com", "88828035", "Modelo UC28 Act Llena General", "modelo");
+        PerfilCreado destinatarioActividad = crearPerfil(
+                "uc28.dest2o@example.com", "88828036", "Modelo UC28 Act Llena Actividad", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGralYActividad(
+                director, "Desfile UC28 Act Llena");
+        Long idGeneral = publicado.requerimientosGral().get(0).idRequerimientoGral();
+        Long idActividad = requerimientoDeActividad(publicado);
+
+        InvitacionResponse invitacionGeneral = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(modeloGeneral.idPerfil(), idGeneral, null));
+        aceptarInvitacionService.aceptarGeneral(
+                modeloGeneral.idUsuario(), modeloGeneral.idPerfil(),
+                invitacionGeneral.idInvitacion());
+
+        InvitacionResponse invitacionActividad = crearInvitacionService.invitarAProyectoActividad(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionActividadRequest(
+                        idActividad, destinatarioActividad.idPerfil(), null));
+        aceptarInvitacionService.aceptarActividad(
+                destinatarioActividad.idUsuario(), destinatarioActividad.idPerfil(),
+                invitacionActividad.idInvitacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), destinatarioActividad.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneralSinRequerimiento_proyectoSinPostulaciones_vinculaIgual() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2h@example.com", "88828023", "Directora UC28 Sin Postulacion", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest2h@example.com", "88828024", "Modelo UC28 Sin Postulacion", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGralSinPostulacion(
+                director, "Desfile UC28 Sin Postulacion");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(destinatario.idPerfil(), null));
+        aceptarInvitacionService.aceptarGeneral(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        Long cubiertos = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, idRequerimiento);
+        assertThat(cubiertos).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarInvitacionActividad_vinculaRequerimientoGeneralCompatible() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2i@example.com", "88828025", "Directora UC28 Actividad", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest2i@example.com", "88828026", "Modelo UC28 Actividad", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGralYActividad(
+                director, "Desfile UC28 Actividad");
+        Long idGeneral = publicado.requerimientosGral().get(0).idRequerimientoGral();
+        Long idActividad = requerimientoDeActividad(publicado);
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyectoActividad(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionActividadRequest(idActividad, destinatario.idPerfil(), null));
+        aceptarInvitacionService.aceptarActividad(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        Long vinculadosGeneral = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND estado_participacion = 'ACTIVO'
+                """, Long.class, idGeneral);
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad aa
+                JOIN miembros_proyecto mp ON mp.id_miembro = aa.id_miembro
+                WHERE mp.id_perfil = ? AND aa.id_requerimiento_act = ?
+                """, Long.class, destinatario.idPerfil(), idActividad);
+
+        assertThat(vinculadosGeneral).isEqualTo(1L);
+        assertThat(asignaciones).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarInvitacionActividad_sinRequerimientoGeneral_creaMembresiaSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc28.dir2j@example.com", "88828027", "Directora UC28 Actividad Libre", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc28.dest2j@example.com", "88828028", "Modelo UC28 Actividad Libre", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC28 Actividad Libre");
+        Long idActividad = requerimientoDeActividad(publicado);
+
+        InvitacionResponse invitacion = crearInvitacionService.invitarAProyectoActividad(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionActividadRequest(idActividad, destinatario.idPerfil(), null));
+        aceptarInvitacionService.aceptarActividad(
+                destinatario.idUsuario(), destinatario.idPerfil(),
+                invitacion.idInvitacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), destinatario.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
     }
 
     @Test
@@ -638,6 +995,31 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 new CrearMoodboardRequest("Telas frías, tonos neutros"));
     }
 
+    private CrearProyectoRequest proyectoConDosRequerimientosGral(String nombre) {
+        return new CrearProyectoRequest(
+                nombre, "Proyecto de prueba UC-31 con dos requerimientos", Privacidad.PUBLICO,
+                LocalDate.now().plusDays(30), true,
+                new UbicacionRequest("0602801002"),
+                null,
+                List.of(
+                        new CrearRequerimientoGralRequest(
+                                1, idProfesion("modelo"), "Modelo A", null, null),
+                        new CrearRequerimientoGralRequest(
+                                1, idProfesion("modelo"), "Modelo B", null, null)),
+                new CrearMoodboardRequest("Telas frías, tonos neutros"));
+    }
+
+    private CrearProyectoRequest proyectoConRequerimientoGralSinPostulacion(String nombre) {
+        return new CrearProyectoRequest(
+                nombre, "Proyecto de prueba UC-31 sin postulaciones", Privacidad.PUBLICO,
+                LocalDate.now().plusDays(30), false,
+                new UbicacionRequest("0602801002"),
+                null,
+                List.of(new CrearRequerimientoGralRequest(
+                        1, idProfesion("modelo"), "Una modelo", null, null)),
+                new CrearMoodboardRequest("Telas frías, tonos neutros"));
+    }
+
     private CrearProyectoRequest proyectoConActividad(String nombre) {
         return new CrearProyectoRequest(
                 nombre, "Proyecto de prueba UC-31 con actividad", Privacidad.PUBLICO,
@@ -654,6 +1036,51 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
 
         ProyectoResponse borrador = crearProyectoService.crear(
                 director.idUsuario(), director.idPerfil(), proyectoConRequerimientoGral(nombre));
+
+        return publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+    }
+
+    private ProyectoResponse publicarProyectoConDosRequerimientosGral(
+            PerfilCreado director,
+            String nombre) {
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(),
+                proyectoConDosRequerimientosGral(nombre));
+
+        return publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+    }
+
+    private ProyectoResponse publicarProyectoConRequerimientoGralSinPostulacion(
+            PerfilCreado director,
+            String nombre) {
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(),
+                proyectoConRequerimientoGralSinPostulacion(nombre));
+
+        return publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+    }
+
+    private ProyectoResponse publicarProyectoConRequerimientoGralYActividad(
+            PerfilCreado director,
+            String nombre) {
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(), proyectoConRequerimientoGral(nombre));
+
+        ActividadResponse actividad = crearActividadService.crear(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto(),
+                new CrearActividadRequest(
+                        "Actividad UC31", "Actividad con requerimiento general", 2,
+                        UnidadDuracion.HORAS, null, null,
+                        List.of(new CrearRequerimientoActividadRequest(
+                                1, idProfesion("modelo"), "Una modelo", null, null))));
+
+        assertThat(actividad.idActividad()).isNotNull();
 
         return publicarProyectoService.publicar(
                 director.idUsuario(), director.idPerfil(), borrador.idProyecto());

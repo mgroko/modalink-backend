@@ -767,6 +767,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RequerimientoGralNoAsignableException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoGralNoAsignable(
+            org.mgroko.backend.proyectos.exception.RequerimientoGralNoAsignableException ex) {
+        Map<String, Object> response = buildErrorResponse(
+                ex.getMessage(), HttpStatus.CONFLICT).getBody();
+        if (response != null && ex.getCodigo() != null) {
+            response.put("codigo", ex.getCodigo());
+        }
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {

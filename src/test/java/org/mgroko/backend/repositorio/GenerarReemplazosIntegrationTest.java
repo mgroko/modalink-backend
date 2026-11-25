@@ -339,8 +339,9 @@ class GenerarReemplazosIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(reemplazoCubierto.getEstado().name()).isEqualTo("CUBIERTO");
         assertThat(reemplazoCubierto.getIdAsignacionResultante()).isNotNull();
 
-        assertThat(miembroProyectoRepository.findMiembroActivoConRol(
-                escenario.idProyecto(), escenario.idPerfilCandidato())).isPresent();
+        var miembroResultante = miembroProyectoRepository.findMiembroActivoConRol(
+                escenario.idProyecto(), escenario.idPerfilCandidato()).orElseThrow();
+        assertThat(miembroResultante.getRequerimientoGral()).isNotNull();
         assertThat(asignacionActividadRepository
                 .existsByMiembro_IdMiembroAndActividad_IdActividad(
                         reemplazoCubierto.getIdMiembroResultante(),

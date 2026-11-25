@@ -42,6 +42,7 @@ import org.mgroko.backend.proyectos.dto.CaracteristicaRequerimientoResponse;
 import org.mgroko.backend.proyectos.dto.ContextoConsultaProyecto;
 import org.mgroko.backend.proyectos.dto.CrearObjetivoRequest;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoCaractRequest;
+import org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ModificarRequerimientoGralRequest;
@@ -209,7 +210,7 @@ public class ModificarProyectoService {
         reprogramarConfirmadoSiCambiaEntrega(idProyecto, proyecto, request);
         actualizarFechaEntrega(idProyecto, request);
         actualizarObjetivos(idProyecto, proyecto, request.objetivos());
-        actualizarRequerimientos(idProyecto, proyecto, request.requerimientosGral());
+        actualizarRequerimientos(idProyecto, request.requerimientosGral());
         actualizarMoodboard(idProyecto, proyecto, request);
 
         Proyecto guardado = proyectoRepository.save(proyecto);
@@ -219,6 +220,103 @@ public class ModificarProyectoService {
                 idProyecto, fechaEntregaAnterior, request);
 
         return armarResponse(guardado, perfil);
+    }
+
+    /**
+     * UC-36: crea un requerimiento general en un proyecto modificable.
+     *
+     * <p>La creación se separa del {@code PUT} de modificación para que toda
+     * actualización de requerimientos existentes envíe siempre su id y no se
+     * puedan generar duplicados por omisión.</p>
+     */
+    @Transactional
+    @AuditarOperacion
+    public RequerimientoGralResponse crearRequerimiento(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            CrearRequerimientoGralRequest request) {
+
+        if (request == null) {
+            throw new RequerimientoInvalidoException(
+                    "El requerimiento de personal es obligatorio.");
+        }
+
+        Proyecto proyecto = cargarProyectoModificable(
+                idUsuario, idPerfilActivo, idProyecto);
+
+        return requerimientoGralService.persistir(
+                proyecto,
+                request.idProfesion(),
+                request.cantidad(),
+                request.descripcion(),
+                request.caracteristicas(),
+                request.habilidades());
+    }
+
+    /**
+     * UC-36: elimina un requerimiento general no protegido.
+     */
+    @Transactional
+    @AuditarOperacion
+    public void eliminarRequerimiento(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            Long idRequerimientoGral) {
+
+        Proyecto proyecto = cargarProyectoModificable(
+                idUsuario, idPerfilActivo, idProyecto);
+
+        RequerimientoGralProyecto requerimiento = requerimientoGralProyectoRepository
+                .findByIdParaGestion(idRequerimientoGral)
+                .orElseThrow(() -> new RequerimientoInvalidoException(
+                        "El requerimiento de personal " + idRequerimientoGral
+                                + " no existe."));
+
+        if (!requerimiento.getProyecto().getIdProyecto().equals(idProyecto)) {
+            throw new RequerimientoInvalidoException(
+                    "El requerimiento de personal " + idRequerimientoGral
+                            + " no pertenece a este proyecto.");
+        }
+
+        if (requerimientoGralProteccionService.estaProtegido(requerimiento)) {
+            throw new RequerimientoGralProtegidoException(idRequerimientoGral);
+        }
+
+        requerimientoSnapshotService.asegurarHistorialGeneral(
+                requerimiento, LocalDateTime.now(reloj));
+        requerimientoGralService.eliminar(requerimiento);
+        requerimientoGralProyectoRepository.flush();
+
+        validarInformacionBasicaSiCorresponde(idProyecto, proyecto);
+    }
+
+    private Proyecto cargarProyectoModificable(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto) {
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+
+        Perfil perfil = perfilRepository
+                .findByIdPerfilAndUsuarioIdUsuario(idPerfilActivo, idUsuario)
+                .orElseThrow(PerfilNoEncontradoException::new);
+
+        if (perfil.getEstado() != EstadoPerfil.Activo) {
+            throw new PerfilEnBajaException("El perfil no se encuentra activo.");
+        }
+
+        Proyecto proyecto = proyectoRepository.findByIdParaGestion(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
+        proyectoSecurityService.validarPermiso(
+                idProyecto, idPerfilActivo, PERMISO_MODIFICAR_PROYECTO);
+        validarEstadoModificable(proyecto);
+
+        return proyecto;
     }
 
     /**
@@ -387,7 +485,6 @@ public class ModificarProyectoService {
      */
     private void actualizarRequerimientos(
             Long idProyecto,
-            Proyecto proyecto,
             List<ModificarRequerimientoGralRequest> requerimientos) {
 
         if (requerimientos == null) {
@@ -416,7 +513,9 @@ public class ModificarProyectoService {
 
             Long idRequerimiento = requerimientoRequest.idRequerimientoGral();
             if (idRequerimiento == null) {
-                continue;
+                throw new RequerimientoInvalidoException(
+                        "Cada requerimiento de personal debe incluir su id. "
+                                + "Para crear uno nuevo usá el alta de requerimientos.");
             }
 
             RequerimientoGralProyecto existente = porId.get(idRequerimiento);
@@ -457,17 +556,6 @@ public class ModificarProyectoService {
         }
 
         for (ModificarRequerimientoGralRequest requerimientoRequest : requerimientos) {
-            if (requerimientoRequest.idRequerimientoGral() == null) {
-                requerimientoGralService.persistir(
-                        proyecto,
-                        requerimientoRequest.idProfesion(),
-                        requerimientoRequest.cantidad(),
-                        requerimientoRequest.descripcion(),
-                        requerimientoRequest.caracteristicas(),
-                        requerimientoRequest.habilidades());
-                continue;
-            }
-
             if (idsSinCambios.contains(requerimientoRequest.idRequerimientoGral())) {
                 continue;
             }

@@ -38,10 +38,12 @@ import org.mgroko.backend.modelo.enums.RolProyectoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.CrearMoodboardRequest;
+import org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.ModificarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.ModificarRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
+import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
@@ -49,6 +51,7 @@ import org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaExcepti
 import org.mgroko.backend.proyectos.exception.InformacionBasicaIncompletaException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException;
+import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.proyectos.exception.UbicacionObligatoriaException;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.ImagenRepository;
@@ -523,16 +526,73 @@ class ModificarProyectoServiceTest {
     }
 
     @Test
-    void modificar_requerimientoNuevo_seCrea() {
+    void modificar_requerimientoSinId_lanzaRequerimientoInvalido() {
         ModificarProyectoRequest request = new ModificarProyectoRequest(
                 "Desc", Privacidad.PUBLICO, false, null, null, null,
                 List.of(new ModificarRequerimientoGralRequest(null, 1, 2L, "nuevo", null, null)),
                 null);
 
-        modificarProyectoService.modificar(1L, 10L, 100L, request);
+        assertThatThrownBy(() -> modificarProyectoService.modificar(1L, 10L, 100L, request))
+                .isInstanceOf(RequerimientoInvalidoException.class)
+                .hasMessageContaining("debe incluir su id");
 
+        verify(requerimientoGralService, never())
+                .persistir(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void crearRequerimiento_persisteYDevuelveResponse() {
+        CrearRequerimientoGralRequest request = new CrearRequerimientoGralRequest(
+                1, 2L, "nuevo", null, null);
+        RequerimientoGralResponse response = new RequerimientoGralResponse(
+                30L, 1, "nuevo", 2L, "Modelo", List.of(), List.of(),
+                false, 0L, 1, false, false);
+        when(requerimientoGralService.persistir(
+                eq(proyecto), eq(2L), eq(1), eq("nuevo"), any(), any()))
+                .thenReturn(response);
+
+        RequerimientoGralResponse resultado = modificarProyectoService.crearRequerimiento(
+                1L, 10L, 100L, request);
+
+        assertThat(resultado).isSameAs(response);
         verify(requerimientoGralService).persistir(
                 eq(proyecto), eq(2L), eq(1), eq("nuevo"), any(), any());
+    }
+
+    @Test
+    void eliminarRequerimiento_noProtegido_eliminaYGeneraSnapshot() {
+        RequerimientoGralProyecto requerimiento = RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(30L)
+                .proyecto(proyecto)
+                .cantidad(1)
+                .build();
+        when(requerimientoGralProyectoRepository.findByIdParaGestion(30L))
+                .thenReturn(Optional.of(requerimiento));
+
+        modificarProyectoService.eliminarRequerimiento(1L, 10L, 100L, 30L);
+
+        verify(requerimientoSnapshotService)
+                .asegurarHistorialGeneral(eq(requerimiento), any());
+        verify(requerimientoGralService).eliminar(requerimiento);
+    }
+
+    @Test
+    void eliminarRequerimiento_protegido_lanzaExcepcion() {
+        RequerimientoGralProyecto requerimiento = RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(30L)
+                .proyecto(proyecto)
+                .cantidad(1)
+                .build();
+        when(requerimientoGralProyectoRepository.findByIdParaGestion(30L))
+                .thenReturn(Optional.of(requerimiento));
+        when(requerimientoGralProteccionService.estaProtegido(requerimiento))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> modificarProyectoService.eliminarRequerimiento(
+                1L, 10L, 100L, 30L))
+                .isInstanceOf(RequerimientoGralProtegidoException.class);
+
+        verify(requerimientoGralService, never()).eliminar(any());
     }
 
     @Test

@@ -39,6 +39,7 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
@@ -46,7 +47,6 @@ import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
-import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -75,8 +75,6 @@ class AceptarInvitacionServiceTest {
     @Mock
     private InvitacionActividadRepository invitacionActividadRepository;
     @Mock
-    private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
-    @Mock
     private RequerimientoActividadRepository requerimientoActividadRepository;
     @Mock
     private MiembroProyectoRepository miembroProyectoRepository;
@@ -86,6 +84,8 @@ class AceptarInvitacionServiceTest {
     private RolProyectoRepository rolProyectoRepository;
     @Mock
     private CupoRequerimientoService cupoRequerimientoService;
+    @Mock
+    private RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     @Mock
     private EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
     @Mock
@@ -103,12 +103,12 @@ class AceptarInvitacionServiceTest {
                 perfilRepository,
                 invitacionGralRepository,
                 invitacionActividadRepository,
-                requerimientoGralProyectoRepository,
                 requerimientoActividadRepository,
                 miembroProyectoRepository,
                 asignacionActividadRepository,
                 rolProyectoRepository,
                 cupoRequerimientoService,
+                requerimientoGralAsignacionService,
                 evaluarDisponibilidadActividadService,
                 reprogramarProyectoService,
                 notificacionService,

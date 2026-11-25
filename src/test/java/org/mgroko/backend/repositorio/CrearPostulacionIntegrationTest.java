@@ -110,6 +110,8 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private RequerimientoActividadRepository requerimientoActividadRepository;
     @Autowired
+    private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
+    @Autowired
     private AgendaRepository agendaRepository;
     @Autowired
     private BloqueoAgendaRepository bloqueoAgendaRepository;
@@ -287,6 +289,24 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void postularGeneral_proyectoNoAceptaPostulaciones_lanzaExcepcion() {
+        PerfilCreado director = crearPerfil(
+                "uc26.sinpost.dir@example.com", "88826120", "Directora UC26 Sin Postulacion", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc26.sinpost.pos@example.com", "88826121", "Postulante UC26 Sin Postulacion", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGralSinPostulacion(
+                director, "Desfile UC26 Sin Postulacion");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        assertThatThrownBy(() -> crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento))
+                .isInstanceOf(PostulacionNoPermitidaException.class)
+                .hasMessageContaining("no acepta postulaciones");
+    }
+
+    @Test
     void aceptarGeneral_creaMiembroYRechazaLasDemasPendientes() {
         PerfilCreado director = crearPerfil("uc34.dir1@example.com", "88834001", "Directora UC34", "modelo");
         PerfilCreado postulanteA = crearPerfil("uc34.pos1@example.com", "88834002", "Postulante A UC34", "modelo");
@@ -365,6 +385,172 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 director.idUsuario(), director.idPerfil(),
                 publicado.idProyecto(), postulacionA.idPostulacion()))
                 .isInstanceOf(PostulacionYaGestionadaException.class);
+    }
+
+    @Test
+    void aceptarGeneral_requerimientoLleno_creaMiembroSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc34.lleno.dir@example.com", "88834101", "Directora UC34 Lleno", "modelo");
+        PerfilCreado postulanteB = crearPerfil(
+                "uc34.lleno.b@example.com", "88834103", "Postulante UC34 Lleno B", "modelo");
+        PerfilCreado relleno = crearPerfil(
+                "uc34.lleno.relleno@example.com", "88834113", "Modelo UC34 Lleno Relleno", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC34 Lleno");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        PostulacionResponse postulacionB = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteB.idUsuario(), postulanteB.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        llenarRequerimiento(publicado, relleno, idRequerimiento);
+
+        PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacionB.idPostulacion());
+
+        assertThat(respuesta.estado())
+                .isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idRequerimiento()).isNull();
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), postulanteB.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneral_requerimientoLleno_resuelveOtroCompatible() {
+        PerfilCreado director = crearPerfil(
+                "uc34.fallback.dir@example.com", "88834104", "Directora UC34 Fallback", "modelo");
+        PerfilCreado postulanteB = crearPerfil(
+                "uc34.fallback.b@example.com", "88834106", "Postulante UC34 Fallback B", "modelo");
+        PerfilCreado relleno = crearPerfil(
+                "uc34.fallback.relleno@example.com", "88834114", "Modelo UC34 Fallback Relleno", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConDosRequerimientosGral(
+                director, "Desfile UC34 Fallback");
+        Long primero = publicado.requerimientosGral().get(0).idRequerimientoGral();
+        Long segundo = publicado.requerimientosGral().get(1).idRequerimientoGral();
+
+        PostulacionResponse postulacionB = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteB.idUsuario(), postulanteB.idPerfil(),
+                publicado.idProyecto(), primero);
+
+        llenarRequerimiento(publicado, relleno, primero);
+
+        PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacionB.idPostulacion());
+
+        assertThat(respuesta.idRequerimiento()).isEqualTo(segundo);
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND id_perfil = ?
+                  AND estado_participacion = 'ACTIVO'
+                """, Long.class, segundo, postulanteB.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneral_requerimientoArchivado_creaMiembroSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc34.arch.dir@example.com", "88834107", "Directora UC34 Archivado", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc34.arch.pos@example.com", "88834108", "Postulante UC34 Archivado", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC34 Archivado");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        var requerimiento = requerimientoGralProyectoRepository
+                .findById(idRequerimiento).orElseThrow();
+        requerimiento.setFechaArchivado(LocalDateTime.now());
+        requerimientoGralProyectoRepository.saveAndFlush(requerimiento);
+
+        PostulacionGestionadaResponse respuesta = aceptarPostulacionService.aceptarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion());
+
+        assertThat(respuesta.estado())
+                .isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
+        assertThat(respuesta.idRequerimiento()).isNull();
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), postulante.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarActividad_vinculaRequerimientoGeneralCompatible() {
+        PerfilCreado director = crearPerfil(
+                "uc34.act.gral.dir@example.com", "88834109", "Directora UC34 Act Gral", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc34.act.gral.pos@example.com", "88834110", "Postulante UC34 Act Gral", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGralYActividad(
+                director, "Desfile UC34 Act Gral");
+        Long idGeneral = publicado.requerimientosGral().get(0).idRequerimientoGral();
+        Long idActividad = requerimientoDeActividad(publicado);
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionActividad(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idActividad);
+
+        aceptarPostulacionService.aceptarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion());
+
+        Long miembrosGeneral = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_requerimiento_gral = ? AND id_perfil = ?
+                  AND estado_participacion = 'ACTIVO'
+                """, Long.class, idGeneral, postulante.idPerfil());
+        Long asignaciones = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM asignacion_actividad
+                WHERE id_requerimiento_act = ?
+                """, Long.class, idActividad);
+
+        assertThat(miembrosGeneral).isEqualTo(1L);
+        assertThat(asignaciones).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarActividad_sinRequerimientoGeneral_creaMembresiaSinRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc34.act.libre.dir@example.com", "88834111", "Directora UC34 Act Libre", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc34.act.libre.pos@example.com", "88834112", "Postulante UC34 Act Libre", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC34 Act Libre");
+        Long idActividad = requerimientoDeActividad(publicado);
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionActividad(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idActividad);
+
+        aceptarPostulacionService.aceptarActividad(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion());
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                  AND id_requerimiento_gral IS NULL AND estado_participacion = 'ACTIVO'
+                """, Long.class, publicado.idProyecto(), postulante.idPerfil());
+        assertThat(miembros).isEqualTo(1L);
     }
 
     @Test
@@ -965,6 +1151,19 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 .build());
     }
 
+    private void llenarRequerimiento(
+            ProyectoResponse publicado,
+            PerfilCreado perfilCreado,
+            Long idRequerimiento) {
+
+        MiembroProyecto miembro = agregarMiembro(publicado, perfilCreado);
+        var requerimiento = requerimientoGralProyectoRepository
+                .findById(idRequerimiento)
+                .orElseThrow();
+        miembro.setRequerimientoGral(requerimiento);
+        miembroProyectoRepository.saveAndFlush(miembro);
+    }
+
     private PerfilCreado crearPerfil(
             String correo,
             String dni,
@@ -1012,6 +1211,31 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 new CrearMoodboardRequest("Telas frías, tonos neutros"));
     }
 
+    private CrearProyectoRequest proyectoConRequerimientoGralSinPostulacion(String nombre) {
+        return new CrearProyectoRequest(
+                nombre, "Proyecto de prueba UC-26 sin postulaciones", Privacidad.PUBLICO,
+                LocalDate.now().plusDays(30), false,
+                new UbicacionRequest("0602801002"),
+                null,
+                List.of(new CrearRequerimientoGralRequest(
+                        1, idProfesion("modelo"), "Una modelo", null, null)),
+                new CrearMoodboardRequest("Telas frías, tonos neutros"));
+    }
+
+    private CrearProyectoRequest proyectoConDosRequerimientosGral(String nombre) {
+        return new CrearProyectoRequest(
+                nombre, "Proyecto de prueba UC-26 con dos requerimientos", Privacidad.PUBLICO,
+                LocalDate.now().plusDays(30), true,
+                new UbicacionRequest("0602801002"),
+                null,
+                List.of(
+                        new CrearRequerimientoGralRequest(
+                                1, idProfesion("modelo"), "Modelo A", null, null),
+                        new CrearRequerimientoGralRequest(
+                                1, idProfesion("modelo"), "Modelo B", null, null)),
+                new CrearMoodboardRequest("Telas frías, tonos neutros"));
+    }
+
     private CrearProyectoRequest proyectoConActividad(String nombre) {
         return new CrearProyectoRequest(
                 nombre, "Proyecto de prueba UC-26 con actividad", Privacidad.PUBLICO,
@@ -1028,6 +1252,51 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
 
         ProyectoResponse borrador = crearProyectoService.crear(
                 director.idUsuario(), director.idPerfil(), proyectoConRequerimientoGral(nombre));
+
+        return publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+    }
+
+    private ProyectoResponse publicarProyectoConRequerimientoGralSinPostulacion(
+            PerfilCreado director,
+            String nombre) {
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(),
+                proyectoConRequerimientoGralSinPostulacion(nombre));
+
+        return publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+    }
+
+    private ProyectoResponse publicarProyectoConDosRequerimientosGral(
+            PerfilCreado director,
+            String nombre) {
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(),
+                proyectoConDosRequerimientosGral(nombre));
+
+        return publicarProyectoService.publicar(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto());
+    }
+
+    private ProyectoResponse publicarProyectoConRequerimientoGralYActividad(
+            PerfilCreado director,
+            String nombre) {
+
+        ProyectoResponse borrador = crearProyectoService.crear(
+                director.idUsuario(), director.idPerfil(), proyectoConRequerimientoGral(nombre));
+
+        ActividadResponse actividad = crearActividadService.crear(
+                director.idUsuario(), director.idPerfil(), borrador.idProyecto(),
+                new CrearActividadRequest(
+                        "Actividad UC26", "Actividad con requerimiento general", 2,
+                        UnidadDuracion.HORAS, null, null,
+                        List.of(new CrearRequerimientoActividadRequest(
+                                1, idProfesion("modelo"), "Una modelo", null, null))));
+
+        assertThat(actividad.idActividad()).isNotNull();
 
         return publicarProyectoService.publicar(
                 director.idUsuario(), director.idPerfil(), borrador.idProyecto());
