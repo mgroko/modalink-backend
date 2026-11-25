@@ -3,8 +3,11 @@ package org.mgroko.backend.repositorio;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.dto.AdminCaracteristicaTecnicaRequest;
@@ -47,13 +50,29 @@ class CaracteristicaTecnicaNotificacionIntegrationTest extends AbstractPostgresI
     private NotificacionRepository notificacionRepository;
 
     @Autowired
+    private CaracteristicaTecnicaRepository caracteristicaTecnicaRepository;
+
+    @Autowired
     private PlatformTransactionManager transactionManager;
 
     private TransactionTemplate transactionTemplate;
 
+    private final Set<Long> caracteristicasCreadas = new HashSet<>();
+
     @BeforeEach
     void setUp() {
         transactionTemplate = new TransactionTemplate(transactionManager);
+    }
+
+    @AfterEach
+    void limpiarCaracteristicasCreadas() {
+        // La base es compartida por todos los tests de integración: las
+        // características creadas acá deben eliminarse para no alterar los
+        // conteos de otros tests (p. ej. CaracteristicaTecnicaRepositoryIntegrationTest).
+        if (!caracteristicasCreadas.isEmpty()) {
+            caracteristicaTecnicaRepository.deleteAllById(caracteristicasCreadas);
+            caracteristicasCreadas.clear();
+        }
     }
 
     @Test
@@ -61,13 +80,14 @@ class CaracteristicaTecnicaNotificacionIntegrationTest extends AbstractPostgresI
         Escenario escenario = crearEscenario();
 
         String codigo = "CAR_NOTIF_" + escenario.sufijo();
-        adminCaracteristicaTecnicaService.crear(new AdminCaracteristicaTecnicaRequest(
+        var creada = adminCaracteristicaTecnicaService.crear(new AdminCaracteristicaTecnicaRequest(
                 codigo,
                 "Altura " + escenario.sufijo(),
                 null,
                 escenario.idProfesionFotografo(),
                 "TEXTO",
                 null));
+        caracteristicasCreadas.add(creada.idCaracteristica());
 
         List<org.mgroko.backend.modelo.Notificacion> delFotografo = notificacionesDe(
                 escenario.idUsuarioFotografo(), escenario.idPerfilFotografo());
@@ -102,6 +122,7 @@ class CaracteristicaTecnicaNotificacionIntegrationTest extends AbstractPostgresI
                 escenario.idProfesionFotografo(),
                 "TEXTO",
                 null));
+        caracteristicasCreadas.add(creada.idCaracteristica());
 
         adminCaracteristicaTecnicaService.actualizar(creada.idCaracteristica(),
                 new AdminCaracteristicaTecnicaRequest(

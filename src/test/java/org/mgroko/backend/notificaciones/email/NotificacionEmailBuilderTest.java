@@ -59,7 +59,7 @@ class NotificacionEmailBuilderTest {
                 "<img src=\"http://localhost:8080/uploads/publicaciones/a.webp\"");
         assertThat(contenido.html()).contains("max-height:408px");
         assertThat(contenido.html()).contains(
-                "href=\"http://localhost:5173/auth/email#token=raw-token&amp;redirect=%2Fnotificaciones\"");
+                "href=\"http://localhost:5173/auth/email#token=raw-token&amp;redirect=%2Fcolaboraciones-automaticas%2F9\"");
         assertThat(contenido.texto()).doesNotContain("uploads");
     }
 
