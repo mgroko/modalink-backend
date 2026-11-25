@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.mgroko.backend.modelo.ColaboradorPublicacionOrigen;
 import org.mgroko.backend.modelo.ColaboradorPublicacionOrigenId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -23,4 +24,8 @@ public interface ColaboradorPublicacionOrigenRepository
             """)
     List<ColaboradorPublicacionOrigen> findByIdPublicacionIn(
             @Param("idsPublicacion") Collection<Long> idsPublicacion);
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM ColaboradorPublicacionOrigen o WHERE o.idPerfil = :idPerfil")
+    int eliminarPorPerfil(@Param("idPerfil") Long idPerfil);
 }

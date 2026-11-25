@@ -67,4 +67,28 @@ public class CancelarSolicitudConexionService {
         solicitudConexionRepository.delete(solicitud);
         solicitudConexionRepository.flush();
     }
+
+    /**
+     * Cancela las solicitudes pendientes enviadas o recibidas por un perfil
+     * que se da de baja definitivamente. Las solicitudes ya resueltas se
+     * conservan como historial.
+     */
+    @Transactional
+    public int cancelarPorBajaPerfil(Long idPerfil) {
+        var pendientes = solicitudConexionRepository.findPendientesDePerfil(idPerfil);
+
+        for (var solicitud : pendientes) {
+            notificacionService.eliminarPorEntidad(
+                    NotificacionService.TIPO_SOLICITUD_CONEXION_RECIBIDA,
+                    NotificacionService.ENTIDAD_SOLICITUD_CONEXION,
+                    solicitud.getIdSolicitudConexion());
+            solicitudConexionRepository.delete(solicitud);
+        }
+
+        if (!pendientes.isEmpty()) {
+            solicitudConexionRepository.flush();
+        }
+
+        return pendientes.size();
+    }
 }

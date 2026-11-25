@@ -194,6 +194,21 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
             @Param("idPerfil") Long idPerfil);
 
     /**
+     * Membresias activas de un perfil con proyecto y rol inicializados. Se usa
+     * en la baja definitiva para decidir cancelaciones y bajas voluntarias.
+     */
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.proyecto p
+        JOIN FETCH mp.perfil perfil
+        JOIN FETCH mp.rolProyecto r
+        WHERE perfil.idPerfil = :idPerfil
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<MiembroProyecto> findActivosDePerfilConProyectoYRol(
+            @Param("idPerfil") Long idPerfil);
+
+    /**
      * Cuenta los Directores activos del proyecto distintos del miembro
      * indicado. Se usa para impedir que una baja deje al proyecto sin
      * Director.

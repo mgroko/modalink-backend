@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerBajaRequest;
-import org.mgroko.backend.admin.dto.EjecutarSchedulerResponse;
+import org.mgroko.backend.admin.dto.EjecutarSchedulerBajaResponse;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -98,8 +98,14 @@ class AdminSchedulerBajaControllerTest {
 
     @Test
     void ejecutarAhora_retorna200YMensajeResultado() throws Exception {
-        EjecutarSchedulerResponse response =
-                new EjecutarSchedulerResponse(3, LocalDateTime.now(), "Se dieron de baja 1 cuenta(s) y 2 perfil(es).");
+        EjecutarSchedulerBajaResponse response = new EjecutarSchedulerBajaResponse(
+                3,
+                LocalDateTime.now(),
+                "Se dieron de baja 1 cuenta(s) y 2 perfil(es). "
+                        + "Proyectos cancelados: 4. Publicaciones eliminadas: 5. "
+                        + "Conexiones dadas de baja: 6.",
+                new EjecutarSchedulerBajaResponse.DetalleBajaScheduler(
+                        1, 2, 4, 3, 5, 6));
 
         when(configuracionSistemaService.ejecutarBajaManual()).thenReturn(response);
 
@@ -107,7 +113,12 @@ class AdminSchedulerBajaControllerTest {
                         .principal(autenticacionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.registrosAfectados").value(3))
-                .andExpect(jsonPath("$.mensaje").value("Se dieron de baja 1 cuenta(s) y 2 perfil(es)."));
+                .andExpect(jsonPath("$.detalle.cuentasExpiradas").value(1))
+                .andExpect(jsonPath("$.detalle.perfilesExpirados").value(2))
+                .andExpect(jsonPath("$.detalle.proyectosCancelados").value(4))
+                .andExpect(jsonPath("$.detalle.membresiasBajaVoluntaria").value(3))
+                .andExpect(jsonPath("$.detalle.publicacionesEliminadas").value(5))
+                .andExpect(jsonPath("$.detalle.conexionesEliminadas").value(6));
 
         verify(configuracionSistemaService).ejecutarBajaManual();
     }

@@ -70,4 +70,6 @@ public interface BloqueoAgendaRepository extends JpaRepository<BloqueoAgenda, Lo
             @Param("idAgenda") Long idAgenda,
             @Param("desde") LocalDateTime desde,
             @Param("hasta") LocalDateTime hasta);
+
+    void deleteByAgenda_IdAgenda(Long idAgenda);
 }

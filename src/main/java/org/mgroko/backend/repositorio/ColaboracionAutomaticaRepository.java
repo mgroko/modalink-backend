@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -136,4 +137,16 @@ public interface ColaboracionAutomaticaRepository
             "perfilB.imagen"
     })
     Page<ColaboracionAutomatica> findAll(Specification<ColaboracionAutomatica> spec, Pageable pageable);
+
+    /**
+     * Elimina las propuestas automaticas que involucran a un perfil que se da
+     * de baja definitivamente. No afecta propuestas entre otros perfiles.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM ColaboracionAutomatica c
+             WHERE c.perfilA.idPerfil = :idPerfil
+                OR c.perfilB.idPerfil = :idPerfil
+            """)
+    int eliminarPorPerfil(@Param("idPerfil") Long idPerfil);
 }

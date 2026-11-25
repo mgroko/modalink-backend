@@ -101,4 +101,14 @@ public interface SolicitudConexionRepository
     """)
     Optional<SolicitudConexion> findByIdForUpdate(
             @Param("idSolicitudConexion") Long idSolicitudConexion);
+
+    @Query("""
+        SELECT s
+        FROM SolicitudConexion s
+        WHERE s.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+          AND (s.perfilRemitente.idPerfil = :idPerfil
+               OR s.perfilDestinatario.idPerfil = :idPerfil)
+    """)
+    List<SolicitudConexion> findPendientesDePerfil(
+            @Param("idPerfil") Long idPerfil);
 }

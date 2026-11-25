@@ -61,7 +61,8 @@ public class SolicitudBajaService {
         }
         perfilRepository.saveAll(perfiles);
 
-        // TODO: Ocultar publicaciones independientes del usuario
+        // Las publicaciones quedan ocultas por el estado PENDIENTE_BAJA de los
+        // perfiles. La eliminacion definitiva se ejecuta al vencer el plazo.
 
         LocalDateTime fechaLimite = ahora.plusDays(diasBaja);
 

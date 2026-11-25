@@ -119,6 +119,8 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
             @Param("idUsuario") Long idUsuario,
             @Param("fechaLeida") LocalDateTime fechaLeida);
 
+    void deleteByUsuarioDestino_IdUsuario(Long idUsuario);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notificacion n

@@ -255,8 +255,10 @@ Tras contrastar los controladores, servicios, DTOs y repositorios presentes en `
    - `AuthServiceTest` mockea `ReactivarCuentaService` y prueba la delegación desde `AuthService` y el bloqueo de login en `PendienteBaja`.
    - `AuthControllerTest` cubre `POST /auth/reactivar-cuenta`.
    - `ExpirarCuentaServiceTest`, `BajaSchedulerTest` y `SnapshotBajaIntegrationTest` cubren la expiración y el snapshot, **no** la solicitud ni la reactivación.
+   - `BajaDefinitivaCuentaIntegrationTest` cubre la baja definitiva completa: proyectos, membresías, publicaciones, comentarios, conexiones, chats y auditoría.
+   - `BajaDefinitivaContratoIntegrationTest` cubre la cancelación de contratos `PENDIENTE_FIRMA` al vencer la cuenta.
 
-**Riesgo:** un cambio en las reglas de baja (por ejemplo, ocultar publicaciones — hoy hay un `TODO` en el servicio) no sería detectado.
+**Riesgo:** un cambio en las reglas de solicitud o reactivación todavía no sería detectado. La expiración definitiva ya tiene cobertura de integración.
 
 ### 5.2. Módulo `reemplazos` — Controlador y servicios de gestión
 

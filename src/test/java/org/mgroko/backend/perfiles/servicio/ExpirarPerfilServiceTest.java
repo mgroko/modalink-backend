@@ -1,65 +1,49 @@
 package org.mgroko.backend.perfiles.servicio;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mgroko.backend.modelo.Perfil;
-import org.mgroko.backend.modelo.enums.EstadoPerfil;
-import org.mgroko.backend.repositorio.PerfilRepository;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.usuario.servicio.BajaDefinitivaService;
+import org.mgroko.backend.usuario.servicio.ResumenBajaDefinitiva;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ExpirarPerfilServiceTest {
 
     @Mock
-    private PerfilRepository perfilRepository;
-
-    @Mock
-    private EliminarImagenesPerfilService eliminarImagenesPerfilService;
+    private BajaDefinitivaService bajaDefinitivaService;
 
     @InjectMocks
     private ExpirarPerfilService expirarPerfilService;
 
     @Test
-    void expirarVencidos_cambiaEstadoABaja_yEliminaImagenesDelPerfil() {
-        Perfil perfil = Perfil.builder()
-                .idPerfil(10L)
-                .nombreArtistico("Luna")
-                .estado(EstadoPerfil.PendienteBaja)
-                .fechaSolicitudBaja(LocalDateTime.now().minusDays(31))
-                .build();
-        when(perfilRepository.findByEstadoAndFechaSolicitudBajaBefore(eq(EstadoPerfil.PendienteBaja), any()))
-                .thenReturn(List.of(perfil));
+    void expirarVencidos_delegaEnBajaDefinitivaYDevuelvePerfiles() {
+        ResumenBajaDefinitiva resumen = new ResumenBajaDefinitiva(
+                0, 1, 2, 3, 4, 5);
+        when(bajaDefinitivaService.expirarPerfilesVencidos(30))
+                .thenReturn(resumen);
 
         int cantidad = expirarPerfilService.expirarVencidos(30);
 
         assertEquals(1, cantidad);
-        ArgumentCaptor<List<Perfil>> captor = ArgumentCaptor.forClass(List.class);
-        verify(perfilRepository).saveAll(captor.capture());
-        assertEquals(EstadoPerfil.Baja, captor.getValue().get(0).getEstado());
-        verify(eliminarImagenesPerfilService).eliminarImagenesDePerfil(perfil);
+        verify(bajaDefinitivaService).expirarPerfilesVencidos(30);
     }
 
     @Test
-    void expirarVencidos_sinVencidos_noGuarda_niEliminaImagenes() {
-        when(perfilRepository.findByEstadoAndFechaSolicitudBajaBefore(eq(EstadoPerfil.PendienteBaja), any()))
-                .thenReturn(List.of());
+    void expirarVencidosConResumen_devuelveElResumenCompleto() {
+        ResumenBajaDefinitiva resumen = new ResumenBajaDefinitiva(
+                0, 2, 1, 3, 4, 5);
+        when(bajaDefinitivaService.expirarPerfilesVencidos(45))
+                .thenReturn(resumen);
 
-        int cantidad = expirarPerfilService.expirarVencidos(30);
+        ResumenBajaDefinitiva resultado =
+                expirarPerfilService.expirarVencidosConResumen(45);
 
-        assertEquals(0, cantidad);
-        verify(perfilRepository, never()).saveAll(any());
-        verify(eliminarImagenesPerfilService, never()).eliminarImagenesDePerfil(any(Perfil.class));
+        assertEquals(resumen, resultado);
     }
 }

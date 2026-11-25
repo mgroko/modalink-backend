@@ -75,6 +75,55 @@ public class EliminarConexionService {
         notificar(conexion, perfilActivo);
     }
 
+    /**
+     * Da de baja logicamente todas las conexiones activas de un perfil que se
+     * elimina definitivamente. La contraparte conserva el historial de la
+     * conversacion, pero la conexion deja de estar activa.
+     */
+    @Transactional
+    public int eliminarPorBajaPerfil(Long idPerfil) {
+        List<Conexion> conexiones = conexionRepository.findActivasDePerfil(idPerfil);
+        if (conexiones.isEmpty()) {
+            return 0;
+        }
+
+        LocalDateTime fecha = LocalDateTime.now(reloj);
+        List<Notificacion> notificaciones = new ArrayList<>();
+
+        for (Conexion conexion : conexiones) {
+            conexion.setEstado(EstadoConexion.ELIMINADA);
+            conexion.setFechaFinConexion(fecha);
+
+            Perfil eliminado = conexion.getPerfil1().getIdPerfil().equals(idPerfil)
+                    ? conexion.getPerfil1()
+                    : conexion.getPerfil2();
+            Perfil contraparte = conexion.getPerfil1().getIdPerfil().equals(idPerfil)
+                    ? conexion.getPerfil2()
+                    : conexion.getPerfil1();
+
+            if (!contraparte.getIdPerfil().equals(idPerfil)
+                    && puedeNotificar(contraparte)) {
+                notificaciones.add(notificacionService.crear(
+                        contraparte.getUsuario(),
+                        contraparte,
+                        NotificacionService.TIPO_CONEXION_ELIMINADA,
+                        "La conexión con '" + eliminado.getNombreArtistico()
+                                + "' fue eliminada.",
+                        NotificacionService.ENTIDAD_CONEXION,
+                        conexion.getIdConexion()));
+            }
+        }
+
+        conexionRepository.saveAll(conexiones);
+        conexionRepository.flush();
+
+        if (!notificaciones.isEmpty()) {
+            notificacionService.registrarTodas(notificaciones);
+        }
+
+        return conexiones.size();
+    }
+
     private void notificar(Conexion conexion, Perfil perfilActivo) {
         Perfil contraparte = conexion.getPerfil1().getIdPerfil()
                 .equals(perfilActivo.getIdPerfil())

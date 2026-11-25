@@ -29,4 +29,6 @@ public interface TokenAccesoEmailRepository extends JpaRepository<TokenAccesoEma
                 OR (t.usadoEn IS NOT NULL AND t.usadoEn < :limite)
             """)
     int eliminarAnteriores(@Param("limite") LocalDateTime limite);
+
+    void deleteByUsuario_IdUsuario(Long idUsuario);
 }

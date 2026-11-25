@@ -817,6 +817,7 @@ CREATE TABLE comentario(
     fecha_comentario    timestamp        NOT NULL,
     id_publicacion      int8             NOT NULL,
     id_perfil           int8             NOT NULL,
+    nombre_artistico_autor varchar(50),
     CONSTRAINT chk_texto_vacio CHECK (char_length(trim(texto)) > 0),
     CONSTRAINT "PK_comentario" PRIMARY KEY (id_comentario)
 )
@@ -1197,7 +1198,18 @@ DECLARE
     v_id_rol_director BIGINT;
     v_id_proyecto BIGINT;
     v_cantidad_directores INT;
+    v_estado_proyecto VARCHAR(50);
 BEGIN
+    -- Un proyecto cancelado o finalizado conserva su historial y no necesita
+    -- mantener un director activo para poder cerrar las membresias.
+    SELECT estado INTO v_estado_proyecto
+    FROM proyecto
+    WHERE id_proyecto = OLD.id_proyecto;
+
+    IF v_estado_proyecto IN ('CANCELADO', 'FINALIZADO') THEN
+        IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+    END IF;
+
     SELECT id_rol_proyecto INTO v_id_rol_director
     FROM rol_proyecto
     WHERE codigo = 'DIRECTOR';
@@ -1779,6 +1791,12 @@ DECLARE
     v_id_rol_director BIGINT;
     v_cantidad_directores INT;
 BEGIN
+    -- Los proyectos cancelados o finalizados son historicos: no se exige
+    -- mantener un director activo.
+    IF NEW.estado IN ('CANCELADO', 'FINALIZADO') THEN
+        RETURN NEW;
+    END IF;
+
     SELECT id_rol_proyecto INTO v_id_rol_director
     FROM rol_proyecto
     WHERE codigo = 'DIRECTOR';

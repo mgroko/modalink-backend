@@ -137,23 +137,84 @@ public class CancelarProyectoService {
         List<InvitacionActividad> invitacionesActividad = rechazarInvitacionesActividad(idProyecto);
 
         List<Notificacion> notificaciones = new ArrayList<>();
-        notificarEquipo(notificaciones, proyecto, motivo);
-        notificarPostulacionesGral(notificaciones, proyecto, motivo, postulacionesGral);
-        notificarPostulacionesActividad(notificaciones, proyecto, motivo, postulacionesActividad);
-        notificarInvitacionesGral(notificaciones, proyecto, motivo, invitacionesGral);
-        notificarInvitacionesActividad(notificaciones, proyecto, motivo, invitacionesActividad);
+        notificarEquipo(notificaciones, proyecto, motivo, null);
+        notificarPostulacionesGral(notificaciones, proyecto, motivo, postulacionesGral, null);
+        notificarPostulacionesActividad(notificaciones, proyecto, motivo, postulacionesActividad, null);
+        notificarInvitacionesGral(notificaciones, proyecto, motivo, invitacionesGral, null);
+        notificarInvitacionesActividad(notificaciones, proyecto, motivo, invitacionesActividad, null);
 
         notificacionService.registrarTodas(notificaciones);
 
         return obtenerProyectoService.obtener(idUsuario, idPerfilActivo, idProyecto);
     }
 
+    /**
+     * Cancela un proyecto como parte de la baja definitiva de un perfil.
+     * No exige perfil activo ni permisos de director: la autorizacion la
+     * resuelve el orquestador de baja de cuentas. Permite cancelar tambien
+     * proyectos en BORRADOR.
+     */
+    @Transactional
+    public boolean cancelarPorBajaPerfil(
+            Long idProyecto,
+            String motivo,
+            Long idPerfilExcluido) {
+
+        Proyecto proyecto = proyectoRepository.findById(idProyecto)
+                .orElseThrow(() -> new ProyectoNoEncontradoException(idProyecto));
+
+        if (proyecto.getEstado() == EstadoProyecto.CANCELADO
+                || proyecto.getEstado() == EstadoProyecto.FINALIZADO) {
+            return false;
+        }
+
+        if (proyecto.getEstado() != EstadoProyecto.BORRADOR
+                && proyecto.getEstado() != EstadoProyecto.PUBLICADO
+                && proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
+            return false;
+        }
+
+        String motivoNormalizado = normalizarMotivo(motivo);
+
+        proyecto.setEstado(EstadoProyecto.CANCELADO);
+        proyecto.setMotivoCancelacion(motivoNormalizado);
+        proyecto.setFechaCancelacion(LocalDateTime.now());
+        proyectoRepository.save(proyecto);
+
+        actividadRepository.cancelarPendientesDeProyecto(idProyecto);
+
+        List<PostulacionGral> postulacionesGral = rechazarPostulacionesGral(idProyecto);
+        List<PostulacionActividad> postulacionesActividad = rechazarPostulacionesActividad(idProyecto);
+        List<InvitacionGral> invitacionesGral = rechazarInvitacionesGral(idProyecto);
+        List<InvitacionActividad> invitacionesActividad = rechazarInvitacionesActividad(idProyecto);
+
+        List<Notificacion> notificaciones = new ArrayList<>();
+        notificarEquipo(notificaciones, proyecto, motivoNormalizado, idPerfilExcluido);
+        notificarPostulacionesGral(notificaciones, proyecto, motivoNormalizado,
+                postulacionesGral, idPerfilExcluido);
+        notificarPostulacionesActividad(notificaciones, proyecto, motivoNormalizado,
+                postulacionesActividad, idPerfilExcluido);
+        notificarInvitacionesGral(notificaciones, proyecto, motivoNormalizado,
+                invitacionesGral, idPerfilExcluido);
+        notificarInvitacionesActividad(notificaciones, proyecto, motivoNormalizado,
+                invitacionesActividad, idPerfilExcluido);
+
+        notificacionService.registrarTodas(notificaciones);
+        return true;
+    }
+
     private String normalizarMotivo(CancelarProyectoRequest request) {
-        if (request == null || request.motivoCancelacion() == null
-                || request.motivoCancelacion().isBlank()) {
+        if (request == null) {
             throw new MotivoCancelacionObligatorioException();
         }
-        return request.motivoCancelacion().trim();
+        return normalizarMotivo(request.motivoCancelacion());
+    }
+
+    private String normalizarMotivo(String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new MotivoCancelacionObligatorioException();
+        }
+        return motivo.trim();
     }
 
     private List<PostulacionGral> rechazarPostulacionesGral(Long idProyecto) {
@@ -184,7 +245,12 @@ public class CancelarProyectoService {
         return invitacionActividadRepository.saveAll(invitaciones);
     }
 
-    private void notificarEquipo(List<Notificacion> notificaciones, Proyecto proyecto, String motivo) {
+    private void notificarEquipo(
+            List<Notificacion> notificaciones,
+            Proyecto proyecto,
+            String motivo,
+            Long idPerfilExcluido) {
+
         Set<Long> destinatarios = new HashSet<>();
         String mensaje = "El proyecto '" + proyecto.getNombre()
                 + "' fue cancelado. Motivo: " + motivo;
@@ -192,6 +258,9 @@ public class CancelarProyectoService {
         for (MiembroProyecto miembro : miembroProyectoRepository
                 .buscarMiembrosActivosDeProyecto(proyecto.getIdProyecto())) {
             Perfil perfil = miembro.getPerfil();
+            if (esPerfilExcluido(perfil, idPerfilExcluido)) {
+                continue;
+            }
             Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null && destinatarios.add(perfil.getIdPerfil())) {
                 notificaciones.add(notificacionService.crear(
@@ -210,13 +279,17 @@ public class CancelarProyectoService {
             List<Notificacion> notificaciones,
             Proyecto proyecto,
             String motivo,
-            List<PostulacionGral> postulaciones) {
+            List<PostulacionGral> postulaciones,
+            Long idPerfilExcluido) {
 
         String mensaje = "Tu postulación al proyecto '" + proyecto.getNombre()
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (PostulacionGral postulacion : postulaciones) {
             Perfil perfil = postulacion.getPerfil();
+            if (esPerfilExcluido(perfil, idPerfilExcluido)) {
+                continue;
+            }
             Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
@@ -235,13 +308,17 @@ public class CancelarProyectoService {
             List<Notificacion> notificaciones,
             Proyecto proyecto,
             String motivo,
-            List<PostulacionActividad> postulaciones) {
+            List<PostulacionActividad> postulaciones,
+            Long idPerfilExcluido) {
 
         String mensaje = "Tu postulación a una actividad del proyecto '" + proyecto.getNombre()
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (PostulacionActividad postulacion : postulaciones) {
             Perfil perfil = postulacion.getPerfil();
+            if (esPerfilExcluido(perfil, idPerfilExcluido)) {
+                continue;
+            }
             Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
@@ -260,13 +337,17 @@ public class CancelarProyectoService {
             List<Notificacion> notificaciones,
             Proyecto proyecto,
             String motivo,
-            List<InvitacionGral> invitaciones) {
+            List<InvitacionGral> invitaciones,
+            Long idPerfilExcluido) {
 
         String mensaje = "Tu invitación al proyecto '" + proyecto.getNombre()
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (InvitacionGral invitacion : invitaciones) {
             Perfil perfil = invitacion.getPerfilDestinatario();
+            if (esPerfilExcluido(perfil, idPerfilExcluido)) {
+                continue;
+            }
             Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
@@ -285,13 +366,17 @@ public class CancelarProyectoService {
             List<Notificacion> notificaciones,
             Proyecto proyecto,
             String motivo,
-            List<InvitacionActividad> invitaciones) {
+            List<InvitacionActividad> invitaciones,
+            Long idPerfilExcluido) {
 
         String mensaje = "Tu invitación a una actividad del proyecto '" + proyecto.getNombre()
                 + "' fue rechazada porque el proyecto fue cancelado. Motivo: " + motivo;
 
         for (InvitacionActividad invitacion : invitaciones) {
             Perfil perfil = invitacion.getPerfilDestinatario();
+            if (esPerfilExcluido(perfil, idPerfilExcluido)) {
+                continue;
+            }
             Usuario usuario = perfil != null ? perfil.getUsuario() : null;
             if (usuario != null) {
                 notificaciones.add(notificacionService.crear(
@@ -304,5 +389,11 @@ public class CancelarProyectoService {
                         proyecto.getIdProyecto()));
             }
         }
+    }
+
+    private boolean esPerfilExcluido(Perfil perfil, Long idPerfilExcluido) {
+        return perfil != null
+                && idPerfilExcluido != null
+                && idPerfilExcluido.equals(perfil.getIdPerfil());
     }
 }

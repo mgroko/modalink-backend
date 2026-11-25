@@ -67,4 +67,8 @@ public interface MeGustaRepository extends JpaRepository<MeGusta, MeGustaId> {
     List<Long> findIdsPublicacionesConMeGusta(
             @Param("idsPublicaciones") Collection<Long> idsPublicaciones,
             @Param("idPerfil") Long idPerfil);
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM MeGusta m WHERE m.id.idPerfil = :idPerfil")
+    int eliminarPorPerfil(@Param("idPerfil") Long idPerfil);
 }
