@@ -4209,6 +4209,17 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
      'Método del encoder WebP: 0 = más rápido, 6 = mejor compresión (0-6)')
 ON CONFLICT (clave) DO NOTHING;
 
+INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
+    ('IMAGEN_MAX_POR_MOODBOARD', '10',
+     'Cantidad máxima de imágenes que puede tener el moodboard de un proyecto'),
+    ('IMAGEN_MAX_POR_PUBLICACION', '10',
+     'Cantidad máxima de imágenes que puede tener una publicación'),
+    ('POLAROID_MAX_POR_PERFIL', '8',
+     'Cantidad máxima de polaroids que puede tener un perfil de modelo'),
+    ('COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN', '10',
+     'Cantidad máxima de propuestas de colaboración automática evaluadas por imagen')
+ON CONFLICT (clave) DO NOTHING;
+
 INSERT INTO configuracion_sistema (clave, valor, descripcion)
 VALUES (
     'PERFIL_TYC_PLANTILLA',

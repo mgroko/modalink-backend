@@ -113,6 +113,8 @@ Variables de entorno principales:
 | `NOTIFICACIONES_EMAIL_REMITENTE` | Remitente de los emails | `no-responder@modalink.local` |
 | `MAIL_HOST` | Host SMTP (Mailpit en desarrollo) | `localhost` |
 | `MAIL_PORT` | Puerto SMTP (Mailpit en desarrollo) | `1025` |
+| `MAX_FILE_SIZE` | Tamaño máximo por archivo multipart | `10MB` |
+| `MAX_REQUEST_SIZE` | Tamaño máximo del request multipart completo | `110MB` |
 | `DB_API_USER` | Usuario restringido para auditoría en producción | Comentado |
 | `DB_API_PASSWORD` | Password del usuario restringido | Comentado |
 
@@ -131,7 +133,10 @@ Propiedades funcionales relevantes:
 | `reemplazos.max-candidatos` | Máximo de candidatos por vacante |
 | `app.colaboracion-automatica.habilitada` | Activa la detección automática de colaboraciones por imágenes |
 | `app.colaboracion-automatica.*` | Umbrales de pHash/ORB, multicrop y pools async/histórico |
-| `app.polaroids.max-por-perfil` | Máximo de polaroids por perfil |
+| `IMAGEN_MAX_POR_MOODBOARD` | Máximo de imágenes por moodboard (`configuracion_sistema`) |
+| `IMAGEN_MAX_POR_PUBLICACION` | Máximo de imágenes por publicación (`configuracion_sistema`) |
+| `POLAROID_MAX_POR_PERFIL` | Máximo de polaroids por perfil (`configuracion_sistema`) |
+| `COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN` | Máximo de propuestas de colaboración automática por imagen (`configuracion_sistema`) |
 
 ## Puesta en marcha
 

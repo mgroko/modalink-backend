@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.ColaboracionAutomatica;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
@@ -43,10 +44,10 @@ public class DetectarColaboracionAutomaticaService {
     private final CoincidenciaVerificacionService verificacionService;
     private final StorageService storageService;
     private final Clock reloj;
+    private final ConfiguracionSistemaService configuracionSistemaService;
     private final boolean habilitada;
     private final int umbralPhashCandidato;
     private final int umbralPhashAltaConfianza;
-    private final int maxPropuestasPorImagen;
 
     public DetectarColaboracionAutomaticaService(
             PublicacionRepository publicacionRepository,
@@ -55,20 +56,20 @@ public class DetectarColaboracionAutomaticaService {
             CoincidenciaVerificacionService verificacionService,
             StorageService storageService,
             Clock reloj,
+            ConfiguracionSistemaService configuracionSistemaService,
             @Value("${app.colaboracion-automatica.habilitada:true}") boolean habilitada,
             @Value("${app.colaboracion-automatica.phash-distancia-candidato:24}") int umbralPhashCandidato,
-            @Value("${app.colaboracion-automatica.phash-distancia-alta-confianza:8}") int umbralPhashAltaConfianza,
-            @Value("${app.colaboracion-automatica.max-propuestas-por-imagen:10}") int maxPropuestasPorImagen) {
+            @Value("${app.colaboracion-automatica.phash-distancia-alta-confianza:8}") int umbralPhashAltaConfianza) {
         this.publicacionRepository = publicacionRepository;
         this.colaboracionRepository = colaboracionRepository;
         this.notificacionService = notificacionService;
         this.verificacionService = verificacionService;
         this.storageService = storageService;
         this.reloj = reloj;
+        this.configuracionSistemaService = configuracionSistemaService;
         this.habilitada = habilitada;
         this.umbralPhashCandidato = umbralPhashCandidato;
         this.umbralPhashAltaConfianza = umbralPhashAltaConfianza;
-        this.maxPropuestasPorImagen = maxPropuestasPorImagen;
     }
 
     @Transactional
@@ -94,6 +95,8 @@ public class DetectarColaboracionAutomaticaService {
         int candidatos = 0;
         int creadas = 0;
         int omitidas = 0;
+        int maxPropuestasPorImagen =
+                configuracionSistemaService.obtenerMaxPropuestasColaboracionPorImagen();
 
         for (Imagen imagen : imagenesNuevas) {
             if (imagen == null) {

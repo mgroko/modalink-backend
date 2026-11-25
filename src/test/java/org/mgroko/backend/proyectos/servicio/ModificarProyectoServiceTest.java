@@ -20,6 +20,7 @@ import org.mgroko.backend.modelo.Ciudad;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Moodboard;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PermisoProyecto;
 import org.mgroko.backend.modelo.Planificacion;
@@ -155,6 +156,9 @@ class ModificarProyectoServiceTest {
     @Mock
     private Clock reloj;
 
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
     @InjectMocks
     private ModificarProyectoService modificarProyectoService;
 
@@ -167,6 +171,7 @@ class ModificarProyectoServiceTest {
     void setUp() {
         when(reloj.instant()).thenReturn(Instant.parse("2026-11-01T00:00:00Z"));
         when(reloj.getZone()).thenReturn(ZoneOffset.UTC);
+        when(configuracionSistemaService.obtenerMaxImagenesMoodboard()).thenReturn(10);
 
         Usuario usuario = Usuario.builder().idUsuario(1L).build();
         perfil = Perfil.builder()

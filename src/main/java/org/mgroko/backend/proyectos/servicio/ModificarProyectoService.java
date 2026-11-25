@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.Imagen;
@@ -50,6 +51,7 @@ import org.mgroko.backend.proyectos.dto.RequerimientoGralResponse;
 import org.mgroko.backend.proyectos.exception.EstadoProyectoNoModificableException;
 import org.mgroko.backend.proyectos.exception.FechaEntregaInvalidaException;
 import org.mgroko.backend.proyectos.exception.ImagenMoodboardNoEncontradaException;
+import org.mgroko.backend.proyectos.exception.LimiteImagenesMoodboardExcedidoException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoConfirmableException;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoGralProtegidoException;
@@ -114,6 +116,7 @@ public class ModificarProyectoService {
     private final ImagenRepository imagenRepository;
     private final BorradoArchivosDiferido borradoArchivosDiferido;
     private final Clock reloj;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     public ModificarProyectoService(
             PerfilRepository perfilRepository,
@@ -138,7 +141,8 @@ public class ModificarProyectoService {
             RequerimientoSnapshotService requerimientoSnapshotService,
             ImagenRepository imagenRepository,
             BorradoArchivosDiferido borradoArchivosDiferido,
-            Clock reloj) {
+            Clock reloj,
+            ConfiguracionSistemaService configuracionSistemaService) {
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
@@ -162,6 +166,7 @@ public class ModificarProyectoService {
         this.imagenRepository = imagenRepository;
         this.borradoArchivosDiferido = borradoArchivosDiferido;
         this.reloj = reloj;
+        this.configuracionSistemaService = configuracionSistemaService;
     }
 
     @Transactional
@@ -647,6 +652,13 @@ public class ModificarProyectoService {
         for (Long id : idsConservadas) {
             if (id != null) {
                 conservadas.add(id);
+            }
+        }
+
+        if (!conservadas.isEmpty()) {
+            int limite = configuracionSistemaService.obtenerMaxImagenesMoodboard();
+            if (conservadas.size() > limite) {
+                throw new LimiteImagenesMoodboardExcedidoException(limite);
             }
         }
 

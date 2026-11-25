@@ -332,4 +332,81 @@ class ConfiguracionSistemaServiceTest {
         assertThrows(IllegalStateException.class,
                 () -> configuracionSistemaService.obtenerGraciaLimpiezaImagenesMinutos());
     }
+
+    // ---------------------------------------------------------------
+    // Limites configurables de cantidad
+    // ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("obtenerMaxImagenesMoodboard - Retorna el valor configurado")
+    void obtenerMaxImagenesMoodboard_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD)
+                        .valor("12").build()));
+
+        assertEquals(12, configuracionSistemaService.obtenerMaxImagenesMoodboard());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxImagenesMoodboard - Sin fila lanza IllegalStateException")
+    void obtenerMaxImagenesMoodboard_sinFila_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD))
+                .thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerMaxImagenesMoodboard());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxImagenesMoodboard - Cero lanza IllegalStateException")
+    void obtenerMaxImagenesMoodboard_cero_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD)
+                        .valor("0").build()));
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerMaxImagenesMoodboard());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxImagenesPublicacion - Retorna el valor configurado")
+    void obtenerMaxImagenesPublicacion_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_PUBLICACION))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_PUBLICACION)
+                        .valor("8").build()));
+
+        assertEquals(8, configuracionSistemaService.obtenerMaxImagenesPublicacion());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxPolaroidsPorPerfil - Retorna el valor configurado")
+    void obtenerMaxPolaroidsPorPerfil_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_POLAROID_MAX_POR_PERFIL))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_POLAROID_MAX_POR_PERFIL)
+                        .valor("6").build()));
+
+        assertEquals(6, configuracionSistemaService.obtenerMaxPolaroidsPorPerfil());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxPropuestasColaboracionPorImagen - Retorna el valor configurado")
+    void obtenerMaxPropuestasColaboracionPorImagen_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService
+                                .CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN)
+                        .valor("3").build()));
+
+        assertEquals(3, configuracionSistemaService.obtenerMaxPropuestasColaboracionPorImagen());
+    }
 }

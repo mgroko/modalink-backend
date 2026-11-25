@@ -17,6 +17,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -58,6 +59,9 @@ class ObtenerPublicacionServiceTest {
     private UbicacionService ubicacionService;
 
     @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
+    @Mock
     private PublicacionInteraccionResumenService interaccionResumenService;
 
     @Mock
@@ -70,6 +74,7 @@ class ObtenerPublicacionServiceTest {
     @BeforeEach
     void setUp() {
         PublicacionDatosService datosService = new PublicacionDatosService(
+                configuracionSistemaService,
                 perfilRepository,
                 proyectoRepository,
                 proyectoVisibilidadService,

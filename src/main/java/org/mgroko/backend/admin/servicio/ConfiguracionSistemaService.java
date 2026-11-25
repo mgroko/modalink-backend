@@ -50,6 +50,11 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_IMAGEN_WEBP_METHOD = "IMAGEN_WEBP_METHOD";
     public static final String CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS = "IMAGEN_LIMPIEZA_INTERVALO_HORAS";
     public static final String CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS = "IMAGEN_LIMPIEZA_GRACIA_MINUTOS";
+    public static final String CLAVE_IMAGEN_MAX_POR_MOODBOARD = "IMAGEN_MAX_POR_MOODBOARD";
+    public static final String CLAVE_IMAGEN_MAX_POR_PUBLICACION = "IMAGEN_MAX_POR_PUBLICACION";
+    public static final String CLAVE_POLAROID_MAX_POR_PERFIL = "POLAROID_MAX_POR_PERFIL";
+    public static final String CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN =
+            "COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN";
     public static final String CLAVE_PERFIL_TYC_PLANTILLA = "PERFIL_TYC_PLANTILLA";
     public static final String CLAVE_NOTIFICACION_EMAIL_REINTENTOS_MAX =
             "NOTIFICACION_EMAIL_REINTENTOS_MAX";
@@ -320,6 +325,59 @@ Mis condiciones de trabajo
     }
 
     /**
+     * Cantidad máxima de imágenes que puede tener el moodboard de un proyecto.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_IMAGEN_MAX_POR_MOODBOARD}) en cada operación.
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxImagenesMoodboard() {
+        return obtenerValorEnteroPositivoObligatorio(CLAVE_IMAGEN_MAX_POR_MOODBOARD);
+    }
+
+    /**
+     * Cantidad máxima de imágenes que puede tener una publicación.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_IMAGEN_MAX_POR_PUBLICACION}) en cada operación.
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxImagenesPublicacion() {
+        return obtenerValorEnteroPositivoObligatorio(CLAVE_IMAGEN_MAX_POR_PUBLICACION);
+    }
+
+    /**
+     * Cantidad máxima de polaroids que puede tener un perfil de modelo.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_POLAROID_MAX_POR_PERFIL}) en cada operación.
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxPolaroidsPorPerfil() {
+        return obtenerValorEnteroPositivoObligatorio(CLAVE_POLAROID_MAX_POR_PERFIL);
+    }
+
+    /**
+     * Cantidad máxima de propuestas de colaboración automática evaluadas por
+     * imagen. Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN}).
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxPropuestasColaboracionPorImagen() {
+        return obtenerValorEnteroPositivoObligatorio(
+                CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN);
+    }
+
+    /**
      * Modifica cada cuántas horas se ejecuta la limpieza de imágenes.
      * El scheduler lee el valor en cada ciclo, por lo que el cambio se aplica
      * sin reiniciar el servidor.
@@ -517,6 +575,15 @@ Mis condiciones de trabajo
             throw new IllegalStateException("El valor de '" + clave
                     + "' en configuracion_sistema no es un número entero: " + valor);
         }
+    }
+
+    private int obtenerValorEnteroPositivoObligatorio(String clave) {
+        int valor = obtenerValorEnteroObligatorio(clave);
+        if (valor < 1) {
+            throw new IllegalStateException("El valor de '" + clave
+                    + "' en configuracion_sistema debe ser mayor o igual a 1: " + valor);
+        }
+        return valor;
     }
 
     private void guardarOActualizar(String clave, String valor, String descripcion) {

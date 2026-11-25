@@ -17,6 +17,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -75,6 +76,9 @@ class CrearPublicacionServiceTest {
     private UbicacionService ubicacionService;
 
     @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
+    @Mock
     private StorageService storageService;
 
     @Mock
@@ -89,10 +93,13 @@ class CrearPublicacionServiceTest {
     @BeforeEach
     void setUp() {
         PublicacionDatosService publicacionDatosService = new PublicacionDatosService(
+                configuracionSistemaService,
                 perfilRepository,
                 proyectoRepository,
                 proyectoVisibilidadService,
                 ubicacionService);
+
+        when(configuracionSistemaService.obtenerMaxImagenesPublicacion()).thenReturn(10);
 
         servicio = new CrearPublicacionService(
                 publicacionRepository,

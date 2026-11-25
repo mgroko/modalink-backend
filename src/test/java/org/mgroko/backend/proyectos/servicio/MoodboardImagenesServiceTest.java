@@ -24,6 +24,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Perfil;
@@ -73,6 +74,9 @@ class MoodboardImagenesServiceTest {
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
 
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
     private MoodboardImagenesService servicio;
 
     private Perfil perfil;
@@ -81,6 +85,7 @@ class MoodboardImagenesServiceTest {
     @BeforeEach
     void setUp() {
         servicio = new MoodboardImagenesService(
+                configuracionSistemaService,
                 perfilRepository,
                 proyectoRepository,
                 moodboardRepository,
@@ -88,6 +93,8 @@ class MoodboardImagenesServiceTest {
                 storageService,
                 new BorradoArchivosDiferido(storageService),
                 proyectoSecurityService);
+
+        when(configuracionSistemaService.obtenerMaxImagenesMoodboard()).thenReturn(10);
 
         perfil = Perfil.builder().idPerfil(2L).estado(EstadoPerfil.Activo).build();
         proyecto = Proyecto.builder().idProyecto(5L).build();
@@ -145,7 +152,7 @@ class MoodboardImagenesServiceTest {
     }
 
     @Test
-    void subirImagenes_moodboardExistente_agregaYRespetaLimiteDeDiez() {
+    void subirImagenes_moodboardExistente_respetaLimiteConfigurado() {
         Set<Imagen> existentes = new HashSet<>();
         for (int i = 1; i <= 10; i++) {
             existentes.add(Imagen.builder().idImagen((long) i).url("/uploads/moodboard/moodboard_" + i + ".webp").build());
@@ -164,6 +171,26 @@ class MoodboardImagenesServiceTest {
 
         verify(storageService, never()).almacenarImagenMoodboard(any());
         verify(imagenRepository, never()).save(any(Imagen.class));
+    }
+
+    @Test
+    void subirImagenes_usaElLimiteConfigurado() {
+        when(configuracionSistemaService.obtenerMaxImagenesMoodboard()).thenReturn(2);
+
+        Set<Imagen> existentes = new HashSet<>();
+        existentes.add(Imagen.builder().idImagen(1L).build());
+        existentes.add(Imagen.builder().idImagen(2L).build());
+        Moodboard moodboard = Moodboard.builder()
+                .idMoodboard(7L)
+                .proyecto(proyecto)
+                .imagenes(existentes)
+                .build();
+        when(moodboardRepository.findByProyectoIdProyecto(5L)).thenReturn(Optional.of(moodboard));
+
+        assertThrows(LimiteImagenesMoodboardExcedidoException.class, () ->
+                servicio.subirImagenes(1L, 2L, 5L, List.of(archivo("nueva.jpg"))));
+
+        verify(storageService, never()).almacenarImagenMoodboard(any());
     }
 
     @Test

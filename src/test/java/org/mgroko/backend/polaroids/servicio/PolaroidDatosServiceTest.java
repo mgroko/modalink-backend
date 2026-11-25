@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -38,12 +39,18 @@ class PolaroidDatosServiceTest {
     @Mock
     private PolaroidCatalogoService polaroidCatalogoService;
 
+    @Mock
+    private ConfiguracionSistemaService configuracionSistemaService;
+
     private PolaroidDatosService servicio;
 
     @BeforeEach
     void setUp() {
         servicio = new PolaroidDatosService(
-                perfilRepository, verPerfilService, polaroidCatalogoService, 8);
+                configuracionSistemaService, perfilRepository, verPerfilService,
+                polaroidCatalogoService);
+
+        when(configuracionSistemaService.obtenerMaxPolaroidsPorPerfil()).thenReturn(8);
     }
 
     @Test
