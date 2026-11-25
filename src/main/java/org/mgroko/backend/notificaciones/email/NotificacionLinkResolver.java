@@ -86,6 +86,13 @@ public class NotificacionLinkResolver {
                  NotificacionService.TIPO_SOLICITUD_COLABORACION_RECHAZADA ->
                     rutaEntidad("/publicaciones/", entidadId);
 
+            case NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_CONFIRMADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_RECHAZADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_CANCELADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_DISUELTA ->
+                    rutaEntidad("/colaboraciones-automaticas/", entidadId);
+
             case NotificacionService.TIPO_SOLICITUD_CONEXION_RECIBIDA ->
                     "/mi-red?tab=recibidas";
 

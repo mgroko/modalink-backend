@@ -46,6 +46,30 @@ class NotificacionLinkResolverTest {
     }
 
     @Test
+    void colaboracionAutomaticaDetectada_usaRutaDeDetalle() {
+        Notificacion notificacion = notificacion(
+                NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
+                77L,
+                null);
+
+        assertThat(resolver.resolver(notificacion, null))
+                .isEqualTo("/colaboraciones-automaticas/77");
+    }
+
+    @Test
+    void colaboracionAutomaticaSinEntidad_usaFallback() {
+        Notificacion notificacion = notificacion(
+                NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA,
+                null,
+                null);
+
+        assertThat(resolver.resolver(notificacion, null))
+                .isEqualTo(NotificacionLinkResolver.FALLBACK);
+    }
+
+    @Test
     void sinProyecto_usaFallback() {
         Notificacion notificacion = notificacion(
                 NotificacionService.TIPO_PROYECTO_CONFIRMADO, "PROYECTO", 105L, null);
