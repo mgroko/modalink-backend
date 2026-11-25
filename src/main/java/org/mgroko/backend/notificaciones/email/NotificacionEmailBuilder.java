@@ -44,6 +44,7 @@ public class NotificacionEmailBuilder {
                         <td style="padding:28px;">
                           <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#232134;">{{titulo}}</h1>
                           <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#4b475a;">{{mensaje}}</p>
+                          {{bloqueImagen}}
                           <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 20px;">
                             <tr>
                               <td style="border-radius:8px;background:#6c4fd3;">
@@ -107,6 +108,23 @@ public class NotificacionEmailBuilder {
             String frontendUrl,
             String destinatario) {
 
+        return construir(
+                notificacion,
+                idProyecto,
+                null,
+                tokenCrudo,
+                frontendUrl,
+                destinatario);
+    }
+
+    public EmailContent construir(
+            Notificacion notificacion,
+            Long idProyecto,
+            String imagenUrl,
+            String tokenCrudo,
+            String frontendUrl,
+            String destinatario) {
+
         String titulo = NotificacionTitulos.tituloDe(notificacion.getTipo());
         if (titulo == null || titulo.isBlank()) {
             titulo = notificacion.getTipo() == null
@@ -124,6 +142,7 @@ public class NotificacionEmailBuilder {
                 .replace("{{titulo}}", HtmlUtils.htmlEscape(titulo))
                 .replace("{{preheader}}", HtmlUtils.htmlEscape(preheader))
                 .replace("{{mensaje}}", HtmlUtils.htmlEscape(mensaje))
+                .replace("{{bloqueImagen}}", construirBloqueImagen(imagenUrl, link))
                 .replace("{{destinatario}}", HtmlUtils.htmlEscape(destinatario == null ? "" : destinatario));
 
         String texto = PLANTILLA_TEXTO
@@ -137,6 +156,32 @@ public class NotificacionEmailBuilder {
                 "[ModaLink] " + titulo,
                 html,
                 texto);
+    }
+
+    /**
+     * Bloque de imagen 4:3 para los mails de colaboración. La imagen enlaza al
+     * mismo destino que el botón, con el mismo token de un solo uso. Si no hay
+     * imagen resuelta, el bloque se omite.
+     */
+    private String construirBloqueImagen(String imagenUrl, String link) {
+        if (imagenUrl == null || imagenUrl.isBlank()) {
+            return "";
+        }
+
+        String urlSegura = HtmlUtils.htmlEscape(imagenUrl.trim());
+        String linkSeguro = HtmlUtils.htmlEscape(link);
+
+        return """
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 20px;">
+                  <tr>
+                    <td>
+                      <a href="%s" style="display:block;text-decoration:none;border:0;">
+                        <img src="%s" alt="Imagen de la publicación" width="544" border="0" style="display:block;width:100%%;max-width:544px;height:auto;max-height:408px;object-fit:cover;object-position:center;border:0;border-radius:8px;">
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                """.formatted(linkSeguro, urlSegura);
     }
 
     private String construirLink(String frontendUrl, String tokenCrudo, String ruta) {

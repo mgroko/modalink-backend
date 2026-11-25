@@ -111,6 +111,7 @@ Variables de entorno principales:
 | `ADMIN_DNI` | DNI del administrador inicial | `00000000` |
 | `NOTIFICACIONES_EMAIL_HABILITADO` | Activa el scheduler de emails | `false` |
 | `NOTIFICACIONES_EMAIL_REMITENTE` | Remitente de los emails | `no-responder@modalink.local` |
+| `EMAIL_BASE_URL` | URL base pública del backend para las imágenes de los emails | `http://localhost:8080` |
 | `MAIL_HOST` | Host SMTP (Mailpit en desarrollo) | `localhost` |
 | `MAIL_PORT` | Puerto SMTP (Mailpit en desarrollo) | `1025` |
 | `MAX_FILE_SIZE` | Tamaño máximo por archivo multipart | `10MB` |

@@ -39,6 +39,8 @@ class NotificacionEmailSchedulerTest {
     @Mock
     private NotificacionDestinoResolver destinoResolver;
     @Mock
+    private NotificacionImagenResolver imagenResolver;
+    @Mock
     private ConfiguracionSistemaService configuracionSistemaService;
 
     private NotificacionEmailScheduler scheduler;
@@ -52,6 +54,7 @@ class NotificacionEmailSchedulerTest {
                 emailSender,
                 tokenService,
                 destinoResolver,
+                imagenResolver,
                 configuracionSistemaService,
                 "http://localhost:5173");
     }
@@ -63,8 +66,16 @@ class NotificacionEmailSchedulerTest {
         when(entregaService.cargar(1L)).thenReturn(Optional.of(entrega));
         when(policy.motivoNoElegible(any(), any())).thenReturn(null);
         when(destinoResolver.resolverProyecto(any())).thenReturn(100L);
+        when(imagenResolver.resolver(any()))
+                .thenReturn(Optional.of("http://localhost:8080/uploads/publicaciones/a.webp"));
         when(tokenService.generarToken(1L, 20L, 30L)).thenReturn("raw");
-        when(emailBuilder.construir(any(), eq(100L), eq("raw"), eq("http://localhost:5173"), eq("persona@modalink.com")))
+        when(emailBuilder.construir(
+                any(),
+                eq(100L),
+                eq("http://localhost:8080/uploads/publicaciones/a.webp"),
+                eq("raw"),
+                eq("http://localhost:5173"),
+                eq("persona@modalink.com")))
                 .thenReturn(new NotificacionEmailBuilder.EmailContent(
                         "persona@modalink.com", "asunto", "<p>", "texto"));
 
@@ -82,7 +93,7 @@ class NotificacionEmailSchedulerTest {
         when(policy.motivoNoElegible(any(), any())).thenReturn(null);
         when(destinoResolver.resolverProyecto(any())).thenReturn(100L);
         when(tokenService.generarToken(1L, 20L, 30L)).thenReturn("raw");
-        when(emailBuilder.construir(any(), any(), any(), any(), any()))
+        when(emailBuilder.construir(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new NotificacionEmailBuilder.EmailContent(
                         "persona@modalink.com", "asunto", "<p>", "texto"));
         doThrow(new RuntimeException("smtp caído")).when(emailSender).enviar(any());

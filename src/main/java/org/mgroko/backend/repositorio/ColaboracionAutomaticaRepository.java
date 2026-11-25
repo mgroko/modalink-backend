@@ -45,6 +45,18 @@ public interface ColaboracionAutomaticaRepository
     Optional<ColaboracionAutomatica> findByIdConDetalle(
             @Param("id") Long id);
 
+    /**
+     * Devuelve solo la URL de la imagen que disparó la colaboración. Se usa en
+     * los mails para no cargar el grafo completo de la colaboración.
+     */
+    @Query("""
+            SELECT i.url
+            FROM ColaboracionAutomatica c
+            JOIN c.imagen i
+            WHERE c.idColaboracionAutomatica = :id
+            """)
+    Optional<String> findImagenUrlById(@Param("id") Long id);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT c

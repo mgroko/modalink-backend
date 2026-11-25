@@ -30,10 +30,37 @@ class NotificacionEmailBuilderTest {
         assertThat(contenido.asunto()).isEqualTo("[ModaLink] Proyecto confirmado");
         assertThat(contenido.html()).contains("&lt;script&gt;");
         assertThat(contenido.html()).doesNotContain("<script>");
+        assertThat(contenido.html()).doesNotContain("<img");
         assertThat(contenido.html()).contains(
                 "http://localhost:5173/auth/email#token=raw-token&amp;redirect=%2Fproyectos%2F105");
         assertThat(contenido.texto()).contains("Mensaje con <script>");
         assertThat(contenido.texto()).contains("persona@modalink.com");
+    }
+
+    @Test
+    void incluyeImagenClickeableConElMismoLinkCuandoSeResuelve() {
+        Notificacion notificacion = Notificacion.builder()
+                .idNotificacion(3L)
+                .tipo(NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA)
+                .mensaje("Colaboración detectada")
+                .entidadTipo(NotificacionService.ENTIDAD_COLABORACION_AUTOMATICA)
+                .entidadId(9L)
+                .build();
+
+        NotificacionEmailBuilder.EmailContent contenido = builder.construir(
+                notificacion,
+                null,
+                "http://localhost:8080/uploads/publicaciones/a.webp",
+                "raw-token",
+                "http://localhost:5173",
+                "persona@modalink.com");
+
+        assertThat(contenido.html()).contains(
+                "<img src=\"http://localhost:8080/uploads/publicaciones/a.webp\"");
+        assertThat(contenido.html()).contains("max-height:408px");
+        assertThat(contenido.html()).contains(
+                "href=\"http://localhost:5173/auth/email#token=raw-token&amp;redirect=%2Fnotificaciones\"");
+        assertThat(contenido.texto()).doesNotContain("uploads");
     }
 
     @Test
