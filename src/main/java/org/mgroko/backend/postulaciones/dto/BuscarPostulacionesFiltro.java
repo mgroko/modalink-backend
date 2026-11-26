@@ -16,7 +16,8 @@ public record BuscarPostulacionesFiltro(
         String nombrePerfil,
         Long idProfesion,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta) {
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
+        Long idRequerimiento) {
 
     /**
      * Devuelve una copia del filtro sin el estado. Se usa para calcular los
@@ -26,6 +27,7 @@ public record BuscarPostulacionesFiltro(
      */
     public BuscarPostulacionesFiltro sinEstado() {
         return new BuscarPostulacionesFiltro(
-                null, tipo, nombrePerfil, idProfesion, fechaDesde, fechaHasta);
+                null, tipo, nombrePerfil, idProfesion, fechaDesde, fechaHasta,
+                idRequerimiento);
     }
 }

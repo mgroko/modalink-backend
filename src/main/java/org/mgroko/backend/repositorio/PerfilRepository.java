@@ -285,6 +285,26 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
             @Param("idProyecto") Long idProyecto);
 
     /**
+     * Perfiles de un conjunto de identificadores con los datos necesarios para
+     * el tablero de casting: usuario, ubicación, profesión, foto y habilidades.
+     * Las características técnicas se cargan aparte para evitar productos
+     * cartesianos entre colecciones.
+     */
+    @Query("""
+        SELECT DISTINCT p FROM Perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion pr
+        LEFT JOIN FETCH u.ubicacion ub
+        LEFT JOIN FETCH ub.ciudad c
+        LEFT JOIN FETCH c.provincia prov
+        LEFT JOIN FETCH p.imagen
+        LEFT JOIN FETCH p.habilidades
+        WHERE p.idPerfil IN :ids
+    """)
+    List<Perfil> findByIdPerfilInConDatosCasting(
+            @Param("ids") Collection<Long> ids);
+
+    /**
      * Actualiza la última actividad solo si el perfil pertenece al usuario,
      * está activo y pasó el throttle. Devuelve 0 cuando el heartbeat llega
      * dentro de la ventana de throttle.

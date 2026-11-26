@@ -42,11 +42,15 @@ import org.mgroko.backend.postulaciones.dto.PostulacionesPaginaResponse;
 import org.mgroko.backend.postulaciones.dto.TipoPostulacion;
 import org.mgroko.backend.postulaciones.exception.PostulacionNoPermitidaException;
 import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaException;
+import org.mgroko.backend.postulaciones.casting.dto.TableroCastingResponse;
+import org.mgroko.backend.postulaciones.casting.enums.OrdenCasting;
+import org.mgroko.backend.postulaciones.casting.servicio.ObtenerTableroCastingService;
 import org.mgroko.backend.postulaciones.servicio.AceptarPostulacionService;
 import org.mgroko.backend.postulaciones.servicio.BuscarPostulacionesProyectoService;
 import org.mgroko.backend.postulaciones.servicio.CrearPostulacionService;
 import org.mgroko.backend.postulaciones.servicio.RechazarPostulacionService;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
+import org.mgroko.backend.proyectos.exception.RequerimientoGralNoAsignableException;
 import org.mgroko.backend.proyectos.dto.CancelarProyectoRequest;
 import org.mgroko.backend.proyectos.dto.CrearMoodboardRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
@@ -93,6 +97,8 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
     private CrearPostulacionService crearPostulacionService;
     @Autowired
     private BuscarPostulacionesProyectoService buscarPostulacionesProyectoService;
+    @Autowired
+    private ObtenerTableroCastingService obtenerTableroCastingService;
     @Autowired
     private AceptarPostulacionService aceptarPostulacionService;
     @Autowired
@@ -235,7 +241,7 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                 buscarPostulacionesProyectoService.buscar(
                         director.idPerfil(),
                         publicado.idProyecto(),
-                        new BuscarPostulacionesFiltro(null, null, null, null, null, null),
+                        new BuscarPostulacionesFiltro(null, null, null, null, null, null, null),
                         0, 20, false);
 
         assertThat(pagina.contenido()).hasSize(2);
@@ -260,12 +266,97 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                         publicado.idProyecto(),
                         new BuscarPostulacionesFiltro(
                                 null, TipoPostulacion.GENERAL,
-                                "Postulante A", null, null, null),
+                                "Postulante A", null, null, null, null),
                         0, 20, false);
 
         assertThat(filtrada.contenido()).hasSize(1);
         assertThat(filtrada.contenido().get(0).nombreArtistico())
                 .isEqualTo("Postulante A UC74");
+    }
+
+    @Test
+    void castingGeneral_devuelveCandidatosPaginadosYCupo() {
+        PerfilCreado director = crearPerfil(
+                "uc74.casting.dir@example.com", "88874006", "Directora UC74 Casting", "modelo");
+        PerfilCreado postulanteA = crearPerfil(
+                "uc74.casting.a@example.com", "88874007", "Postulante Casting A", "modelo");
+        PerfilCreado postulanteB = crearPerfil(
+                "uc74.casting.b@example.com", "88874008", "Postulante Casting B", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC74 Casting");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteA.idUsuario(), postulanteA.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+        crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulanteB.idUsuario(), postulanteB.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        TableroCastingResponse tablero = obtenerTableroCastingService.obtener(
+                director.idPerfil(),
+                publicado.idProyecto(),
+                TipoPostulacion.GENERAL,
+                idRequerimiento,
+                null,
+                OrdenCasting.CUMPLIMIENTO,
+                0,
+                null);
+
+        assertThat(tablero.requerimiento().tipo()).isEqualTo(TipoPostulacion.GENERAL);
+        assertThat(tablero.requerimiento().codigoProfesion())
+                .isEqualToIgnoringCase("MODELO");
+        assertThat(tablero.requerimiento().cantidad()).isEqualTo(1);
+        assertThat(tablero.requerimiento().cubiertos()).isZero();
+        assertThat(tablero.requerimiento().faltantes()).isEqualTo(1);
+        assertThat(tablero.requerimiento().castingCerrado()).isFalse();
+        assertThat(tablero.contenido()).hasSize(2);
+        assertThat(tablero.totalElementos()).isEqualTo(2);
+        assertThat(tablero.paginaActual()).isZero();
+        assertThat(tablero.tamanoPagina()).isEqualTo(6);
+        assertThat(tablero.contenido())
+                .allSatisfy(candidato -> {
+                    assertThat(candidato.polaroids()).isEmpty();
+                    assertThat(candidato.cumplimiento()).isNotNull();
+                });
+    }
+
+    @Test
+    void castingActividad_devuelveCabeceraYAgendaSinEvaluar() {
+        PerfilCreado director = crearPerfil(
+                "uc74.casting.act.dir@example.com", "88874009",
+                "Directora UC74 Casting Act", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc74.casting.act.pos@example.com", "88874010",
+                "Postulante Casting Act", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConActividad(
+                director, "Desfile UC74 Casting Actividad");
+        Long idRequerimiento = requerimientoDeActividad(publicado);
+
+        crearPostulacionService.darDeAltaPostulacionActividad(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), idRequerimiento);
+
+        TableroCastingResponse tablero = obtenerTableroCastingService.obtener(
+                director.idPerfil(),
+                publicado.idProyecto(),
+                TipoPostulacion.ACTIVIDAD,
+                idRequerimiento,
+                null,
+                OrdenCasting.CUMPLIMIENTO,
+                0,
+                null);
+
+        assertThat(tablero.requerimiento().tipo()).isEqualTo(TipoPostulacion.ACTIVIDAD);
+        assertThat(tablero.requerimiento().idActividad()).isNotNull();
+        assertThat(tablero.requerimiento().agendaRequerida()).isTrue();
+        assertThat(tablero.contenido()).hasSize(1);
+        assertThat(tablero.contenido().get(0).cumplimiento().agenda())
+                .isNotNull();
+        assertThat(tablero.contenido().get(0).cumplimiento().agenda().estado())
+                .isEqualTo("SIN_EVALUAR");
     }
 
     @Test
@@ -283,7 +374,7 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThatThrownBy(() -> buscarPostulacionesProyectoService.buscar(
                 postulante.idPerfil(),
                 publicado.idProyecto(),
-                new BuscarPostulacionesFiltro(null, null, null, null, null, null),
+                new BuscarPostulacionesFiltro(null, null, null, null, null, null, null),
                 0, 20, false))
                 .isInstanceOf(AccesoDenegadoProyectoException.class);
     }
@@ -330,6 +421,10 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(respuesta.estado()).isEqualTo(org.mgroko.backend.modelo.enums.EstadoSolicitud.ACEPTADA);
         assertThat(respuesta.idMiembro()).isNotNull();
         assertThat(respuesta.idAsignacionActividad()).isNull();
+        assertThat(respuesta.cupo()).isNotNull();
+        assertThat(respuesta.cupo().cubiertos()).isEqualTo(1);
+        assertThat(respuesta.cupo().faltantes()).isZero();
+        assertThat(respuesta.cupo().satisfecho()).isTrue();
 
         Long miembros = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM miembros_proyecto
@@ -454,6 +549,42 @@ class CrearPostulacionIntegrationTest extends AbstractPostgresIntegrationTest {
                   AND estado_participacion = 'ACTIVO'
                 """, Long.class, segundo, postulanteB.idPerfil());
         assertThat(miembros).isEqualTo(1L);
+    }
+
+    @Test
+    void aceptarGeneral_requerimientoExactoLleno_noReasignaYDevuelveConflicto() {
+        PerfilCreado director = crearPerfil(
+                "uc34.exacto.dir@example.com", "88834115",
+                "Directora UC34 Exacto", "modelo");
+        PerfilCreado postulante = crearPerfil(
+                "uc34.exacto.pos@example.com", "88834116",
+                "Postulante UC34 Exacto", "modelo");
+        PerfilCreado relleno = crearPerfil(
+                "uc34.exacto.relleno@example.com", "88834117",
+                "Modelo UC34 Exacto Relleno", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConDosRequerimientosGral(
+                director, "Desfile UC34 Exacto");
+        Long primero = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        PostulacionResponse postulacion = crearPostulacionService.darDeAltaPostulacionGeneral(
+                postulante.idUsuario(), postulante.idPerfil(),
+                publicado.idProyecto(), primero);
+
+        llenarRequerimiento(publicado, relleno, primero);
+
+        assertThatThrownBy(() -> aceptarPostulacionService.aceptarGeneral(
+                director.idUsuario(), director.idPerfil(),
+                publicado.idProyecto(), postulacion.idPostulacion(),
+                new org.mgroko.backend.postulaciones.dto.AceptarPostulacionRequest(null, true)))
+                .isInstanceOf(RequerimientoGralNoAsignableException.class)
+                .hasMessageContaining("ya está satisfecho");
+
+        Long miembros = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM miembros_proyecto
+                WHERE id_proyecto = ? AND id_perfil = ?
+                """, Long.class, publicado.idProyecto(), postulante.idPerfil());
+        assertThat(miembros).isZero();
     }
 
     @Test

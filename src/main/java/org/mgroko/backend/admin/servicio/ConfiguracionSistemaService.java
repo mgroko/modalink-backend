@@ -57,6 +57,8 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_POLAROID_MAX_POR_PERFIL = "POLAROID_MAX_POR_PERFIL";
     public static final String CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN =
             "COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN";
+    public static final String CLAVE_CASTING_CANDIDATOS_POR_PAGINA =
+            "CASTING_CANDIDATOS_POR_PAGINA";
     public static final String CLAVE_PERFIL_TYC_PLANTILLA = "PERFIL_TYC_PLANTILLA";
     public static final String CLAVE_NOTIFICACION_EMAIL_REINTENTOS_MAX =
             "NOTIFICACION_EMAIL_REINTENTOS_MAX";
@@ -377,6 +379,20 @@ Mis condiciones de trabajo
     public int obtenerMaxPropuestasColaboracionPorImagen() {
         return obtenerValorEnteroPositivoObligatorio(
                 CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN);
+    }
+
+    /**
+     * Cantidad de candidatos por página del tablero de casting virtual.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_CASTING_CANDIDATOS_POR_PAGINA}) en cada operación.
+     *
+     * @return cantidad de candidatos por página, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerCandidatosPorPaginaCasting() {
+        return obtenerValorEnteroPositivoObligatorio(
+                CLAVE_CASTING_CANDIDATOS_POR_PAGINA);
     }
 
     /**

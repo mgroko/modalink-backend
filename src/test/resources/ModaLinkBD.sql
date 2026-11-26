@@ -4235,7 +4235,9 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('POLAROID_MAX_POR_PERFIL', '8',
      'Cantidad máxima de polaroids que puede tener un perfil de modelo'),
     ('COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN', '10',
-     'Cantidad máxima de propuestas de colaboración automática evaluadas por imagen')
+     'Cantidad máxima de propuestas de colaboración automática evaluadas por imagen'),
+    ('CASTING_CANDIDATOS_POR_PAGINA', '6',
+     'Cantidad de candidatos por página del tablero de casting virtual')
 ON CONFLICT (clave) DO NOTHING;
 
 INSERT INTO configuracion_sistema (clave, valor, descripcion)

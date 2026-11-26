@@ -180,9 +180,12 @@ public class AceptarPostulacionService {
         }
 
         Long idRequerimiento = postulacion.getRequerimientoGral().getIdRequerimientoGral();
-        RequerimientoGralProyecto requerimiento =
-                requerimientoGralAsignacionService.resolverParaIncorporacion(
-                        proyecto, postulante, idRequerimiento);
+        RequerimientoGralProyecto requerimiento = Boolean.TRUE.equals(
+                request != null ? request.requerimientoExacto() : null)
+                        ? requerimientoGralAsignacionService.resolverExactoParaIncorporacion(
+                                proyecto, postulante, idRequerimiento)
+                        : requerimientoGralAsignacionService.resolverParaIncorporacion(
+                                proyecto, postulante, idRequerimiento);
 
         if (miembroProyectoRepository
                 .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
@@ -212,6 +215,10 @@ public class AceptarPostulacionService {
 
         notificarAceptacion(postulante, proyecto, postulacion);
 
+        CupoRequerimiento cupo = requerimiento != null
+                ? cupoRequerimientoService.calcularGeneral(requerimiento)
+                : null;
+
         return new PostulacionGestionadaResponse(
                 postulacion.getIdPostulacionGral(),
                 TipoPostulacion.GENERAL,
@@ -226,7 +233,8 @@ public class AceptarPostulacionService {
                 null,
                 null,
                 List.of(),
-                idTycAceptado);
+                idTycAceptado,
+                cupo);
     }
 
     @Transactional
@@ -408,6 +416,9 @@ public class AceptarPostulacionService {
         notificarAjusteHorario(proyecto, requerimiento.getActividad(), disponibilidad);
         notificarSobrecompromiso(proyecto, postulante, requerimiento.getActividad(), advertencias);
 
+        CupoRequerimiento cupoFinal = cupoRequerimientoService
+                .calcularActividad(requerimiento);
+
         return new PostulacionGestionadaResponse(
                 postulacion.getIdPostulacion(),
                 TipoPostulacion.ACTIVIDAD,
@@ -420,7 +431,8 @@ public class AceptarPostulacionService {
                 disponibilidad.resultadoPreferencia(),
                 disponibilidad.desvioMinutos(),
                 advertencias,
-                idTycAceptado);
+                idTycAceptado,
+                cupoFinal);
     }
 
     /**

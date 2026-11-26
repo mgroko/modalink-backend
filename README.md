@@ -138,6 +138,7 @@ Propiedades funcionales relevantes:
 | `IMAGEN_MAX_POR_PUBLICACION` | Máximo de imágenes por publicación (`configuracion_sistema`) |
 | `POLAROID_MAX_POR_PERFIL` | Máximo de polaroids por perfil (`configuracion_sistema`) |
 | `COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN` | Máximo de propuestas de colaboración automática por imagen (`configuracion_sistema`) |
+| `CASTING_CANDIDATOS_POR_PAGINA` | Candidatos por página del tablero de casting virtual (`configuracion_sistema`) |
 
 ## Puesta en marcha
 
@@ -354,6 +355,7 @@ Calendario y jornada:
 | `GET` | `/postulaciones/mias` | Postulaciones del perfil activo |
 | `DELETE` | `/proyectos/{idProyecto}/postulaciones/...` | Dar de baja postulación pendiente |
 | `GET` | `/proyectos/{idProyecto}/postulaciones/buscar` | Buscar postulaciones |
+| `GET` | `/proyectos/{idProyecto}/postulaciones/casting` | Tablero de casting virtual para modelos (paginado) |
 | `POST` | `/proyectos/{idProyecto}/postulaciones/.../aceptar` | Aceptar postulación |
 | `POST` | `/proyectos/{idProyecto}/postulaciones/.../rechazar` | Rechazar postulación |
 | `POST` | `/proyectos/{idProyecto}/invitaciones/general` | Invitar al proyecto |

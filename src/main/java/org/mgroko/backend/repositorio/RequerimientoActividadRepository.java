@@ -171,6 +171,27 @@ public interface RequerimientoActividadRepository
             @Param("idRequerimiento") Long idRequerimiento);
 
     /**
+     * Requerimiento de actividad con profesión, actividad, proyecto,
+     * características, unidad de medida y habilidades inicializadas. Se usa
+     * para armar la cabecera del tablero de casting.
+     */
+    @Query("""
+        SELECT DISTINCT r FROM RequerimientoActividad r
+        JOIN FETCH r.profesion pr
+        JOIN FETCH r.actividad a
+        JOIN FETCH a.planificacion p
+        JOIN FETCH p.proyecto proy
+        LEFT JOIN FETCH r.caracteristicas c
+        LEFT JOIN FETCH c.caracteristica ct
+        LEFT JOIN FETCH ct.unidadMedida
+        LEFT JOIN FETCH r.habilidades
+        WHERE r.idRequerimiento = :idRequerimiento
+          AND r.fechaArchivado IS NULL
+    """)
+    Optional<RequerimientoActividad> findByIdConDetalleCasting(
+            @Param("idRequerimiento") Long idRequerimiento);
+
+    /**
      * Último snapshot de un requerimiento activo. Se usa para reutilizarlo
      * cuando el activo no cambió.
      */

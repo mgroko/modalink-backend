@@ -64,6 +64,25 @@ public interface RequerimientoGralProyectoRepository
             @Param("idRequerimientoGral") Long idRequerimientoGral);
 
     /**
+     * Requerimiento general con profesión, proyecto, características, unidad
+     * de medida y habilidades inicializadas. Se usa para armar la cabecera del
+     * tablero de casting.
+     */
+    @Query("""
+        SELECT DISTINCT r FROM RequerimientoGralProyecto r
+        JOIN FETCH r.profesion pr
+        JOIN FETCH r.proyecto proy
+        LEFT JOIN FETCH r.caracteristicas c
+        LEFT JOIN FETCH c.caracteristica ct
+        LEFT JOIN FETCH ct.unidadMedida
+        LEFT JOIN FETCH r.habilidades
+        WHERE r.idRequerimientoGral = :idRequerimientoGral
+          AND r.fechaArchivado IS NULL
+    """)
+    Optional<RequerimientoGralProyecto> findByIdConDetalleCasting(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
+
+    /**
      * Recupera requerimientos generales con proyecto, profesión,
      * características y habilidades inicializadas en lote. Se usa en el
      * buscador de oportunidades (UC-72).

@@ -149,6 +149,56 @@ public class RequerimientoGralAsignacionService {
     }
 
     /**
+     * Resuelve el requerimiento explícito sin buscar alternativas. Se usa en
+     * flujos donde la aceptación debe cerrar exactamente el requerimiento que
+     * el director está gestionando, como el casting virtual.
+     */
+    @Transactional
+    public RequerimientoGralProyecto resolverExactoParaIncorporacion(
+            Proyecto proyecto,
+            Perfil perfil,
+            Long idRequerimientoGral) {
+
+        if (proyecto == null || proyecto.getIdProyecto() == null
+                || perfil == null || perfil.getProfesion() == null
+                || perfil.getProfesion().getIdProfesion() == null
+                || idRequerimientoGral == null) {
+            throw new RequerimientoNoEncontradoException(
+                    "El requerimiento general indicado no existe.");
+        }
+
+        RequerimientoGralProyecto requerimiento = requerimientoGralProyectoRepository
+                .findByIdParaGestion(idRequerimientoGral)
+                .orElseThrow(() -> new RequerimientoNoEncontradoException(
+                        "El requerimiento general " + idRequerimientoGral + " no existe."));
+
+        if (!Objects.equals(
+                requerimiento.getProyecto().getIdProyecto(),
+                proyecto.getIdProyecto())) {
+            throw new RequerimientoNoEncontradoException(
+                    "El requerimiento no pertenece al proyecto indicado.");
+        }
+
+        if (requerimiento.getProfesion() == null
+                || !Objects.equals(
+                        requerimiento.getProfesion().getIdProfesion(),
+                        perfil.getProfesion().getIdProfesion())) {
+            throw new RequerimientoGralNoAsignableException(
+                    "El perfil no tiene la profesión requerida por el requerimiento general.",
+                    "PROFESION_INCOMPATIBLE");
+        }
+
+        CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(requerimiento);
+        if (cupo.satisfecho()) {
+            throw new RequerimientoGralNoAsignableException(
+                    "El requerimiento general ya está satisfecho.",
+                    "REQUERIMIENTO_SATISFECHO");
+        }
+
+        return requerimiento;
+    }
+
+    /**
      * Vincula una membresía activa que todavía no tiene requerimiento.
      * Los Directores y los miembros inactivos no consumen cupo.
      */
