@@ -2,6 +2,7 @@ package org.mgroko.backend.admin.mapper;
 
 import org.mgroko.backend.admin.dto.AdminPerfilResponse;
 import org.mgroko.backend.admin.dto.AdminPerfilResumenResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 
@@ -31,7 +32,7 @@ public class AdminPerfilMapper {
                 perfil.getNombreArtistico(),
                 perfil.getBiografia(),
                 perfil.getEstado().name(),
-                perfil.getProfesion().getNombre(),
+                ProfesionNombreResolver.mostrar(perfil),
                 perfil.getFechaSolicitudBaja()
         );
     }

@@ -22,6 +22,8 @@ public interface ComentarioRepository extends JpaRepository<Comentario, Long> {
      */
     @EntityGraph(attributePaths = {
             "perfil",
+            "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "perfil.imagen"
     })

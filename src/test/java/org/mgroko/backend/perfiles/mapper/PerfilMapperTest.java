@@ -10,9 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.CaracteristicaTecnica;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
+import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.perfiles.dto.PerfilBusquedaResponse;
+import org.mgroko.backend.perfiles.dto.PerfilDetalleResponse;
 import org.mgroko.backend.perfiles.dto.PerfilResponse;
 
 class PerfilMapperTest {
@@ -119,6 +123,67 @@ class PerfilMapperTest {
         PerfilResponse response = PerfilMapper.toResponse(perfil, 30);
 
         assertNull(response.fechaLimite());
+    }
+
+    private Perfil perfilConGenero(String codigoGenero, Profesion profesion) {
+        Usuario usuario = Usuario.builder()
+                .idUsuario(1L)
+                .nombre("Maria")
+                .apellido("Gomez")
+                .genero(Genero.builder().idGenero(1L).codigo(codigoGenero).build())
+                .build();
+
+        return Perfil.builder()
+                .idPerfil(20L)
+                .nombreArtistico("Luna")
+                .biografia("Bio")
+                .estado(EstadoPerfil.Activo)
+                .usuario(usuario)
+                .profesion(profesion)
+                .build();
+    }
+
+    private Profesion fotografo() {
+        return Profesion.builder()
+                .idProfesion(1L)
+                .codigo("FOTOGRAFO")
+                .nombre("Fotógrafo")
+                .nombreFemenino("Fotógrafa")
+                .build();
+    }
+
+    @Test
+    void toResponse_mujer_devuelveProfesionFemenina() {
+        PerfilResponse response = PerfilMapper.toResponse(perfilConGenero("MUJER", fotografo()));
+
+        assertEquals("Fotógrafa", response.profesion());
+    }
+
+    @Test
+    void toResponse_noBinario_devuelveProfesionCanonica() {
+        PerfilResponse response = PerfilMapper.toResponse(perfilConGenero("NO_BINARIO", fotografo()));
+
+        assertEquals("Fotógrafo", response.profesion());
+    }
+
+    @Test
+    void toBusquedaResponse_mujer_devuelveProfesionFemenina() {
+        PerfilBusquedaResponse response = PerfilMapper.toBusquedaResponse(
+                perfilConGenero("MUJER", fotografo()));
+
+        assertEquals("Fotógrafa", response.profesion());
+        assertEquals("MUJER", response.genero());
+        assertEquals(1L, response.idProfesion());
+    }
+
+    @Test
+    void toDetalleResponse_mujer_devuelveProfesionFemenina() {
+        PerfilDetalleResponse response = PerfilMapper.toDetalleResponse(
+                perfilConGenero("MUJER", fotografo()), false);
+
+        assertEquals("Fotógrafa", response.profesion());
+        assertEquals("MUJER", response.genero());
+        assertEquals(1L, response.idProfesion());
     }
 
     @Test

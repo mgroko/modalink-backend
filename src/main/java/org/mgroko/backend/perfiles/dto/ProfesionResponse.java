@@ -4,6 +4,7 @@ public record ProfesionResponse(
         Long idProfesion,
         String codigo,
         String nombre,
+        String nombreFemenino,
         String descripcion
 ) {
 }

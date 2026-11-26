@@ -30,6 +30,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "perfil.imagen",
             "proyecto",
@@ -147,6 +148,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "perfil.imagen",
             "proyecto",
@@ -164,6 +166,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "proyecto",
             "ubicacion",
@@ -393,6 +396,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "imagenes"
     })
     @Query("SELECT p FROM Publicacion p WHERE p.idPublicacion = :id")

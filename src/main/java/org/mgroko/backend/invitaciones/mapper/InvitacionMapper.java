@@ -1,5 +1,6 @@
 package org.mgroko.backend.invitaciones.mapper;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.invitaciones.dto.DireccionInvitacion;
 import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
@@ -143,7 +144,7 @@ public final class InvitacionMapper {
                 perfil.getUsuario() != null ? perfil.getUsuario().getNombre() : null,
                 perfil.getUsuario() != null ? perfil.getUsuario().getApellido() : null,
                 perfil.getProfesion() != null ? perfil.getProfesion().getIdProfesion() : null,
-                perfil.getProfesion() != null ? perfil.getProfesion().getNombre() : null,
+                perfil.getProfesion() != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 perfil.getImagen() != null ? perfil.getImagen().getUrl() : null);
     }
 }

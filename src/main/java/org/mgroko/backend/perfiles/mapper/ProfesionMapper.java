@@ -12,6 +12,7 @@ public class ProfesionMapper {
                 profesion.getIdProfesion(),
                 profesion.getCodigo(),
                 profesion.getNombre(),
+                profesion.getNombreFemenino(),
                 profesion.getDescripcion());
     }
 }

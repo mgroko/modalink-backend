@@ -1,5 +1,6 @@
 package org.mgroko.backend.perfiles.mapper;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.CalificacionPerfil;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.perfiles.dto.AutorResenaResponse;
@@ -27,9 +28,7 @@ public final class ResenaPerfilMapper {
                 new AutorResenaResponse(
                         emisor != null ? emisor.getIdPerfil() : null,
                         emisor != null ? emisor.getNombreArtistico() : null,
-                        emisor != null && emisor.getProfesion() != null
-                                ? emisor.getProfesion().getNombre()
-                                : null,
+                        emisor != null ? ProfesionNombreResolver.mostrar(emisor) : null,
                         emisor != null && emisor.getImagen() != null
                                 ? emisor.getImagen().getUrl()
                                 : null),

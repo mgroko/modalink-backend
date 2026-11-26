@@ -15,6 +15,7 @@ import org.mgroko.backend.actividades.dto.NodoCpm;
 import org.mgroko.backend.actividades.dto.ProfesionalAsignadoResponse;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResponse;
 import org.mgroko.backend.actividades.dto.RequerimientoActividadResumenResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.Habilidad;
@@ -260,7 +261,7 @@ public final class ActividadMapper {
                 usuario != null ? usuario.getIdUsuario() : null,
                 perfil.getNombreArtistico(),
                 profesion != null ? profesion.getIdProfesion() : null,
-                profesion != null ? profesion.getNombre() : null,
+                perfil != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 estadoParticipacion,
                 "ACTIVO".equals(estadoParticipacion)
         );

@@ -6,7 +6,6 @@ import org.mgroko.backend.perfiles.dto.CrearPerfilRequest;
 import org.mgroko.backend.perfiles.dto.EditarPerfilRequest;
 import org.mgroko.backend.perfiles.dto.EliminarPerfilResponse;
 import org.mgroko.backend.perfiles.dto.PerfilResponse;
-import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.perfiles.servicio.ActivarPerfilService;
 import org.mgroko.backend.perfiles.servicio.CrearPerfilService;
 import org.mgroko.backend.perfiles.servicio.EditarPerfilService;
@@ -141,7 +140,7 @@ public class PerfilController {
             @PathVariable Long idPerfil,
             Authentication authentication) {
         Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
-        PerfilResponse response = PerfilMapper.toResponse(reactivarPerfilService.reactivar(idUsuario, idPerfil));
+        PerfilResponse response = reactivarPerfilService.reactivar(idUsuario, idPerfil);
         return ResponseEntity.ok(response);
     }
 

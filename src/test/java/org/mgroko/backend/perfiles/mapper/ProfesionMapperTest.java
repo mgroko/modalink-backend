@@ -14,6 +14,7 @@ class ProfesionMapperTest {
                 .idProfesion(2L)
                 .codigo("MODELO")
                 .nombre("modelo")
+                .nombreFemenino("modelo")
                 .descripcion("Profesional que posa para producciones.")
                 .build();
 
@@ -22,6 +23,7 @@ class ProfesionMapperTest {
         assertEquals(2L, response.idProfesion());
         assertEquals("MODELO", response.codigo());
         assertEquals("modelo", response.nombre());
+        assertEquals("modelo", response.nombreFemenino());
         assertEquals("Profesional que posa para producciones.", response.descripcion());
     }
 
@@ -36,6 +38,7 @@ class ProfesionMapperTest {
         ProfesionResponse response = ProfesionMapper.toResponse(profesion);
 
         assertEquals("FOTOGRAFO", response.codigo());
+        assertNull(response.nombreFemenino());
         assertNull(response.descripcion());
     }
 }

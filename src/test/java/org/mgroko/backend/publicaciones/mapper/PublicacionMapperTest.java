@@ -11,11 +11,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
+import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.modelo.enums.OrigenColaboracion;
@@ -91,6 +93,29 @@ class PublicacionMapperTest {
         assertEquals(1, response.imagenes().get(1).orden());
         assertEquals(1, response.colaboradores().size());
         assertEquals(8L, response.colaboradores().get(0).idPerfil());
+    }
+
+    @Test
+    void toAutor_mujer_devuelveProfesionFemenina() {
+        Perfil perfil = Perfil.builder()
+                .idPerfil(8L)
+                .nombreArtistico("Sol")
+                .estado(EstadoPerfil.Activo)
+                .usuario(Usuario.builder()
+                        .idUsuario(2L)
+                        .nombre("Sol")
+                        .apellido("Perez")
+                        .genero(Genero.builder().codigo("MUJER").build())
+                        .build())
+                .profesion(Profesion.builder()
+                        .idProfesion(1L)
+                        .codigo("FOTOGRAFO")
+                        .nombre("Fotógrafo")
+                        .nombreFemenino("Fotógrafa")
+                        .build())
+                .build();
+
+        assertEquals("Fotógrafa", PublicacionMapper.toAutor(perfil).profesion());
     }
 
     @Test

@@ -61,6 +61,7 @@ public interface SolicitudConexionRepository
     @EntityGraph(attributePaths = {
             "perfilRemitente",
             "perfilRemitente.usuario",
+            "perfilRemitente.usuario.genero",
             "perfilRemitente.profesion",
             "perfilDestinatario",
             "perfilDestinatario.usuario",
@@ -75,10 +76,12 @@ public interface SolicitudConexionRepository
     @EntityGraph(attributePaths = {
             "perfilRemitente",
             "perfilRemitente.usuario",
+            "perfilRemitente.usuario.genero",
             "perfilRemitente.profesion",
             "perfilRemitente.imagen",
             "perfilDestinatario",
             "perfilDestinatario.usuario",
+            "perfilDestinatario.usuario.genero",
             "perfilDestinatario.profesion",
             "perfilDestinatario.imagen"
     })

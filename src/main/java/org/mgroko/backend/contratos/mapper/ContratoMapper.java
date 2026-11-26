@@ -3,6 +3,7 @@ package org.mgroko.backend.contratos.mapper;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.contratos.dto.ContratoActivoMiembroResponse;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
@@ -81,9 +82,7 @@ public final class ContratoMapper {
                 perfil != null ? perfil.getNombreArtistico() : null,
                 nombreCompleto(perfil),
                 usuario != null ? usuario.getDni() : null,
-                perfil != null && perfil.getProfesion() != null
-                        ? perfil.getProfesion().getNombre()
-                        : null,
+                perfil != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 miembro.getRolProyecto() != null
                         ? miembro.getRolProyecto().getCodigo()
                         : null,

@@ -3,6 +3,7 @@ package org.mgroko.backend.perfiles.servicio;
 import java.util.List;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
@@ -104,7 +105,7 @@ public class ListarHistorialProyectosPerfilService {
         Perfil perfil = miembro.getPerfil();
         if (perfil != null && perfil.getProfesion() != null) {
             return new DatosRol(
-                    perfil.getProfesion().getNombre(),
+                    ProfesionNombreResolver.mostrar(perfil),
                     perfil.getProfesion().getCodigo());
         }
 

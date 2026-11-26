@@ -1,5 +1,6 @@
 package org.mgroko.backend.publicaciones.mapper;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Publicacion;
 import org.mgroko.backend.modelo.SolicitudColaboracion;
@@ -93,7 +94,7 @@ public final class SolicitudColaboracionMapper {
         return new AutorPublicacionResponse(
                 perfil.getIdPerfil(),
                 perfil.getNombreArtistico(),
-                perfil.getProfesion().getNombre(),
+                ProfesionNombreResolver.mostrar(perfil),
                 perfil.getImagen() != null ? perfil.getImagen().getUrl() : null);
     }
 }

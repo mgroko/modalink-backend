@@ -1,5 +1,6 @@
 package org.mgroko.backend.mensajeria.mapper;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.mensajeria.dto.ConversacionResponse;
 import org.mgroko.backend.mensajeria.dto.MensajeResponse;
 import org.mgroko.backend.mensajeria.dto.MensajeStreamResponse;
@@ -31,7 +32,7 @@ public final class MensajeriaMapper {
                 usuario != null ? usuario.getNombre() : null,
                 usuario != null ? usuario.getApellido() : null,
                 profesion != null ? profesion.getIdProfesion() : null,
-                profesion != null ? profesion.getNombre() : null,
+                ProfesionNombreResolver.mostrar(perfil),
                 imagen != null ? imagen.getUrl() : null);
     }
 

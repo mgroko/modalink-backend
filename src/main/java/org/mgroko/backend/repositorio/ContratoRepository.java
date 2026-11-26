@@ -35,7 +35,8 @@ public interface ContratoRepository
             "tipoAcuerdo",
             "miembroEmisor",
             "miembroEmisor.perfil",
-            "miembroEmisor.perfil.usuario"
+            "miembroEmisor.perfil.usuario",
+            "miembroEmisor.perfil.usuario.genero"
     })
     Page<Contrato> findAll(Specification<Contrato> spec, Pageable pageable);
 

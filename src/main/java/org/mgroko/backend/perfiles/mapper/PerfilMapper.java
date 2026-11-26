@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.conexiones.modelo.RelacionPerfil;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.Perfil;
@@ -35,7 +36,7 @@ public class PerfilMapper {
                 perfil.getNombreArtistico(),
                 perfil.getBiografia(),
                 perfil.getEstado().getNombre(),
-                perfil.getProfesion().getNombre(),
+                ProfesionNombreResolver.mostrar(perfil),
                 perfil.getFechaSolicitudBaja(),
                 idImagen,
                 fotoUrl,
@@ -72,7 +73,7 @@ public class PerfilMapper {
                 perfil.getBiografia(),
                 perfil.getEstado().getNombre(),
                 perfil.getProfesion().getIdProfesion(),
-                perfil.getProfesion().getNombre(),
+                ProfesionNombreResolver.mostrar(perfil),
                 idImagen,
                 fotoUrl,
                 usuario.getIdUsuario(),
@@ -139,7 +140,7 @@ public class PerfilMapper {
                 perfil.getEstado().getNombre(),
                 perfil.getFechaSolicitudBaja(),
                 perfil.getProfesion().getIdProfesion(),
-                perfil.getProfesion().getNombre(),
+                ProfesionNombreResolver.mostrar(perfil),
                 idImagen,
                 fotoUrl,
                 usuario.getIdUsuario(),

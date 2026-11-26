@@ -137,6 +137,26 @@ class VerPerfilServiceTest {
     }
 
     @Test
+    @DisplayName("Debe mostrar la forma femenina de la profesión cuando el perfil pertenece a una mujer")
+    void obtenerDetalle_perfilDeMujer_devuelveProfesionFemenina() {
+        usuarioDuenio.setGenero(Genero.builder().idGenero(1L).codigo("MUJER").build());
+        perfil.setProfesion(Profesion.builder()
+                .idProfesion(1L)
+                .codigo("FOTOGRAFO")
+                .nombre("Fotógrafo")
+                .nombreFemenino("Fotógrafa")
+                .build());
+
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioAutenticado));
+        when(perfilRepository.findById(100L)).thenReturn(Optional.of(perfil));
+
+        PerfilDetalleResponse response = verPerfilService.obtenerDetalle(100L, 1L);
+
+        assertThat(response.profesion()).isEqualTo("Fotógrafa");
+        assertThat(response.genero()).isEqualTo("MUJER");
+    }
+
+    @Test
     @DisplayName("Debe permitir ver perfil propio incluso en estado PendienteBaja")
     void obtenerDetalle_perfilPropioPendienteBaja_retornaDetalleConEsPropietarioTrue() {
         perfil.setUsuario(usuarioAutenticado);

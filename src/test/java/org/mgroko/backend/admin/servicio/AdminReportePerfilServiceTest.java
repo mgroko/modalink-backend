@@ -23,6 +23,7 @@ import org.mgroko.backend.admin.dto.AdminReportePerfilDetalleResponse;
 import org.mgroko.backend.admin.dto.AdminReportePerfilResumenResponse;
 import org.mgroko.backend.admin.dto.BuscarReportesPerfilFiltro;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Reporte;
@@ -144,6 +145,23 @@ class AdminReportePerfilServiceTest {
         assertThat(detalle.autor().idPerfil()).isEqualTo(10L);
         assertThat(detalle.autor().nombreArtistico()).isEqualTo("Luna Diseños");
         assertThat(detalle.idAdminRevisor()).isNull();
+    }
+
+    @Test
+    void obtenerDetalle_perfilReportadoDeMujer_devuelveProfesionFemenina() {
+        Perfil reportado = reporte.getPerfilReportado();
+        reportado.getUsuario().setGenero(Genero.builder().codigo("MUJER").build());
+        reportado.setProfesion(Profesion.builder()
+                .idProfesion(1L)
+                .codigo("FOTOGRAFO")
+                .nombre("Fotógrafo")
+                .nombreFemenino("Fotógrafa")
+                .build());
+        when(reporteRepository.findDetalleById(1L)).thenReturn(Optional.of(reporte));
+
+        AdminReportePerfilDetalleResponse detalle = service.obtenerDetalle(1L);
+
+        assertThat(detalle.perfilReportado().profesion()).isEqualTo("Fotógrafa");
     }
 
     @Test

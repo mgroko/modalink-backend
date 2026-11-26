@@ -28,7 +28,13 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * resumen, sin aplicar reglas de visibilidad.
      */
     @Override
-    @EntityGraph(attributePaths = {"usuario", "usuario.rolGlobal", "profesion", "imagen"})
+    @EntityGraph(attributePaths = {
+            "usuario",
+            "usuario.rolGlobal",
+            "usuario.genero",
+            "profesion",
+            "imagen"
+    })
     Page<Perfil> findAll(Specification<Perfil> spec, Pageable pageable);
 
     /**
@@ -71,6 +77,12 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * @param idUsuario el ID del usuario
      * @return lista de perfiles del usuario
      */
+    @EntityGraph(attributePaths = {
+            "usuario",
+            "usuario.genero",
+            "profesion",
+            "imagen"
+    })
     List<Perfil> findByUsuarioIdUsuario(Long idUsuario);
 
     /**
@@ -92,7 +104,11 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * @param idUsuario el ID del usuario dueño del perfil
      * @return el perfil si existe y pertenece al usuario
      */
-    @EntityGraph(attributePaths = "profesion")
+    @EntityGraph(attributePaths = {
+            "usuario",
+            "usuario.genero",
+            "profesion"
+    })
     Optional<Perfil> findByIdPerfilAndUsuarioIdUsuario(Long idPerfil, Long idUsuario);
 
     /**

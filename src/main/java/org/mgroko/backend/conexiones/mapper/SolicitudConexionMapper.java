@@ -1,5 +1,6 @@
 package org.mgroko.backend.conexiones.mapper;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.conexiones.dto.DireccionSolicitudConexion;
 import org.mgroko.backend.conexiones.dto.PerfilConexionResponse;
 import org.mgroko.backend.conexiones.dto.SolicitudConexionBusquedaResponse;
@@ -40,7 +41,7 @@ public final class SolicitudConexionMapper {
                 usuario != null ? usuario.getNombre() : null,
                 usuario != null ? usuario.getApellido() : null,
                 profesion != null ? profesion.getIdProfesion() : null,
-                profesion != null ? profesion.getNombre() : null,
+                ProfesionNombreResolver.mostrar(perfil),
                 imagen != null ? imagen.getUrl() : null,
                 UbicacionMapper.toCiudadResponse(
                         ubicacion != null ? ubicacion.getCiudad() : null));

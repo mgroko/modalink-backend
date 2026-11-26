@@ -117,6 +117,19 @@ class EditarPerfilServiceIntegrationTest extends AbstractPostgresIntegrationTest
     }
 
     @Test
+    void crear_perfilFotografoDeMujer_devuelveProfesionFemenina() {
+        Usuario usuario = guardarUsuario();
+        Long idProfesion = profesionRepository.findByCodigoIgnoreCase("FOTOGRAFO")
+                .orElseThrow()
+                .getIdProfesion();
+
+        PerfilResponse creado = crearPerfilService.crear(usuario.getIdUsuario(),
+                new CrearPerfilRequest("Luna Foto", idProfesion, "Fotógrafa profesional.", List.of()));
+
+        assertEquals("Fotógrafa", creado.profesion());
+    }
+
+    @Test
     void editar_perfilConCaracteristicas_persisteSinError() {
         Usuario usuario = guardarUsuario();
         Long idProfesion = idProfesionModelo();

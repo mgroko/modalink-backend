@@ -11,10 +11,11 @@ import org.springframework.data.repository.query.Param;
 public interface ProfesionRepository extends JpaRepository<Profesion, Long> {
 
     /**
-     * Busca profesiones por nombre (contiene, sin distinguir mayúsculas) o por
-     * código exacto (sin distinguir mayúsculas). {@code patron} debe ser un patrón
-     * {@code LIKE} ya formado y en minúsculas con los caracteres especiales
-     * escapados (ver {@code LikePatrones}); usar {@code "%"} para devolver todas.
+     * Busca profesiones por nombre o nombre femenino (contiene, sin distinguir
+     * mayúsculas) o por código exacto (sin distinguir mayúsculas). {@code patron}
+     * debe ser un patrón {@code LIKE} ya formado y en minúsculas con los
+     * caracteres especiales escapados (ver {@code LikePatrones}); usar {@code "%"}
+     * para devolver todas.
      * {@code codigo} es el valor exacto a comparar contra el código
      * (ej. {@code "MODELO"}); usar {@code ""} para no filtrar por código.
      * El resultado se ordena por código.
@@ -26,6 +27,7 @@ public interface ProfesionRepository extends JpaRepository<Profesion, Long> {
     @Query("""
             SELECT p FROM Profesion p
             WHERE LOWER(p.nombre) LIKE :patron ESCAPE '\\'
+               OR LOWER(COALESCE(p.nombreFemenino, '')) LIKE :patron ESCAPE '\\'
                OR LOWER(p.codigo) = LOWER(:codigo)
             ORDER BY p.codigo
             """)

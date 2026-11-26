@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.mgroko.backend.modelo.Imagen;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.Publicacion;
@@ -153,7 +154,7 @@ public final class PublicacionMapper {
         return new AutorPublicacionResponse(
                 perfil.getIdPerfil(),
                 perfil.getNombreArtistico(),
-                perfil.getProfesion().getNombre(),
+                ProfesionNombreResolver.mostrar(perfil),
                 perfil.getImagen() != null ? perfil.getImagen().getUrl() : null,
                 origen != null ? origen.name() : null);
     }
