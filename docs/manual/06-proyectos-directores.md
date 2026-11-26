@@ -77,7 +77,7 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 2. Usá las pestañas:
    - **Información general**: datos, objetivos, moodboard y personal requerido.
    - **Planificación**: actividades y cronograma.
-   - **Miembros**: integrantes activos.
+   - **Miembros**: integrantes activos y acceso a sus términos y condiciones vigentes.
    - **Chat grupal**: conversación del equipo.
    - **Historial**: movimientos de miembros y contratos.
    - **Reemplazos**: procesos de cobertura de vacantes (solo Director).
@@ -89,6 +89,7 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 **Reglas y restricciones:**
 
 - Las pestañas **Planificación**, **Miembros**, **Chat grupal**, **Historial** y **Contratos** solo aparecen para miembros; **Reemplazos** e **Historial de miembros** solo para Directores. La pestaña **Postulaciones** se muestra a todos, pero el contenido de gestión es solo para Directores.
+- Desde **Miembros** podés consultar los **términos y condiciones** vigentes de cada participante. El paso a paso está en el capítulo 7 y el marco general en el capítulo 16.
 - Si el proyecto está **Finalizado** o **Cancelado**, no se puede editar ni publicar, pero se conserva la información y el historial.
 - Los proyectos **Cancelados** muestran el motivo de cancelación.
 
@@ -381,6 +382,7 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 - El postulante debe estar activo y no ser ya miembro.
 - La aceptación de una postulación de actividad exige disponibilidad suficiente.
 - Cuando el postulante tiene términos y condiciones vigentes, el Director debe aceptarlos en el momento de la aceptación.
+- Al incorporarse, el postulante acepta implícitamente las **normas de convivencia** y los términos y condiciones vigentes de todos los participantes. Ver capítulo 16.
 - No se puede aceptar una postulación de actividad si el proyecto no tiene fecha de entrega.
 - El rechazo es definitivo para esa postulación, pero la persona puede volver a postularse si el cupo se libera.
 
@@ -430,6 +432,7 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 - El requerimiento debe tener cupo disponible.
 - El mensaje admite hasta 200 caracteres.
 - Si el destinatario tiene términos y condiciones vigentes, tenés que aceptarlos para enviar la invitación.
+- Al aceptar la invitación, el destinatario acepta implícitamente las **normas de convivencia** y los términos y condiciones vigentes de todos los participantes. Ver capítulo 16.
 - Se puede enviar la misma invitación a varios perfiles; el sistema informa si alguna falla.
 
 **Errores frecuentes:**

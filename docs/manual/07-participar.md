@@ -70,6 +70,7 @@ Este capítulo explica cómo encontrar proyectos y oportunidades, postularte, se
 - Para actividades, necesitás un hueco continuo suficiente dentro del rango factible.
 - Si el proyecto no tiene fecha de inicio, la disponibilidad se verifica de forma provisoria y se vuelve a validar al confirmar.
 - Si el proyecto no tiene fecha de entrega, no se puede postular a una actividad.
+- Al postularte y, si el Director te incorpora, se entiende que aceptás las **normas de convivencia** y los términos y condiciones vigentes de todos los participantes. Ver capítulo 16.
 
 **Errores frecuentes:**
 
@@ -131,7 +132,7 @@ Este capítulo explica cómo encontrar proyectos y oportunidades, postularte, se
 2. En la pestaña **Invitaciones**, elegí **Recibidas**.
 3. Ubicá la invitación y hacé clic en **Aceptar** o **Rechazar**.
 4. Revisá el detalle: **Proyecto**, **Tipo**, **Perfil remitente**, **Fecha de envío**, **Actividad**, **Requerimiento** y **Mensaje**.
-5. Si aceptás y el perfil remitente tiene términos y condiciones vigentes, revisalos y aceptalos.
+5. Si aceptás, se entiende que aceptás las **normas de convivencia** y los términos y condiciones vigentes de todos los participantes.
 6. Confirmá con **Aceptar invitación** o **Rechazar invitación**.
 
 **Resultado esperado:**
@@ -146,7 +147,8 @@ Este capítulo explica cómo encontrar proyectos y oportunidades, postularte, se
 - En actividades, la actividad debe estar **Pendiente** o **En curso**.
 - El requerimiento debe tener cupo disponible.
 - Para aceptar una invitación de actividad, necesitás disponibilidad suficiente.
-- Si el remitente tiene términos vigentes, tenés que aceptarlos para aceptar la invitación.
+- El Director ya aceptó tus términos y condiciones al enviarte la invitación. Al aceptar, se entiende que aceptás las **normas de convivencia** y los términos y condiciones vigentes de todos los participantes.
+- Una vez que sos miembro, podés consultar los términos y condiciones de los participantes desde el panel de miembros.
 - Al aceptar una invitación general, pasás a ser miembro del proyecto.
 - Al aceptar una invitación de actividad, quedás asignado a esa actividad.
 - Al rechazar, no se crea membresía ni asignación.
@@ -220,7 +222,8 @@ Este capítulo explica cómo encontrar proyectos y oportunidades, postularte, se
 **Reglas y restricciones:**
 
 - La aceptación no te incorpora automáticamente: el Director debe aprobarte.
-- Si el Director aprueba, pasás a ser miembro y se registra la aceptación de sus términos y condiciones.
+- Al aceptar y, si el Director aprueba tu incorporación, se entiende que aceptás las **normas de convivencia** y los términos y condiciones vigentes de todos los participantes.
+- Si el Director aprueba, pasás a ser miembro y se registran las versiones vigentes de los términos y condiciones de todos los participantes. El Director acepta explícitamente tus términos y condiciones.
 - Si la vacante se cubre o la actividad se cancela, la invitación deja de estar disponible.
 - Las invitaciones de reemplazo rechazadas se conservan en la pestaña **Rechazadas**.
 
@@ -267,3 +270,32 @@ Este capítulo explica cómo encontrar proyectos y oportunidades, postularte, se
 | “El proyecto debe conservar al menos un director activo.” | Sos el único Director. | Asigná otro Director antes. |
 
 [CAPTURA: darse-de-baja - modal con motivo y consecuencias]
+
+## 7.8. Consultar los términos y condiciones de los participantes
+
+**Objetivo:** leer las condiciones vigentes de los demás integrantes del proyecto.
+
+**Quién puede hacerlo:** miembro activo del proyecto.
+
+**Pasos:**
+
+1. Abrí el proyecto.
+2. Entrá a la pestaña **Miembros**.
+3. Elegí un participante.
+4. Abrí sus **Términos y condiciones**.
+
+**Resultado esperado:** ves el texto vigente, la versión y la fecha de inicio de vigencia.
+
+**Reglas y restricciones:**
+
+- Solo se muestran los participantes activos del proyecto.
+- La versión que ves es la vigente; si el participante la cambia, se crea una nueva versión.
+- Al ingresar al proyecto se registran las versiones vigentes de todos los participantes.
+- Las normas de convivencia que enmarcan esta consulta se explican en el capítulo 16.
+
+**Errores frecuentes:**
+
+| Mensaje | Causa | Solución |
+|---|---|---|
+| “No se pudieron cargar los términos y condiciones.” | Problema de conexión. | Reintentá. |
+| “El perfil no se encuentra activo.” | El participante ya no está activo. | Actualizá la lista. |

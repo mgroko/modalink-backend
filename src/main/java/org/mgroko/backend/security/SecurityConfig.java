@@ -122,6 +122,7 @@ public class SecurityConfig {
                         "/login/oauth2/**",
                         "/error",
                         "/uploads/**",
+                        "/normas-convivencia/**",
                         "/actuator/health",
                         "/actuator/health/**")
                     .permitAll()
@@ -137,7 +138,7 @@ public class SecurityConfig {
                     .hasAnyRole("ADMINISTRADOR", "USUARIO")
 
                 // Compartido entre ambos roles
-                .requestMatchers("/auth/me", "/notificaciones/**", "/health")
+                .requestMatchers("/auth/me", "/notificaciones/**", "/health", "/ayuda/**")
                     .hasAnyRole("ADMINISTRADOR", "USUARIO")
 
                 // Solo usuario

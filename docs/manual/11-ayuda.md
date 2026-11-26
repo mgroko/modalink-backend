@@ -123,6 +123,29 @@ No.
 **¿Puedo editar una reseña?**
 No. Las calificaciones y reseñas no se editan ni se borran desde la interfaz.
 
+### Normas de convivencia
+
+**¿Qué acepto al postularme o aceptar una invitación?**
+Se entiende que aceptás las **normas de convivencia** de la plataforma y los términos y condiciones vigentes de todos los participantes del proyecto. La aceptación es implícita y se otorga por tu decisión de trabajar en el proyecto.
+
+**¿Dónde leo los términos y condiciones de los participantes?**
+Una vez que sos miembro, abrí el proyecto, entrá a la pestaña **Miembros** y consultá los **Términos y condiciones** de cada participante. El paso a paso está en el capítulo 7.
+
+**¿El Director acepta mis términos y condiciones?**
+Sí. Antes de invitarte o incorporarte, el Director acepta explícitamente tus términos y condiciones vigentes.
+
+**¿Qué pasa si un participante cambia sus términos y condiciones?**
+Los ingresos posteriores ven la versión nueva. Tu ingreso conserva la versión que se registró en ese momento.
+
+**¿Las normas reemplazan el contrato del proyecto?**
+No. Las normas son una condición de convivencia de la plataforma. El contrato del proyecto y los términos y condiciones de cada participante se mantienen.
+
+**¿Puedo negarme?**
+Sí. Si no estás de acuerdo, no te postules ni aceptes la invitación. Si ya sos miembro, podés darte de baja del proyecto.
+
+**¿Dónde consulto la versión vigente de las normas?**
+En la página pública `/normas-de-convivencia`, disponible sin iniciar sesión. También se explica en el capítulo 16.
+
 ## 11.2. Mensajes de error frecuentes
 
 ### Registro y acceso

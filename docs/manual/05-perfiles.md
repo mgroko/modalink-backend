@@ -149,8 +149,11 @@ Un perfil es tu identidad profesional. Podés tener varios, uno por profesión, 
 - El texto es obligatorio y admite hasta 5.000 caracteres.
 - Cada cambio real crea una nueva versión vigente; la anterior deja de estar vigente.
 - La versión vigente se muestra en tu perfil a quienes lo visitan.
-- Cuando invitás a alguien o aceptás una postulación, el sistema registra la versión de tus términos que la otra parte aceptó.
+- Cuando invitás a alguien o aceptás una postulación, aceptás explícitamente sus términos y condiciones vigentes y el sistema registra esa versión.
+- Al incorporarse, el participante acepta implícitamente las **normas de convivencia** y los términos y condiciones vigentes de todos los participantes; el sistema registra las versiones en ese momento.
+- Una vez que sos miembro, podés consultar los términos y condiciones de los participantes desde el panel de miembros.
 - Si no configuraste términos propios, se usa la plantilla base del sistema.
+- Las normas de convivencia se explican en el capítulo 16.
 
 **Errores frecuentes:**
 
