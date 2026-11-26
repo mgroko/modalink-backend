@@ -624,7 +624,7 @@ Los pares con pHash 0 y `tipo_coincidencia = EXACTA` son el **mismo archivo** po
 - `ProcesamientoHistoricoBatchServiceTest`
 - `ProcesamientoHistoricoWorkerTest`
 - `AdminColaboracionHistoricaControllerTest`
-- `AdminColaboracionHistoricaLocalIntegrationTest`
+- `AdminColaboracionHistoricaIntegrationTest`
 
 ### 11.4 Comandos
 

@@ -271,7 +271,7 @@ El módulo de colaboraciones automáticas cuenta con pruebas específicas para c
 | Verificación geométrica | `CoincidenciaVerificacionServiceTest` (ORB, ratio test de Lowe, RANSAC y pHash multi-recorte) |
 | Detección y propuestas | `DetectarColaboracionAutomaticaServiceTest`, `DetectarColaboracionAutomaticaAsyncServiceTest` |
 | Ciclo de vida | `GestionarColaboracionAutomaticaServiceTest`, `ColaboracionAutomaticaLifecycleServiceTest`, `ColaboracionAutomaticaEventoIntegrationTest` |
-| Procesamiento histórico | `AdminColaboracionHistoricaServiceTest`, `AdminColaboracionHistoricaControllerTest`, `AdminColaboracionHistoricaLocalIntegrationTest` |
+| Procesamiento histórico | `AdminColaboracionHistoricaServiceTest`, `AdminColaboracionHistoricaControllerTest`, `AdminColaboracionHistoricaIntegrationTest` |
 
 ---
 
