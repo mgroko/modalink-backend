@@ -23,11 +23,13 @@ import org.mgroko.backend.proyectos.dto.AsignacionRequerimientoGralResponse;
 import org.mgroko.backend.proyectos.dto.CrearMoodboardRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest;
+import org.mgroko.backend.proyectos.dto.MiembroPublicoTycProyectoResponse;
 import org.mgroko.backend.proyectos.dto.MiembroTycProyectoResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoGralNoAsignableException;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
+import org.mgroko.backend.proyectos.servicio.ListarMiembrosPublicosProyectoService;
 import org.mgroko.backend.proyectos.servicio.ListarTycMiembrosProyectoService;
 import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
@@ -76,6 +78,8 @@ class AsignarRequerimientoGralIntegrationTest extends AbstractPostgresIntegratio
     private RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     @Autowired
     private ListarTycMiembrosProyectoService listarTycMiembrosProyectoService;
+    @Autowired
+    private ListarMiembrosPublicosProyectoService listarMiembrosPublicosProyectoService;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -145,6 +149,45 @@ class AsignarRequerimientoGralIntegrationTest extends AbstractPostgresIntegratio
                     assertThat(fila.idTycAceptado()).isEqualTo(idTyc);
                     assertThat(fila.descripcion())
                             .isEqualTo("Texto completo del TyC aceptado.");
+                });
+    }
+
+    @Test
+    void listarMiembrosPublicos_permiteNoMiembroEnProyectoPublico() {
+        Datos datos = crearProyectoPublicadoConUnRequerimiento(
+                "uc36.publico@example.com", "88836121");
+        MiembroProyecto miembro = agregarMiembro(
+                datos.publicado(), datos.modelo(), "Modelo UC36 Público");
+
+        Long idTyc = jdbcTemplate.queryForObject("""
+                INSERT INTO perfil_tyc
+                    (id_perfil, descripcion, fecha_inicio, fecha_fin)
+                VALUES (?, 'Texto público del TyC aceptado.', NOW() - INTERVAL '1 day', NULL)
+                RETURNING id_tyc
+                """, Long.class, datos.modelo().idPerfil());
+
+        miembro.setIdTycAceptado(idTyc);
+        miembroProyectoRepository.saveAndFlush(miembro);
+
+        PerfilCreado observador = crearPerfil(
+                "uc36.observador@example.com",
+                "88836122",
+                "Observador UC36",
+                "modelo");
+
+        List<MiembroPublicoTycProyectoResponse> resultado =
+                listarMiembrosPublicosProyectoService.listar(
+                        observador.idUsuario(),
+                        observador.idPerfil(),
+                        datos.publicado().idProyecto());
+
+        assertThat(resultado)
+                .anySatisfy(fila -> {
+                    assertThat(fila.idPerfil())
+                            .isEqualTo(datos.modelo().idPerfil());
+                    assertThat(fila.idTycAceptado()).isEqualTo(idTyc);
+                    assertThat(fila.descripcion())
+                            .isEqualTo("Texto público del TyC aceptado.");
                 });
     }
 

@@ -9,10 +9,12 @@ import org.mgroko.backend.proyectos.dto.AsignarRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.DarseDeBajaProyectoRequest;
 import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.dto.MiembroProyectoResponse;
+import org.mgroko.backend.proyectos.dto.MiembroPublicoTycProyectoResponse;
 import org.mgroko.backend.proyectos.dto.MiembroTycProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.DarseDeBajaProyectoService;
 import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ListarMiembrosProyectoService;
+import org.mgroko.backend.proyectos.servicio.ListarMiembrosPublicosProyectoService;
 import org.mgroko.backend.proyectos.servicio.ListarTycMiembrosProyectoService;
 import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
@@ -44,6 +46,7 @@ public class MiembroProyectoController {
 
     private final ListarMiembrosProyectoService listarMiembrosProyectoService;
     private final ListarTycMiembrosProyectoService listarTycMiembrosProyectoService;
+    private final ListarMiembrosPublicosProyectoService listarMiembrosPublicosProyectoService;
     private final EliminarIntegranteService eliminarIntegranteService;
     private final DarseDeBajaProyectoService darseDeBajaProyectoService;
     private final RequerimientoGralAsignacionService requerimientoGralAsignacionService;
@@ -51,11 +54,13 @@ public class MiembroProyectoController {
     public MiembroProyectoController(
             ListarMiembrosProyectoService listarMiembrosProyectoService,
             ListarTycMiembrosProyectoService listarTycMiembrosProyectoService,
+            ListarMiembrosPublicosProyectoService listarMiembrosPublicosProyectoService,
             EliminarIntegranteService eliminarIntegranteService,
             DarseDeBajaProyectoService darseDeBajaProyectoService,
             RequerimientoGralAsignacionService requerimientoGralAsignacionService) {
         this.listarMiembrosProyectoService = listarMiembrosProyectoService;
         this.listarTycMiembrosProyectoService = listarTycMiembrosProyectoService;
+        this.listarMiembrosPublicosProyectoService = listarMiembrosPublicosProyectoService;
         this.eliminarIntegranteService = eliminarIntegranteService;
         this.darseDeBajaProyectoService = darseDeBajaProyectoService;
         this.requerimientoGralAsignacionService = requerimientoGralAsignacionService;
@@ -104,6 +109,20 @@ public class MiembroProyectoController {
         Long idPerfilActivo = idPerfilActivo(authentication);
 
         return ResponseEntity.ok(listarTycMiembrosProyectoService.listar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto));
+    }
+
+    @GetMapping("/proyectos/{idProyecto}/miembros/publico")
+    public ResponseEntity<List<MiembroPublicoTycProyectoResponse>> listarPublicos(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        return ResponseEntity.ok(listarMiembrosPublicosProyectoService.listar(
                 idUsuario,
                 idPerfilActivo,
                 idProyecto));
