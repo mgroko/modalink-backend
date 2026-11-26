@@ -52,8 +52,13 @@ public class AuditoriaPdfRenderer {
     private static final float MARGEN_SUPERIOR = 44f;
     private static final float MARGEN_INFERIOR = 40f;
 
-    private static final float[] ANCHOS_RESUMEN_TIPOS = {2.2f, 2.0f, 0.7f};
-    private static final float[] ANCHOS_RESUMEN_ENTIDADES = {3.4f, 1.0f};
+    /**
+     * Columnas del resumen combinado: código, nombre, total, separador,
+     * entidad y total. Conservan los anchos del diseño de dos columnas.
+     */
+    private static final float[] ANCHOS_RESUMEN = {
+            209.82f, 190.75f, 66.76f, 20f, 218.34f, 64.22f
+    };
     private static final float[] ANCHOS_EVENTOS = {
             70f, 95f, 122f, 76f, 82f, 80f, 58f, 186.89f
     };
@@ -253,92 +258,126 @@ public class AuditoriaPdfRenderer {
     /* Resúmenes                                                          */
     /* ------------------------------------------------------------------ */
 
+    /**
+     * Resumen en dos columnas. Se arma como una única tabla para que OpenPDF
+     * pueda cortarla entre hojas: una fila con tablas anidadas se mueve
+     * completa a la hoja siguiente. Los títulos y las cabeceras son las dos
+     * primeras filas, por lo que se repiten en cada hoja.
+     */
     private PdfPTable resumenes(DatosInforme datos) {
-        PdfPTable tabla = new PdfPTable(new float[]{467.33f, 20f, 282.56f});
+        PdfPTable tabla = new PdfPTable(ANCHOS_RESUMEN);
         tabla.setWidthPercentage(100);
         tabla.setSpacingAfter(4);
+        // Los títulos y las cabeceras se repiten si el resumen sigue en otra hoja.
+        tabla.setHeaderRows(2);
+        tabla.setSplitLate(false);
+        tabla.setSplitRows(true);
 
-        PdfPCell izquierda = sinBorde();
-        izquierda.addElement(titulo("Resumen por tipo de evento", 0, 6));
-        izquierda.addElement(tablaResumenTipos(
-                datos.resumen().porTipoEvento()));
-
-        PdfPCell derecha = sinBorde();
-        derecha.addElement(titulo("Resumen por entidad afectada", 0, 6));
-        derecha.addElement(tablaResumenEntidades(
-                datos.resumen().porEntidad()));
-
-        tabla.addCell(izquierda);
+        tabla.addCell(tituloResumen("Resumen por tipo de evento", 3));
         tabla.addCell(sinBorde());
-        tabla.addCell(derecha);
-        return tabla;
-    }
-
-    private PdfPTable tablaResumenTipos(
-            List<AuditoriaResumenTipoResponse> tipos) {
-
-        PdfPTable tabla = new PdfPTable(ANCHOS_RESUMEN_TIPOS);
-        tabla.setWidthPercentage(100);
-        tabla.setHeaderRows(1);
+        tabla.addCell(tituloResumen("Resumen por entidad afectada", 2));
 
         tabla.addCell(cabeceraResumen("CÓDIGO", Element.ALIGN_LEFT));
         tabla.addCell(cabeceraResumen("NOMBRE", Element.ALIGN_LEFT));
         tabla.addCell(cabeceraResumen("TOTAL", Element.ALIGN_RIGHT));
+        tabla.addCell(sinBorde());
+        tabla.addCell(cabeceraResumen("ENTIDAD", Element.ALIGN_LEFT));
+        tabla.addCell(cabeceraResumen("TOTAL", Element.ALIGN_RIGHT));
 
-        if (tipos.isEmpty()) {
-            tabla.addCell(cuerpoResumen(
-                    new Phrase(9, "Sin datos",
-                            AuditoriaPdfEstilos.fuenteGris(7.5f, Font.NORMAL)),
-                    Element.ALIGN_LEFT, 3));
-            return tabla;
-        }
+        List<AuditoriaResumenTipoResponse> tipos =
+                datos.resumen().porTipoEvento();
+        List<AuditoriaResumenEntidadResponse> entidades =
+                datos.resumen().porEntidad();
 
-        for (AuditoriaResumenTipoResponse tipo : tipos) {
-            tabla.addCell(cuerpoResumen(
-                    new Phrase(9, texto(tipo.codigo()),
-                            AuditoriaPdfEstilos.fuenteMono(7.8f)),
-                    Element.ALIGN_LEFT, 1));
-            tabla.addCell(cuerpoResumen(
-                    new Phrase(10, texto(tipo.nombre()),
-                            AuditoriaPdfEstilos.fuente(8, Font.NORMAL)),
-                    Element.ALIGN_LEFT, 1));
-            tabla.addCell(cuerpoResumen(
-                    new Phrase(10, String.valueOf(tipo.total()),
-                            AuditoriaPdfEstilos.fuente(8.5f, Font.BOLD)),
-                    Element.ALIGN_RIGHT, 1));
+        int filas = Math.max(1, Math.max(tipos.size(), entidades.size()));
+        for (int i = 0; i < filas; i++) {
+            agregarFilaResumenTipos(tabla, tipos, i);
+            tabla.addCell(sinBorde());
+            agregarFilaResumenEntidades(tabla, entidades, i);
         }
         return tabla;
     }
 
-    private PdfPTable tablaResumenEntidades(
-            List<AuditoriaResumenEntidadResponse> entidades) {
+    private void agregarFilaResumenTipos(
+            PdfPTable tabla,
+            List<AuditoriaResumenTipoResponse> tipos,
+            int fila) {
 
-        PdfPTable tabla = new PdfPTable(ANCHOS_RESUMEN_ENTIDADES);
-        tabla.setWidthPercentage(100);
-        tabla.setHeaderRows(1);
-
-        tabla.addCell(cabeceraResumen("ENTIDAD", Element.ALIGN_LEFT));
-        tabla.addCell(cabeceraResumen("TOTAL", Element.ALIGN_RIGHT));
-
-        if (entidades.isEmpty()) {
+        if (tipos.isEmpty() && fila == 0) {
             tabla.addCell(cuerpoResumen(
-                    new Phrase(9, "Sin datos",
-                            AuditoriaPdfEstilos.fuenteGris(7.5f, Font.NORMAL)),
-                    Element.ALIGN_LEFT, 2));
-            return tabla;
+                    sinDatos(), Element.ALIGN_LEFT, 3));
+            return;
+        }
+        if (fila >= tipos.size()) {
+            tabla.addCell(sinBorde());
+            tabla.addCell(sinBorde());
+            tabla.addCell(sinBorde());
+            return;
         }
 
-        for (AuditoriaResumenEntidadResponse entidad : entidades) {
+        AuditoriaResumenTipoResponse tipo = tipos.get(fila);
+        tabla.addCell(cuerpoResumen(
+                new Phrase(9, texto(tipo.codigo()),
+                        AuditoriaPdfEstilos.fuenteMono(7.8f)),
+                Element.ALIGN_LEFT, 1));
+        tabla.addCell(cuerpoResumen(
+                new Phrase(10, texto(tipo.nombre()),
+                        AuditoriaPdfEstilos.fuente(8, Font.NORMAL)),
+                Element.ALIGN_LEFT, 1));
+        tabla.addCell(cuerpoResumen(
+                new Phrase(10, String.valueOf(tipo.total()),
+                        AuditoriaPdfEstilos.fuente(8.5f, Font.BOLD)),
+                Element.ALIGN_RIGHT, 1));
+    }
+
+    private void agregarFilaResumenEntidades(
+            PdfPTable tabla,
+            List<AuditoriaResumenEntidadResponse> entidades,
+            int fila) {
+
+        if (entidades.isEmpty() && fila == 0) {
             tabla.addCell(cuerpoResumen(
-                    new Phrase(10, texto(entidad.entidad()),
-                            AuditoriaPdfEstilos.fuente(8, Font.NORMAL)),
-                    Element.ALIGN_LEFT, 1));
-            tabla.addCell(cuerpoResumen(
-                    new Phrase(10, String.valueOf(entidad.total()),
-                            AuditoriaPdfEstilos.fuente(8.5f, Font.BOLD)),
-                    Element.ALIGN_RIGHT, 1));
+                    sinDatos(), Element.ALIGN_LEFT, 2));
+            return;
         }
-        return tabla;
+        if (fila >= entidades.size()) {
+            tabla.addCell(sinBorde());
+            tabla.addCell(sinBorde());
+            return;
+        }
+
+        AuditoriaResumenEntidadResponse entidad = entidades.get(fila);
+        tabla.addCell(cuerpoResumen(
+                new Phrase(10, texto(entidad.entidad()),
+                        AuditoriaPdfEstilos.fuente(8, Font.NORMAL)),
+                Element.ALIGN_LEFT, 1));
+        tabla.addCell(cuerpoResumen(
+                new Phrase(10, String.valueOf(entidad.total()),
+                        AuditoriaPdfEstilos.fuente(8.5f, Font.BOLD)),
+                Element.ALIGN_RIGHT, 1));
+    }
+
+    private Phrase sinDatos() {
+        return new Phrase(9, "Sin datos",
+                AuditoriaPdfEstilos.fuenteGris(7.5f, Font.NORMAL));
+    }
+
+    /**
+     * Celda de título del resumen. Al formar parte de las filas de cabecera,
+     * se repite automáticamente cuando la tabla continúa en otra hoja.
+     */
+    private PdfPCell tituloResumen(String texto, int colspan) {
+        Paragraph titulo = new Paragraph(
+                texto, AuditoriaPdfEstilos.fuente(11, Font.BOLD));
+        titulo.setLeading(14);
+
+        PdfPCell cell = new PdfPCell(titulo);
+        cell.setColspan(colspan);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setPadding(0);
+        cell.setPaddingBottom(6);
+        cell.setVerticalAlignment(Element.ALIGN_BOTTOM);
+        return cell;
     }
 
     private PdfPCell cabeceraResumen(String texto, int alineacion) {

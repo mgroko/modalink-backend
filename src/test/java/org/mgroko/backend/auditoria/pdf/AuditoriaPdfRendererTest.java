@@ -79,6 +79,36 @@ class AuditoriaPdfRendererTest {
     }
 
     @Test
+    void elResumenEmpiezaEnLaPrimeraHojaConMuchosTipos() throws Exception {
+        byte[] pdf = generar(informeConResumenExtenso());
+
+        try (PdfReader reader = new PdfReader(pdf)) {
+            assertThat(reader.getNumberOfPages()).isGreaterThan(1);
+
+            String hoja1 = plano(
+                    new PdfTextExtractor(reader).getTextFromPage(1));
+
+            // Regresión: con muchos tipos, el bloque de resúmenes no entraba
+            // en la hoja 1 y se movía completo a la hoja 2, dejando la
+            // primera hoja con el encabezado y los KPIs solos.
+            assertThat(hoja1)
+                    .contains("Total de registros")
+                    .contains("Resumen por tipo de evento")
+                    .contains("Resumen por entidad afectada")
+                    .contains("TIPO_00")
+                    .contains("entidad_0");
+
+            // El resumen continúa en la hoja siguiente con sus cabeceras.
+            String hoja2 = plano(
+                    new PdfTextExtractor(reader).getTextFromPage(2));
+            assertThat(hoja2)
+                    .contains("Resumen por tipo de evento")
+                    .contains("CÓDIGO")
+                    .contains("TIPO_20");
+        }
+    }
+
+    @Test
     void informaSinRegistrosCuandoNoHayEventos() throws Exception {
         DatosInforme datos = new DatosInforme(
                 LocalDate.of(2026, 11, 11),
@@ -142,6 +172,43 @@ class AuditoriaPdfRendererTest {
                                 new AuditoriaResumenEntidadResponse(
                                         "mensaje_proyecto", 4))),
                 eventos,
+                5);
+    }
+
+    private DatosInforme informeConResumenExtenso() {
+        List<AuditoriaResumenTipoResponse> tipos = new ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            tipos.add(new AuditoriaResumenTipoResponse(
+                    String.format("TIPO_%02d", i),
+                    "Evento de prueba " + i,
+                    21 - i));
+        }
+
+        List<AuditoriaResumenEntidadResponse> entidades = new ArrayList<>();
+        for (int i = 0; i < 11; i++) {
+            entidades.add(new AuditoriaResumenEntidadResponse(
+                    "entidad_" + i, 11 - i));
+        }
+
+        long totalRegistros = tipos.stream()
+                .mapToLong(AuditoriaResumenTipoResponse::total)
+                .sum();
+
+        return new DatosInforme(
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 26),
+                "Todos",
+                "Admin ModaLink",
+                GENERADO_EN,
+                IMPRESO_EN,
+                new AuditoriaResumenResponse(
+                        LocalDate.of(2026, 11, 20),
+                        LocalDate.of(2026, 11, 26),
+                        List.of(),
+                        totalRegistros,
+                        tipos,
+                        entidades),
+                List.of(evento(1), evento(2), evento(3)),
                 5);
     }
 
