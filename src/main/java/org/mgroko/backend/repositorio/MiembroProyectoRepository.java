@@ -49,6 +49,9 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
 
     long countByPerfilIdPerfil(Long idPerfil);
 
+    long countByProyectoIdProyectoAndEstadoParticipacion(
+            Long idProyecto, EstadoParticipacion estadoParticipacion);
+
     boolean existsByProyectoIdProyectoAndPerfilIdPerfil(Long idProyecto, Long idPerfil);
 
     Optional<MiembroProyecto> findFirstByProyectoIdProyectoAndPerfilIdPerfilOrderByFechaAltaDesc(

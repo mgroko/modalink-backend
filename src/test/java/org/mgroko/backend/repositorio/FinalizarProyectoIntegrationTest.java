@@ -17,6 +17,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
@@ -275,6 +276,19 @@ class FinalizarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void finalizar_sinActividades_esValido() {
+        Datos datos = crearProyectoConfirmado();
+        em.remove(datos.actividadFinalizada());
+        em.remove(datos.actividadCancelada());
+        em.flush();
+
+        FinalizarProyectoResponse response = finalizar(datos);
+
+        assertThat(response.proyecto().estado()).isEqualTo("Finalizado");
+        assertThat(response.calificacionesRegistradas()).isEqualTo(2);
+    }
+
+    @Test
     void finalizar_dosVeces_lanzaNoFinalizableYNoDuplicaCalificaciones() {
         Datos datos = crearProyectoConfirmado();
 
@@ -478,6 +492,15 @@ class FinalizarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
                 .build();
         em.persist(actividadCancelada);
 
+        RequerimientoGralProyecto requerimientoGeneral =
+                RequerimientoGralProyecto.builder()
+                        .cantidad(2)
+                        .descripcion("Equipo UC37")
+                        .profesion(profesion)
+                        .proyecto(proyecto)
+                        .build();
+        em.persist(requerimientoGeneral);
+
         em.persist(MiembroProyecto.builder()
                 .proyecto(proyecto)
                 .perfil(perfilDirector)
@@ -489,12 +512,14 @@ class FinalizarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
                 .perfil(perfilMiembro1)
                 .rolProyecto(rol("MIEMBRO"))
                 .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .requerimientoGral(requerimientoGeneral)
                 .build());
         em.persist(MiembroProyecto.builder()
                 .proyecto(proyecto)
                 .perfil(perfilMiembro2)
                 .rolProyecto(rol("MIEMBRO"))
                 .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .requerimientoGral(requerimientoGeneral)
                 .build());
 
         em.flush();

@@ -113,6 +113,22 @@ public interface RequerimientoActividadRepository
             @Param("estadoExcluido") EstadoActividad estadoExcluido);
 
     /**
+     * Indica si el proyecto tuvo algún requerimiento de actividad, sin
+     * importar el estado de la actividad ni si el requerimiento está
+     * archivado. Se usa para validar la evidencia mínima al finalizar.
+     *
+     * @param idProyecto proyecto a evaluar
+     * @return true si existe al menos un requerimiento histórico
+     */
+    @Query("""
+        SELECT CASE WHEN COUNT(ra) > 0 THEN TRUE ELSE FALSE END
+        FROM RequerimientoActividad ra
+        WHERE ra.actividad.planificacion.proyecto.idProyecto = :idProyecto
+    """)
+    boolean existsByProyectoIncluyendoArchivadosYCancelados(
+            @Param("idProyecto") Long idProyecto);
+
+    /**
      * Recupera un requerimiento de actividad junto con su profesión, la
      * actividad, la planificación y el proyecto. Se usa al dar de alta una
      * postulación (UC-26) para validar profesión, estado del proyecto y

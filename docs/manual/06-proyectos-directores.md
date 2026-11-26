@@ -464,6 +464,8 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 
 **Reglas y restricciones:**
 
+- El proyecto debe tener al menos un integrante activo además del director.
+- El proyecto debe tener al menos un requerimiento general o de actividad.
 - Cada actividad debe tener al menos un integrante activo asignado.
 - Los requerimientos deben estar cubiertos según el cupo.
 - La fecha de entrega debe ser posterior al inicio.
@@ -476,6 +478,8 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 
 | Mensaje | Causa | Solución |
 |---|---|---|
+| “El proyecto debe tener al menos un integrante activo además del director.” | El proyecto solo tiene al director. | Incorporá otro integrante. |
+| “El proyecto debe tener al menos un requerimiento general o de actividad.” | No hay requerimientos de personal. | Agregá al menos uno. |
 | “La actividad 'X' no tiene integrantes activos asignados.” | Falta asignar personal. | Asigná un integrante. |
 | “La planificación no tiene fecha de entrega.” | Falta la fecha. | Completala desde **Editar**. |
 | “La fecha de entrega debe ser posterior a la fecha de inicio confirmada.” | La fecha es hoy o anterior. | Elegí una fecha futura. |
@@ -608,6 +612,8 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 
 **Reglas y restricciones:**
 
+- El proyecto debe tener al menos un integrante activo además del director.
+- El proyecto debe tener evidencia de al menos un requerimiento general o de actividad.
 - No puede quedar ninguna actividad **Pendiente** o **En curso**.
 - Un proyecto sin actividades también puede finalizarse.
 - La valoración es de 1 a 5 estrellas y la reseña es obligatoria, con hasta 200 caracteres.
@@ -619,6 +625,8 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 
 | Mensaje | Causa | Solución |
 |---|---|---|
+| “El proyecto debe tener al menos un integrante activo además del director.” | El proyecto solo tiene al director. | Incorporá otro integrante. |
+| “El proyecto debe tener al menos un requerimiento general o de actividad.” | El proyecto nunca tuvo requerimientos. | Agregá uno antes de finalizar. |
 | “La actividad 'X' está en estado Pendiente y debe estar Finalizada o Cancelada.” | Quedan actividades abiertas. | Finalizalas o cancelalas. |
 | “Completá la valoración y la reseña de todos los integrantes para habilitar la finalización.” | Faltan calificaciones. | Completá todas. |
 | “La reseña es obligatoria.” | Dejaste una reseña vacía. | Escribí una reseña. |

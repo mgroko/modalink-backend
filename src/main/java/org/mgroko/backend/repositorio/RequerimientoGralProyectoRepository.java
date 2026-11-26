@@ -34,6 +34,10 @@ public interface RequerimientoGralProyectoRepository
     List<RequerimientoGralProyecto> findByProyectoIdProyecto(
             @Param("idProyecto") Long idProyecto);
 
+    boolean existsByProyectoIdProyectoAndFechaArchivadoIsNull(Long idProyecto);
+
+    boolean existsByProyectoIdProyecto(Long idProyecto);
+
     /**
      * Recupera un requerimiento general junto con su profesión y su proyecto.
      * Se usa al dar de alta una postulación (UC-26) para validar la profesión

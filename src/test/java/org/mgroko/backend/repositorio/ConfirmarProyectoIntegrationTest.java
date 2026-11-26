@@ -166,7 +166,45 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(actividad.getFechaHoraInicio()).isNull();
     }
 
+    @Test
+    void confirmar_sinActividades_conMiembroYRequerimiento_esValido() {
+        Datos datos = crearProyectoSinActividades();
+
+        PrevisualizacionConfirmacionResponse preview =
+                previsualizarConfirmacionService.previsualizar(
+                        datos.director().getIdUsuario(),
+                        datos.perfilDirector().getIdPerfil(),
+                        datos.proyecto().getIdProyecto());
+
+        assertThat(preview.puedeConfirmar()).isTrue();
+        assertThat(preview.propuestaHorarios()).isEmpty();
+
+        ConfirmarProyectoResponse response = confirmarProyectoService.confirmar(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto());
+
+        em.flush();
+        em.clear();
+
+        Proyecto confirmado = em.find(Proyecto.class, datos.proyecto().getIdProyecto());
+
+        assertThat(confirmado.getEstado()).isEqualTo(EstadoProyecto.CONFIRMADO);
+        assertThat(confirmado.getFechaInicio()).isNotNull();
+        assertThat(response.cronograma().resumen().totalActividades()).isZero();
+    }
+
     private Datos crearProyectoConActividadAsignada(boolean requerimientoIncompleto) {
+        return crearProyecto(requerimientoIncompleto, true);
+    }
+
+    private Datos crearProyectoSinActividades() {
+        return crearProyecto(false, false);
+    }
+
+    private Datos crearProyecto(
+            boolean requerimientoIncompleto,
+            boolean conActividad) {
         Profesion profesion = Profesion.builder()
                 .codigo("PROF_UC60_" + System.nanoTime())
                 .nombre("Profesional UC60")
@@ -200,26 +238,39 @@ class ConfirmarProyectoIntegrationTest extends AbstractPostgresIntegrationTest {
                 .estadoParticipacion(EstadoParticipacion.ACTIVO)
                 .build());
 
+        RequerimientoGralProyecto requerimientoGeneral =
+                RequerimientoGralProyecto.builder()
+                        .cantidad(1)
+                        .descripcion("Personal UC60")
+                        .profesion(profesion)
+                        .proyecto(proyecto)
+                        .build();
+        em.persist(requerimientoGeneral);
+
         MiembroProyecto miembroProyecto = MiembroProyecto.builder()
                 .proyecto(proyecto)
                 .perfil(perfilMiembro)
                 .rolProyecto(rol("MIEMBRO"))
                 .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .requerimientoGral(requerimientoGeneral)
                 .build();
         em.persist(miembroProyecto);
 
-        Actividad actividad = Actividad.builder()
-                .nombre("Actividad UC60")
-                .duracionMinutos(60)
-                .estado(EstadoActividad.PENDIENTE)
-                .planificacion(planificacion)
-                .build();
-        em.persist(actividad);
+        Actividad actividad = null;
+        if (conActividad) {
+            actividad = Actividad.builder()
+                    .nombre("Actividad UC60")
+                    .duracionMinutos(60)
+                    .estado(EstadoActividad.PENDIENTE)
+                    .planificacion(planificacion)
+                    .build();
+            em.persist(actividad);
 
-        em.persist(AsignacionActividad.builder()
-                .miembro(miembroProyecto)
-                .actividad(actividad)
-                .build());
+            em.persist(AsignacionActividad.builder()
+                    .miembro(miembroProyecto)
+                    .actividad(actividad)
+                    .build());
+        }
 
         if (requerimientoIncompleto) {
             em.persist(RequerimientoGralProyecto.builder()
