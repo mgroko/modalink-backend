@@ -17,8 +17,8 @@ import org.openpdf.text.pdf.PdfWriter;
  * Barra superior y pie del informe de proyecto.
  *
  * <p>Reutiliza la barra azul y la numeración de hojas de ModaLink, y agrega
- * el proyecto, el corte, quién generó el informe y el aviso de que es una foto
- * del momento.</p>
+ * el proyecto, el corte y quién generó el informe. El aviso de que el informe
+ * es una foto del momento vive en el cuerpo del documento.</p>
  */
 public class InformeProyectoPdfPageEvent extends ModaLinkPdfPageEvent {
 
@@ -38,8 +38,7 @@ public class InformeProyectoPdfPageEvent extends ModaLinkPdfPageEvent {
                 impresoEn,
                 "ModaLink · Informe de proyecto",
                 "Impreso el " + impresoEn.format(FECHA_HORA)
-                        + " · Generado por " + texto(generadoPor)
-                        + " · Foto del momento, no reemplaza la auditoría");
+                        + " · Generado por " + texto(generadoPor));
         this.proyecto = truncar(proyecto, MAX_PROYECTO_ENCABEZADO);
         this.corte = generadoEn != null ? generadoEn.format(FECHA_HORA) : "";
     }

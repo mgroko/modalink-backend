@@ -225,7 +225,7 @@ Si no hay fecha de entrega o no hay actividades, el bloque se muestra como “Si
 
 - **JSON:** `GET /proyectos/{idProyecto}/informe` para la UI.
 - **PDF:** `GET /proyectos/{idProyecto}/informe/pdf` para descargar o compartir.
-- **Encabezado y pie del PDF:** proyecto, corte, generado por, sistema, versión, fecha de impresión, “Hoja X / Y” y aviso de que es una foto del momento que no reemplaza la auditoría.
+- **Encabezado y pie del PDF:** proyecto, corte, generado por, sistema, versión, fecha de impresión y “Hoja X / Y”; el aviso de que es una foto del momento va en el bloque “Cómo leer este informe”.
 - **Referencia visual:** mockups adjuntos de 4 páginas (portada/estado por área, moodboard/equipo, cronograma/contratos, alertas/cierre).
 - **Fase 2:** envío periódico por email con link al PDF.
 - **Fase 2:** variante administrativa.

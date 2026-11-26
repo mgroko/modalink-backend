@@ -415,7 +415,7 @@ Si se quiere ser consistente con auditoría, usar una tabla de 4–6 celdas con 
 
 | Zona | Contenido |
 |---|---|
-| Izquierda | `Impreso el {dd/MM/yyyy HH:mm} · Generado por {nombre} · Foto del momento, no reemplaza la auditoría` |
+| Izquierda | `Impreso el {dd/MM/yyyy HH:mm} · Generado por {nombre}` |
 | Centro | `ModaLink · Informe de proyecto` |
 | Derecha | `Hoja X / Y` |
 
@@ -813,7 +813,7 @@ Si no se quieren agregar propiedades, usar constantes en `CalcularEstadoAreasSer
 - A4 vertical, márgenes laterales de 36–40 pt.
 - Reutilizar `ModaLinkPdfEstilos` (azul, gris, borde, fondo).
 - Barra superior azul en todas las páginas: “ModaLink · Informe de proyecto” a la izquierda y “{Proyecto} · Corte {fecha/hora}” a la derecha.
-- Pie de página en todas las páginas: “Impreso el {fecha/hora} · Generado por {nombre} · Foto del momento, no reemplaza la auditoría”; centro “ModaLink · Informe de proyecto”; derecha “Hoja X / Y”.
+- Pie de página en todas las páginas: “Impreso el {fecha/hora} · Generado por {nombre}”; centro “ModaLink · Informe de proyecto”; derecha “Hoja X / Y”. El aviso de que el informe es una foto del momento va en “Cómo leer este informe”, no en el pie.
 - Primera página: título grande, badges de estado/modo/privacidad, descripción y ficha con director, inicio, entrega y ubicación.
 - Resumen con estado general, cuatro tarjetas de área (color + motivo), bloque de riesgo para la entrega y tabla de decisiones con antigüedad.
 - Mantener siempre texto junto al color (`ROJO`, `AMARILLO`, `VERDE`) para que el informe sea legible en blanco y negro.

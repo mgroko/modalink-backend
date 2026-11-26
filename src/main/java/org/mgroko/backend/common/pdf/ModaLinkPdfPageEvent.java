@@ -34,6 +34,7 @@ public class ModaLinkPdfPageEvent extends PdfPageEventHelper {
     private static final float ALTO_BARRA = 8f;
     private static final float TAMANIO_PIE = 7.5f;
     private static final float ANCHO_TOTAL_HOJAS = 18f;
+    private static final float GAP_PIE = 14f;
 
     private final LocalDateTime impresoEn;
     private final String textoPie;
@@ -92,7 +93,7 @@ public class ModaLinkPdfPageEvent extends PdfPageEventHelper {
         float alto = document.getPageSize().getHeight();
 
         canvas.saveState();
-        canvas.setColorFill(ModaLinkPdfEstilos.AZUL);
+        canvas.setColorFill(ModaLinkPdfEstilos.AZUL_OSCURO);
         canvas.rectangle(0, alto - ALTO_BARRA, ancho, ALTO_BARRA);
         canvas.fill();
         canvas.restoreState();
@@ -114,29 +115,90 @@ public class ModaLinkPdfPageEvent extends PdfPageEventHelper {
         canvas.stroke();
         canvas.restoreState();
 
-        ColumnText.showTextAligned(
-                canvas,
-                Element.ALIGN_LEFT,
-                new Phrase(textoIzquierda != null && !textoIzquierda.isBlank()
-                                ? textoIzquierda
-                                : "Impreso el " + impresoEn.format(FECHA_HORA),
-                        ModaLinkPdfEstilos.fuenteGris(
-                                TAMANIO_PIE, Font.NORMAL)),
+        Font fuentePie = ModaLinkPdfEstilos.fuenteGris(TAMANIO_PIE, Font.NORMAL);
+        String textoIzquierdaFinal = textoIzquierda != null && !textoIzquierda.isBlank()
+                ? textoIzquierda
+                : "Impreso el " + impresoEn.format(FECHA_HORA);
+        textoIzquierdaFinal = ajustarTextoIzquierda(
+                textoIzquierdaFinal,
+                fuentePie,
                 izquierda,
-                yTexto,
-                0);
+                derecha);
+
+        if (!textoIzquierdaFinal.isBlank()) {
+            ColumnText.showTextAligned(
+                    canvas,
+                    Element.ALIGN_LEFT,
+                    new Phrase(textoIzquierdaFinal, fuentePie),
+                    izquierda,
+                    yTexto,
+                    0);
+        }
 
         ColumnText.showTextAligned(
                 canvas,
                 Element.ALIGN_CENTER,
-                new Phrase(textoPie,
-                        ModaLinkPdfEstilos.fuenteGris(
-                                TAMANIO_PIE, Font.NORMAL)),
+                new Phrase(textoPie, fuentePie),
                 (izquierda + derecha) / 2,
                 yTexto,
                 0);
 
         dibujarNumeroHoja(canvas, derecha, yTexto, hoja);
+    }
+
+    /**
+     * Ajusta el texto del pie al ancho disponible antes del bloque central.
+     * Evita que un nombre largo o un aviso extenso se superponga con
+     * "ModaLink · ..." en documentos con pie personalizado.
+     */
+    private String ajustarTextoIzquierda(
+            String texto,
+            Font fuente,
+            float izquierda,
+            float derecha) {
+
+        if (texto == null || texto.isBlank()) {
+            return "";
+        }
+
+        float anchoCentro = anchoTexto(textoPie, fuente);
+        float centro = (izquierda + derecha) / 2;
+        float anchoDisponible = centro - anchoCentro / 2 - izquierda - GAP_PIE;
+
+        if (anchoDisponible <= 0) {
+            return "";
+        }
+
+        return ajustarTexto(texto, fuente, anchoDisponible);
+    }
+
+    private String ajustarTexto(String texto, Font fuente, float anchoMaximo) {
+        if (anchoTexto(texto, fuente) <= anchoMaximo) {
+            return texto;
+        }
+
+        String sufijo = "...";
+        float anchoSufijo = anchoTexto(sufijo, fuente);
+        if (anchoMaximo <= anchoSufijo) {
+            return "";
+        }
+
+        int corte = texto.length();
+        while (corte > 0
+                && anchoTexto(texto.substring(0, corte), fuente) + anchoSufijo > anchoMaximo) {
+            corte--;
+        }
+
+        return corte <= 0
+                ? ""
+                : texto.substring(0, corte).stripTrailing() + sufijo;
+    }
+
+    private float anchoTexto(String texto, Font fuente) {
+        if (texto == null || texto.isBlank()) {
+            return 0f;
+        }
+        return fuente.getBaseFont().getWidthPoint(texto, TAMANIO_PIE);
     }
 
     /**

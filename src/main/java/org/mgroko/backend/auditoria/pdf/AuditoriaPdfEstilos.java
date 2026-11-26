@@ -15,7 +15,7 @@ import org.openpdf.text.pdf.BaseFont;
  */
 public final class AuditoriaPdfEstilos {
 
-    /** Azul de marca usado en la barra superior, indicadores y acentos. */
+    /** Azul de marca usado en indicadores, títulos y acentos. */
     public static final Color AZUL = ModaLinkPdfEstilos.AZUL;
     /** Texto principal. */
     public static final Color TEXTO = ModaLinkPdfEstilos.TEXTO;

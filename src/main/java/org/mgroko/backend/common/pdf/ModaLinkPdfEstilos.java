@@ -10,14 +10,17 @@ import org.openpdf.text.pdf.BaseFont;
 /**
  * Paleta, tipografías y tamaños compartidos por los PDF de ModaLink.
  *
- * <p>La usan tanto el informe de auditoría (UC-67) como la exportación de
- * contratos (UC-68). Mantener una única fuente de estilos asegura que el
- * encabezado y el pie de ambos documentos tengan la misma identidad visual.</p>
+ * <p>La usan el informe de auditoría (UC-67), la exportación de contratos
+ * (UC-68) y el informe ejecutivo de proyecto. Mantener una única fuente de
+ * estilos asegura que el encabezado y el pie de los documentos tengan la misma
+ * identidad visual.</p>
  */
 public final class ModaLinkPdfEstilos {
 
-    /** Azul de marca usado en la barra superior, indicadores y acentos. */
-    public static final Color AZUL = new Color(0x2F, 0x5B, 0xEA);
+    /** Azul de marca usado en indicadores, títulos y acentos. */
+    public static final Color AZUL = new Color(0x68, 0x66, 0xA9);
+    /** Variante oscura para la barra superior y acentos fuertes. */
+    public static final Color AZUL_OSCURO = new Color(0x49, 0x47, 0x76);
     /** Texto principal. */
     public static final Color TEXTO = new Color(0x1B, 0x23, 0x33);
     /** Texto secundario y etiquetas. */
