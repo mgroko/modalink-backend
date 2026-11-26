@@ -7,9 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
-import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
-import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.ContratoEvento;
 import org.mgroko.backend.modelo.ContratoVersion;
@@ -55,9 +53,6 @@ class ContratoModificacionTriggerIntegrationTest extends AbstractPostgresIntegra
 
     @PersistenceContext
     private EntityManager em;
-
-    @Autowired
-    private GenerarContratoService generarContratoService;
 
     @Autowired
     private ContratoVersionRepository contratoVersionRepository;
@@ -283,16 +278,13 @@ class ContratoModificacionTriggerIntegrationTest extends AbstractPostgresIntegra
 
         em.flush();
 
-        GenerarContratoRequest request = new GenerarContratoRequest(
-                tipo.getIdTipoAcuerdo(),
-                List.of(miembroProyecto.getIdMiembro()),
-                List.of("Cláusula de integración"));
-
-        ContratoGeneradoResponse response = generarContratoService.generar(
+        ContratoDetalleResponse response = crearContratoPendiente(
                 director.getIdUsuario(),
                 perfilDirector.getIdPerfil(),
                 proyecto.getIdProyecto(),
-                request);
+                tipo.getIdTipoAcuerdo(),
+                List.of(miembroProyecto.getIdMiembro()),
+                List.of("Cláusula de integración"));
 
         em.flush();
         em.clear();

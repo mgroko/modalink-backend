@@ -14,6 +14,7 @@ import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.modelo.enums.EstadoFirmaContrato;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.modelo.enums.RolParteContrato;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
@@ -100,11 +101,17 @@ public class ObtenerContratoService {
                 && miFirmaActiva.getEstadoFirma() == EstadoFirmaContrato.PENDIENTE;
 
         boolean esDirector = proyectoSecurityService.esDirector(idProyecto, idPerfilActivo);
+        boolean esBorrador = contrato.getEstado() == EstadoContrato.BORRADOR;
 
-        boolean esParte = firmas.stream()
-                .anyMatch(f -> f.getMiembro() != null
-                        && f.getMiembro().getPerfil() != null
-                        && idPerfilActivo.equals(f.getMiembro().getPerfil().getIdPerfil()));
+        // Un borrador solo lo ve el director (y el administrador por su area).
+        // Aunque tenga filas de firma para reconstruir las partes, no se expone
+        // a los destinatarios hasta que se emite.
+        boolean esParte = !esBorrador
+                && firmas.stream()
+                        .anyMatch(f -> f.getMiembro() != null
+                                && f.getMiembro().getPerfil() != null
+                                && idPerfilActivo.equals(
+                                        f.getMiembro().getPerfil().getIdPerfil()));
 
         if (!esDirector && !esParte) {
             throw new AccesoDenegadoProyectoException(
@@ -119,19 +126,67 @@ public class ObtenerContratoService {
         boolean proyectoApto = contrato.getProyecto().getEstado() == EstadoProyecto.PUBLICADO
                 || contrato.getProyecto().getEstado() == EstadoProyecto.CONFIRMADO;
 
-        boolean estadoApto = contrato.getEstado() == EstadoContrato.PENDIENTE_FIRMA;
+        boolean estadoEditable = esBorrador
+                || contrato.getEstado() == EstadoContrato.PENDIENTE_FIRMA;
+        boolean estadoPendienteFirma =
+                contrato.getEstado() == EstadoContrato.PENDIENTE_FIRMA;
 
         boolean puedeModificarse = esDirector
-                && estadoApto
+                && estadoEditable
                 && proyectoApto
                 && !firmasRegistradas;
 
         boolean puedeFirmar = miembroActivo.isPresent()
-                && estadoApto
+                && estadoPendienteFirma
                 && proyectoApto
                 && firmaPendiente;
 
         boolean puedeRechazar = puedeFirmar;
+
+        boolean tieneDestinatarios = firmas.stream()
+                .anyMatch(f -> f.getRolParte() == RolParteContrato.DESTINATARIO
+                        || f.getRolParte() == RolParteContrato.DIRECTOR_DESTINATARIO);
+
+        boolean textoValido = contrato.getTexto() != null
+                && !contrato.getTexto().isBlank();
+
+        boolean tipoActivo = contrato.getTipoAcuerdo() != null
+                && Boolean.TRUE.equals(contrato.getTipoAcuerdo().getActivo());
+
+        boolean duplicadoActivo = false;
+        if (esBorrador && tieneDestinatarios && contrato.getTipoAcuerdo() != null) {
+            List<Long> idsDestinatarios = firmas.stream()
+                    .filter(f -> f.getRolParte() == RolParteContrato.DESTINATARIO
+                            || f.getRolParte() == RolParteContrato.DIRECTOR_DESTINATARIO)
+                    .map(FirmaContrato::getIdMiembro)
+                    .distinct()
+                    .toList();
+            duplicadoActivo = !contratoRepository
+                    .findMiembrosConContratoActivo(
+                            idProyecto,
+                            contrato.getTipoAcuerdo().getIdTipoAcuerdo(),
+                            idsDestinatarios)
+                    .isEmpty();
+        }
+
+        String motivoNoEmitible = null;
+        if (!esDirector) {
+            motivoNoEmitible = "SIN_PERMISO";
+        } else if (!esBorrador) {
+            motivoNoEmitible = "CONTRATO_NO_BORRADOR";
+        } else if (!proyectoApto) {
+            motivoNoEmitible = "PROYECTO_NO_APTO_PARA_CONTRATO";
+        } else if (!tieneDestinatarios) {
+            motivoNoEmitible = "CONTRATO_SIN_DESTINATARIOS";
+        } else if (!textoValido) {
+            motivoNoEmitible = "CONTRATO_TEXTO_INVALIDO";
+        } else if (!tipoActivo) {
+            motivoNoEmitible = "TIPO_ACUERDO_INVALIDO";
+        } else if (duplicadoActivo) {
+            motivoNoEmitible = "CONTRATO_DUPLICADO_ACTIVO";
+        }
+
+        boolean puedeEmitir = esDirector && motivoNoEmitible == null;
 
         boolean proyectoEliminable =
                 contrato.getProyecto().getEstado() != EstadoProyecto.FINALIZADO
@@ -155,8 +210,8 @@ public class ObtenerContratoService {
         String motivoNoModificable = null;
         if (!esDirector) {
             motivoNoModificable = "SIN_PERMISO";
-        } else if (!estadoApto) {
-            motivoNoModificable = "CONTRATO_NO_PENDIENTE_FIRMA";
+        } else if (!estadoEditable) {
+            motivoNoModificable = "CONTRATO_NO_EDITABLE";
         } else if (!proyectoApto) {
             motivoNoModificable = "PROYECTO_NO_APTO_PARA_CONTRATO";
         } else if (firmasRegistradas) {
@@ -170,6 +225,8 @@ public class ObtenerContratoService {
                 idMiembroActivo,
                 puedeModificarse,
                 motivoNoModificable,
+                puedeEmitir,
+                motivoNoEmitible,
                 puedeFirmar,
                 puedeRechazar,
                 puedeEliminar,

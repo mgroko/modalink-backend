@@ -1,6 +1,6 @@
 package org.mgroko.backend.contratos.servicio;
 
-import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
 import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +25,7 @@ public class PrevisualizarModificacionContratoService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idContrato,
-            ModificarContratoRequest request) {
+            GuardarContratoRequest request) {
 
         ContratoModificacionContextoService.ContextoModificacion contexto =
                 contextoService.cargarParaPreview(

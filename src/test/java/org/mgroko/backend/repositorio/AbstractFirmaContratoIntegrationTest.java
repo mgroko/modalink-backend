@@ -3,9 +3,7 @@ package org.mgroko.backend.repositorio;
 import java.time.LocalDate;
 import java.util.List;
 
-import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
-import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
-import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.ContratoEvento;
 import org.mgroko.backend.modelo.FirmaContrato;
@@ -37,9 +35,6 @@ abstract class AbstractFirmaContratoIntegrationTest
 
     @PersistenceContext
     protected EntityManager em;
-
-    @Autowired
-    protected GenerarContratoService generarContratoService;
 
     @Autowired
     protected ContratoVersionRepository contratoVersionRepository;
@@ -141,14 +136,13 @@ abstract class AbstractFirmaContratoIntegrationTest
 
         em.flush();
 
-        ContratoGeneradoResponse response = generarContratoService.generar(
+        ContratoDetalleResponse response = crearContratoPendiente(
                 director.getIdUsuario(),
                 perfilDirector.getIdPerfil(),
                 proyecto.getIdProyecto(),
-                new GenerarContratoRequest(
-                        tipo.getIdTipoAcuerdo(),
-                        List.of(miembroProyecto.getIdMiembro()),
-                        List.of("Cláusula UC-55")));
+                tipo.getIdTipoAcuerdo(),
+                List.of(miembroProyecto.getIdMiembro()),
+                List.of("Cláusula UC-55"));
 
         em.flush();
         em.clear();

@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.mgroko.backend.contratos.dto.ConflictoContratoResponse;
-import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
 import org.mgroko.backend.contratos.exception.ContratoNoEncontradoException;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.contratos.exception.ContratoNoModificableException;
@@ -30,9 +30,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Carga y valida el contexto de UC-53. Reutiliza las validaciones de acceso de
- * UC-39 y agrega las reglas propias de la modificacion: estado, firmas
- * registradas, destinatarios y duplicados activos.
+ * Carga y valida el contexto para modificar un contrato en BORRADOR o
+ * PENDIENTE_FIRMA.
+ *
+ * <p>En borrador se permite guardar datos incompletos y no se notifica. En
+ * PENDIENTE_FIRMA se conservan las reglas de UC-53 y los conflictos bloquean el
+ * guardado.</p>
  */
 @Service
 public class ContratoModificacionContextoService {
@@ -43,6 +46,7 @@ public class ContratoModificacionContextoService {
     private final MiembroProyectoRepository miembroRepository;
     private final TipoAcuerdoContratoRepository tipoAcuerdoRepository;
     private final GeneradorTextoContratoService generadorTextoService;
+    private final ContratoTextoResolverService textoResolverService;
 
     public ContratoModificacionContextoService(
             ContratoAccesoService accesoService,
@@ -50,13 +54,15 @@ public class ContratoModificacionContextoService {
             FirmaContratoRepository firmaContratoRepository,
             MiembroProyectoRepository miembroRepository,
             TipoAcuerdoContratoRepository tipoAcuerdoRepository,
-            GeneradorTextoContratoService generadorTextoService) {
+            GeneradorTextoContratoService generadorTextoService,
+            ContratoTextoResolverService textoResolverService) {
         this.accesoService = accesoService;
         this.contratoRepository = contratoRepository;
         this.firmaContratoRepository = firmaContratoRepository;
         this.miembroRepository = miembroRepository;
         this.tipoAcuerdoRepository = tipoAcuerdoRepository;
         this.generadorTextoService = generadorTextoService;
+        this.textoResolverService = textoResolverService;
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +71,7 @@ public class ContratoModificacionContextoService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idContrato,
-            ModificarContratoRequest request) {
+            GuardarContratoRequest request) {
         return cargar(idUsuario, idPerfilActivo, idProyecto, idContrato, request, false);
     }
 
@@ -75,7 +81,7 @@ public class ContratoModificacionContextoService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idContrato,
-            ModificarContratoRequest request) {
+            GuardarContratoRequest request) {
         return cargar(idUsuario, idPerfilActivo, idProyecto, idContrato, request, true);
     }
 
@@ -84,7 +90,7 @@ public class ContratoModificacionContextoService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idContrato,
-            ModificarContratoRequest request,
+            GuardarContratoRequest request,
             boolean bloquear) {
 
         ContratoAccesoService.ContextoAcceso acceso =
@@ -101,10 +107,11 @@ public class ContratoModificacionContextoService {
             throw new ContratoNoEncontradoException(idContrato);
         }
 
-        if (contrato.getEstado() != EstadoContrato.PENDIENTE_FIRMA) {
+        if (contrato.getEstado() != EstadoContrato.BORRADOR
+                && contrato.getEstado() != EstadoContrato.PENDIENTE_FIRMA) {
             throw new ContratoNoModificableException(
-                    "CONTRATO_NO_PENDIENTE_FIRMA",
-                    "Solo se puede modificar un contrato en estado PENDIENTE_FIRMA.");
+                    "CONTRATO_NO_EDITABLE",
+                    "Solo se puede modificar un contrato en estado BORRADOR o PENDIENTE_FIRMA.");
         }
 
         Proyecto proyecto = contrato.getProyecto();
@@ -162,12 +169,12 @@ public class ContratoModificacionContextoService {
         }
 
         List<MiembroProyecto> destinatarios = new ArrayList<>();
-        List<ConflictoContratoResponse> conflictos = new ArrayList<>();
+        List<ConflictoContratoResponse> invalidos = new ArrayList<>();
 
         for (Long idMiembro : ids) {
             MiembroProyecto miembro = miembrosPorId.get(idMiembro);
             if (miembro == null) {
-                conflictos.add(new ConflictoContratoResponse(
+                invalidos.add(new ConflictoContratoResponse(
                         "DESTINATARIO_INVALIDO",
                         idMiembro,
                         null,
@@ -178,6 +185,14 @@ public class ContratoModificacionContextoService {
             }
         }
 
+        if (!invalidos.isEmpty()) {
+            throw new ContratoNoGenerableException(
+                    "DESTINATARIO_INVALIDO",
+                    "La seleccion contiene miembros invalidos para este proyecto.",
+                    invalidos);
+        }
+
+        List<ConflictoContratoResponse> conflictos = new ArrayList<>();
         List<Long> idsValidos = destinatarios.stream()
                 .map(MiembroProyecto::getIdMiembro)
                 .toList();
@@ -190,7 +205,10 @@ public class ContratoModificacionContextoService {
                     "Debe seleccionar al menos un miembro destinatario."));
         } else {
             List<Long> idsDuplicados = contratoRepository
-                    .findMiembrosConContratoActivo(idProyecto, tipo.getIdTipoAcuerdo(), idsValidos);
+                    .findMiembrosConContratoActivo(
+                            idProyecto,
+                            tipo.getIdTipoAcuerdo(),
+                            idsValidos);
 
             for (Long idMiembro : idsDuplicados) {
                 MiembroProyecto miembro = miembrosPorId.get(idMiembro);
@@ -205,18 +223,19 @@ public class ContratoModificacionContextoService {
             }
         }
 
-        String texto;
-        if (request.texto() != null && !request.texto().isBlank()) {
-            texto = request.texto();
-            generadorTextoService.validarTexto(texto);
-        } else {
-            texto = generadorTextoService.generar(
-                    proyecto,
-                    tipo,
-                    emisor,
-                    destinatarios,
-                    request.clausulasAdicionales());
-        }
+        boolean sinEntradaDeTexto = request.modoTexto() == null
+                && request.texto() == null
+                && request.clausulasAdicionales() == null;
+
+        String texto = sinEntradaDeTexto
+                ? contrato.getTexto()
+                : textoResolverService.resolver(
+                        proyecto,
+                        tipo,
+                        emisor,
+                        destinatarios,
+                        request,
+                        contrato.getEstado() == EstadoContrato.BORRADOR);
 
         String nombre = resolverNombre(contrato, proyecto, tipo, request.nombre());
         String descripcion = request.descripcion() != null
@@ -244,7 +263,7 @@ public class ContratoModificacionContextoService {
             String nombreSolicitado) {
 
         if (nombreSolicitado != null && !nombreSolicitado.isBlank()) {
-            return nombreSolicitado;
+            return nombreSolicitado.trim();
         }
 
         boolean cambioTipo = contrato.getTipoAcuerdo() == null

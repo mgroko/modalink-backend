@@ -25,8 +25,8 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 
 **Reglas y restricciones:**
 
-- Por defecto se muestran los estados **Pendiente de firma**, **Activo**, **Rechazado por las partes**, **Cancelado** y **Eliminado**.
-- El estado **Borrador** solo se ve si lo seleccionás en **Estados avanzados**.
+- Por defecto se muestran los estados **Borrador**, **Pendiente de firma**, **Activo**, **Rechazado por las partes**, **Cancelado** y **Eliminado**.
+- Los borradores solo son visibles para el Director del proyecto; las partes no los ven hasta que se emiten.
 - Los contratos eliminados se incluyen por defecto y se marcan como **Eliminado**.
 - Si no seleccionás estados, se aplican los predeterminados.
 - La fecha **Desde** no puede ser posterior a **Hasta**.
@@ -116,9 +116,9 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 
 [CAPTURA: detalle-contrato - datos, texto, partes y bloque Tu firma]
 
-## 12.4. Generar un contrato
+## 12.4. Crear un contrato en borrador
 
-**Objetivo:** crear un contrato a partir de una plantilla y enviarlo a las partes.
+**Objetivo:** preparar un contrato, editarlo con tranquilidad y emitirlo recién cuando esté listo.
 
 **Quién puede hacerlo:** Director activo del proyecto, en proyectos **Publicados** o **Confirmados** con al menos un miembro activo.
 
@@ -126,24 +126,27 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 
 1. Abrí el proyecto y entrá a **Contratos**.
 2. Hacé clic en **Nuevo contrato**.
-3. En el paso **Datos**, elegí el **Tipo de acuerdo**.
+3. En el paso **Datos**, elegí el **Tipo de acuerdo**, escribí el **Nombre** y la **Descripción**.
 4. En **Destinatarios (miembros activos)**, seleccioná una o varias personas. Podés usar **Seleccionar todos** o **Deseleccionar todos**.
-5. Hacé clic en **Continuar al borrador**.
-6. En el paso **Borrador**, revisá el texto generado.
-7. Si querés, agregá **Cláusulas adicionales (opcional)** con **Agregar cláusula**.
-8. Hacé clic en **Emitir contrato**.
+5. Elegí el modo de texto:
+   - **Regenerar desde plantilla**: el sistema arma el texto con la plantilla y las cláusulas adicionales.
+   - **Editar texto final**: escribís o modificás el texto directamente.
+6. Hacé clic en **Guardar borrador**.
+7. El contrato queda en estado **Borrador**. Podés volver a abrirlo, cambiar nombre, descripción, destinatarios o texto y volver a guardar.
+8. Cuando esté listo, hacé clic en **Emitir contrato**.
 
-**Resultado esperado:** ves **Contrato emitido** con el tipo, el estado, la versión, la emisión y las partes. Cada parte recibe una notificación.
+**Resultado esperado:** al guardar, ves el contrato en estado **Borrador** y no se notifica a nadie. Al emitir, pasa a **Pendiente de firma** y cada parte recibe una notificación.
 
 **Reglas y restricciones:**
 
-- El proyecto debe tener al menos un miembro activo.
-- El tipo de acuerdo debe estar activo.
-- Los destinatarios deben ser miembros activos del proyecto.
-- No se puede generar un contrato para alguien que ya tiene un contrato **Activo** del mismo tipo en el proyecto.
-- La previsualización no guarda el contrato.
-- El contrato se emite en estado **Pendiente de firma**.
+- El borrador puede estar incompleto: podés guardarlo sin destinatarios o sin texto.
+- Para emitir necesitás al menos un destinatario activo y un texto no vacío.
+- El tipo de acuerdo debe estar activo y los destinatarios deben ser miembros activos del proyecto.
+- No se puede emitir un contrato para alguien que ya tiene un contrato **Activo** del mismo tipo en el proyecto.
+- La previsualización es opcional y no guarda cambios.
+- El contrato recién se emite cuando usás **Emitir contrato**.
 - El Director queda registrado como firmante al emitir.
+- El nombre admite hasta 50 caracteres; la descripción, hasta 200; el texto final, hasta 100.000.
 - Cada cláusula adicional admite hasta 1.000 caracteres.
 
 **Errores frecuentes:**
@@ -156,7 +159,8 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 | “El tipo de acuerdo no existe o no está activo.” | El tipo fue desactivado. | Elegí otro tipo. |
 | “Escribí una cláusula antes de agregarla.” | La cláusula está vacía. | Escribila. |
 | “La cláusula no puede superar los 1000 caracteres.” | La cláusula es demasiado larga. | Acortala. |
-| “No se pudo generar el contrato.” | Problema de conexión. | Volvé a intentar. |
+| “No se pudo guardar el contrato.” | Problema de conexión. | Volvé a intentar. |
+| “No se pudo emitir el contrato.” | Problema de conexión o datos incompletos. | Revisá destinatarios y texto, y volvé a intentar. |
 
 [CAPTURA: generar-contrato-datos - tipo de acuerdo y destinatarios]
 [CAPTURA: generar-contrato-borrador - texto y cláusulas adicionales]
@@ -166,7 +170,7 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 
 **Objetivo:** corregir el tipo, los destinatarios, el nombre, la descripción o el texto antes de que se firme.
 
-**Quién puede hacerlo:** Director activo del proyecto, con el contrato **Pendiente de firma**, el proyecto **Publicado** o **Confirmado** y sin firmas registradas.
+**Quién puede hacerlo:** Director activo del proyecto, con el contrato en **Borrador** o **Pendiente de firma**, el proyecto **Publicado** o **Confirmado** y sin firmas registradas.
 
 **Pasos:**
 
@@ -175,29 +179,31 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 3. Elegí el modo de texto:
    - **Editar texto final**: modificá el texto directamente.
    - **Regenerar desde plantilla**: agregá cláusulas y regenerá el texto.
-4. Hacé clic en **Previsualizar cambios**.
-5. Si no hay conflictos, hacé clic en **Guardar cambios** y confirmá.
+4. Hacé clic en **Guardar cambios**.
+5. Si querés revisar antes, usá **Previsualizar cambios**. La previsualización es opcional.
 
-**Resultado esperado:** ves “Contrato modificado” y “Los cambios quedaron guardados y las partes fueron notificadas.” Se crea una nueva versión.
+**Resultado esperado:**
+- En **Borrador**: los cambios se guardan sin notificar a nadie.
+- En **Pendiente de firma**: se crea una nueva versión y se notifica a las partes actuales.
 
 **Reglas y restricciones:**
 
 - Solo el Director activo puede modificar.
-- El contrato debe estar **Pendiente de firma**.
+- El contrato debe estar en **Borrador** o **Pendiente de firma**.
 - No se puede modificar si alguna parte ya firmó o rechazó.
 - El proyecto debe estar **Publicado** o **Confirmado**.
-- Hay que previsualizar antes de guardar.
+- No es obligatorio previsualizar antes de guardar.
 - Los destinatarios deben seguir siendo miembros activos y no tener un contrato activo del mismo tipo.
 - El nombre admite hasta 50 caracteres; la descripción, hasta 200; el texto final, hasta 100.000.
 - En el modo **Editar texto final** no se aplican las cláusulas adicionales.
-- Al guardar se reconcilian las firmas y se notifica a las partes actuales.
+- Al guardar un contrato pendiente se reconcilian las firmas y se notifica a las partes actuales.
 
 **Errores frecuentes:**
 
 | Mensaje | Causa | Solución |
 |---|---|---|
 | “Solo el Director activo del proyecto puede modificar este contrato.” | Tu rol no lo permite. | Pedile la acción al Director. |
-| “El contrato ya no está pendiente de firma.” | Ya fue firmado o rechazado. | No se puede modificar. |
+| “El contrato no es editable.” | Ya fue firmado, rechazado, cancelado o eliminado. | No se puede modificar. |
 | “Alguna parte ya firmó o rechazó el contrato.” | Hay una firma registrada. | No se puede modificar. |
 | “El proyecto no está Publicado o Confirmado.” | El proyecto cambió de estado. | No se puede modificar. |
 | “Estos destinatarios actuales ya no están activos en el proyecto y no se conservarán.” | Hay miembros inactivos. | Revisá la selección. |
@@ -249,7 +255,7 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 
 | Estado | Significado | Acciones habituales |
 |---|---|---|
-| **Borrador** | El contrato se está preparando y todavía no se emitió. | Visible solo con el filtro avanzado. |
+| **Borrador** | El contrato se está preparando y todavía no se emitió. | Visible para el Director; editar, emitir o eliminar. |
 | **Pendiente de firma** | Fue emitido y espera las firmas. | Firmar, rechazar, modificar o eliminar. |
 | **Activo** | Todas las partes activas firmaron. | Consultar. |
 | **Rechazado por las partes** | Alguien rechazó el contrato. | Consultar el motivo. |

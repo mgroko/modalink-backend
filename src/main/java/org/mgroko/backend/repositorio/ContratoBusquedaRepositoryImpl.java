@@ -60,7 +60,13 @@ public class ContratoBusquedaRepositoryImpl implements ContratoBusquedaRepositor
                 root.get("tipoAcuerdo").get("idTipoAcuerdo"),
                 root.get("tipoAcuerdo").get("codigo"),
                 root.get("tipoAcuerdo").get("nombre"),
-                root.get("miembroEmisor").get("idMiembro")));
+                root.get("miembroEmisor").get("idMiembro"),
+                cb.selectCase()
+                        .when(cb.and(
+                                cb.isNotNull(root.get("texto")),
+                                cb.notEqual(cb.trim(root.<String>get("texto")), "")),
+                                true)
+                        .otherwise(false)));
 
         Expression<LocalDateTime> fechaOrden = cb.coalesce(
                 root.<LocalDateTime>get("fechaEmision"),

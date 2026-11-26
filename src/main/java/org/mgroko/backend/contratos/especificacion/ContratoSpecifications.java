@@ -10,6 +10,7 @@ import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.FirmaContrato;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
+import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.modelo.enums.EstadoFirmaContrato;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -132,7 +133,9 @@ public final class ContratoSpecifications {
 
         return cb.or(
                 conDirectorActivo(query, cb, root, idPerfilActivo),
-                conParteFirmante(query, cb, root, idPerfilActivo));
+                cb.and(
+                        cb.notEqual(root.get("estado"), EstadoContrato.BORRADOR),
+                        conParteFirmante(query, cb, root, idPerfilActivo)));
     }
 
     private static Predicate conDirectorActivo(
@@ -201,6 +204,7 @@ public final class ContratoSpecifications {
                         EstadoParticipacion.ACTIVO),
                 cb.equal(firma.get("estadoFirma"),
                         EstadoFirmaContrato.PENDIENTE),
+                cb.notEqual(root.get("estado"), EstadoContrato.BORRADOR),
                 // Solo contratos realmente accionables: un proyecto finalizado
                 // o cancelado conserva firmas pendientes historicas que no se
                 // pueden firmar.

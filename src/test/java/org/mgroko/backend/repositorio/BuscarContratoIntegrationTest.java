@@ -13,13 +13,13 @@ import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
-import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
-import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
+import org.mgroko.backend.contratos.dto.ModoTextoContrato;
 import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoFiltroInvalidoException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.CrearContratoBorradorService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
-import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerContratoService;
@@ -61,7 +61,7 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     private EntityManager em;
 
     @Autowired
-    private GenerarContratoService generarContratoService;
+    private CrearContratoBorradorService crearContratoBorradorService;
 
     @Autowired
     private BuscarContratoService buscarContratoService;
@@ -143,6 +143,59 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(comoSegundoDirector.totalElementos()).isEqualTo(1);
         assertThat(comoSegundoDirector.contenido().get(0).miEstadoFirma()).isNull();
         assertThat(comoSegundoDirector.contenido().get(0).puedeModificar()).isTrue();
+    }
+
+    @Test
+    void borradorSoloEsVisibleParaElDirector() {
+        Datos datos = crearProyectoConContrato();
+
+        ContratoDetalleResponse borrador = crearContratoBorradorService.crear(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                new GuardarContratoRequest(
+                        datos.tipo().getIdTipoAcuerdo(),
+                        List.of(datos.miembroProyecto().getIdMiembro()),
+                        List.of(),
+                        "TEXTO DEL BORRADOR",
+                        "Borrador visible",
+                        "Solo para el director",
+                        ModoTextoContrato.MANUAL));
+
+        em.flush();
+        em.clear();
+
+        PaginaResponse<ContratoBusquedaResponse> comoDirector =
+                buscarContratoService.buscar(
+                        datos.director().getIdUsuario(),
+                        datos.perfilDirector().getIdPerfil(),
+                        filtroVacio(),
+                        0,
+                        20);
+
+        assertThat(comoDirector.contenido())
+                .anyMatch(c -> borrador.idContrato().equals(c.idContrato())
+                        && "BORRADOR".equals(c.estado())
+                        && c.puedeModificar()
+                        && c.puedeEmitir());
+
+        PaginaResponse<ContratoBusquedaResponse> comoMiembro =
+                buscarContratoService.buscar(
+                        datos.miembro().getIdUsuario(),
+                        datos.perfilMiembro().getIdPerfil(),
+                        filtroVacio(),
+                        0,
+                        20);
+
+        assertThat(comoMiembro.contenido())
+                .noneMatch(c -> borrador.idContrato().equals(c.idContrato()));
+
+        assertThatThrownBy(() -> obtenerContratoService.obtener(
+                datos.miembro().getIdUsuario(),
+                datos.perfilMiembro().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                borrador.idContrato()))
+                .isInstanceOf(AccesoDenegadoProyectoException.class);
     }
 
     @Test
@@ -425,7 +478,7 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
-    void estadosPorDefectoExcluyenBorradorYSePuedenPedirExplicitamente() {
+    void estadosPorDefectoIncluyenBorradorYSePuedenPedirExplicitamente() {
         Datos datos = crearProyectoConContrato();
 
         Contrato borrador = Contrato.builder()
@@ -449,10 +502,10 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector(),
                 filtroVacio());
 
-        assertThat(porDefecto.totalElementos()).isEqualTo(1);
+        assertThat(porDefecto.totalElementos()).isEqualTo(2);
         assertThat(porDefecto.contenido())
                 .extracting(ContratoBusquedaResponse::estado)
-                .doesNotContain("BORRADOR");
+                .contains("PENDIENTE_FIRMA", "BORRADOR");
 
         PaginaResponse<ContratoBusquedaResponse> explicitos = buscar(
                 datos.director(),
@@ -853,16 +906,13 @@ class BuscarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
 
         em.flush();
 
-        GenerarContratoRequest request = new GenerarContratoRequest(
-                tipo.getIdTipoAcuerdo(),
-                List.of(miembroProyecto.getIdMiembro()),
-                List.of("Cláusula UC-68"));
-
-        ContratoGeneradoResponse response = generarContratoService.generar(
+        ContratoDetalleResponse response = crearContratoPendiente(
                 director.getIdUsuario(),
                 perfilDirector.getIdPerfil(),
                 proyecto.getIdProyecto(),
-                request);
+                tipo.getIdTipoAcuerdo(),
+                List.of(miembroProyecto.getIdMiembro()),
+                List.of("Cláusula UC-68"));
 
         em.flush();
         em.clear();

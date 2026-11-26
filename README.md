@@ -410,9 +410,11 @@ Reglas generales de publicaciones:
 | Método | Endpoint | Descripción |
 |---|---|---|
 | `GET` | `/proyectos/{idProyecto}/contratos/opciones` | Tipos de acuerdo y destinatarios |
-| `POST` | `/proyectos/{idProyecto}/contratos/previsualizar` | Previsualizar contrato |
-| `POST` | `/proyectos/{idProyecto}/contratos` | Generar contrato |
+| `POST` | `/proyectos/{idProyecto}/contratos/previsualizar` | Previsualizar contrato (opcional) |
+| `POST` | `/proyectos/{idProyecto}/contratos` | Crear contrato en borrador |
+| `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/emitir` | Emitir borrador y notificar a las partes |
 | `GET/PUT/DELETE` | `/proyectos/{idProyecto}/contratos/{idContrato}` | Consultar, modificar o eliminar |
+| `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/previsualizar` | Previsualizar cambios (opcional) |
 | `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/firmar` | Firmar contrato |
 | `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/rechazar` | Rechazar contrato |
 | `GET` | `/contratos/buscar` | Búsqueda global de contratos |

@@ -52,6 +52,23 @@ public class ContratoContextoService {
             Long idProyecto,
             Long idTipoAcuerdo,
             List<Long> idsMiembro) {
+        return cargar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto,
+                idTipoAcuerdo,
+                idsMiembro,
+                false);
+    }
+
+    @Transactional(readOnly = true)
+    public ContextoContrato cargar(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            Long idTipoAcuerdo,
+            List<Long> idsMiembro,
+            boolean permitirSinDestinatarios) {
 
         ContratoAccesoService.ContextoAcceso acceso =
                 accesoService.cargar(idUsuario, idPerfilActivo, idProyecto);
@@ -83,10 +100,19 @@ public class ContratoContextoService {
                         .distinct()
                         .toList();
 
+        List<ConflictoContratoResponse> conflictos = new ArrayList<>();
+
         if (ids.isEmpty()) {
-            throw new ContratoNoGenerableException(
+            if (!permitirSinDestinatarios) {
+                throw new ContratoNoGenerableException(
+                        "CONTRATO_SIN_DESTINATARIOS",
+                        "Debe seleccionar al menos un miembro destinatario.");
+            }
+            conflictos.add(new ConflictoContratoResponse(
                     "CONTRATO_SIN_DESTINATARIOS",
-                    "Debe seleccionar al menos un miembro destinatario.");
+                    null,
+                    null,
+                    "Debe seleccionar al menos un miembro destinatario."));
         }
 
         Map<Long, MiembroProyecto> miembrosPorId = new LinkedHashMap<>();
@@ -95,12 +121,12 @@ public class ContratoContextoService {
         }
 
         List<MiembroProyecto> destinatarios = new ArrayList<>();
-        List<ConflictoContratoResponse> conflictos = new ArrayList<>();
+        List<ConflictoContratoResponse> invalidos = new ArrayList<>();
 
         for (Long idMiembro : ids) {
             MiembroProyecto miembro = miembrosPorId.get(idMiembro);
             if (miembro == null) {
-                conflictos.add(new ConflictoContratoResponse(
+                invalidos.add(new ConflictoContratoResponse(
                         "DESTINATARIO_INVALIDO",
                         idMiembro,
                         null,
@@ -111,26 +137,28 @@ public class ContratoContextoService {
             }
         }
 
-        if (!conflictos.isEmpty()) {
+        if (!invalidos.isEmpty()) {
             throw new ContratoNoGenerableException(
                     "DESTINATARIO_INVALIDO",
                     "La seleccion contiene miembros invalidos para este proyecto.",
-                    conflictos);
+                    invalidos);
         }
 
-        List<Long> idsDuplicados = contratoRepository
-                .findMiembrosConContratoActivo(idProyecto, idTipoAcuerdo, ids);
+        if (!ids.isEmpty()) {
+            List<Long> idsDuplicados = contratoRepository
+                    .findMiembrosConContratoActivo(idProyecto, idTipoAcuerdo, ids);
 
-        for (Long idMiembro : idsDuplicados) {
-            MiembroProyecto miembro = miembrosPorId.get(idMiembro);
-            String nombre = miembro != null
-                    ? ContratoMapper.nombreCompleto(miembro.getPerfil())
-                    : "Miembro " + idMiembro;
-            conflictos.add(new ConflictoContratoResponse(
-                    "CONTRATO_DUPLICADO_ACTIVO",
-                    idMiembro,
-                    nombre,
-                    nombre + " ya tiene un contrato ACTIVO de este tipo en el proyecto."));
+            for (Long idMiembro : idsDuplicados) {
+                MiembroProyecto miembro = miembrosPorId.get(idMiembro);
+                String nombre = miembro != null
+                        ? ContratoMapper.nombreCompleto(miembro.getPerfil())
+                        : "Miembro " + idMiembro;
+                conflictos.add(new ConflictoContratoResponse(
+                        "CONTRATO_DUPLICADO_ACTIVO",
+                        idMiembro,
+                        nombre,
+                        nombre + " ya tiene un contrato ACTIVO de este tipo en el proyecto."));
+            }
         }
 
         return new ContextoContrato(

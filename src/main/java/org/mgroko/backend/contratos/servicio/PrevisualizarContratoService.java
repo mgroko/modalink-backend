@@ -1,25 +1,25 @@
 package org.mgroko.backend.contratos.servicio;
 
-import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Genera el borrador del contrato sin persistirlo. Devuelve el texto y los
- * conflictos detectados para que el director pueda volver al paso 3 de UC-39.
+ * Genera el texto del contrato sin persistirlo. La previsualizacion es
+ * opcional y nunca es requisito para guardar un borrador o emitirlo.
  */
 @Service
 public class PrevisualizarContratoService {
 
     private final ContratoContextoService contextoService;
-    private final GeneradorTextoContratoService generadorTextoService;
+    private final ContratoTextoResolverService textoResolverService;
 
     public PrevisualizarContratoService(
             ContratoContextoService contextoService,
-            GeneradorTextoContratoService generadorTextoService) {
+            ContratoTextoResolverService textoResolverService) {
         this.contextoService = contextoService;
-        this.generadorTextoService = generadorTextoService;
+        this.textoResolverService = textoResolverService;
     }
 
     @Transactional(readOnly = true)
@@ -27,18 +27,22 @@ public class PrevisualizarContratoService {
             Long idUsuario,
             Long idPerfilActivo,
             Long idProyecto,
-            GenerarContratoRequest request) {
+            GuardarContratoRequest request) {
 
         ContratoContextoService.ContextoContrato contexto = contextoService.cargar(
                 idUsuario,
                 idPerfilActivo,
                 idProyecto,
                 request.idTipoAcuerdo(),
-                request.idsMiembro());
+                request.idsMiembro(),
+                true);
 
-        String texto = generadorTextoService.generar(
-                contexto,
-                request.clausulasAdicionales());
+        String texto = textoResolverService.resolver(
+                contexto.proyecto(),
+                contexto.tipoAcuerdo(),
+                contexto.emisor(),
+                contexto.destinatarios(),
+                request);
 
         return new PrevisualizacionContratoResponse(
                 texto,

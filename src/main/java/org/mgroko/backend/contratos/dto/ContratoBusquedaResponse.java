@@ -23,6 +23,7 @@ public record ContratoBusquedaResponse(
         String miEstadoFirma,
         LocalDateTime miFechaFirma,
         boolean puedeModificar,
+        boolean puedeEmitir,
         boolean puedeFirmar,
         boolean puedeRechazar,
         int firmados,

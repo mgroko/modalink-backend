@@ -7,11 +7,14 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
-import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
+import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
+import org.mgroko.backend.contratos.dto.ModoTextoContrato;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
-import org.mgroko.backend.contratos.servicio.GenerarContratoService;
+import org.mgroko.backend.contratos.servicio.CrearContratoBorradorService;
+import org.mgroko.backend.contratos.servicio.EmitirContratoService;
+import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.ObtenerOpcionesContratoService;
 import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.ContratoEvento;
@@ -59,7 +62,13 @@ class GenerarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     private EntityManager em;
 
     @Autowired
-    private GenerarContratoService generarContratoService;
+    private CrearContratoBorradorService crearContratoBorradorService;
+
+    @Autowired
+    private EmitirContratoService emitirContratoService;
+
+    @Autowired
+    private ModificarContratoService modificarContratoService;
 
     @Autowired
     private ObtenerOpcionesContratoService obtenerOpcionesContratoService;
@@ -99,16 +108,13 @@ class GenerarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(opciones.tiposAcuerdo()).isNotEmpty();
         assertThat(opciones.miembros()).hasSize(2);
 
-        GenerarContratoRequest request = new GenerarContratoRequest(
-                datos.tipo().getIdTipoAcuerdo(),
-                List.of(datos.miembroProyecto().getIdMiembro()),
-                List.of("La parte cedente conserva el derecho de aprobar usos adicionales."));
-
-        ContratoGeneradoResponse response = generarContratoService.generar(
+        ContratoDetalleResponse response = crearContratoPendiente(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                request);
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.miembroProyecto().getIdMiembro()),
+                List.of("La parte cedente conserva el derecho de aprobar usos adicionales."));
 
         em.flush();
         em.clear();
@@ -188,16 +194,13 @@ class GenerarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     void generar_conDirectorComoDestinatario_loMarcaDirectorDestinatario() {
         Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
 
-        GenerarContratoRequest request = new GenerarContratoRequest(
-                datos.tipo().getIdTipoAcuerdo(),
-                List.of(datos.emisor().getIdMiembro()),
-                List.of());
-
-        ContratoGeneradoResponse response = generarContratoService.generar(
+        ContratoDetalleResponse response = crearContratoPendiente(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                request);
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.emisor().getIdMiembro()),
+                List.of());
 
         em.flush();
         em.clear();
@@ -214,16 +217,13 @@ class GenerarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     void generar_conContratoActivoDelMismoTipoYDestinatario_devuelveDuplicado() {
         Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
 
-        GenerarContratoRequest request = new GenerarContratoRequest(
-                datos.tipo().getIdTipoAcuerdo(),
-                List.of(datos.miembroProyecto().getIdMiembro()),
-                List.of());
-
-        ContratoGeneradoResponse primero = generarContratoService.generar(
+        ContratoDetalleResponse primero = crearContratoPendiente(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                request);
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.miembroProyecto().getIdMiembro()),
+                List.of());
 
         ContratoVersion version = contratoVersionRepository
                 .findFirstByContrato_IdContratoAndVersion(primero.idContrato(), 1)
@@ -260,11 +260,13 @@ class GenerarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(opciones.contratosActivos())
                 .anyMatch(a -> primero.idContrato().equals(a.idContrato()));
 
-        assertThatThrownBy(() -> generarContratoService.generar(
+        assertThatThrownBy(() -> crearContratoPendiente(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                request))
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.miembroProyecto().getIdMiembro()),
+                List.of()))
                 .isInstanceOf(ContratoNoGenerableException.class)
                 .extracting("codigo")
                 .isEqualTo("CONTRATO_DUPLICADO_ACTIVO");
@@ -274,16 +276,13 @@ class GenerarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     void generar_conProyectoNoApto_devuelveErrorDeNegocio() {
         Datos datos = crearProyecto(EstadoProyecto.BORRADOR);
 
-        GenerarContratoRequest request = new GenerarContratoRequest(
-                datos.tipo().getIdTipoAcuerdo(),
-                List.of(datos.miembroProyecto().getIdMiembro()),
-                List.of());
-
-        assertThatThrownBy(() -> generarContratoService.generar(
+        assertThatThrownBy(() -> crearContratoPendiente(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                request))
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.miembroProyecto().getIdMiembro()),
+                List.of()))
                 .isInstanceOf(ContratoNoGenerableException.class)
                 .extracting("codigo")
                 .isEqualTo("PROYECTO_NO_APTO_PARA_CONTRATO");
@@ -293,19 +292,256 @@ class GenerarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     void generar_conDestinatarioAjeno_devuelveErrorDeNegocio() {
         Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
 
-        GenerarContratoRequest request = new GenerarContratoRequest(
-                datos.tipo().getIdTipoAcuerdo(),
-                List.of(999_999L),
-                List.of());
-
-        assertThatThrownBy(() -> generarContratoService.generar(
+        assertThatThrownBy(() -> crearContratoPendiente(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                request))
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(999_999L),
+                List.of()))
                 .isInstanceOf(ContratoNoGenerableException.class)
                 .extracting("codigo")
                 .isEqualTo("DESTINATARIO_INVALIDO");
+    }
+
+    @Test
+    void crearBorrador_persisteSinEmitirNiNotificar() {
+        Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
+
+        GuardarContratoRequest request = new GuardarContratoRequest(
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.miembroProyecto().getIdMiembro()),
+                List.of(),
+                "TEXTO PERSONALIZADO",
+                "Contrato con nombre propio",
+                "Descripcion del borrador",
+                ModoTextoContrato.MANUAL);
+
+        ContratoDetalleResponse response = crearContratoBorradorService.crear(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                request);
+
+        em.flush();
+        em.clear();
+
+        assertThat(response.estado()).isEqualTo("BORRADOR");
+        assertThat(response.nombre()).isEqualTo("Contrato con nombre propio");
+        assertThat(response.descripcion()).isEqualTo("Descripcion del borrador");
+        assertThat(response.texto()).isEqualTo("TEXTO PERSONALIZADO");
+        assertThat(response.fechaEmision()).isNull();
+        assertThat(response.puedeModificarse()).isTrue();
+        assertThat(response.puedeEmitir()).isTrue();
+
+        Contrato contrato = em.find(Contrato.class, response.idContrato());
+        assertThat(contrato.getEstado()).isEqualTo(EstadoContrato.BORRADOR);
+        assertThat(contrato.getFechaEmision()).isNull();
+
+        List<ContratoEvento> eventos = contratoEventoRepository
+                .findByContrato_IdContratoOrderByIdEventoAsc(contrato.getIdContrato());
+        assertThat(eventos)
+                .extracting(ContratoEvento::getTipoEvento)
+                .containsExactly(TipoEventoContrato.CREADO);
+
+        assertThat(notificaciones(contrato.getIdContrato())).isEmpty();
+
+        List<FirmaContrato> firmas = firmaContratoRepository
+                .findByIdContratoOrderByIdMiembroAsc(contrato.getIdContrato());
+        assertThat(firmas).hasSize(1);
+        assertThat(firmas.get(0).getRolParte())
+                .isEqualTo(RolParteContrato.DESTINATARIO);
+        assertThat(firmas.get(0).getEstadoFirma())
+                .isEqualTo(EstadoFirmaContrato.PENDIENTE);
+    }
+
+    @Test
+    void emitirBorrador_creaFirmasEventoYNotificaciones() {
+        Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
+
+        GuardarContratoRequest request = new GuardarContratoRequest(
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.miembroProyecto().getIdMiembro()),
+                List.of("Clausula del borrador"),
+                null,
+                null,
+                null,
+                ModoTextoContrato.AUTO);
+
+        ContratoDetalleResponse borrador = crearContratoBorradorService.crear(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                request);
+
+        ContratoDetalleResponse emitido = emitirContratoService.emitir(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                borrador.idContrato());
+
+        em.flush();
+        em.clear();
+
+        assertThat(emitido.estado()).isEqualTo("PENDIENTE_FIRMA");
+        assertThat(emitido.fechaEmision()).isNotNull();
+
+        Contrato contrato = em.find(Contrato.class, emitido.idContrato());
+        assertThat(contrato.getEstado()).isEqualTo(EstadoContrato.PENDIENTE_FIRMA);
+        assertThat(contrato.getFechaEmision()).isNotNull();
+
+        List<FirmaContrato> firmas = firmaContratoRepository
+                .findByIdContratoOrderByIdMiembroAsc(contrato.getIdContrato());
+        assertThat(firmas).hasSize(2);
+        assertThat(firmas)
+                .extracting(FirmaContrato::getRolParte)
+                .containsExactlyInAnyOrder(
+                        RolParteContrato.DIRECTOR,
+                        RolParteContrato.DESTINATARIO);
+
+        List<ContratoEvento> eventos = contratoEventoRepository
+                .findByContrato_IdContratoOrderByIdEventoAsc(contrato.getIdContrato());
+        assertThat(eventos)
+                .extracting(ContratoEvento::getTipoEvento)
+                .containsExactly(TipoEventoContrato.CREADO, TipoEventoContrato.EMITIDO);
+
+        assertThat(notificaciones(contrato.getIdContrato()))
+                .hasSize(2)
+                .allMatch(n -> NotificacionService.TIPO_CONTRATO_PENDIENTE_FIRMA
+                        .equals(n.getTipo()));
+    }
+
+    @Test
+    void modificarBorrador_guardaSinEmitirNiNotificar() {
+        Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
+
+        ContratoDetalleResponse borrador = crearContratoBorradorService.crear(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                new GuardarContratoRequest(
+                        datos.tipo().getIdTipoAcuerdo(),
+                        List.of(datos.miembroProyecto().getIdMiembro()),
+                        List.of(),
+                        "TEXTO INICIAL",
+                        "Nombre inicial",
+                        "Descripcion inicial",
+                        ModoTextoContrato.MANUAL));
+
+        ContratoDetalleResponse actualizado = modificarContratoService.modificar(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                borrador.idContrato(),
+                new GuardarContratoRequest(
+                        datos.tipo().getIdTipoAcuerdo(),
+                        List.of(datos.miembroProyecto().getIdMiembro()),
+                        List.of(),
+                        "TEXTO ACTUALIZADO",
+                        "Nombre actualizado",
+                        "Descripcion actualizada",
+                        ModoTextoContrato.MANUAL));
+
+        em.flush();
+        em.clear();
+
+        assertThat(actualizado.estado()).isEqualTo("BORRADOR");
+        assertThat(actualizado.nombre()).isEqualTo("Nombre actualizado");
+        assertThat(actualizado.descripcion()).isEqualTo("Descripcion actualizada");
+        assertThat(actualizado.texto()).isEqualTo("TEXTO ACTUALIZADO");
+        assertThat(actualizado.versionActual()).isEqualTo(2);
+
+        Contrato contrato = em.find(Contrato.class, actualizado.idContrato());
+        assertThat(contrato.getEstado()).isEqualTo(EstadoContrato.BORRADOR);
+        assertThat(contrato.getFechaEmision()).isNull();
+
+        List<ContratoEvento> eventos = contratoEventoRepository
+                .findByContrato_IdContratoOrderByIdEventoAsc(contrato.getIdContrato());
+        assertThat(eventos)
+                .extracting(ContratoEvento::getTipoEvento)
+                .containsExactly(TipoEventoContrato.CREADO);
+
+        assertThat(notificaciones(contrato.getIdContrato())).isEmpty();
+    }
+
+    @Test
+    void modificarBorrador_soloNombre_conservaTexto() {
+        Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
+
+        ContratoDetalleResponse borrador = crearContratoBorradorService.crear(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                new GuardarContratoRequest(
+                        datos.tipo().getIdTipoAcuerdo(),
+                        List.of(datos.miembroProyecto().getIdMiembro()),
+                        List.of(),
+                        "TEXTO ORIGINAL",
+                        "Nombre inicial",
+                        "Descripcion inicial",
+                        ModoTextoContrato.MANUAL));
+
+        ContratoDetalleResponse actualizado = modificarContratoService.modificar(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                borrador.idContrato(),
+                new GuardarContratoRequest(
+                        datos.tipo().getIdTipoAcuerdo(),
+                        List.of(datos.miembroProyecto().getIdMiembro()),
+                        null,
+                        null,
+                        "Nombre nuevo",
+                        null,
+                        null));
+
+        em.flush();
+        em.clear();
+
+        assertThat(actualizado.nombre()).isEqualTo("Nombre nuevo");
+        assertThat(actualizado.descripcion()).isEqualTo("Descripcion inicial");
+        assertThat(actualizado.texto()).isEqualTo("TEXTO ORIGINAL");
+        assertThat(notificaciones(actualizado.idContrato())).isEmpty();
+    }
+
+    @Test
+    void emitirBorrador_sinDestinatarios_devuelveErrorDeNegocio() {
+        Datos datos = crearProyecto(EstadoProyecto.PUBLICADO);
+
+        GuardarContratoRequest request = new GuardarContratoRequest(
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null,
+                ModoTextoContrato.AUTO);
+
+        ContratoDetalleResponse borrador = crearContratoBorradorService.crear(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                request);
+
+        assertThatThrownBy(() -> emitirContratoService.emitir(
+                datos.director().getIdUsuario(),
+                datos.perfilDirector().getIdPerfil(),
+                datos.proyecto().getIdProyecto(),
+                borrador.idContrato()))
+                .isInstanceOf(ContratoNoGenerableException.class)
+                .extracting("codigo")
+                .isEqualTo("CONTRATO_SIN_DESTINATARIOS");
+    }
+
+    private List<Notificacion> notificaciones(Long idContrato) {
+        return em.createQuery("""
+                        SELECT n FROM Notificacion n
+                        WHERE n.entidadTipo = 'CONTRATO'
+                          AND n.entidadId = :idContrato
+                        ORDER BY n.idNotificacion
+                        """, Notificacion.class)
+                .setParameter("idContrato", idContrato)
+                .getResultList();
     }
 
     private Datos crearProyecto(EstadoProyecto estado) {

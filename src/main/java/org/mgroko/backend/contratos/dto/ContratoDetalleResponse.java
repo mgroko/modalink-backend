@@ -26,6 +26,8 @@ public record ContratoDetalleResponse(
         LocalDateTime miFechaFirma,
         boolean puedeModificarse,
         String motivoNoModificable,
+        boolean puedeEmitir,
+        String motivoNoEmitible,
         boolean puedeFirmar,
         boolean puedeRechazar,
         int firmados,
