@@ -326,6 +326,8 @@ Calendario y jornada:
 | `GET` | `/proyectos/buscar` | Buscar proyectos visibles |
 | `GET` | `/proyectos/propios` | Proyectos del perfil activo |
 | `GET` | `/proyectos/{idProyecto}` | Detalle del proyecto |
+| `GET` | `/proyectos/{idProyecto}/informe` | Informe ejecutivo de estado y salud del proyecto (solo director) |
+| `GET` | `/proyectos/{idProyecto}/informe/pdf` | Informe ejecutivo en PDF (solo director) |
 | `PUT` | `/proyectos/{idProyecto}` | Modificar proyecto |
 | `POST` | `/proyectos/{idProyecto}/publicar` | Publicar proyecto |
 | `POST` | `/proyectos/{idProyecto}/confirmar` | Confirmar proyecto y planificar |

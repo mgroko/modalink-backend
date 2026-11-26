@@ -37,15 +37,24 @@ public class ModaLinkPdfPageEvent extends PdfPageEventHelper {
 
     private final LocalDateTime impresoEn;
     private final String textoPie;
+    private final String textoIzquierda;
 
     private PdfTemplate totalHojas;
     private int ultimaHoja = 1;
 
     public ModaLinkPdfPageEvent(LocalDateTime impresoEn, String textoPie) {
+        this(impresoEn, textoPie, null);
+    }
+
+    public ModaLinkPdfPageEvent(
+            LocalDateTime impresoEn,
+            String textoPie,
+            String textoIzquierda) {
         this.impresoEn = impresoEn;
         this.textoPie = textoPie == null || textoPie.isBlank()
                 ? "ModaLink"
                 : textoPie;
+        this.textoIzquierda = textoIzquierda;
     }
 
     @Override
@@ -108,7 +117,9 @@ public class ModaLinkPdfPageEvent extends PdfPageEventHelper {
         ColumnText.showTextAligned(
                 canvas,
                 Element.ALIGN_LEFT,
-                new Phrase("Impreso el " + impresoEn.format(FECHA_HORA),
+                new Phrase(textoIzquierda != null && !textoIzquierda.isBlank()
+                                ? textoIzquierda
+                                : "Impreso el " + impresoEn.format(FECHA_HORA),
                         ModaLinkPdfEstilos.fuenteGris(
                                 TAMANIO_PIE, Font.NORMAL)),
                 izquierda,
