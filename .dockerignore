@@ -1,0 +1,11 @@
+.git
+.github
+.vscode
+.env
+.env.*
+uploads
+backups
+docs
+*.log
+target/*
+!target/*.jar

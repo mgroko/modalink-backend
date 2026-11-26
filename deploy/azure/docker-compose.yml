@@ -1,0 +1,111 @@
+name: modalink
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: modalink-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-modalink}
+      POSTGRES_USER: ${POSTGRES_USER:-modalink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+      PGTZ: ${TZ:-America/Argentina/Buenos_Aires}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Es el mismo esquema canónico que docs/3_diseño/ModaLinkBD.sql.
+      # Se usa la copia de test para evitar el carácter "ñ" en la ruta.
+      - ../../src/test/resources/ModaLinkBD.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks: [internal]
+
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/mgroko/modalink-backend:latest}
+    container_name: modalink-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-modalink}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-modalink}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SERVER_SHUTDOWN: graceful
+
+      JWT_SECRET: ${JWT_SECRET:?Definí JWT_SECRET en .env}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
+
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Definí ADMIN_EMAIL en .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Definí ADMIN_PASSWORD en .env}
+      ADMIN_DNI: ${ADMIN_DNI:-00000000}
+
+      FRONTEND_URL: ${SITE_URL:?Definí SITE_URL en .env}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${SITE_URL}/login/oauth2/code/google
+
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-Lax}
+
+      # Relativa a /app (WORKDIR del contenedor). El volumen está en /app/uploads.
+      # No usar una ruta absoluta: la URL pública se arma como "/" + upload-dir.
+      APP_STORAGE_UPLOAD_DIR: uploads
+      EMAIL_BASE_URL: ${SITE_URL}
+
+      NOTIFICACIONES_EMAIL_HABILITADO: ${NOTIFICACIONES_EMAIL_HABILITADO:-false}
+      NOTIFICACIONES_EMAIL_REMITENTE: ${NOTIFICACIONES_EMAIL_REMITENTE:-no-responder@modalink.local}
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-false}
+      # Si los emails están apagados, no chequees SMTP en /actuator/health:
+      # de lo contrario el healthcheck queda DOWN y Caddy no arranca.
+      MANAGEMENT_HEALTH_MAIL_ENABLED: ${MANAGEMENT_HEALTH_MAIL_ENABLED:-false}
+
+      APP_COLABORACION_AUTOMATICA_HABILITADA: ${APP_COLABORACION_AUTOMATICA_HABILITADA:-false}
+
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=50 -XX:+UseSerialGC -Djava.awt.headless=true --enable-native-access=ALL-UNNAMED}
+    volumes:
+      - uploads:/app/uploads
+    expose:
+      - "8080"
+    stop_grace_period: 30s
+    networks: [internal]
+
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/mgroko/modalink-frontend:latest}
+    container_name: modalink-web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Definí SITE_ADDRESS en .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal]
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
