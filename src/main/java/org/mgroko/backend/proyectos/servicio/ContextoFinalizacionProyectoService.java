@@ -155,17 +155,12 @@ public class ContextoFinalizacionProyectoService {
                     planificacion.getIdPlanificacion()));
         }
 
+        // UC-37 solo exige que las actividades existentes estén finalizadas o
+        // canceladas. Un proyecto puede cerrarse sin actividades; en ese caso
+        // la validación de calificaciones sigue aplicando a los miembros activos.
         List<Actividad> actividades = planificacion == null
                 ? List.of()
                 : actividadRepository.findByPlanificacionProyectoIdProyecto(idProyecto);
-
-        if (actividades.isEmpty()) {
-            bloqueos.add(new BloqueoFinalizacionResponse(
-                    "SIN_ACTIVIDADES",
-                    "El proyecto no tiene actividades en la planificación.",
-                    "PROYECTO",
-                    idProyecto));
-        }
 
         for (Actividad actividad : actividades) {
             if (actividad.getEstado() == EstadoActividad.PENDIENTE

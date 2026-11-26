@@ -202,7 +202,7 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Notas** | \- |
 | **Excepciones** | El director no calificó al equipo completo. |
 | **Salida** | unProyecto |
-| **Precondición** | Todas las actividades de la planificación de unProyecto deben estar en estado “finalizada”. El proyecto debe estar en estado confirmado. |
+| **Precondición** | Todas las actividades existentes de la planificación de unProyecto deben estar en estado “finalizada”. Si no hay actividades, la precondición se cumple. El proyecto debe estar en estado confirmado. |
 | **Postcondición** | Se actualizó unProyecto.estado a “Finalizado”. Se indexó unProyecto a HistorialProyecto de cada participante. |
 
 | Nombre | calificarMiembro(unPerfil, calificacion, resenia) |

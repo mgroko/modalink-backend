@@ -36,7 +36,7 @@ Abrí el perfil y usá **Reportar perfil**. No podés reportar tu propio perfil 
 Falta información básica: ubicación, fecha de entrega, moodboard y al menos un requerimiento general o de actividad.
 
 **¿Por qué no puedo confirmar mi proyecto?**
-El proyecto debe tener al menos una actividad, cada actividad debe tener integrantes activos asignados y los requerimientos deben estar cubiertos. La fecha de entrega debe ser posterior al inicio.
+Los requerimientos deben estar cubiertos y, si hay actividades, cada una debe tener integrantes activos asignados. La fecha de entrega debe ser posterior al inicio.
 
 **¿Qué pasa al confirmar un proyecto?**
 Se fija la fecha de inicio, se agendan las actividades y el proyecto pasa a **Confirmado**. No puede volver a **Publicado**.
@@ -161,7 +161,6 @@ No. Las calificaciones y reseñas no se editan ni se borran desde la interfaz.
 | “La información básica del proyecto está incompleta.” | Falta ubicación, fecha, moodboard o requerimiento. | Completala desde **Editar**. |
 | “El proyecto tiene información básica incompleta. Faltan: …” | El sistema indica los faltantes. | Completalos. |
 | “Solo se puede publicar un proyecto en estado Borrador.” | El proyecto ya no está en borrador. | No hace falta publicar. |
-| “El proyecto no tiene actividades en la planificación.” | No hay actividades para confirmar. | Agregá al menos una. |
 | “La actividad 'X' no tiene integrantes activos asignados.” | Falta asignar personal. | Asigná un integrante. |
 | “La actividad 'X' está en estado Pendiente y debe estar Finalizada o Cancelada.” | Quedan actividades abiertas. | Finalizalas o cancelalas. |
 | “No se puede modificar un proyecto en estado Finalizado.” | El proyecto ya cerró. | No se puede editar. |

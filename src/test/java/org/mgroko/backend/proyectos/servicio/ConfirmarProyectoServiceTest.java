@@ -227,6 +227,34 @@ class ConfirmarProyectoServiceTest {
                 .isEqualTo("DATOS_INCONSISTENTES");
     }
 
+    @Test
+    void confirmar_sinActividades_permiteConfirmarConCronogramaVacio() {
+        Proyecto proyecto = proyecto();
+        Planificacion planificacion = planificacion(proyecto);
+        ContextoConfirmacionProyectoService.Contexto contexto = contexto(
+                proyecto, planificacion, List.of());
+
+        when(contextoService.cargar(1L, 10L, 100L, true))
+                .thenReturn(contexto);
+        when(proyectoRepository.saveAndFlush(any(Proyecto.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(planificador.planificar(
+                eq(planificacion), anyList(), eq(AHORA)))
+                .thenReturn(new PlanificadorRecursosService.Resultado(
+                        Map.of(),
+                        Map.of(),
+                        new CalculoCpm(Map.of(), 0, 1440L, true, List.of())));
+        when(actividadRepository.saveAll(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.confirmar(1L, 10L, 100L);
+
+        assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.CONFIRMADO);
+        assertThat(proyecto.getFechaInicio()).isEqualTo(AHORA);
+        verify(eventPublisher).publishEvent(any(ProyectoConfirmadoEvent.class));
+        verify(actividadRepository).saveAll(List.of());
+    }
+
     private Proyecto proyecto() {
         return Proyecto.builder()
                 .idProyecto(100L)

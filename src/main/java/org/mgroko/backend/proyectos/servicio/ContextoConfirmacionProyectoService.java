@@ -147,17 +147,12 @@ public class ContextoConfirmacionProyectoService {
 
         List<Actividad> actividades = actividadRepository
                 .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
+        // UC-60 no exige actividades para confirmar: solo que los
+        // requerimientos estén completos. Las actividades que se agreguen
+        // después se agendan sobre el proyecto ya confirmado.
         List<Actividad> actividadesNoCanceladas = actividades.stream()
                 .filter(actividad -> actividad.getEstado() != EstadoActividad.CANCELADA)
                 .toList();
-
-        if (actividadesNoCanceladas.isEmpty()) {
-            bloqueos.add(new BloqueoConfirmacionResponse(
-                    "SIN_ACTIVIDADES",
-                    "El proyecto no tiene actividades en la planificación.",
-                    "PROYECTO",
-                    idProyecto));
-        }
 
         List<Long> idsActividades = actividadesNoCanceladas.stream()
                 .map(Actividad::getIdActividad)

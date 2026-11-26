@@ -663,8 +663,8 @@
   2. El actor envía el mensaje `unProyecto = obtenerProyecto(idProyecto)`.
   3. El actor solicita confirmar enviando `solicitarConfirmacionProyecto(unProyecto)`.
   4. **Bloque Alternativo (`alt`)**:
-     - `[el proyecto no tiene actividades en la planificación || requerimientos incompletos || falta de disponibilidad]`: El sistema retorna `excepcion()`.
-     - `[proyecto con actividades y requerimientos completos]`:
+     - `[requerimientos incompletos || falta de disponibilidad]`: El sistema retorna `excepcion()`.
+     - `[requerimientos completos]`:
        - El sistema retorna `solicitarConfirmacion()`.
        - **Bloque Opcional (`opt`)** `[el actor confirma la acción]`:
          - El actor envía el mensaje `confirmarProyecto(unProyecto)`.

@@ -230,15 +230,14 @@ class ContextoFinalizacionProyectoServiceTest {
     }
 
     @Test
-    void cargar_sinActividades_agregaBloqueo() {
+    void cargar_sinActividades_noAgregaBloqueo() {
         when(actividadRepository.findByPlanificacionProyectoIdProyecto(ID_PROYECTO))
                 .thenReturn(List.of());
 
         ContextoFinalizacionProyectoService.Contexto contexto = cargarSinLock();
 
-        assertThat(contexto.bloqueos())
-                .extracting(bloqueo -> bloqueo.codigo())
-                .contains("SIN_ACTIVIDADES");
+        assertThat(contexto.actividades()).isEmpty();
+        assertThat(contexto.bloqueos()).isEmpty();
     }
 
     @Test

@@ -464,11 +464,11 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 
 **Reglas y restricciones:**
 
-- El proyecto debe tener al menos una actividad no cancelada.
 - Cada actividad debe tener al menos un integrante activo asignado.
 - Los requerimientos deben estar cubiertos según el cupo.
 - La fecha de entrega debe ser posterior al inicio.
 - Al confirmar se fija la fecha de inicio y se persisten los horarios en las agendas.
+- Se puede confirmar un proyecto sin actividades. Las actividades que se agreguen después se agendan automáticamente sobre el proyecto confirmado.
 - Un proyecto confirmado no puede volver a **Publicado**.
 - Si un requerimiento queda insatisfecho por una baja, vuelve a aceptar postulaciones.
 
@@ -476,7 +476,6 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 
 | Mensaje | Causa | Solución |
 |---|---|---|
-| “El proyecto no tiene actividades en la planificación.” | No hay actividades. | Agregá al menos una. |
 | “La actividad 'X' no tiene integrantes activos asignados.” | Falta asignar personal. | Asigná un integrante. |
 | “La planificación no tiene fecha de entrega.” | Falta la fecha. | Completala desde **Editar**. |
 | “La fecha de entrega debe ser posterior a la fecha de inicio confirmada.” | La fecha es hoy o anterior. | Elegí una fecha futura. |
@@ -593,7 +592,7 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 
 **Objetivo:** cerrar el proyecto, calificar al equipo y dejar el registro en el historial.
 
-**Quién puede hacerlo:** Director activo con permiso de finalización, con el proyecto en **Confirmado** y todas las actividades **Finalizadas** o **Canceladas**.
+**Quién puede hacerlo:** Director activo con permiso de finalización, con el proyecto en **Confirmado** y todas las actividades existentes **Finalizadas** o **Canceladas**. El proyecto puede no tener actividades.
 
 **Pasos:**
 
@@ -610,6 +609,7 @@ Un proyecto es una producción creativa o de moda. Quien lo crea queda como **Di
 **Reglas y restricciones:**
 
 - No puede quedar ninguna actividad **Pendiente** o **En curso**.
+- Un proyecto sin actividades también puede finalizarse.
 - La valoración es de 1 a 5 estrellas y la reseña es obligatoria, con hasta 200 caracteres.
 - Hay que calificar a todos los integrantes activos pendientes.
 - Si la fecha de entrega es futura, la finalización es anticipada y requiere la confirmación explícita.

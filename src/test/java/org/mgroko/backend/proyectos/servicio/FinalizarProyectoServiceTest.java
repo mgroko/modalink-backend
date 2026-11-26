@@ -293,6 +293,21 @@ class FinalizarProyectoServiceTest {
     }
 
     @Test
+    void finalizar_sinActividades_permiteCerrarProyecto() {
+        contexto(List.of(miembroActor), List.of());
+
+        FinalizarProyectoResponse response = service.finalizar(
+                ID_USUARIO,
+                ID_PERFIL_ACTOR,
+                ID_PROYECTO,
+                request());
+
+        assertThat(response.calificacionesRegistradas()).isZero();
+        assertThat(proyecto.getEstado()).isEqualTo(EstadoProyecto.FINALIZADO);
+        verify(eventPublisher).publishEvent(any(ProyectoFinalizadoEvent.class));
+    }
+
+    @Test
     void finalizar_autoCalificacion_lanzaInvalida() {
         contexto(List.of(miembroActor, miembroMiembro), List.of());
 

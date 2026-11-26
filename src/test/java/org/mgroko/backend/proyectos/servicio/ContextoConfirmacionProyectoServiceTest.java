@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.servicio;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -189,6 +190,41 @@ class ContextoConfirmacionProyectoServiceTest {
         assertThat(contexto.bloqueos())
                 .extracting(BloqueoConfirmacionResponse::codigo)
                 .contains("DATOS_INCONSISTENTES");
+    }
+
+    @Test
+    void sinActividades_requerimientosCompletos_noAgregaBloqueo() {
+        when(actividadRepository.findConPredecesorasByPlanificacion(ID_PLANIFICACION))
+                .thenReturn(List.of());
+
+        ContextoConfirmacionProyectoService.Contexto contexto =
+                service.cargar(ID_USUARIO, ID_PERFIL, ID_PROYECTO, false);
+
+        assertThat(contexto.actividadesNoCanceladas()).isEmpty();
+        assertThat(contexto.bloqueos()).isEmpty();
+        verify(requerimientoCompletitudService).validar(ID_PROYECTO, List.of());
+    }
+
+    @Test
+    void sinActividades_requerimientosIncompletos_mantieneBloqueoDeCupo() {
+        when(actividadRepository.findConPredecesorasByPlanificacion(ID_PLANIFICACION))
+                .thenReturn(List.of());
+        when(requerimientoCompletitudService.validar(ID_PROYECTO, List.of()))
+                .thenReturn(new RequerimientoCompletitudService.Resultado(
+                        List.of(),
+                        List.of(),
+                        List.of(new BloqueoConfirmacionResponse(
+                                "REQUERIMIENTOS_INCOMPLETOS",
+                                "Falta un integrante.",
+                                "REQUERIMIENTO_GRAL",
+                                1L))));
+
+        ContextoConfirmacionProyectoService.Contexto contexto =
+                service.cargar(ID_USUARIO, ID_PERFIL, ID_PROYECTO, false);
+
+        assertThat(contexto.bloqueos())
+                .extracting(BloqueoConfirmacionResponse::codigo)
+                .containsExactly("REQUERIMIENTOS_INCOMPLETOS");
     }
 
     private AsignacionActividad asignacion(RequerimientoActividad requerimientoActividad) {
