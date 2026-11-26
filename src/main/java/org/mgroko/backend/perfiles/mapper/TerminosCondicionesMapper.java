@@ -12,6 +12,7 @@ public final class TerminosCondicionesMapper {
         return new TerminosCondicionesResponse(
                 idPerfil,
                 tyc.getIdTyc(),
+                tyc.getNumeroVersion(),
                 tyc.getDescripcion(),
                 tyc.getFechaInicio(),
                 tyc.getFechaFin(),
@@ -21,6 +22,7 @@ public final class TerminosCondicionesMapper {
     public static TerminosCondicionesResponse plantilla(Long idPerfil, String descripcion) {
         return new TerminosCondicionesResponse(
                 idPerfil,
+                null,
                 null,
                 descripcion,
                 null,

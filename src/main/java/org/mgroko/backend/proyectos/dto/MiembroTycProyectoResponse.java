@@ -14,6 +14,7 @@ public record MiembroTycProyectoResponse(
         String nombreArtistico,
         String nombreProfesion,
         Long idTycAceptado,
+        Integer numeroVersionAceptado,
         String descripcion,
         LocalDateTime fechaInicio,
         LocalDateTime fechaFin

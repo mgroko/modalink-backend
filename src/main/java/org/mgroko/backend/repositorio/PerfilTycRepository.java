@@ -50,4 +50,16 @@ public interface PerfilTycRepository extends JpaRepository<PerfilTyc, PerfilTycI
     @Query(value = "SELECT nextval(pg_get_serial_sequence('perfil_tyc', 'id_tyc'))",
             nativeQuery = true)
     Long nextIdTyc();
+
+    /**
+     * Siguiente número de versión del perfil. La asignación se hace en el
+     * servicio bajo el bloqueo de la fila del perfil; el trigger de la base
+     * queda como respaldo para inserciones que no informen el número.
+     */
+    @Query("""
+        SELECT COALESCE(MAX(pt.numeroVersion), 0) + 1
+          FROM PerfilTyc pt
+         WHERE pt.perfil.idPerfil = :idPerfil
+        """)
+    Integer siguienteNumeroVersion(@Param("idPerfil") Long idPerfil);
 }

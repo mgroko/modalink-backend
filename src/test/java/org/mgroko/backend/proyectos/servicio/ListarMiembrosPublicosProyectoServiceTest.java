@@ -83,6 +83,7 @@ class ListarMiembrosPublicosProyectoServiceTest {
         when(proyeccion.getNombreProfesion()).thenReturn("Modelo");
         when(proyeccion.getCodigoRol()).thenReturn("MIEMBRO");
         when(proyeccion.getIdTycAceptado()).thenReturn(7L);
+        when(proyeccion.getNumeroVersion()).thenReturn(2);
         when(proyeccion.getDescripcion())
                 .thenReturn("Texto completo del TyC aceptado.");
         when(proyeccion.getFechaInicio())
@@ -102,6 +103,7 @@ class ListarMiembrosPublicosProyectoServiceTest {
         assertThat(fila.nombreProfesion()).isEqualTo("Modelo");
         assertThat(fila.rol()).isEqualTo("MIEMBRO");
         assertThat(fila.idTycAceptado()).isEqualTo(7L);
+        assertThat(fila.numeroVersionAceptado()).isEqualTo(2);
         assertThat(fila.descripcion())
                 .isEqualTo("Texto completo del TyC aceptado.");
 

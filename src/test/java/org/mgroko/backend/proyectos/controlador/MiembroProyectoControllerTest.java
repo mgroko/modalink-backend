@@ -107,6 +107,7 @@ class MiembroProyectoControllerTest {
                 "Luna",
                 "Modelo",
                 7L,
+                2,
                 "Texto completo del TyC aceptado.",
                 LocalDateTime.of(2026, 11, 1, 10, 0),
                 null));
@@ -120,6 +121,7 @@ class MiembroProyectoControllerTest {
                 .andExpect(jsonPath("$[0].idMiembro").value(900L))
                 .andExpect(jsonPath("$[0].idPerfil").value(50L))
                 .andExpect(jsonPath("$[0].idTycAceptado").value(7L))
+                .andExpect(jsonPath("$[0].numeroVersionAceptado").value(2))
                 .andExpect(jsonPath("$[0].descripcion")
                         .value("Texto completo del TyC aceptado."));
     }
@@ -135,6 +137,7 @@ class MiembroProyectoControllerTest {
                 "Modelo",
                 "MIEMBRO",
                 7L,
+                2,
                 "Texto completo del TyC aceptado.",
                 LocalDateTime.of(2026, 11, 1, 10, 0),
                 null));
@@ -149,6 +152,7 @@ class MiembroProyectoControllerTest {
                 .andExpect(jsonPath("$[0].nombreArtistico").value("Luna"))
                 .andExpect(jsonPath("$[0].rol").value("MIEMBRO"))
                 .andExpect(jsonPath("$[0].idTycAceptado").value(7L))
+                .andExpect(jsonPath("$[0].numeroVersionAceptado").value(2))
                 .andExpect(jsonPath("$[0].descripcion")
                         .value("Texto completo del TyC aceptado."));
     }

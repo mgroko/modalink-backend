@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
  */
 public record TerminosCondicionesVersionResumenResponse(
         Long idTyc,
+        Integer numeroVersion,
         LocalDateTime fechaInicio,
         LocalDateTime fechaFin,
         boolean vigente

@@ -126,6 +126,7 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
             p.nombreArtistico AS nombreArtistico,
             pr.nombre AS nombreProfesion,
             mp.idTycAceptado AS idTycAceptado,
+            pt.numeroVersion AS numeroVersion,
             pt.descripcion AS descripcion,
             pt.fechaInicio AS fechaInicio,
             pt.fechaFin AS fechaFin
@@ -151,6 +152,7 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
             pr.nombre AS nombreProfesion,
             rp.codigo AS codigoRol,
             mp.idTycAceptado AS idTycAceptado,
+            pt.numeroVersion AS numeroVersion,
             pt.descripcion AS descripcion,
             pt.fechaInicio AS fechaInicio,
             pt.fechaFin AS fechaFin

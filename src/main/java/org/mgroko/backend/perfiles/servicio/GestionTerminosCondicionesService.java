@@ -157,6 +157,7 @@ public class GestionTerminosCondicionesService {
                 .stream()
                 .map(tyc -> new TerminosCondicionesVersionResumenResponse(
                         tyc.getIdTyc(),
+                        tyc.getNumeroVersion(),
                         tyc.getFechaInicio(),
                         tyc.getFechaFin(),
                         tyc.getFechaFin() == null))
@@ -174,6 +175,7 @@ public class GestionTerminosCondicionesService {
         return new TerminosCondicionesVersionResponse(
                 perfil.getIdPerfil(),
                 tyc.getIdTyc(),
+                tyc.getNumeroVersion(),
                 tyc.getDescripcion(),
                 tyc.getFechaInicio(),
                 tyc.getFechaFin(),
@@ -263,10 +265,12 @@ public class GestionTerminosCondicionesService {
         // dentro de una @EmbeddedId con PK compuesta no avanza correctamente
         // en todos los casos.
         Long idTyc = perfilTycRepository.nextIdTyc();
+        Integer numeroVersion = perfilTycRepository.siguienteNumeroVersion(idPerfil);
 
         PerfilTyc nueva = PerfilTyc.builder()
                 .id(new PerfilTycId(idPerfil, idTyc))
                 .perfil(perfil)
+                .numeroVersion(numeroVersion)
                 .descripcion(texto)
                 .fechaInicio(ahora)
                 .build();

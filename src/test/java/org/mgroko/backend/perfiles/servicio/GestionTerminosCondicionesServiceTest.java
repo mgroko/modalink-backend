@@ -98,9 +98,14 @@ class GestionTerminosCondicionesServiceTest {
     }
 
     private PerfilTyc version(Long idTyc, String texto) {
+        return version(idTyc, 1, texto);
+    }
+
+    private PerfilTyc version(Long idTyc, Integer numeroVersion, String texto) {
         return PerfilTyc.builder()
                 .id(new PerfilTycId(5L, idTyc))
                 .perfil(perfil(EstadoPerfil.Activo))
+                .numeroVersion(numeroVersion)
                 .descripcion(texto)
                 .fechaInicio(LocalDateTime.of(2026, 11, 1, 10, 0))
                 .build();
@@ -126,6 +131,7 @@ class GestionTerminosCondicionesServiceTest {
 
         assertTrue(response.esPlantilla());
         assertNull(response.idTyc());
+        assertNull(response.numeroVersion());
         assertEquals(PLANTILLA, response.descripcion());
         assertEquals(5L, response.idPerfil());
     }
@@ -142,6 +148,7 @@ class GestionTerminosCondicionesServiceTest {
 
         assertFalse(response.esPlantilla());
         assertEquals(7L, response.idTyc());
+        assertEquals(1, response.numeroVersion());
         assertEquals("Texto vigente", response.descripcion());
     }
 
@@ -167,6 +174,7 @@ class GestionTerminosCondicionesServiceTest {
 
         assertFalse(response.esPlantilla());
         assertEquals(7L, response.idTyc());
+        assertEquals(1, response.numeroVersion());
         assertEquals("Texto vigente", response.descripcion());
     }
 
@@ -197,8 +205,8 @@ class GestionTerminosCondicionesServiceTest {
     void obtenerHistorial_devuelveVersionesYMarcasVigente() {
         usuarioActivoEnRepo();
         when(perfilRepository.findById(5L)).thenReturn(Optional.of(perfil(EstadoPerfil.Activo)));
-        PerfilTyc vigente = version(7L, "Vigente");
-        PerfilTyc anterior = version(6L, "Anterior");
+        PerfilTyc vigente = version(7L, 2, "Vigente");
+        PerfilTyc anterior = version(6L, 1, "Anterior");
         anterior.setFechaFin(LocalDateTime.of(2026, 11, 1, 10, 0));
         when(perfilTycRepository.findByPerfilIdPerfilOrderByFechaInicioDesc(5L))
                 .thenReturn(List.of(vigente, anterior));
@@ -208,9 +216,11 @@ class GestionTerminosCondicionesServiceTest {
 
         assertEquals(2, historial.size());
         assertEquals(7L, historial.get(0).idTyc());
+        assertEquals(2, historial.get(0).numeroVersion());
         assertTrue(historial.get(0).vigente());
         assertNull(historial.get(0).fechaFin());
         assertEquals(6L, historial.get(1).idTyc());
+        assertEquals(1, historial.get(1).numeroVersion());
         assertFalse(historial.get(1).vigente());
         assertNotNull(historial.get(1).fechaFin());
     }
@@ -229,7 +239,7 @@ class GestionTerminosCondicionesServiceTest {
     void obtenerVersion_devuelveTextoCompleto() {
         usuarioActivoEnRepo();
         when(perfilRepository.findById(5L)).thenReturn(Optional.of(perfil(EstadoPerfil.Activo)));
-        PerfilTyc version = version(6L, "Texto histórico");
+        PerfilTyc version = version(6L, 1, "Texto histórico");
         version.setFechaFin(LocalDateTime.of(2026, 11, 1, 10, 0));
         when(perfilTycRepository.findByPerfilIdPerfilAndIdIdTyc(5L, 6L))
                 .thenReturn(Optional.of(version));
@@ -239,6 +249,7 @@ class GestionTerminosCondicionesServiceTest {
 
         assertEquals(5L, response.idPerfil());
         assertEquals(6L, response.idTyc());
+        assertEquals(1, response.numeroVersion());
         assertEquals("Texto histórico", response.descripcion());
         assertFalse(response.vigente());
     }
@@ -268,11 +279,13 @@ class GestionTerminosCondicionesServiceTest {
                 .findFirstByPerfilIdPerfilAndFechaFinIsNullOrderByFechaInicioDesc(5L))
                 .thenReturn(Optional.empty());
         when(perfilTycRepository.nextIdTyc()).thenReturn(10L);
+        when(perfilTycRepository.siguienteNumeroVersion(5L)).thenReturn(1);
 
         TerminosCondicionesResponse response = service.actualizar(
                 1L, 5L, new ActualizarTerminosCondicionesRequest("  Nuevo texto  "));
 
         assertEquals(10L, response.idTyc());
+        assertEquals(1, response.numeroVersion());
         assertEquals("Nuevo texto", response.descripcion());
         assertFalse(response.esPlantilla());
         assertNotNull(response.fechaInicio());
@@ -291,12 +304,14 @@ class GestionTerminosCondicionesServiceTest {
         when(perfilTycRepository.saveAndFlush(any(PerfilTyc.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(perfilTycRepository.nextIdTyc()).thenReturn(8L);
+        when(perfilTycRepository.siguienteNumeroVersion(5L)).thenReturn(2);
 
         TerminosCondicionesResponse response = service.actualizar(
                 1L, 5L, new ActualizarTerminosCondicionesRequest("Texto nuevo"));
 
         assertNotNull(vigente.getFechaFin());
         assertEquals(8L, response.idTyc());
+        assertEquals(2, response.numeroVersion());
         assertEquals("Texto nuevo", response.descripcion());
         verify(perfilTycRepository).saveAndFlush(vigente);
     }
@@ -316,6 +331,7 @@ class GestionTerminosCondicionesServiceTest {
                 1L, 5L, new ActualizarTerminosCondicionesRequest("  Texto vigente  "));
 
         assertEquals(7L, response.idTyc());
+        assertEquals(1, response.numeroVersion());
         verify(perfilTycRepository, never()).saveAndFlush(any(PerfilTyc.class));
     }
 

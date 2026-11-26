@@ -84,6 +84,7 @@ public class ListarTycMiembrosProyectoService {
                         proyeccion.getNombreArtistico(),
                         proyeccion.getNombreProfesion(),
                         proyeccion.getIdTycAceptado(),
+                        proyeccion.getNumeroVersion(),
                         proyeccion.getDescripcion(),
                         proyeccion.getFechaInicio(),
                         proyeccion.getFechaFin()))

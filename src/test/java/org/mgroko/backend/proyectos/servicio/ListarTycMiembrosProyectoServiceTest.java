@@ -100,6 +100,7 @@ class ListarTycMiembrosProyectoServiceTest {
         when(proyeccion.getNombreArtistico()).thenReturn("Sol");
         when(proyeccion.getNombreProfesion()).thenReturn("Modelo");
         when(proyeccion.getIdTycAceptado()).thenReturn(7L);
+        when(proyeccion.getNumeroVersion()).thenReturn(2);
         when(proyeccion.getDescripcion()).thenReturn("Texto completo del TyC aceptado.");
         when(proyeccion.getFechaInicio())
                 .thenReturn(LocalDateTime.of(2026, 11, 1, 10, 0));
@@ -118,6 +119,7 @@ class ListarTycMiembrosProyectoServiceTest {
         assertThat(fila.nombreArtistico()).isEqualTo("Sol");
         assertThat(fila.nombreProfesion()).isEqualTo("Modelo");
         assertThat(fila.idTycAceptado()).isEqualTo(7L);
+        assertThat(fila.numeroVersionAceptado()).isEqualTo(2);
         assertThat(fila.descripcion()).isEqualTo("Texto completo del TyC aceptado.");
         assertThat(fila.fechaInicio())
                 .isEqualTo(LocalDateTime.of(2026, 11, 1, 10, 0));

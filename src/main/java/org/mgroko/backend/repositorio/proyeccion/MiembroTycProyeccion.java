@@ -20,6 +20,8 @@ public interface MiembroTycProyeccion {
 
     Long getIdTycAceptado();
 
+    Integer getNumeroVersion();
+
     String getDescripcion();
 
     LocalDateTime getFechaInicio();

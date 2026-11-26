@@ -101,6 +101,7 @@ class AdminPerfilControllerTest {
                 .thenReturn(List.of(
                         new TerminosCondicionesVersionResumenResponse(
                                 12L,
+                                1,
                                 LocalDateTime.of(2026, 11, 1, 10, 0),
                                 null,
                                 true)));
@@ -109,6 +110,7 @@ class AdminPerfilControllerTest {
                         .principal(autenticacion()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].idTyc").value(12L))
+                .andExpect(jsonPath("$[0].numeroVersion").value(1))
                 .andExpect(jsonPath("$[0].vigente").value(true));
     }
 
@@ -118,6 +120,7 @@ class AdminPerfilControllerTest {
                 .thenReturn(new TerminosCondicionesVersionResponse(
                         7L,
                         12L,
+                        1,
                         "Texto administrativo",
                         LocalDateTime.of(2026, 11, 1, 10, 0),
                         null,
@@ -127,6 +130,7 @@ class AdminPerfilControllerTest {
                         .principal(autenticacion()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idTyc").value(12L))
+                .andExpect(jsonPath("$.numeroVersion").value(1))
                 .andExpect(jsonPath("$.descripcion").value("Texto administrativo"));
     }
 

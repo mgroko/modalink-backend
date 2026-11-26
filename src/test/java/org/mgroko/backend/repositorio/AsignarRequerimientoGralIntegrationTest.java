@@ -147,6 +147,7 @@ class AsignarRequerimientoGralIntegrationTest extends AbstractPostgresIntegratio
                 .anySatisfy(fila -> {
                     assertThat(fila.idPerfil()).isEqualTo(datos.modelo().idPerfil());
                     assertThat(fila.idTycAceptado()).isEqualTo(idTyc);
+                    assertThat(fila.numeroVersionAceptado()).isNotNull();
                     assertThat(fila.descripcion())
                             .isEqualTo("Texto completo del TyC aceptado.");
                 });
@@ -186,6 +187,7 @@ class AsignarRequerimientoGralIntegrationTest extends AbstractPostgresIntegratio
                     assertThat(fila.idPerfil())
                             .isEqualTo(datos.modelo().idPerfil());
                     assertThat(fila.idTycAceptado()).isEqualTo(idTyc);
+                    assertThat(fila.numeroVersionAceptado()).isNotNull();
                     assertThat(fila.descripcion())
                             .isEqualTo("Texto público del TyC aceptado.");
                 });

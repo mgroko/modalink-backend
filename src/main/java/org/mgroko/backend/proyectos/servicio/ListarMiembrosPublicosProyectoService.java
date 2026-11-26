@@ -74,6 +74,7 @@ public class ListarMiembrosPublicosProyectoService {
                         proyeccion.getNombreProfesion(),
                         proyeccion.getCodigoRol(),
                         proyeccion.getIdTycAceptado(),
+                        proyeccion.getNumeroVersion(),
                         proyeccion.getDescripcion(),
                         proyeccion.getFechaInicio(),
                         proyeccion.getFechaFin()))
