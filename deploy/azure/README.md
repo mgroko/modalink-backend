@@ -214,7 +214,9 @@ Los workflows de GitHub Actions publican:
 Si tu usuario/organización no es `mgroko`, cambiá `BACKEND_IMAGE` y `WEB_IMAGE`
 en el `.env` por el owner correcto.
 
-Por defecto los paquetes de GHCR son privados. Tenés dos opciones:
+En este repositorio los paquetes quedaron **públicos** (verificado con la API de
+GHCR), así que la VM puede hacer `docker compose pull` sin login. Si en tu fork
+quedan privados, tenés dos opciones:
 
 **A. Hacerlos públicos (más simple):**
 
@@ -237,7 +239,8 @@ Cada push a `deploy/azure` dispara los workflows:
 - Frontend: `.github/workflows/publish-image.yml`
 
 Podés verlos en **GitHub → Actions**. El backend tarda unos minutos porque
-compila el JAR (sin correr tests) y sube una imagen de ~400 MB.
+compila el JAR (sin correr tests) y sube una imagen de ~1.8 GB (el JAR pesa
+~482 MB por los binarios de OpenCV/OpenBLAS de todas las plataformas).
 
 Si preferís construirlas localmente (tu Windows tiene Docker x86_64), también
 podés hacerlo:

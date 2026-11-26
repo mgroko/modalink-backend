@@ -3,6 +3,9 @@ name: Publish backend image
 on:
   push:
     branches: [deploy/azure]
+    paths-ignore:
+      - "**.md"
+      - "deploy/**"
   workflow_dispatch:
 
 permissions:
