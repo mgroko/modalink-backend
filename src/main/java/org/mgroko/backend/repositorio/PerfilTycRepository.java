@@ -27,6 +27,11 @@ public interface PerfilTycRepository extends JpaRepository<PerfilTyc, PerfilTycI
     List<PerfilTyc> findByPerfilIdPerfilOrderByFechaInicioDesc(Long idPerfil);
 
     /**
+     * Busca una versión concreta de un perfil.
+     */
+    Optional<PerfilTyc> findByPerfilIdPerfilAndIdIdTyc(Long idPerfil, Long idTyc);
+
+    /**
      * Devuelve las versiones vigentes de varios perfiles en una sola consulta.
      * Se usa en la invitación masiva para evitar N+1.
      */

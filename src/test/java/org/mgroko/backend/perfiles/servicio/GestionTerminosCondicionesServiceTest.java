@@ -32,6 +32,8 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.dto.ActualizarTerminosCondicionesRequest;
 import org.mgroko.backend.perfiles.dto.AceptacionTerminosRequest;
 import org.mgroko.backend.perfiles.dto.TerminosCondicionesResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResumenResponse;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.TerminosCondicionesException;
@@ -162,6 +164,71 @@ class GestionTerminosCondicionesServiceTest {
 
         assertThrows(UsuarioNoEncontradoException.class,
                 () -> service.obtener(1L, 5L));
+    }
+
+    // ------------------------------------------------------------- historial
+
+    @Test
+    void obtenerHistorial_devuelveVersionesYMarcasVigente() {
+        usuarioActivoEnRepo();
+        when(perfilRepository.findById(5L)).thenReturn(Optional.of(perfil(EstadoPerfil.Activo)));
+        PerfilTyc vigente = version(7L, "Vigente");
+        PerfilTyc anterior = version(6L, "Anterior");
+        anterior.setFechaFin(LocalDateTime.of(2026, 11, 1, 10, 0));
+        when(perfilTycRepository.findByPerfilIdPerfilOrderByFechaInicioDesc(5L))
+                .thenReturn(List.of(vigente, anterior));
+
+        List<TerminosCondicionesVersionResumenResponse> historial =
+                service.obtenerHistorial(1L, 5L);
+
+        assertEquals(2, historial.size());
+        assertEquals(7L, historial.get(0).idTyc());
+        assertTrue(historial.get(0).vigente());
+        assertNull(historial.get(0).fechaFin());
+        assertEquals(6L, historial.get(1).idTyc());
+        assertFalse(historial.get(1).vigente());
+        assertNotNull(historial.get(1).fechaFin());
+    }
+
+    @Test
+    void obtenerHistorial_sinVersiones_devuelveVacio() {
+        usuarioActivoEnRepo();
+        when(perfilRepository.findById(5L)).thenReturn(Optional.of(perfil(EstadoPerfil.Activo)));
+        when(perfilTycRepository.findByPerfilIdPerfilOrderByFechaInicioDesc(5L))
+                .thenReturn(List.of());
+
+        assertTrue(service.obtenerHistorial(1L, 5L).isEmpty());
+    }
+
+    @Test
+    void obtenerVersion_devuelveTextoCompleto() {
+        usuarioActivoEnRepo();
+        when(perfilRepository.findById(5L)).thenReturn(Optional.of(perfil(EstadoPerfil.Activo)));
+        PerfilTyc version = version(6L, "Texto histórico");
+        version.setFechaFin(LocalDateTime.of(2026, 11, 1, 10, 0));
+        when(perfilTycRepository.findByPerfilIdPerfilAndIdIdTyc(5L, 6L))
+                .thenReturn(Optional.of(version));
+
+        TerminosCondicionesVersionResponse response =
+                service.obtenerVersion(1L, 5L, 6L);
+
+        assertEquals(5L, response.idPerfil());
+        assertEquals(6L, response.idTyc());
+        assertEquals("Texto histórico", response.descripcion());
+        assertFalse(response.vigente());
+    }
+
+    @Test
+    void obtenerHistorialAdmin_noRequiereUsuario() {
+        when(perfilRepository.findById(5L)).thenReturn(Optional.of(perfil(EstadoPerfil.Activo)));
+        when(perfilTycRepository.findByPerfilIdPerfilOrderByFechaInicioDesc(5L))
+                .thenReturn(List.of(version(7L, "Vigente")));
+
+        List<TerminosCondicionesVersionResumenResponse> historial =
+                service.obtenerHistorialAdmin(5L);
+
+        assertEquals(1, historial.size());
+        assertTrue(historial.get(0).vigente());
     }
 
     // ------------------------------------------------------------ actualizar

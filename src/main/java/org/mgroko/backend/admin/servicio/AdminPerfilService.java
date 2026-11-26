@@ -17,6 +17,8 @@ import org.mgroko.backend.modelo.FirmaContrato;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Publicacion;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResumenResponse;
 import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
 import org.mgroko.backend.repositorio.ContratoRepository;
 import org.mgroko.backend.repositorio.FirmaContratoRepository;
@@ -129,6 +131,19 @@ public class AdminPerfilService {
                 contratoRepository.countByIdPerfilComoParte(idPerfil),
                 publicaciones,
                 publicacionRepository.countRelacionadasAdmin(idPerfil));
+    }
+
+    public List<TerminosCondicionesVersionResumenResponse> obtenerHistorialTerminos(
+            Long idPerfil) {
+
+        return gestionTerminosCondicionesService.obtenerHistorialAdmin(idPerfil);
+    }
+
+    public TerminosCondicionesVersionResponse obtenerVersionTerminos(
+            Long idPerfil,
+            Long idTyc) {
+
+        return gestionTerminosCondicionesService.obtenerVersionAdmin(idPerfil, idTyc);
     }
 
     private AdminPerfilDetalleResponse.ProyectoRelacionado toProyectoRelacionado(

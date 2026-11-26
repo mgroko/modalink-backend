@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -19,6 +20,8 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.perfiles.dto.ActualizarTerminosCondicionesRequest;
 import org.mgroko.backend.perfiles.dto.AceptacionTerminosRequest;
 import org.mgroko.backend.perfiles.dto.TerminosCondicionesResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResumenResponse;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.perfiles.exception.TerminosCondicionesException;
@@ -71,6 +74,60 @@ public class GestionTerminosCondicionesService {
      */
     @Transactional(readOnly = true)
     public TerminosCondicionesResponse obtener(Long idUsuario, Long idPerfil) {
+        return obtenerParaPerfil(validarPerfilVisible(idUsuario, idPerfil));
+    }
+
+    /**
+     * Historial de versiones de T&C visible para el dueño o para un tercero con
+     * acceso al perfil. La plantilla base no forma parte del historial.
+     */
+    @Transactional(readOnly = true)
+    public List<TerminosCondicionesVersionResumenResponse> obtenerHistorial(
+            Long idUsuario,
+            Long idPerfil) {
+
+        return historialParaPerfil(validarPerfilVisible(idUsuario, idPerfil));
+    }
+
+    /**
+     * Texto completo de una versión histórica concreta.
+     */
+    @Transactional(readOnly = true)
+    public TerminosCondicionesVersionResponse obtenerVersion(
+            Long idUsuario,
+            Long idPerfil,
+            Long idTyc) {
+
+        return versionParaPerfil(validarPerfilVisible(idUsuario, idPerfil), idTyc);
+    }
+
+    /**
+     * Historial para administración. No aplica visibilidad de perfil: el
+     * llamador ya validó el permiso administrativo.
+     */
+    @Transactional(readOnly = true)
+    public List<TerminosCondicionesVersionResumenResponse> obtenerHistorialAdmin(
+            Long idPerfil) {
+
+        Perfil perfil = perfilRepository.findById(idPerfil)
+                .orElseThrow(PerfilNoEncontradoException::new);
+        return historialParaPerfil(perfil);
+    }
+
+    /**
+     * Detalle de una versión para administración.
+     */
+    @Transactional(readOnly = true)
+    public TerminosCondicionesVersionResponse obtenerVersionAdmin(
+            Long idPerfil,
+            Long idTyc) {
+
+        Perfil perfil = perfilRepository.findById(idPerfil)
+                .orElseThrow(PerfilNoEncontradoException::new);
+        return versionParaPerfil(perfil, idTyc);
+    }
+
+    private Perfil validarPerfilVisible(Long idUsuario, Long idPerfil) {
         Usuario usuarioAutenticado = buscarUsuarioActivo(idUsuario);
 
         Perfil perfil = perfilRepository.findById(idPerfil)
@@ -89,7 +146,38 @@ public class GestionTerminosCondicionesService {
             throw new PerfilNoEncontradoException();
         }
 
-        return obtenerParaPerfil(perfil);
+        return perfil;
+    }
+
+    private List<TerminosCondicionesVersionResumenResponse> historialParaPerfil(
+            Perfil perfil) {
+
+        return perfilTycRepository
+                .findByPerfilIdPerfilOrderByFechaInicioDesc(perfil.getIdPerfil())
+                .stream()
+                .map(tyc -> new TerminosCondicionesVersionResumenResponse(
+                        tyc.getIdTyc(),
+                        tyc.getFechaInicio(),
+                        tyc.getFechaFin(),
+                        tyc.getFechaFin() == null))
+                .toList();
+    }
+
+    private TerminosCondicionesVersionResponse versionParaPerfil(
+            Perfil perfil,
+            Long idTyc) {
+
+        PerfilTyc tyc = perfilTycRepository
+                .findByPerfilIdPerfilAndIdIdTyc(perfil.getIdPerfil(), idTyc)
+                .orElseThrow(PerfilNoEncontradoException::new);
+
+        return new TerminosCondicionesVersionResponse(
+                perfil.getIdPerfil(),
+                tyc.getIdTyc(),
+                tyc.getDescripcion(),
+                tyc.getFechaInicio(),
+                tyc.getFechaFin(),
+                tyc.getFechaFin() == null);
     }
 
     /**
