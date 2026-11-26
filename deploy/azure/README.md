@@ -42,7 +42,7 @@ Caddy (contenedor web)
 - Una cuenta gratuita de **DuckDNS**.
 - Clave SSH (la generamos abajo).
 - Los repositorios públicos:
-  - `https://github.com/mgroko/Proyecto-MVP` (backend)
+  - `https://github.com/mgroko/modalink-backend` (backend)
   - `https://github.com/mgroko/modalink-frontend` (frontend)
 - La rama **`deploy/azure`** pusheada en ambos repos. Es la que contiene estos
   archivos y los workflows que construyen las imágenes.
@@ -173,7 +173,7 @@ pertenezca al grupo `docker`.
 
 ```bash
 cd /opt/modalink
-git clone -b deploy/azure https://github.com/mgroko/Proyecto-MVP.git backend
+git clone -b deploy/azure https://github.com/mgroko/modalink-backend.git backend
 cd backend/deploy/azure
 
 cp .env.example .env

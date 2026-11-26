@@ -91,7 +91,7 @@ Cerrá la sesión SSH y volvé a entrar para usar docker sin sudo.
 
 Luego:
   cd /opt/modalink
-  git clone -b deploy/azure https://github.com/mgroko/Proyecto-MVP.git backend
+  git clone -b deploy/azure https://github.com/mgroko/modalink-backend.git backend
   cd backend/deploy/azure
   cp .env.example .env
   nano .env
