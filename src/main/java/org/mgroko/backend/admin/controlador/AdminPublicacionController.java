@@ -6,6 +6,7 @@ import org.mgroko.backend.admin.servicio.AdminPublicacionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,6 +30,17 @@ public class AdminPublicacionController {
 
     public AdminPublicacionController(AdminPublicacionService adminPublicacionService) {
         this.adminPublicacionService = adminPublicacionService;
+    }
+
+    /**
+     * Vista de solo lectura de una publicación para el panel administrativo.
+     * No requiere perfil activo ni aplica reglas de visibilidad de usuario.
+     */
+    @GetMapping("/{idPublicacion}")
+    public ResponseEntity<AdminPublicacionResponse> obtener(
+            @PathVariable Long idPublicacion) {
+
+        return ResponseEntity.ok(adminPublicacionService.obtener(idPublicacion));
     }
 
     @PatchMapping("/{idPublicacion}/estado")
