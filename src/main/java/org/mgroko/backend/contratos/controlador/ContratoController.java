@@ -17,6 +17,7 @@ import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.dto.RechazarContratoRequest;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.EliminarContratoService;
+import org.mgroko.backend.contratos.servicio.ExportarContratoPdfService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
@@ -29,7 +30,9 @@ import org.mgroko.backend.contratos.servicio.PrevisualizarModificacionContratoSe
 import org.mgroko.backend.contratos.servicio.RechazarContratoService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -68,6 +71,7 @@ public class ContratoController {
     private final FirmarContratoService firmarContratoService;
     private final RechazarContratoService rechazarContratoService;
     private final EliminarContratoService eliminarContratoService;
+    private final ExportarContratoPdfService exportarContratoPdfService;
 
     public ContratoController(
             ObtenerOpcionesContratoService opcionesService,
@@ -81,7 +85,8 @@ public class ContratoController {
             ModificarContratoService modificarContratoService,
             FirmarContratoService firmarContratoService,
             RechazarContratoService rechazarContratoService,
-            EliminarContratoService eliminarContratoService) {
+            EliminarContratoService eliminarContratoService,
+            ExportarContratoPdfService exportarContratoPdfService) {
         this.opcionesService = opcionesService;
         this.previsualizarService = previsualizarService;
         this.generarService = generarService;
@@ -94,6 +99,7 @@ public class ContratoController {
         this.firmarContratoService = firmarContratoService;
         this.rechazarContratoService = rechazarContratoService;
         this.eliminarContratoService = eliminarContratoService;
+        this.exportarContratoPdfService = exportarContratoPdfService;
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/opciones")
@@ -262,6 +268,28 @@ public class ContratoController {
                 idProyecto,
                 idContrato,
                 request));
+    }
+
+    @GetMapping(
+            value = "/proyectos/{idProyecto}/contratos/{idContrato}/pdf",
+            produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportarPdf(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        byte[] contenido = exportarContratoPdfService.exportar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"contrato-"
+                                + idContrato + ".pdf\"")
+                .body(contenido);
     }
 
     private Long idUsuario(Authentication authentication) {

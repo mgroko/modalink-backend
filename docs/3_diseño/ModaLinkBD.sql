@@ -6364,6 +6364,7 @@ INSERT INTO tipo_evento_auditoria (codigo, nombre, descripcion, modulo) VALUES
     ('CONTRATO_FIRMA_CANCELADA',     'Cancelacion de firma',             'Firma pendiente cancelada', 'CONTRATOS'),
     ('CONTRATO_FIRMA_INVALIDADA',    'Invalidacion de firma',            'Firma invalidada por baja del firmante', 'CONTRATOS'),
     ('CONTRATO_MIEMBRO_BAJA',        'Baja de miembro en contrato',      'Baja o cambio de participacion de un firmante', 'CONTRATOS'),
+    ('CONTRATO_EXPORTADO',           'Exportacion de contrato',          'Descarga en PDF de un contrato', 'CONTRATOS'),
     ('TERMINOS_VERSION_CREADA',      'Alta de version de terminos',      'Nueva version de terminos y condiciones de un perfil', 'LEGAL'),
     ('TERMINOS_VERSION_CERRADA',     'Cierre de version de terminos',    'Version de terminos y condiciones cerrada', 'LEGAL'),
     ('TERMINOS_ACEPTADOS',           'Aceptacion de terminos',           'Aceptacion de terminos y condiciones por un perfil', 'LEGAL'),

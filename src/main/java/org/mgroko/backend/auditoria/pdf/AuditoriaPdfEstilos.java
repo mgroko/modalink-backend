@@ -1,81 +1,55 @@
 package org.mgroko.backend.auditoria.pdf;
 
 import java.awt.Color;
-import java.io.IOException;
 
-import org.mgroko.backend.auditoria.exception.ErrorGenerandoPdfException;
-import org.openpdf.text.DocumentException;
+import org.mgroko.backend.common.pdf.ModaLinkPdfEstilos;
 import org.openpdf.text.Font;
 import org.openpdf.text.pdf.BaseFont;
 
 /**
  * Paleta, tipografías y tamaños del informe PDF de auditoría (UC-67).
+ *
+ * <p>Delega en {@link ModaLinkPdfEstilos} para compartir la identidad visual
+ * con el resto de los PDF de la aplicación sin romper la API histórica del
+ * módulo de auditoría.</p>
  */
 public final class AuditoriaPdfEstilos {
 
     /** Azul de marca usado en la barra superior, indicadores y acentos. */
-    public static final Color AZUL = new Color(0x2F, 0x5B, 0xEA);
+    public static final Color AZUL = ModaLinkPdfEstilos.AZUL;
     /** Texto principal. */
-    public static final Color TEXTO = new Color(0x1B, 0x23, 0x33);
+    public static final Color TEXTO = ModaLinkPdfEstilos.TEXTO;
     /** Texto secundario y etiquetas. */
-    public static final Color GRIS = new Color(0x5B, 0x65, 0x77);
+    public static final Color GRIS = ModaLinkPdfEstilos.GRIS;
     /** Bordes y separadores. */
-    public static final Color BORDE = new Color(0xD9, 0xDE, 0xE7);
+    public static final Color BORDE = ModaLinkPdfEstilos.BORDE;
     /** Fondo de tarjetas y filas alternadas. */
-    public static final Color FONDO = new Color(0xF3, 0xF5, 0xF9);
-
-    private static final BaseFont HELVETICA = crear(BaseFont.HELVETICA);
-    private static final BaseFont HELVETICA_BOLD = crear(BaseFont.HELVETICA_BOLD);
-    private static final BaseFont COURIER = crear(BaseFont.COURIER);
+    public static final Color FONDO = ModaLinkPdfEstilos.FONDO;
 
     private AuditoriaPdfEstilos() {
     }
 
     public static Font fuente(float tamanio, int estilo) {
-        return conColor(HELVETICA, tamanio, estilo, TEXTO);
+        return ModaLinkPdfEstilos.fuente(tamanio, estilo);
     }
 
     public static Font fuenteAzul(float tamanio, int estilo) {
-        return conColor(HELVETICA, tamanio, estilo, AZUL);
+        return ModaLinkPdfEstilos.fuenteAzul(tamanio, estilo);
     }
 
     public static Font fuenteGris(float tamanio, int estilo) {
-        return conColor(HELVETICA, tamanio, estilo, GRIS);
+        return ModaLinkPdfEstilos.fuenteGris(tamanio, estilo);
     }
 
     public static Font fuenteBlanca(float tamanio, int estilo) {
-        return conColor(HELVETICA, tamanio, estilo, Color.WHITE);
+        return ModaLinkPdfEstilos.fuenteBlanca(tamanio, estilo);
     }
 
     public static Font fuenteMono(float tamanio) {
-        return conColor(COURIER, tamanio, Font.NORMAL, TEXTO);
+        return ModaLinkPdfEstilos.fuenteMono(tamanio);
     }
 
     static BaseFont helveticaNegrita() {
-        return HELVETICA_BOLD;
-    }
-
-    private static Font conColor(
-            BaseFont base, float tamanio, int estilo, Color color) {
-        Font font = new Font(
-                esNegrita(estilo) ? HELVETICA_BOLD : base,
-                tamanio,
-                Font.NORMAL);
-        font.setColor(color);
-        return font;
-    }
-
-    private static boolean esNegrita(int estilo) {
-        return (estilo & Font.BOLD) != 0;
-    }
-
-    private static BaseFont crear(String nombre) {
-        try {
-            return BaseFont.createFont(
-                    nombre, BaseFont.WINANSI, BaseFont.EMBEDDED);
-        } catch (DocumentException | IOException ex) {
-            throw new ErrorGenerandoPdfException(
-                    "No se pudo cargar la fuente del PDF de auditoría.", ex);
-        }
+        return ModaLinkPdfEstilos.helveticaNegrita();
     }
 }

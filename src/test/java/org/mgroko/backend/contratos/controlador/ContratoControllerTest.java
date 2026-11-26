@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,6 +35,7 @@ import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.contratos.exception.ContratoNoModificableException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
 import org.mgroko.backend.contratos.servicio.EliminarContratoService;
+import org.mgroko.backend.contratos.servicio.ExportarContratoPdfService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
 import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
@@ -48,6 +51,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -97,6 +101,9 @@ class ContratoControllerTest {
 
     @MockitoBean
     private EliminarContratoService eliminarContratoService;
+
+    @MockitoBean
+    private ExportarContratoPdfService exportarContratoPdfService;
 
     @Test
     void opciones_devuelve200ConDatosDelProyecto() throws Exception {
@@ -459,6 +466,22 @@ class ContratoControllerTest {
                         11L, 3L, "Ana Pérez", "DIRECTOR", "PENDIENTE", null)),
                 "PENDIENTE", null, true, null,
                 true, true, 0, 1, true, null);
+    }
+
+    @Test
+    void exportarPdf_devuelveArchivoAdjunto() throws Exception {
+        byte[] pdf = "%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(exportarContratoPdfService.exportar(1L, 10L, 100L, 5L))
+                .thenReturn(pdf);
+
+        mockMvc.perform(get("/proyectos/100/contratos/5/pdf")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"contrato-5.pdf\""))
+                .andExpect(content().bytes(pdf));
     }
 
     private UsernamePasswordAuthenticationToken autenticacion(Long idPerfilActivo) {

@@ -1665,6 +1665,13 @@ public class GlobalExceptionHandler {
                 ex.getMessage(), "ERROR_GENERANDO_PDF", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(org.mgroko.backend.contratos.exception.ErrorGenerandoPdfContratoException.class)
+    public ResponseEntity<Map<String, Object>> handleErrorGenerandoPdfContrato(
+            org.mgroko.backend.contratos.exception.ErrorGenerandoPdfContratoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "ERROR_GENERANDO_PDF", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     @ExceptionHandler(org.mgroko.backend.contratos.exception.ContratoNoGenerableException.class)
     public ResponseEntity<Map<String, Object>> handleContratoNoGenerable(
             org.mgroko.backend.contratos.exception.ContratoNoGenerableException ex) {

@@ -264,3 +264,36 @@ Los contratos permiten acordar por escrito las condiciones de un proyecto y deja
 - Los contratos de proyectos **Finalizados** o **Cancelados** se conservan como registro histórico.
 
 [CAPTURA: contrato-estados - badges de estado en el listado]
+
+## 12.8. Exportar un contrato en PDF
+
+**Objetivo:** descargar una copia legible del contrato con su texto, sus partes y el estado de las firmas.
+
+**Quién puede hacerlo:** Director del proyecto o parte firmante. El administrador también puede exportarlo desde la consulta administrativa de contratos.
+
+**Pasos:**
+
+1. Abrí el detalle del contrato.
+2. Hacé clic en **Exportar PDF**.
+3. Esperá la descarga del archivo `contrato-{id}.pdf`.
+
+**Resultado esperado:** se descarga un PDF A4 vertical con el título del contrato, el proyecto, el tipo de acuerdo, el estado, la versión, la fecha y el usuario que exportó, la tabla de partes y firmas y el texto completo de las cláusulas.
+
+**Reglas y restricciones:**
+
+- El PDF usa el texto guardado en la versión actual del contrato, no la plantilla vigente del tipo de acuerdo.
+- El pie de cada hoja muestra la fecha de impresión y el número de hoja con el total.
+- Las cláusulas se muestran tal como fueron emitidas, sin renumerarlas ni reinterpretarlas.
+- Los contratos en **Borrador**, **Eliminado** o **Rechazado por las partes** se identifican con su estado para evitar confusiones con un contrato activo.
+- Cada exportación queda registrada en la auditoría del sistema con el usuario, la fecha, el proyecto y la versión.
+- El archivo se genera en el servidor y se descarga directamente; no se guarda una copia en el proyecto.
+
+**Errores frecuentes:**
+
+| Mensaje | Causa | Solución |
+|---|---|---|
+| “No tenés permiso para ver este contrato.” | No sos Director ni parte firmante. | Pedí acceso al Director. |
+| “El contrato no existe.” | El contrato fue eliminado físicamente o el ID no corresponde al proyecto. | Actualizá el listado. |
+| “No se pudo generar el PDF del contrato.” | Error interno al componer el documento. | Reintentá; si persiste, contactá al administrador. |
+
+[CAPTURA: exportar-contrato-pdf - botón y documento descargado]
