@@ -7,7 +7,7 @@ ModaLink es una plataforma de networking profesional para la industria creativa 
 Con ModaLink podés:
 
 - Crear uno o más **perfiles profesionales**, cada uno con una profesión distinta.
-- Mostrar tu trabajo con foto de perfil, características técnicas, habilidades y polaroids.
+- Mostrar tu trabajo desde tu perfil profesional, con publicaciones, características técnicas y habilidades.
 - Encontrar otros profesionales y construir una red de contactos.
 - Buscar proyectos y oportunidades abiertas, o crear tus propios proyectos.
 - Participar en proyectos bajo las **normas de convivencia** de la plataforma, que se aplican a todos los equipos.
