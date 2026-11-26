@@ -146,6 +146,31 @@ class GestionTerminosCondicionesServiceTest {
     }
 
     @Test
+    void obtenerVigenteParaPerfil_sinVersion_devuelveVacio() {
+        when(perfilTycRepository
+                .findFirstByPerfilIdPerfilAndFechaFinIsNullOrderByFechaInicioDesc(5L))
+                .thenReturn(Optional.empty());
+
+        assertTrue(service.obtenerVigenteParaPerfil(perfil(EstadoPerfil.Activo)).isEmpty());
+        verify(configuracionSistemaService, never()).obtenerPlantillaTerminosCondiciones();
+    }
+
+    @Test
+    void obtenerVigenteParaPerfil_conVersion_devuelveVigente() {
+        when(perfilTycRepository
+                .findFirstByPerfilIdPerfilAndFechaFinIsNullOrderByFechaInicioDesc(5L))
+                .thenReturn(Optional.of(version(7L, "Texto vigente")));
+
+        TerminosCondicionesResponse response = service
+                .obtenerVigenteParaPerfil(perfil(EstadoPerfil.Activo))
+                .orElseThrow();
+
+        assertFalse(response.esPlantilla());
+        assertEquals(7L, response.idTyc());
+        assertEquals("Texto vigente", response.descripcion());
+    }
+
+    @Test
     void obtener_perfilAjenoInactivo_lanza404() {
         usuarioActivoEnRepo();
         Perfil perfil = perfil(EstadoPerfil.PendienteBaja);

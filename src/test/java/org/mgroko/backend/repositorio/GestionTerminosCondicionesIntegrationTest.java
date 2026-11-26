@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.admin.servicio.AdminPerfilService;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
@@ -66,6 +67,9 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
 
     @Autowired
     private VerPerfilService verPerfilService;
+
+    @Autowired
+    private AdminPerfilService adminPerfilService;
 
     private Perfil perfil;
 
@@ -182,6 +186,29 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
 
         assertNotNull(detalle.terminosCondiciones());
         assertEquals("Texto visible en el perfil",
+                detalle.terminosCondiciones().descripcion());
+        assertFalse(detalle.terminosCondiciones().esPlantilla());
+    }
+
+    @Test
+    void detalleAdminSinVersionNoIncluyePlantilla() {
+        var detalle = adminPerfilService.obtenerDetalle(perfil.getIdPerfil());
+
+        assertNull(detalle.terminosCondiciones());
+        assertTrue(adminPerfilService.obtenerHistorialTerminos(perfil.getIdPerfil()).isEmpty());
+    }
+
+    @Test
+    void detalleAdminConVersionIncluyeVigente() {
+        service.actualizar(
+                perfil.getUsuario().getIdUsuario(),
+                perfil.getIdPerfil(),
+                new ActualizarTerminosCondicionesRequest("Texto visible en el admin"));
+
+        var detalle = adminPerfilService.obtenerDetalle(perfil.getIdPerfil());
+
+        assertNotNull(detalle.terminosCondiciones());
+        assertEquals("Texto visible en el admin",
                 detalle.terminosCondiciones().descripcion());
         assertFalse(detalle.terminosCondiciones().esPlantilla());
     }

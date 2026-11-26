@@ -186,16 +186,29 @@ public class GestionTerminosCondicionesService {
      */
     @Transactional(readOnly = true)
     public TerminosCondicionesResponse obtenerParaPerfil(Perfil perfil) {
-        Optional<PerfilTyc> vigente = perfilTycRepository
-                .findFirstByPerfilIdPerfilAndFechaFinIsNullOrderByFechaInicioDesc(
-                        perfil.getIdPerfil());
-
-        return vigente
+        return buscarVigente(perfil.getIdPerfil())
                 .map(tyc -> TerminosCondicionesMapper.toResponse(
                         perfil.getIdPerfil(), tyc))
                 .orElseGet(() -> TerminosCondicionesMapper.plantilla(
                         perfil.getIdPerfil(),
                         configuracionSistemaService.obtenerPlantillaTerminosCondiciones()));
+    }
+
+    /**
+     * Versión vigente real del perfil, sin la plantilla base de respaldo.
+     * Devuelve vacío cuando el perfil todavía no configuró sus T&C, para que
+     * las vistas administrativas puedan mostrar un estado vacío.
+     */
+    @Transactional(readOnly = true)
+    public Optional<TerminosCondicionesResponse> obtenerVigenteParaPerfil(Perfil perfil) {
+        return buscarVigente(perfil.getIdPerfil())
+                .map(tyc -> TerminosCondicionesMapper.toResponse(
+                        perfil.getIdPerfil(), tyc));
+    }
+
+    private Optional<PerfilTyc> buscarVigente(Long idPerfil) {
+        return perfilTycRepository
+                .findFirstByPerfilIdPerfilAndFechaFinIsNullOrderByFechaInicioDesc(idPerfil);
     }
 
     /**

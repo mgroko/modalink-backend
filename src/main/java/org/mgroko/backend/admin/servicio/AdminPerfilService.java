@@ -123,7 +123,8 @@ public class AdminPerfilService {
 
         return AdminPerfilDetalleMapper.toDetalle(
                 perfil,
-                gestionTerminosCondicionesService.obtenerParaPerfil(perfil),
+                gestionTerminosCondicionesService.obtenerVigenteParaPerfil(perfil)
+                        .orElse(null),
                 configuracionSistemaService.obtenerDiasBaja(),
                 proyectos,
                 miembroProyectoRepository.countByPerfilIdPerfil(idPerfil),
