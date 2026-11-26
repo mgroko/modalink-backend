@@ -160,6 +160,24 @@ class RechazarInvitacionServiceTest {
                         .AccesoDenegadoProyectoException.class);
     }
 
+    @Test
+    void general_proyectoFinalizado_permiteRechazarParaSaneamiento() {
+        prepararPerfilActivo();
+        InvitacionGral invitacion = invitacion(EstadoSolicitud.PENDIENTE, ID_PERFIL);
+        invitacion.getProyecto().setEstado(EstadoProyecto.FINALIZADO);
+        when(invitacionGralRepository.findById(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+        when(invitacionGralRepository.findByIdForUpdate(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+        prepararNotificacion();
+
+        var respuesta = servicio.rechazarGeneral(
+                ID_USUARIO, ID_PERFIL, ID_INVITACION);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.RECHAZADA);
+        assertThat(invitacion.getFechaRechazo()).isEqualTo(FECHA_RECHAZO);
+    }
+
     private void prepararPerfilActivo() {
         when(perfilRepository.findByIdPerfilAndUsuarioIdUsuario(ID_PERFIL, ID_USUARIO))
                 .thenReturn(Optional.of(perfil(ID_PERFIL)));

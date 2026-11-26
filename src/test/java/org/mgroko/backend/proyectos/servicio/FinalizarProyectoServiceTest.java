@@ -25,6 +25,7 @@ import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.invitaciones.servicio.CerrarInvitacionesProyectoService;
 import org.mgroko.backend.proyectos.dto.AdvertenciaFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.BloqueoFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.CalificacionRequest;
@@ -65,6 +66,8 @@ class FinalizarProyectoServiceTest {
     @Mock
     private ObtenerProyectoService obtenerProyectoService;
     @Mock
+    private CerrarInvitacionesProyectoService cerrarInvitacionesProyectoService;
+    @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private FinalizarProyectoService service;
@@ -83,6 +86,7 @@ class FinalizarProyectoServiceTest {
                 proyectoRepository,
                 calificacionPerfilRepository,
                 obtenerProyectoService,
+                cerrarInvitacionesProyectoService,
                 eventPublisher);
 
         proyecto = Proyecto.builder()
@@ -173,6 +177,10 @@ class FinalizarProyectoServiceTest {
         ArgumentCaptor<ProyectoFinalizadoEvent> eventoCaptor =
                 ArgumentCaptor.forClass(ProyectoFinalizadoEvent.class);
         verify(eventPublisher).publishEvent(eventoCaptor.capture());
+        verify(cerrarInvitacionesProyectoService).cerrarPendientes(
+                proyecto,
+                CerrarInvitacionesProyectoService.Motivo.FINALIZACION,
+                AHORA);
         assertThat(eventoCaptor.getValue().finalizacionPrematura()).isFalse();
     }
 

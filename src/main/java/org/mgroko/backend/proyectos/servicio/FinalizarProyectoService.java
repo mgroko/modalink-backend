@@ -13,6 +13,7 @@ import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
+import org.mgroko.backend.invitaciones.servicio.CerrarInvitacionesProyectoService;
 import org.mgroko.backend.proyectos.dto.BloqueoFinalizacionResponse;
 import org.mgroko.backend.proyectos.dto.CalificacionRequest;
 import org.mgroko.backend.proyectos.dto.FinalizarProyectoRequest;
@@ -45,6 +46,7 @@ public class FinalizarProyectoService {
     private final ProyectoRepository proyectoRepository;
     private final CalificacionPerfilRepository calificacionPerfilRepository;
     private final ObtenerProyectoService obtenerProyectoService;
+    private final CerrarInvitacionesProyectoService cerrarInvitacionesProyectoService;
     private final ApplicationEventPublisher eventPublisher;
 
     public FinalizarProyectoService(
@@ -52,11 +54,13 @@ public class FinalizarProyectoService {
             ProyectoRepository proyectoRepository,
             CalificacionPerfilRepository calificacionPerfilRepository,
             ObtenerProyectoService obtenerProyectoService,
+            CerrarInvitacionesProyectoService cerrarInvitacionesProyectoService,
             ApplicationEventPublisher eventPublisher) {
         this.contextoService = contextoService;
         this.proyectoRepository = proyectoRepository;
         this.calificacionPerfilRepository = calificacionPerfilRepository;
         this.obtenerProyectoService = obtenerProyectoService;
+        this.cerrarInvitacionesProyectoService = cerrarInvitacionesProyectoService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -149,6 +153,11 @@ public class FinalizarProyectoService {
         proyecto.setFechaFinalizacion(fechaFinalizacion);
         proyecto.setFinalizacionPrematura(finalizacionPrematura);
         proyectoRepository.saveAndFlush(proyecto);
+
+        cerrarInvitacionesProyectoService.cerrarPendientes(
+                proyecto,
+                CerrarInvitacionesProyectoService.Motivo.FINALIZACION,
+                fechaFinalizacion);
 
         eventPublisher.publishEvent(new ProyectoFinalizadoEvent(
                 proyecto.getIdProyecto(),

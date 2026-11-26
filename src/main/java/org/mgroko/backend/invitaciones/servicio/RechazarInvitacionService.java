@@ -258,8 +258,13 @@ public class RechazarInvitacionService {
     }
 
     private void validarProyecto(Proyecto proyecto) {
+        // Aceptar sigue reservado a proyectos activos. Rechazar también se
+        // permite en proyectos cerrados para poder sanear invitaciones que
+        // quedaron PENDIENTE antes del cierre automático.
         if (proyecto.getEstado() != EstadoProyecto.PUBLICADO
-                && proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
+                && proyecto.getEstado() != EstadoProyecto.CONFIRMADO
+                && proyecto.getEstado() != EstadoProyecto.FINALIZADO
+                && proyecto.getEstado() != EstadoProyecto.CANCELADO) {
             throw new InvitacionNoPermitidaException(
                     "El proyecto no permite rechazar invitaciones en estado "
                             + proyecto.getEstado().getNombre() + ".");
