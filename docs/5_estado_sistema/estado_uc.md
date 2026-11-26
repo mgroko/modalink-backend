@@ -143,6 +143,14 @@ el historial de git sirva de bitácora adicional.
 
 ---
 
+## Extensión — informe ejecutivo de proyecto
+
+| Nombre | Estado | Endpoints | Permisos | Notas |
+| ------ | ------ | --------- | -------- | ----- |
+| Informe ejecutivo de estado y salud | Implementado | `GET /proyectos/{idProyecto}/informe`, `GET /proyectos/{idProyecto}/informe/pdf` | Director activo del proyecto | Solo lectura. Devuelve estado por área derivado de alertas, riesgo de entrega, decisiones con antigüedad, moodboard, equipo, cronograma, contratos e historial. El PDF incluye encabezado y pie con proyecto, corte, generado por y numeración de hojas. No modifica datos ni reemplaza la auditoría. |
+
+---
+
 ## Resumen
 
 | Módulo                             | Total UC | Implementado y testeado | Implementado | En progreso | No iniciado |

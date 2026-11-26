@@ -23,10 +23,12 @@ import org.mgroko.backend.proyectos.dto.AsignacionRequerimientoGralResponse;
 import org.mgroko.backend.proyectos.dto.CrearMoodboardRequest;
 import org.mgroko.backend.proyectos.dto.CrearProyectoRequest;
 import org.mgroko.backend.proyectos.dto.CrearRequerimientoGralRequest;
+import org.mgroko.backend.proyectos.dto.MiembroTycProyectoResponse;
 import org.mgroko.backend.proyectos.dto.ProyectoResponse;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.RequerimientoGralNoAsignableException;
 import org.mgroko.backend.proyectos.servicio.CrearProyectoService;
+import org.mgroko.backend.proyectos.servicio.ListarTycMiembrosProyectoService;
 import org.mgroko.backend.proyectos.servicio.PublicarProyectoService;
 import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.ubicacion.dto.UbicacionRequest;
@@ -73,6 +75,8 @@ class AsignarRequerimientoGralIntegrationTest extends AbstractPostgresIntegratio
     @Autowired
     private RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     @Autowired
+    private ListarTycMiembrosProyectoService listarTycMiembrosProyectoService;
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Test
@@ -110,6 +114,38 @@ class AsignarRequerimientoGralIntegrationTest extends AbstractPostgresIntegratio
                   AND tipo_evento = 'MIEMBRO_REQUERIMIENTO_ASIGNADO'
                 """, Long.class, miembro.getIdMiembro());
         assertThat(auditoria).isEqualTo(1L);
+    }
+
+    @Test
+    void listarTycMiembros_devuelveElTextoAceptadoPorCadaMiembro() {
+        Datos datos = crearProyectoPublicadoConUnRequerimiento(
+                "uc36.tyc@example.com", "88836120");
+        MiembroProyecto miembro = agregarMiembro(
+                datos.publicado(), datos.modelo(), "Modelo UC36 TyC");
+
+        Long idTyc = jdbcTemplate.queryForObject("""
+                INSERT INTO perfil_tyc
+                    (id_perfil, descripcion, fecha_inicio, fecha_fin)
+                VALUES (?, 'Texto completo del TyC aceptado.', NOW() - INTERVAL '1 day', NULL)
+                RETURNING id_tyc
+                """, Long.class, datos.modelo().idPerfil());
+
+        miembro.setIdTycAceptado(idTyc);
+        miembroProyectoRepository.saveAndFlush(miembro);
+
+        List<MiembroTycProyectoResponse> resultado =
+                listarTycMiembrosProyectoService.listar(
+                        datos.idUsuarioDirector(),
+                        datos.idPerfilDirector(),
+                        datos.publicado().idProyecto());
+
+        assertThat(resultado)
+                .anySatisfy(fila -> {
+                    assertThat(fila.idPerfil()).isEqualTo(datos.modelo().idPerfil());
+                    assertThat(fila.idTycAceptado()).isEqualTo(idTyc);
+                    assertThat(fila.descripcion())
+                            .isEqualTo("Texto completo del TyC aceptado.");
+                });
     }
 
     @Test

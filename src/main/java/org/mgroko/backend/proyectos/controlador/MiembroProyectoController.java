@@ -1,5 +1,7 @@
 package org.mgroko.backend.proyectos.controlador;
 
+import java.util.List;
+
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.proyectos.dto.AsignacionRequerimientoGralResponse;
@@ -7,9 +9,11 @@ import org.mgroko.backend.proyectos.dto.AsignarRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.DarseDeBajaProyectoRequest;
 import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.dto.MiembroProyectoResponse;
+import org.mgroko.backend.proyectos.dto.MiembroTycProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.DarseDeBajaProyectoService;
 import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ListarMiembrosProyectoService;
+import org.mgroko.backend.proyectos.servicio.ListarTycMiembrosProyectoService;
 import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.ResponseEntity;
@@ -39,16 +43,19 @@ import jakarta.validation.Valid;
 public class MiembroProyectoController {
 
     private final ListarMiembrosProyectoService listarMiembrosProyectoService;
+    private final ListarTycMiembrosProyectoService listarTycMiembrosProyectoService;
     private final EliminarIntegranteService eliminarIntegranteService;
     private final DarseDeBajaProyectoService darseDeBajaProyectoService;
     private final RequerimientoGralAsignacionService requerimientoGralAsignacionService;
 
     public MiembroProyectoController(
             ListarMiembrosProyectoService listarMiembrosProyectoService,
+            ListarTycMiembrosProyectoService listarTycMiembrosProyectoService,
             EliminarIntegranteService eliminarIntegranteService,
             DarseDeBajaProyectoService darseDeBajaProyectoService,
             RequerimientoGralAsignacionService requerimientoGralAsignacionService) {
         this.listarMiembrosProyectoService = listarMiembrosProyectoService;
+        this.listarTycMiembrosProyectoService = listarTycMiembrosProyectoService;
         this.eliminarIntegranteService = eliminarIntegranteService;
         this.darseDeBajaProyectoService = darseDeBajaProyectoService;
         this.requerimientoGralAsignacionService = requerimientoGralAsignacionService;
@@ -86,6 +93,20 @@ public class MiembroProyectoController {
                 page,
                 size,
                 todos));
+    }
+
+    @GetMapping("/proyectos/{idProyecto}/miembros/tyc")
+    public ResponseEntity<List<MiembroTycProyectoResponse>> listarTyc(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        return ResponseEntity.ok(listarTycMiembrosProyectoService.listar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto));
     }
 
     @DeleteMapping("/proyectos/{idProyecto}/miembros/{idMiembro}")

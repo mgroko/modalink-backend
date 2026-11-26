@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -23,10 +24,12 @@ import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.DarseDeBajaProyectoRequest;
 import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.dto.MiembroProyectoResponse;
+import org.mgroko.backend.proyectos.dto.MiembroTycProyectoResponse;
 import org.mgroko.backend.proyectos.exception.UltimoDirectorActivoException;
 import org.mgroko.backend.proyectos.servicio.DarseDeBajaProyectoService;
 import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ListarMiembrosProyectoService;
+import org.mgroko.backend.proyectos.servicio.ListarTycMiembrosProyectoService;
 import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +49,9 @@ class MiembroProyectoControllerTest {
 
     @MockitoBean
     private ListarMiembrosProyectoService listarMiembrosProyectoService;
+
+    @MockitoBean
+    private ListarTycMiembrosProyectoService listarTycMiembrosProyectoService;
 
     @MockitoBean
     private EliminarIntegranteService eliminarIntegranteService;
@@ -83,6 +89,34 @@ class MiembroProyectoControllerTest {
                 .andExpect(jsonPath("$.contenido[0].rol").value("MIEMBRO"))
                 .andExpect(jsonPath("$.contenido[0].eliminable").value(true))
                 .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void listarTyc_devuelveLosTycsAceptados() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
+        auth.setDetails(new ContextoAutenticacion(1L, 10L, "Luna"));
+
+        var response = List.of(new MiembroTycProyectoResponse(
+                900L,
+                50L,
+                "Luna",
+                "Modelo",
+                7L,
+                "Texto completo del TyC aceptado.",
+                LocalDateTime.of(2026, 11, 1, 10, 0),
+                null));
+
+        when(listarTycMiembrosProyectoService.listar(1L, 10L, 100L))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/proyectos/100/miembros/tyc")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idMiembro").value(900L))
+                .andExpect(jsonPath("$[0].idPerfil").value(50L))
+                .andExpect(jsonPath("$[0].idTycAceptado").value(7L))
+                .andExpect(jsonPath("$[0].descripcion")
+                        .value("Texto completo del TyC aceptado."));
     }
 
     @Test

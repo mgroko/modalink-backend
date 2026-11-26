@@ -9,6 +9,7 @@ import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.mgroko.backend.repositorio.proyeccion.MiembroProyectoRolProyeccion;
+import org.mgroko.backend.repositorio.proyeccion.MiembroTycProyeccion;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -108,6 +109,34 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
         ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC
     """)
     List<MiembroProyecto> buscarActivosDeProyectoConPerfilProfesionYRol(
+            @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Términos y condiciones aceptados por cada miembro activo del proyecto.
+     *
+     * <p>La unión se hace contra la versión histórica registrada en
+     * {@code miembros_proyecto.id_tyc_aceptado}, no contra la versión vigente
+     * del perfil. Se usa en la pestaña "TyC de miembros".</p>
+     */
+    @Query("""
+        SELECT
+            mp.idMiembro AS idMiembro,
+            p.idPerfil AS idPerfil,
+            p.nombreArtistico AS nombreArtistico,
+            pr.nombre AS nombreProfesion,
+            mp.idTycAceptado AS idTycAceptado,
+            pt.descripcion AS descripcion,
+            pt.fechaInicio AS fechaInicio,
+            pt.fechaFin AS fechaFin
+        FROM MiembroProyecto mp
+        JOIN mp.perfil p
+        LEFT JOIN p.profesion pr
+        LEFT JOIN mp.tycAceptado pt
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC
+    """)
+    List<MiembroTycProyeccion> listarTycAceptadosDeMiembros(
             @Param("idProyecto") Long idProyecto);
 
     /**
