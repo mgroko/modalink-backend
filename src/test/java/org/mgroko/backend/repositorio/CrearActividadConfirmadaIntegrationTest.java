@@ -23,6 +23,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolGlobal;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
@@ -174,6 +175,17 @@ class CrearActividadConfirmadaIntegrationTest extends AbstractPostgresIntegratio
                 .build();
         em.persist(planificacion);
 
+        // UC-60 exige al menos un requerimiento computable para confirmar.
+        // Se crea uno general y se vincula al miembro para que el cupo quede cubierto.
+        RequerimientoGralProyecto requerimientoGeneral =
+                RequerimientoGralProyecto.builder()
+                        .cantidad(1)
+                        .descripcion("Personal UC60")
+                        .profesion(profesion)
+                        .proyecto(proyecto)
+                        .build();
+        em.persist(requerimientoGeneral);
+
         em.persist(MiembroProyecto.builder()
                 .proyecto(proyecto)
                 .perfil(perfilDirector)
@@ -186,6 +198,7 @@ class CrearActividadConfirmadaIntegrationTest extends AbstractPostgresIntegratio
                 .perfil(perfilMiembro)
                 .rolProyecto(rol("MIEMBRO"))
                 .estadoParticipacion(EstadoParticipacion.ACTIVO)
+                .requerimientoGral(requerimientoGeneral)
                 .build();
         em.persist(miembroProyecto);
 
