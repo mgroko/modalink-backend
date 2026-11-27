@@ -4,13 +4,14 @@ Backend de **ModaLink**, una plataforma de networking profesional para la indust
 
 Proyecto final de la carrera **Analista en Sistemas de Computación**, desarrollado con **Proceso Unificado (UP)**, foco en testing, validaciones de negocio en backend y persistencia, y trazabilidad mediante auditoría.
 
-> **Estado actual (2026-11-17):** **76 de 76 casos de uso implementados y testeados (100 %)**.
+> **Estado actual (2026-11-26):** **76 de 76 casos de uso implementados y testeados (100 %)**.
 >
 > Módulos completos: autenticación y usuarios, administración, perfiles y disponibilidad, publicaciones, proyectos y equipo, actividades y cronograma, contratos, conexiones, presencia y mensajería.
 >
-> Extensiones fuera del catálogo numerado: detalle administrativo de solo lectura (perfiles, proyectos y contratos), colaboraciones automáticas por similitud de imágenes y presencia por perfil.
+> Extensiones fuera del catálogo numerado: detalle administrativo de solo lectura (perfiles, proyectos y contratos), colaboraciones automáticas por similitud de imágenes, presencia por perfil, informe ejecutivo de proyecto, tablero de casting virtual, normas de convivencia y manual in-app.
 >
 > Seguimiento detallado: [`docs/5_estado_sistema/estado_uc.md`](docs/5_estado_sistema/estado_uc.md).
+> Prueba demo online: https://modalink.duckdns.org/ (rama deploy/azure)
 
 ## Stack tecnológico
 
@@ -25,6 +26,7 @@ Proyecto final de la carrera **Analista en Sistemas de Computación**, desarroll
 | Imágenes | Thumbnailator, TwelveMonkeys (JPEG/WebP) y WebP ImageIO |
 | Coincidencia de imágenes | OpenCV (pHash, ORB y multicrop) para colaboraciones automáticas |
 | Exportación PDF | OpenPDF |
+| Manual in-app | CommonMark (Markdown → HTML) |
 | Email | Spring Boot Mail (SMTP) + Mailpit en desarrollo |
 | Testing | JUnit Jupiter, Mockito, MockMvc, Spring Security Test, Testcontainers (PostgreSQL 17), JaCoCo |
 | Build | Maven 3.9+ |
@@ -43,17 +45,19 @@ src/main/java/org/mgroko/backend/
 ├── common/              # DTOs compartidos, errores y excepciones globales
 ├── config/              # Configuración de async, reloj y recursos web
 ├── conexiones/          # Solicitudes de conexión y red de contactos
-├── contratos/           # Generación, modificación, firma, baja y búsqueda de contratos
+├── contratos/           # Contratos: borrador, emisión, firma, baja, búsqueda y PDF
 ├── home/                # Resumen de inicio y oportunidades
 ├── invitaciones/        # Invitaciones generales y por actividad
+├── manual/              # Manual in-app: índice, capítulos, búsqueda y errores frecuentes
 ├── mensajeria/          # Chat privado, chat grupal y SSE
 ├── modelo/              # Entidades JPA y enums del dominio
+├── normas/              # Normas de convivencia versionadas
 ├── notificaciones/      # Bandeja, resumen y marcado de notificaciones
 ├── perfiles/            # Perfiles, T&C, habilidades, fotos y reseñas
 ├── polaroids/           # Polaroids del perfil y su orden
-├── postulaciones/       # Postulaciones generales y por actividad
+├── postulaciones/       # Postulaciones generales, por actividad y casting virtual
 ├── presencia/           # Heartbeat, snapshot y SSE de presencia
-├── proyectos/           # Proyectos, miembros, cronograma, reemplazos, historial y calificaciones
+├── proyectos/           # Proyectos, miembros, cronograma, reemplazos, historial, informe y calificaciones
 ├── publicaciones/       # Publicaciones, interacciones, colaboradores y solicitudes de colaboración
 ├── reemplazos/          # Reemplazo automático de integrantes
 ├── reportes/            # Reportes de perfil y publicación
@@ -73,6 +77,8 @@ src/test/resources/
 ├── ModaLinkBD.sql                  # Esquema canónico usado por Testcontainers
 └── migraciones-test/
 ```
+
+Los capítulos Markdown de `docs/manual/` se empaquetan como recursos en `manual/` durante el build.
 
 ## Requisitos previos
 
@@ -139,6 +145,10 @@ Propiedades funcionales relevantes:
 | `POLAROID_MAX_POR_PERFIL` | Máximo de polaroids por perfil (`configuracion_sistema`) |
 | `COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN` | Máximo de propuestas de colaboración automática por imagen (`configuracion_sistema`) |
 | `CASTING_CANDIDATOS_POR_PAGINA` | Candidatos por página del tablero de casting virtual (`configuracion_sistema`) |
+| `IMAGEN_SUBSAMPLING_HABILITADO`, `IMAGEN_SUBSAMPLING_UMBRAL` | Subsampling al decodificar imágenes grandes (`configuracion_sistema`) |
+| `IMAGEN_EXIF_HABILITADO`, `IMAGEN_EXIF_SCAN_MAX_BYTES` | Orientación EXIF y límite de escaneo (`configuracion_sistema`) |
+| `IMAGEN_WEBP_METHOD` | Método del encoder WebP, de 0 a 6 (`configuracion_sistema`) |
+| `PERFIL_TYC_PLANTILLA` | Plantilla base de términos y condiciones por perfil (`configuracion_sistema`) |
 
 ## Puesta en marcha
 
@@ -167,6 +177,13 @@ invitaciones, aplicar una vez la migración:
 
 ```bash
 psql -U postgres -d modalink -f "docs/3_diseño/migraciones/migracion-rechazo-automatico-cupo.sql"
+```
+
+Si la base ya existía antes del versionado de términos y condiciones por
+perfil, aplicar además:
+
+```bash
+psql -U postgres -d modalink -f "docs/3_diseño/migraciones/migracion-uc23-numero-version-tyc.sql"
 ```
 
 ### 2. Backend
@@ -234,6 +251,7 @@ curl http://localhost:8080/actuator/health
 - **Esquema canónico versionado:** `docs/3_diseño/ModaLinkBD.sql`.
 - **Esquema de tests:** `src/test/resources/ModaLinkBD.sql`.
 - **Migraciones incrementales:** `docs/3_diseño/migraciones/` (carpeta parcialmente ignorada por git).
+- **Última iteración:** migraciones de T&C versionado, baja definitiva, casting virtual, límites de imágenes, notificaciones de características técnicas, nombre femenino, asignación de requerimientos generales y PDF de contratos.
 - Hibernate usa `ddl-auto=validate`: la base debe coincidir exactamente con las entidades JPA.
 - Antes de levantar una versión sobre una base existente, aplicar en orden las migraciones locales disponibles.
 - Los tests de integración levantan PostgreSQL 17 con Testcontainers y cargan `src/test/resources/ModaLinkBD.sql`.
@@ -300,6 +318,7 @@ http://localhost:8080/login/oauth2/code/google
 | `DELETE` | `/perfiles/{idPerfil}/foto` | Eliminar foto de perfil |
 | `GET/POST/DELETE` | `/perfiles/{idPerfil}/polaroids`, `/perfiles/{idPerfil}/polaroids/orden` | Gestionar polaroids y su orden |
 | `GET/PUT` | `/perfiles/{idPerfil}/terminos-condiciones` | Consultar o guardar T&C |
+| `GET` | `/perfiles/{idPerfil}/terminos-condiciones/historial`, `/historial/{idTyc}` | Historial de versiones de T&C del perfil |
 | `GET/POST` | `/perfiles/{idPerfil}/habilidades` | Gestionar habilidades del perfil |
 | `GET` | `/perfiles/{idPerfil}/calificaciones` | Reseñas del perfil |
 | `GET` | `/perfiles/{idPerfil}/calificaciones/{idCalificacion}` | Detalle de una reseña |
@@ -335,11 +354,15 @@ Calendario y jornada:
 | `POST` | `/proyectos/{idProyecto}/cancelar` | Cancelar proyecto |
 | `POST` | `/proyectos/{idProyecto}/reprogramar` | Reintentar reprogramación |
 | `GET` | `/proyectos/{idProyecto}/miembros` | Miembros activos |
+| `GET` | `/proyectos/{idProyecto}/miembros/tyc`, `/miembros/publico` | T&C y datos públicos de los miembros |
+| `PUT` | `/proyectos/{idProyecto}/miembros/{idMiembro}/requerimiento-general` | Asignar o reasignar un requerimiento general |
 | `DELETE` | `/proyectos/{idProyecto}/miembros/{idMiembro}` | Eliminar integrante |
 | `POST` | `/proyectos/{idProyecto}/baja` | Baja voluntaria |
 | `GET` | `/proyectos/{idProyecto}/historial` | Historial de miembros |
+| `GET` | `/proyectos/{idProyecto}/historial/contratos` | Historial de contratos del proyecto |
 | `GET/POST` | `/proyectos/{idProyecto}/calificaciones` | Calificaciones del equipo |
 | `GET/POST` | `/proyectos/{idProyecto}/reemplazos...` | Reemplazo automático de integrantes |
+| `POST/DELETE` | `/proyectos/{idProyecto}/requerimientos-generales`, `.../{idRequerimientoGral}` | Alta o baja de requerimientos generales |
 | `POST` | `/proyectos/{idProyecto}/actividades` | Crear actividad |
 | `PUT` | `/proyectos/{idProyecto}/actividades/{idActividad}` | Modificar actividad |
 | `PATCH` | `/proyectos/{idProyecto}/actividades/{idActividad}/estado` | Cambiar estado |
@@ -360,13 +383,17 @@ Calendario y jornada:
 | `GET` | `/proyectos/{idProyecto}/postulaciones/casting` | Tablero de casting virtual para modelos (paginado) |
 | `POST` | `/proyectos/{idProyecto}/postulaciones/.../aceptar` | Aceptar postulación |
 | `POST` | `/proyectos/{idProyecto}/postulaciones/.../rechazar` | Rechazar postulación |
-| `POST` | `/proyectos/{idProyecto}/invitaciones/general` | Invitar al proyecto |
-| `POST` | `/proyectos/{idProyecto}/invitaciones/actividad` | Invitar a una actividad |
-| `POST` | `/invitaciones/.../aceptar`, `/rechazar` | Gestionar invitación |
+| `POST` | `/proyectos/{idProyecto}/invitaciones/proyecto` | Invitar al proyecto |
+| `POST` | `/proyectos/{idProyecto}/invitaciones/requerimiento-general` | Invitar a un requerimiento general |
+| `POST` | `/proyectos/{idProyecto}/invitaciones/proyecto/batch`, `/requerimiento-general/batch` | Invitación masiva con resultado parcial |
+| `POST` | `/invitaciones/proyecto/{id}/aceptar`, `/requerimiento-general/{id}/aceptar` | Aceptar invitación |
+| `POST` | `/invitaciones/proyecto/{id}/rechazar`, `/requerimiento-general/{id}/rechazar` | Rechazar invitación |
 | `GET` | `/invitaciones/buscar` | Buscar invitaciones |
 | `GET` | `/requerimientos-generales/buscar` | Buscar requerimientos generales |
 | `GET` | `/requerimientos-actividad/buscar` | Buscar requerimientos de actividad |
 | `GET` | `/home/resumen` | Oportunidades y resumen de inicio |
+
+> Se mantienen los alias `/invitaciones/general` y `/invitaciones/actividad` para invitaciones de proyecto y de actividad.
 
 ### Publicaciones, interacciones y colaboraciones
 
@@ -418,7 +445,11 @@ Reglas generales de publicaciones:
 | `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/firmar` | Firmar contrato |
 | `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/rechazar` | Rechazar contrato |
 | `GET` | `/contratos/buscar` | Búsqueda global de contratos |
+| `GET` | `/contratos/proyectos` | Proyectos con contratos visibles |
 | `GET` | `/proyectos/{idProyecto}/contratos/{idContrato}/eventos` | Historial del contrato |
+| `GET` | `/proyectos/{idProyecto}/contratos/{idContrato}/pdf` | Exportar contrato a PDF |
+| `GET` | `/proyectos/{idProyecto}/historial/contratos` | Historial de contratos del proyecto |
+| `GET` | `/admin/contratos/{idContrato}/pdf` | Exportar contrato a PDF desde administración |
 
 ### Conexiones, presencia y mensajería
 
@@ -491,6 +522,7 @@ Catálogos administrativos:
 - `/admin/unidades-medida`
 - `/admin/tipos-contrato`
 - `/admin/configuracion/schedulers/deshabilitacion`
+- `/admin/configuracion/schedulers/baja`
 - `/admin/cronograma`
 - `/admin/colaboraciones-automaticas/historicas`
 
@@ -499,8 +531,23 @@ Detalle administrativo de solo lectura:
 | Método | Endpoint | Descripción |
 |---|---|---|
 | `GET` | `/admin/perfiles`, `/admin/perfiles/{idPerfil}` | Listado y detalle de perfiles con filtros y relaciones |
+| `GET` | `/admin/perfiles/{idPerfil}/terminos-condiciones/historial`, `/historial/{idTyc}` | Historial de T&C del perfil |
 | `GET` | `/admin/proyectos`, `/admin/proyectos/{idProyecto}` | Listado y detalle de proyectos en cualquier estado |
-| `GET` | `/admin/contratos`, `/admin/contratos/{idContrato}`, `/admin/contratos/{idContrato}/eventos` | Listado, detalle y eventos de contratos |
+| `GET` | `/admin/contratos`, `/admin/contratos/{idContrato}`, `/admin/contratos/{idContrato}/eventos`, `/admin/contratos/{idContrato}/pdf` | Listado, detalle, eventos y PDF de contratos |
+| `GET` | `/admin/publicaciones/{idPublicacion}` | Detalle de solo lectura de una publicación |
+
+### Normas de convivencia y manual in-app
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/normas-convivencia/vigente` | Normas vigentes con versión y vigencia |
+| `GET` | `/normas-convivencia/versiones`, `/versiones/{version}` | Versiones disponibles y contenido de una versión |
+| `GET` | `/ayuda/indice` | Índice del manual filtrado por rol |
+| `GET` | `/ayuda/capitulos/{id}` | Capítulo del manual |
+| `GET` | `/ayuda/buscar` | Búsqueda en el manual |
+| `GET` | `/ayuda/errores` | Catálogo de errores frecuentes |
+
+Las normas son públicas y no requieren sesión. El manual requiere rol `ADMINISTRADOR` o `USUARIO`; sus capítulos Markdown se empaquetan desde `docs/manual/` durante el build.
 
 ## Testing
 
@@ -513,12 +560,13 @@ mvn verify
 - Tests MVC con `@WebMvcTest` y MockMvc.
 - Tests de integración con PostgreSQL real mediante Testcontainers.
 - Tests de concurrencia en flujos críticos de conexiones y aceptación de postulaciones.
+- Tests de renderizado de PDF (contratos, auditoría e informe de proyecto) y de migraciones.
 - Reporte de cobertura con JaCoCo en `target/site/jacoco/index.html`.
 
-Última ejecución completa de la suite (2026-11-17):
+Suite actual (2026-11-26):
 
 ```text
-2922 tests, 0 failures, 0 errors (4 omitidos)
+425 archivos de test y 3.151 casos declarados (@Test, @ParameterizedTest y @RepeatedTest)
 ```
 
 > Los tests de integración requieren Docker disponible. Si Docker no está corriendo, los tests que extienden `AbstractPostgresIntegrationTest` fallan.
@@ -535,6 +583,7 @@ mvn verify
 - Fichas de frontend aplicadas: [`docs/frontend/aplicadas/`](docs/frontend/aplicadas/)
 - Informe de testing: [`docs/6_presentaciones/tests.md`](docs/6_presentaciones/tests.md)
 - Informe de colaboraciones automáticas: [`docs/6_presentaciones/informe-colaboraciones-automaticas.md`](docs/6_presentaciones/informe-colaboraciones-automaticas.md)
+- Informe ejecutivo de proyecto: [`docs/4_pendiente/plan-implementacion-informe-proyecto.md`](docs/4_pendiente/plan-implementacion-informe-proyecto.md) y [`docs/4_pendiente/propuestas-informes.md`](docs/4_pendiente/propuestas-informes.md)
 
 Fichas específicas:
 
@@ -577,5 +626,9 @@ Fichas específicas:
 - [x] Publicaciones: alta, baja, búsqueda, modificación, interacción, envío/búsqueda, aceptación/rechazo y eliminación de solicitudes de colaboración
 - [x] Publicaciones: reporte y moderación (UC-69)
 - [x] Colaboraciones automáticas por similitud de imágenes
+- [x] Términos y condiciones versionados por perfil
+- [x] Informe ejecutivo de estado y salud de proyecto
+- [x] Tablero de casting virtual
+- [x] Normas de convivencia versionadas y manual in-app
 - [x] Detalle administrativo de solo lectura de perfiles, proyectos y contratos
 - [x] Manual de usuario y documentación final
