@@ -4,6 +4,8 @@ Backend de **ModaLink**, una plataforma de networking profesional para la indust
 
 Proyecto final de la carrera **Analista en Sistemas de Computación**, desarrollado con **Proceso Unificado (UP)**, foco en testing, validaciones de negocio en backend y persistencia, y trazabilidad mediante auditoría.
 
+### Prueba demo online: https://modalink.duckdns.org/ (rama deploy/azure)
+
 > **Estado actual (2026-11-26):** **76 de 76 casos de uso implementados y testeados (100 %)**.
 >
 > Módulos completos: autenticación y usuarios, administración, perfiles y disponibilidad, publicaciones, proyectos y equipo, actividades y cronograma, contratos, conexiones, presencia y mensajería.
@@ -12,7 +14,6 @@ Proyecto final de la carrera **Analista en Sistemas de Computación**, desarroll
 >
 > Seguimiento detallado: [`docs/5_estado_sistema/estado_uc.md`](docs/5_estado_sistema/estado_uc.md).
 > 
-Prueba demo online: https://modalink.duckdns.org/ (rama deploy/azure)
 
 ## Stack tecnológico
 
