@@ -55,7 +55,7 @@ public final class InformeProyectoFixture {
                         new AreaInforme("CRONOGRAMA", EstadoAreaInforme.ROJO,
                                 "2 actividades vencidas y 1 conflicto. Margen de 3 días."),
                         new AreaInforme("EQUIPO", EstadoAreaInforme.ROJO,
-                                "Falta 1 fotógrafo. 1 miembro sin aceptar T&C."),
+                                "Falta 1 fotógrafo."),
                         new AreaInforme("CONTRATOS", EstadoAreaInforme.AMARILLO,
                                 "1 contrato pendiente de firma. Firmas: 4 de 6."),
                         new AreaInforme("BRIEF", EstadoAreaInforme.VERDE,
@@ -133,7 +133,7 @@ public final class InformeProyectoFixture {
                 "CUPOS_SIN_CUBRIR",
                 "EQUIPO",
                 SeveridadInforme.ALTA,
-                "Falta 1 fotógrafo",
+                "Falta 1 fotógrafo.",
                 9L,
                 "Reclutar o reasignar"));
 
