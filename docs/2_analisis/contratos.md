@@ -202,7 +202,7 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Notas** | \- |
 | **Excepciones** | El director no calificó al equipo completo. |
 | **Salida** | unProyecto |
-| **Precondición** | Todas las actividades de la planificación de unProyecto deben estar en estado “finalizada”. El proyecto debe estar en estado confirmado. |
+| **Precondición** | Todas las actividades existentes de la planificación de unProyecto deben estar en estado “finalizada”. Si no hay actividades, la precondición se cumple. El proyecto debe estar en estado confirmado. |
 | **Postcondición** | Se actualizó unProyecto.estado a “Finalizado”. Se indexó unProyecto a HistorialProyecto de cada participante. |
 
 | Nombre | calificarMiembro(unPerfil, calificacion, resenia) |
@@ -483,7 +483,7 @@ administrador no incluye `idPerfilActivo` ni `nombreArtisticoActivo`.
 | **Responsabilidades** | Exportar el resultado filtrado a CSV o PDF, con tope configurable. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | UC-67 |
-| **Notas** | Solo rol Administrador. `formato` es obligatorio (`CSV` o `PDF`). Aplica los filtros de operador y texto igual que el listado. El tope se configura en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000); si se supera, devuelve `400`. El PDF incluye encabezado, resumen y tabla de eventos. Las filas históricas muestran “No disponible (histórico)” como operador. |
+| **Notas** | Solo rol Administrador. `formato` es obligatorio (`CSV` o `PDF`). Aplica los filtros de operador y texto igual que el listado. El tope se configura en `AUDITORIA_EXPORT_MAX_REGISTROS` (default 10.000); si se supera, devuelve `400`. El PDF incluye encabezado con período, bloque de metadatos, indicadores, resumen por tipo y entidad, y detalle de eventos; el pie de cada hoja muestra la fecha de impresión y `Hoja X / Y`. Las filas históricas muestran “No disponible (histórico)” como operador. |
 | **Excepciones** | Fechas/tipos inválidos, `FORMATO_EXPORTACION_INVALIDO`, `EXPORTACION_EXCEDIDA`. |
 | **Salida** | Archivo CSV (`text/csv`) o PDF (`application/pdf`) con `Content-Disposition: attachment`. |
 | **Precondición** | El usuario está autenticado con rol Administrador. |

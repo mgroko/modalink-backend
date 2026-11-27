@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.mgroko.backend.calendario.dto.ResultadoPreferencia;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 
 /**
  * Resultado de aceptar o rechazar una postulación.
@@ -20,7 +21,8 @@ public record PostulacionGestionadaResponse(
         ResultadoPreferencia resultadoPreferencia,
         Long desvioMinutos,
         List<AdvertenciaSobrecompromiso> advertencias,
-        Long idTycAceptado) {
+        Long idTycAceptado,
+        CupoRequerimiento cupo) {
 
     /**
      * Constructor histórico para respuestas de rechazo o consumidores que aún
@@ -47,6 +49,7 @@ public record PostulacionGestionadaResponse(
                 null,
                 null,
                 List.of(),
+                null,
                 null);
     }
 
@@ -78,6 +81,7 @@ public record PostulacionGestionadaResponse(
                 resultadoPreferencia,
                 desvioMinutos,
                 advertencias,
+                null,
                 null);
     }
 

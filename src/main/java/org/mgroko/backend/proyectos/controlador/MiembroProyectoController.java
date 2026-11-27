@@ -1,13 +1,22 @@
 package org.mgroko.backend.proyectos.controlador;
 
+import java.util.List;
+
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.proyectos.dto.AsignacionRequerimientoGralResponse;
+import org.mgroko.backend.proyectos.dto.AsignarRequerimientoGralRequest;
 import org.mgroko.backend.proyectos.dto.DarseDeBajaProyectoRequest;
 import org.mgroko.backend.proyectos.dto.EliminarIntegranteRequest;
 import org.mgroko.backend.proyectos.dto.MiembroProyectoResponse;
+import org.mgroko.backend.proyectos.dto.MiembroPublicoTycProyectoResponse;
+import org.mgroko.backend.proyectos.dto.MiembroTycProyectoResponse;
 import org.mgroko.backend.proyectos.servicio.DarseDeBajaProyectoService;
 import org.mgroko.backend.proyectos.servicio.EliminarIntegranteService;
 import org.mgroko.backend.proyectos.servicio.ListarMiembrosProyectoService;
+import org.mgroko.backend.proyectos.servicio.ListarMiembrosPublicosProyectoService;
+import org.mgroko.backend.proyectos.servicio.ListarTycMiembrosProyectoService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +25,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,16 +45,25 @@ import jakarta.validation.Valid;
 public class MiembroProyectoController {
 
     private final ListarMiembrosProyectoService listarMiembrosProyectoService;
+    private final ListarTycMiembrosProyectoService listarTycMiembrosProyectoService;
+    private final ListarMiembrosPublicosProyectoService listarMiembrosPublicosProyectoService;
     private final EliminarIntegranteService eliminarIntegranteService;
     private final DarseDeBajaProyectoService darseDeBajaProyectoService;
+    private final RequerimientoGralAsignacionService requerimientoGralAsignacionService;
 
     public MiembroProyectoController(
             ListarMiembrosProyectoService listarMiembrosProyectoService,
+            ListarTycMiembrosProyectoService listarTycMiembrosProyectoService,
+            ListarMiembrosPublicosProyectoService listarMiembrosPublicosProyectoService,
             EliminarIntegranteService eliminarIntegranteService,
-            DarseDeBajaProyectoService darseDeBajaProyectoService) {
+            DarseDeBajaProyectoService darseDeBajaProyectoService,
+            RequerimientoGralAsignacionService requerimientoGralAsignacionService) {
         this.listarMiembrosProyectoService = listarMiembrosProyectoService;
+        this.listarTycMiembrosProyectoService = listarTycMiembrosProyectoService;
+        this.listarMiembrosPublicosProyectoService = listarMiembrosPublicosProyectoService;
         this.eliminarIntegranteService = eliminarIntegranteService;
         this.darseDeBajaProyectoService = darseDeBajaProyectoService;
+        this.requerimientoGralAsignacionService = requerimientoGralAsignacionService;
     }
 
     @GetMapping("/proyectos/{idProyecto}/miembros")
@@ -81,6 +100,34 @@ public class MiembroProyectoController {
                 todos));
     }
 
+    @GetMapping("/proyectos/{idProyecto}/miembros/tyc")
+    public ResponseEntity<List<MiembroTycProyectoResponse>> listarTyc(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        return ResponseEntity.ok(listarTycMiembrosProyectoService.listar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto));
+    }
+
+    @GetMapping("/proyectos/{idProyecto}/miembros/publico")
+    public ResponseEntity<List<MiembroPublicoTycProyectoResponse>> listarPublicos(
+            @PathVariable Long idProyecto,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        return ResponseEntity.ok(listarMiembrosPublicosProyectoService.listar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto));
+    }
+
     @DeleteMapping("/proyectos/{idProyecto}/miembros/{idMiembro}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Long idProyecto,
@@ -109,6 +156,24 @@ public class MiembroProyectoController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/proyectos/{idProyecto}/miembros/{idMiembro}/requerimiento-general")
+    public ResponseEntity<AsignacionRequerimientoGralResponse> asignarRequerimientoGeneral(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idMiembro,
+            @Valid @RequestBody AsignarRequerimientoGralRequest request,
+            Authentication authentication) {
+
+        Long idUsuario = Long.parseLong((String) authentication.getPrincipal());
+        Long idPerfilActivo = idPerfilActivo(authentication);
+
+        return ResponseEntity.ok(requerimientoGralAsignacionService.asignar(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto,
+                idMiembro,
+                request.idRequerimientoGral()));
+    }
+
     @PostMapping("/proyectos/{idProyecto}/baja")
     public ResponseEntity<Void> darseDeBaja(
             @PathVariable Long idProyecto,
@@ -133,5 +198,17 @@ public class MiembroProyectoController {
                 request);
 
         return ResponseEntity.noContent().build();
+    }
+
+    private Long idPerfilActivo(Authentication authentication) {
+        Long idPerfilActivo = null;
+        if (authentication.getDetails() instanceof ContextoAutenticacion contexto) {
+            idPerfilActivo = contexto.idPerfilActivo();
+        }
+
+        if (idPerfilActivo == null) {
+            throw new PerfilActivoNoSeleccionadoException();
+        }
+        return idPerfilActivo;
     }
 }

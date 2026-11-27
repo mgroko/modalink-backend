@@ -187,10 +187,9 @@ public class CrearInvitacionBatchService {
                         "El requerimiento no pertenece al proyecto indicado.");
             }
 
-            if (cupoRequerimientoService.calcularGeneral(requerimiento).satisfecho()) {
-                throw new InvitacionNoPermitidaException(
-                        "El requerimiento general ya está satisfecho.");
-            }
+            // El cupo se revalida al aceptar la invitación. Si el
+            // requerimiento ya está satisfecho, la aceptación puede resolver
+            // otro compatible o dejar la membresía sin requerimiento.
         }
     }
 

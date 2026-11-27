@@ -30,6 +30,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "perfil.imagen",
             "proyecto",
@@ -53,8 +54,6 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
                       AND o.idPerfil = :idPerfil
                       AND o.origen = org.mgroko.backend.modelo.enums.OrigenColaboracion.AUTOMATICA
                   )
-                  AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
-                  AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
                 )
               )
             ORDER BY p.fechaPublicacion DESC, p.idPublicacion DESC
@@ -115,8 +114,6 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
                       AND o.idPerfil = :idPerfil
                       AND o.origen = org.mgroko.backend.modelo.enums.OrigenColaboracion.AUTOMATICA
                   )
-                  AND p.perfil.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
-                  AND p.perfil.usuario.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
                 )
               )
             ORDER BY p.proyecto.nombre
@@ -151,6 +148,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "perfil.imagen",
             "proyecto",
@@ -168,6 +166,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "proyecto",
             "ubicacion",
@@ -397,6 +396,7 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
     @EntityGraph(attributePaths = {
             "perfil",
             "perfil.usuario",
+            "perfil.usuario.genero",
             "imagenes"
     })
     @Query("SELECT p FROM Publicacion p WHERE p.idPublicacion = :id")
@@ -501,4 +501,27 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long>,
             @Param("desde") java.time.LocalDateTime desde,
             @Param("hasta") java.time.LocalDateTime hasta,
             @Param("umbral") int umbral);
+
+    @Query("""
+            SELECT p.idPublicacion
+            FROM Publicacion p
+            WHERE p.perfil.idPerfil = :idPerfil
+            """)
+    List<Long> findIdsByPerfilIdPerfil(@Param("idPerfil") Long idPerfil);
+
+    @Query("""
+            SELECT DISTINCT p.idPublicacion
+            FROM Publicacion p
+            JOIN p.colaboradores c
+            WHERE c.idPerfil = :idPerfil
+            """)
+    List<Long> findIdsDondeEsColaborador(@Param("idPerfil") Long idPerfil);
+
+    @Query("""
+            SELECT COUNT(c)
+            FROM Publicacion p
+            JOIN p.colaboradores c
+            WHERE p.idPublicacion = :idPublicacion
+            """)
+    long contarColaboradores(@Param("idPublicacion") Long idPublicacion);
 }

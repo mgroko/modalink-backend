@@ -1,5 +1,6 @@
 package org.mgroko.backend.calendario.servicio;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -103,6 +104,11 @@ class CalendarioServiceTest {
         return Actividad.builder()
                 .idActividad(5L).nombre("Sesión")
                 .fechaHoraInicio(inicio).fechaHoraFin(fin).build();
+    }
+
+    /** Fecha futura determinista para los tests de UC-18. */
+    private static LocalDateTime futuro(int dias, int hora, int minuto) {
+        return LocalDate.now().plusDays(dias).atTime(hora, minuto);
     }
 
     // ------------------------------------------------------------------
@@ -494,19 +500,18 @@ class CalendarioServiceTest {
         mockUsuarioActivo();
         mockAgenda();
         mockSinActividades();
+        LocalDateTime inicio = futuro(7, 10, 0);
+        LocalDateTime fin = futuro(7, 14, 0);
         when(bloqueoAgendaRepository.existsByAgenda_IdAgendaAndFechaHoraInicioLessThanAndFechaHoraFinGreaterThan(
-                10L, LocalDateTime.of(2026, 9, 15, 14, 0), LocalDateTime.of(2026, 9, 15, 10, 0)))
+                10L, fin, inicio))
                 .thenReturn(false);
         when(bloqueoAgendaRepository.save(any(BloqueoAgenda.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
         BloqueoResponse response = calendarioService.marcarNoDisponible(1L,
-                new MarcarNoDisponibleRequest(
-                        LocalDateTime.of(2026, 9, 15, 10, 0),
-                        LocalDateTime.of(2026, 9, 15, 14, 0),
-                        "Compromiso"));
+                new MarcarNoDisponibleRequest(inicio, fin, "Compromiso"));
 
-        assertEquals(LocalDateTime.of(2026, 9, 15, 10, 0), response.fechaHoraInicio());
+        assertEquals(inicio, response.fechaHoraInicio());
         assertEquals("Compromiso", response.motivo());
         verify(bloqueoAgendaRepository).save(any(BloqueoAgenda.class));
     }
@@ -514,28 +519,77 @@ class CalendarioServiceTest {
     @Test
     void marcarNoDisponible_finAntesDeInicio_lanzaRangoInvalido() {
         mockUsuarioActivo();
+        LocalDateTime inicio = futuro(7, 14, 0);
+        LocalDateTime fin = futuro(7, 10, 0);
         MarcarNoDisponibleRequest request = new MarcarNoDisponibleRequest(
-                LocalDateTime.of(2026, 9, 15, 14, 0),
-                LocalDateTime.of(2026, 9, 15, 10, 0),
-                null);
+                inicio, fin, null);
 
         assertThrows(RangoInvalidoException.class,
                 () -> calendarioService.marcarNoDisponible(1L, request));
     }
 
     @Test
+    void marcarNoDisponible_finEnPasado_lanzaRangoInvalido() {
+        mockUsuarioActivo();
+        LocalDateTime inicio = LocalDateTime.now().minusDays(2);
+        LocalDateTime fin = LocalDateTime.now().minusDays(1);
+
+        RangoInvalidoException exception = assertThrows(RangoInvalidoException.class,
+                () -> calendarioService.marcarNoDisponible(1L,
+                        new MarcarNoDisponibleRequest(inicio, fin, "Vacaciones")));
+
+        assertEquals("No se puede crear un bloqueo en una fecha pasada.",
+                exception.getMessage());
+        verify(bloqueoAgendaRepository, never()).save(any());
+    }
+
+    @Test
+    void marcarNoDisponible_finIgualAhora_lanzaRangoInvalido() {
+        mockUsuarioActivo();
+        LocalDateTime inicio = LocalDateTime.now().minusHours(2);
+        LocalDateTime fin = LocalDateTime.now();
+
+        assertThrows(RangoInvalidoException.class,
+                () -> calendarioService.marcarNoDisponible(1L,
+                        new MarcarNoDisponibleRequest(inicio, fin, "Vacaciones")));
+
+        verify(bloqueoAgendaRepository, never()).save(any());
+    }
+
+    @Test
+    void marcarNoDisponible_empezoEnPasadoPeroSigueVigente_creaBloqueo() {
+        mockUsuarioActivo();
+        mockAgenda();
+        mockSinActividades();
+        LocalDateTime inicio = LocalDateTime.now().minusHours(1);
+        LocalDateTime fin = LocalDateTime.now().plusHours(1);
+        when(bloqueoAgendaRepository.existsByAgenda_IdAgendaAndFechaHoraInicioLessThanAndFechaHoraFinGreaterThan(
+                10L, fin, inicio))
+                .thenReturn(false);
+        when(bloqueoAgendaRepository.save(any(BloqueoAgenda.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        BloqueoResponse response = calendarioService.marcarNoDisponible(1L,
+                new MarcarNoDisponibleRequest(inicio, fin, "En curso"));
+
+        assertEquals(inicio, response.fechaHoraInicio());
+        verify(bloqueoAgendaRepository).save(any(BloqueoAgenda.class));
+    }
+
+    @Test
     void marcarNoDisponible_solapaActividad_lanzaHorarioComprometido() {
         mockUsuarioActivo();
         mockAgenda();
+        LocalDateTime fecha = futuro(7, 10, 0);
         when(actividadRepository.findActividadesDeUsuario(anyLong(), anyCollection()))
                 .thenReturn(List.of(actividad(
-                        LocalDateTime.of(2026, 9, 15, 10, 0),
-                        LocalDateTime.of(2026, 9, 15, 12, 0))));
+                        fecha,
+                        fecha.plusHours(2))));
 
         assertThrows(HorarioComprometidoException.class,
                 () -> calendarioService.marcarNoDisponible(1L, new MarcarNoDisponibleRequest(
-                        LocalDateTime.of(2026, 9, 15, 10, 30),
-                        LocalDateTime.of(2026, 9, 15, 11, 30), null)));
+                        fecha.plusMinutes(30),
+                        fecha.plusMinutes(90), null)));
 
         verify(bloqueoAgendaRepository, never()).save(any());
     }
@@ -545,15 +599,16 @@ class CalendarioServiceTest {
         mockUsuarioActivo();
         mockAgenda();
         // Actividad 10:00-12:00, margen total 30 -> buffer 09:45-12:15.
+        LocalDateTime fecha = futuro(7, 10, 0);
         when(actividadRepository.findActividadesDeUsuario(anyLong(), anyCollection()))
                 .thenReturn(List.of(actividad(
-                        LocalDateTime.of(2026, 9, 15, 10, 0),
-                        LocalDateTime.of(2026, 9, 15, 12, 0))));
+                        fecha,
+                        fecha.plusHours(2))));
 
         assertThrows(HorarioComprometidoException.class,
                 () -> calendarioService.marcarNoDisponible(1L, new MarcarNoDisponibleRequest(
-                        LocalDateTime.of(2026, 9, 15, 8, 30),
-                        LocalDateTime.of(2026, 9, 15, 9, 46), null)));
+                        fecha.minusMinutes(90),
+                        fecha.minusMinutes(14), null)));
 
         verify(bloqueoAgendaRepository, never()).save(any());
     }
@@ -563,14 +618,15 @@ class CalendarioServiceTest {
         mockUsuarioActivo();
         mockAgenda();
         mockSinActividades();
+        LocalDateTime inicio = futuro(7, 12, 0);
+        LocalDateTime fin = futuro(7, 16, 0);
         when(bloqueoAgendaRepository.existsByAgenda_IdAgendaAndFechaHoraInicioLessThanAndFechaHoraFinGreaterThan(
-                10L, LocalDateTime.of(2026, 9, 15, 16, 0), LocalDateTime.of(2026, 9, 15, 12, 0)))
+                10L, fin, inicio))
                 .thenReturn(true);
 
         assertThrows(BloqueoSolapadoException.class,
                 () -> calendarioService.marcarNoDisponible(1L, new MarcarNoDisponibleRequest(
-                        LocalDateTime.of(2026, 9, 15, 12, 0),
-                        LocalDateTime.of(2026, 9, 15, 16, 0), null)));
+                        inicio, fin, null)));
 
         verify(bloqueoAgendaRepository, never()).save(any());
     }

@@ -71,6 +71,10 @@ public class RechazarInvitacionService {
         this.reloj = reloj;
     }
 
+    /**
+     * Alias histórico: rechaza una invitación general del proyecto o de un
+     * requerimiento general según la FK de la invitación.
+     */
     @Transactional
     @AuditarOperacion
     public InvitacionGestionadaResponse rechazarGeneral(
@@ -78,21 +82,61 @@ public class RechazarInvitacionService {
             Long idPerfilActivo,
             Long idInvitacion) {
 
+        return rechazarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion, null);
+    }
+
+    @Transactional
+    @AuditarOperacion
+    public InvitacionGestionadaResponse rechazarProyecto(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion) {
+
+        return rechazarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion, TipoInvitacion.GENERAL);
+    }
+
+    @Transactional
+    @AuditarOperacion
+    public InvitacionGestionadaResponse rechazarRequerimientoGeneral(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion) {
+
+        return rechazarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion,
+                TipoInvitacion.REQUERIMIENTO_GENERAL);
+    }
+
+    private InvitacionGestionadaResponse rechazarInvitacionGral(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion,
+            TipoInvitacion tipoEsperado) {
+
         Perfil perfil = perfilActivo(idUsuario, idPerfilActivo);
 
-        InvitacionGral inicial = invitacionGralRepository.findById(idInvitacion)
+        InvitacionGral invitacion = invitacionGralRepository.findByIdForUpdate(idInvitacion)
                 .orElseThrow(InvitacionNoEncontradaException::new);
 
-        if (inicial.getRequerimientoGral() != null) {
+        TipoInvitacion tipoActual = invitacion.getRequerimientoGral() != null
+                ? TipoInvitacion.REQUERIMIENTO_GENERAL
+                : TipoInvitacion.GENERAL;
+
+        if (tipoEsperado != null && tipoEsperado != tipoActual) {
+            throw new InvitacionNoPermitidaException(
+                    "La invitación no corresponde al tipo indicado.",
+                    "TIPO_INVITACION_INCORRECTO");
+        }
+
+        if (invitacion.getRequerimientoGral() != null) {
             Long idRequerimientoGral =
-                    inicial.getRequerimientoGral().getIdRequerimientoGral();
+                    invitacion.getRequerimientoGral().getIdRequerimientoGral();
             requerimientoGralProyectoRepository.findByIdParaGestion(idRequerimientoGral)
                     .orElseThrow(() -> new RequerimientoNoEncontradoException(
                             "El requerimiento general " + idRequerimientoGral + " no existe."));
         }
-
-        InvitacionGral invitacion = invitacionGralRepository.findByIdForUpdate(idInvitacion)
-                .orElseThrow(InvitacionNoEncontradaException::new);
 
         validarDestinatario(invitacion.getPerfilDestinatario(), perfil);
         validarEstadoPendiente(invitacion.getEstado());
@@ -113,7 +157,7 @@ public class RechazarInvitacionService {
 
         return new InvitacionGestionadaResponse(
                 invitacion.getIdInvitacionGral(),
-                TipoInvitacion.GENERAL,
+                tipoActual,
                 invitacion.getEstado(),
                 proyecto.getIdProyecto(),
                 perfil.getIdPerfil(),
@@ -214,8 +258,13 @@ public class RechazarInvitacionService {
     }
 
     private void validarProyecto(Proyecto proyecto) {
+        // Aceptar sigue reservado a proyectos activos. Rechazar también se
+        // permite en proyectos cerrados para poder sanear invitaciones que
+        // quedaron PENDIENTE antes del cierre automático.
         if (proyecto.getEstado() != EstadoProyecto.PUBLICADO
-                && proyecto.getEstado() != EstadoProyecto.CONFIRMADO) {
+                && proyecto.getEstado() != EstadoProyecto.CONFIRMADO
+                && proyecto.getEstado() != EstadoProyecto.FINALIZADO
+                && proyecto.getEstado() != EstadoProyecto.CANCELADO) {
             throw new InvitacionNoPermitidaException(
                     "El proyecto no permite rechazar invitaciones en estado "
                             + proyecto.getEstado().getNombre() + ".");

@@ -15,7 +15,6 @@ public record CrearMoodboardRequest(
          * significa "no tocar las imágenes"; [] elimina todas. En la creación
          * (UC-24) este campo se ignora porque las imágenes se suben después.
          */
-        @Size(max = 10, message = "El moodboard no puede conservar más de 10 imágenes.")
         List<@NotNull(message = "El id de imagen no puede ser nulo.")
              @Positive(message = "El id de imagen debe ser positivo.") Long> imagenesConservadas
 ) {

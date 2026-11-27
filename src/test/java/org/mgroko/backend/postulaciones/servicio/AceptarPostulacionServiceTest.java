@@ -61,6 +61,7 @@ import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -71,7 +72,6 @@ import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
-import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.ArgumentCaptor;
@@ -90,8 +90,6 @@ class AceptarPostulacionServiceTest {
     @Mock
     private PostulacionActividadRepository postulacionActividadRepository;
     @Mock
-    private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
-    @Mock
     private RequerimientoActividadRepository requerimientoActividadRepository;
     @Mock
     private MiembroProyectoRepository miembroProyectoRepository;
@@ -101,6 +99,8 @@ class AceptarPostulacionServiceTest {
     private RolProyectoRepository rolProyectoRepository;
     @Mock
     private CupoRequerimientoService cupoRequerimientoService;
+    @Mock
+    private RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     @Mock
     private ProyectoSecurityService proyectoSecurityService;
     @Mock
@@ -140,12 +140,12 @@ class AceptarPostulacionServiceTest {
                 proyectoRepository,
                 postulacionGralRepository,
                 postulacionActividadRepository,
-                requerimientoGralProyectoRepository,
                 requerimientoActividadRepository,
                 miembroProyectoRepository,
                 asignacionActividadRepository,
                 rolProyectoRepository,
                 cupoRequerimientoService,
+                requerimientoGralAsignacionService,
                 proyectoSecurityService,
                 notificacionService,
                 evaluarDisponibilidadActividadService,
@@ -282,16 +282,33 @@ class AceptarPostulacionServiceTest {
     }
 
     @Test
-    void aceptarGeneral_sinCupo_lanzaExcepcion() {
+    void aceptarGeneral_sinCupo_creaMiembroSinRequerimiento() {
         prepararCaminoFeliz();
-        when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(new CupoRequerimiento(1, 1, 0, true));
+        when(requerimientoGralAsignacionService.resolverParaIncorporacion(
+                proyecto, postulante, 20L)).thenReturn(null);
+        when(miembroProyectoRepository.saveAndFlush(any(MiembroProyecto.class)))
+                .thenAnswer(invocation -> {
+                    MiembroProyecto miembro = invocation.getArgument(0);
+                    miembro.setIdMiembro(88L);
+                    return miembro;
+                });
+        when(postulacionGralRepository.saveAndFlush(any(PostulacionGral.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificacionService.crear(
+                any(Usuario.class), any(Perfil.class),
+                eq(NotificacionService.TIPO_POSTULACION_ACEPTADA),
+                any(String.class), eq("POSTULACION_GRAL"), eq(77L), any(Long.class)))
+                .thenReturn(new Notificacion());
 
-        assertThatThrownBy(() -> service.aceptarGeneral(1L, 10L, 5L, 77L))
-                .isInstanceOf(PostulacionNoPermitidaException.class)
-                .hasMessageContaining("satisfecho");
+        ArgumentCaptor<MiembroProyecto> captor =
+                ArgumentCaptor.forClass(MiembroProyecto.class);
 
-        verify(miembroProyectoRepository, never()).saveAndFlush(any());
+        PostulacionGestionadaResponse respuesta =
+                service.aceptarGeneral(1L, 10L, 5L, 77L);
+
+        verify(miembroProyectoRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getRequerimientoGral()).isNull();
+        assertThat(respuesta.idRequerimiento()).isNull();
     }
 
     @Test
@@ -544,10 +561,8 @@ class AceptarPostulacionServiceTest {
                 .thenReturn(Optional.of(proyecto));
         lenient().when(postulacionGralRepository.findByIdParaGestion(77L))
                 .thenReturn(Optional.of(postulacion));
-        lenient().when(requerimientoGralProyectoRepository.findByIdParaGestion(20L))
-                .thenReturn(Optional.of(requerimiento));
-        lenient().when(cupoRequerimientoService.calcularGeneral(requerimiento))
-                .thenReturn(new CupoRequerimiento(1, 0, 1, false));
+        lenient().when(requerimientoGralAsignacionService.resolverParaIncorporacion(
+                proyecto, postulante, 20L)).thenReturn(requerimiento);
         lenient().when(miembroProyectoRepository
                 .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
                         5L, 12L, EstadoParticipacion.ACTIVO))

@@ -241,6 +241,19 @@ class NotificacionMapperTest {
     }
 
     @Test
+    void caracteristicaTecnica_enlazaAEditarPerfilConResaltado() {
+        NotificacionResponse response = NotificacionMapper.toResponse(
+                notificacion("CARACTERISTICA_TECNICA_CREADA",
+                        "CARACTERISTICA_TECNICA", 55L, null),
+                null);
+
+        assertThat(response.link())
+                .isEqualTo("/dashboard-usuario/editar-perfil/20?resaltarCaracteristicas=55");
+        assertThat(response.titulo())
+                .isEqualTo("Nueva característica técnica");
+    }
+
+    @Test
     void titulos_conocidos_seResuelvenPorTipo() {
         assertThat(NotificacionTitulos.tituloDe("AJUSTE_HORARIO"))
                 .isEqualTo("Ajuste horario");

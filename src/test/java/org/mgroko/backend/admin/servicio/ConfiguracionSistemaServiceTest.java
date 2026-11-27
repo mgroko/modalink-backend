@@ -17,11 +17,13 @@ import org.mgroko.backend.admin.dto.ConfiguracionSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerResponse;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerBajaRequest;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerRequest;
+import org.mgroko.backend.admin.dto.EjecutarSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.EjecutarSchedulerResponse;
 import org.mgroko.backend.modelo.ConfiguracionSistema;
 import org.mgroko.backend.perfiles.servicio.ExpirarPerfilService;
 import org.mgroko.backend.repositorio.ConfiguracionSistemaRepository;
 import org.mgroko.backend.usuario.servicio.ExpirarCuentaService;
+import org.mgroko.backend.usuario.servicio.ResumenBajaDefinitiva;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -221,20 +223,34 @@ class ConfiguracionSistemaServiceTest {
     }
 
     @Test
-    @DisplayName("ejecutarBajaManual - Expira cuentas y perfiles con el plazo configurado")
+    @DisplayName("ejecutarBajaManual - Expira cuentas, perfiles y devuelve detalle")
     void ejecutarBajaManual_retornaResumen() {
         when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_DIAS_BAJA))
                 .thenReturn(Optional.empty());
-        when(expirarCuentaService.expirarVencidos(30)).thenReturn(1);
-        when(expirarPerfilService.expirarVencidos(30)).thenReturn(2);
+        when(expirarCuentaService.expirarVencidosConResumen(30))
+                .thenReturn(new ResumenBajaDefinitiva(1, 2, 3, 4, 5, 6));
+        when(expirarPerfilService.expirarVencidosConResumen(30))
+                .thenReturn(new ResumenBajaDefinitiva(0, 1, 2, 1, 3, 2));
 
-        EjecutarSchedulerResponse response = configuracionSistemaService.ejecutarBajaManual();
+        EjecutarSchedulerBajaResponse response =
+                configuracionSistemaService.ejecutarBajaManual();
 
-        assertEquals(3, response.registrosAfectados());
+        assertEquals(4, response.registrosAfectados());
         assertNotNull(response.ejecutadoEn());
-        assertTrue(response.mensaje().contains("1 cuenta(s) y 2 perfil(es)"));
-        verify(expirarCuentaService).expirarVencidos(30);
-        verify(expirarPerfilService).expirarVencidos(30);
+        assertTrue(response.mensaje().contains("1 cuenta(s) y 3 perfil(es)"));
+        assertTrue(response.mensaje().contains("Proyectos cancelados: 5"));
+        assertTrue(response.mensaje().contains("Publicaciones eliminadas: 8"));
+        assertTrue(response.mensaje().contains("Conexiones dadas de baja: 8"));
+
+        assertEquals(1, response.detalle().cuentasExpiradas());
+        assertEquals(3, response.detalle().perfilesExpirados());
+        assertEquals(5, response.detalle().proyectosCancelados());
+        assertEquals(5, response.detalle().membresiasBajaVoluntaria());
+        assertEquals(8, response.detalle().publicacionesEliminadas());
+        assertEquals(8, response.detalle().conexionesEliminadas());
+
+        verify(expirarCuentaService).expirarVencidosConResumen(30);
+        verify(expirarPerfilService).expirarVencidosConResumen(30);
     }
 
     @Test
@@ -242,13 +258,19 @@ class ConfiguracionSistemaServiceTest {
     void ejecutarBajaManual_sinVencidos_retornaCero() {
         when(configuracionSistemaRepository.findByClave(ConfiguracionSistemaService.CLAVE_DIAS_BAJA))
                 .thenReturn(Optional.empty());
-        when(expirarCuentaService.expirarVencidos(30)).thenReturn(0);
-        when(expirarPerfilService.expirarVencidos(30)).thenReturn(0);
+        when(expirarCuentaService.expirarVencidosConResumen(30))
+                .thenReturn(ResumenBajaDefinitiva.vacio());
+        when(expirarPerfilService.expirarVencidosConResumen(30))
+                .thenReturn(ResumenBajaDefinitiva.vacio());
 
-        EjecutarSchedulerResponse response = configuracionSistemaService.ejecutarBajaManual();
+        EjecutarSchedulerBajaResponse response =
+                configuracionSistemaService.ejecutarBajaManual();
 
         assertEquals(0, response.registrosAfectados());
         assertTrue(response.mensaje().contains("No se encontraron"));
+        assertEquals(0, response.detalle().proyectosCancelados());
+        assertEquals(0, response.detalle().publicacionesEliminadas());
+        assertEquals(0, response.detalle().conexionesEliminadas());
     }
 
     // ---------------------------------------------------------------
@@ -331,5 +353,82 @@ class ConfiguracionSistemaServiceTest {
 
         assertThrows(IllegalStateException.class,
                 () -> configuracionSistemaService.obtenerGraciaLimpiezaImagenesMinutos());
+    }
+
+    // ---------------------------------------------------------------
+    // Limites configurables de cantidad
+    // ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("obtenerMaxImagenesMoodboard - Retorna el valor configurado")
+    void obtenerMaxImagenesMoodboard_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD)
+                        .valor("12").build()));
+
+        assertEquals(12, configuracionSistemaService.obtenerMaxImagenesMoodboard());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxImagenesMoodboard - Sin fila lanza IllegalStateException")
+    void obtenerMaxImagenesMoodboard_sinFila_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD))
+                .thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerMaxImagenesMoodboard());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxImagenesMoodboard - Cero lanza IllegalStateException")
+    void obtenerMaxImagenesMoodboard_cero_lanzaIllegalState() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_MOODBOARD)
+                        .valor("0").build()));
+
+        assertThrows(IllegalStateException.class,
+                () -> configuracionSistemaService.obtenerMaxImagenesMoodboard());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxImagenesPublicacion - Retorna el valor configurado")
+    void obtenerMaxImagenesPublicacion_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_PUBLICACION))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_IMAGEN_MAX_POR_PUBLICACION)
+                        .valor("8").build()));
+
+        assertEquals(8, configuracionSistemaService.obtenerMaxImagenesPublicacion());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxPolaroidsPorPerfil - Retorna el valor configurado")
+    void obtenerMaxPolaroidsPorPerfil_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_POLAROID_MAX_POR_PERFIL))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService.CLAVE_POLAROID_MAX_POR_PERFIL)
+                        .valor("6").build()));
+
+        assertEquals(6, configuracionSistemaService.obtenerMaxPolaroidsPorPerfil());
+    }
+
+    @Test
+    @DisplayName("obtenerMaxPropuestasColaboracionPorImagen - Retorna el valor configurado")
+    void obtenerMaxPropuestasColaboracionPorImagen_valorConfigurado() {
+        when(configuracionSistemaRepository.findByClave(
+                ConfiguracionSistemaService.CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN))
+                .thenReturn(Optional.of(ConfiguracionSistema.builder()
+                        .clave(ConfiguracionSistemaService
+                                .CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN)
+                        .valor("3").build()));
+
+        assertEquals(3, configuracionSistemaService.obtenerMaxPropuestasColaboracionPorImagen());
     }
 }

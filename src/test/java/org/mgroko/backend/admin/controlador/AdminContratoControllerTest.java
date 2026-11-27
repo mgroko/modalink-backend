@@ -8,6 +8,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,12 +24,15 @@ import org.mgroko.backend.admin.servicio.AdminContratoService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoEncontradoException;
+import org.mgroko.backend.contratos.servicio.ExportarContratoPdfService;
 import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,6 +47,9 @@ class AdminContratoControllerTest {
 
     @MockitoBean
     private AdminContratoService adminContratoService;
+
+    @MockitoBean
+    private ExportarContratoPdfService exportarContratoPdfService;
 
     @Test
     void listar_devuelveContratosSinExcluirEstados() throws Exception {
@@ -107,6 +115,22 @@ class AdminContratoControllerTest {
         mockMvc.perform(get("/admin/contratos/999")
                         .principal(autenticacion()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void exportarPdf_devuelveArchivoAdjunto() throws Exception {
+        byte[] pdf = "%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(exportarContratoPdfService.exportarAdministrativo(1L, 5L))
+                .thenReturn(pdf);
+
+        mockMvc.perform(get("/admin/contratos/5/pdf")
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"contrato-5.pdf\""))
+                .andExpect(content().bytes(pdf));
     }
 
     private UsernamePasswordAuthenticationToken autenticacion() {

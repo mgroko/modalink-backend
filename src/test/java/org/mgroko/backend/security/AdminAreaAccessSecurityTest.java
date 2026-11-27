@@ -17,6 +17,7 @@ import org.mgroko.backend.auth.oauth.CookieOAuth2AuthorizationRequestRepository;
 import org.mgroko.backend.auth.oauth.GoogleOAuth2FailureHandler;
 import org.mgroko.backend.auth.oauth.GoogleOAuth2SuccessHandler;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.contratos.servicio.ExportarContratoPdfService;
 import org.mgroko.backend.home.controlador.HomeController;
 import org.mgroko.backend.home.servicio.HomeOportunidadesService;
 import org.mgroko.backend.perfiles.controlador.CaracteristicaTecnicaController;
@@ -82,6 +83,9 @@ class AdminAreaAccessSecurityTest {
 
     @MockitoBean
     private AdminContratoService adminContratoService;
+
+    @MockitoBean
+    private ExportarContratoPdfService exportarContratoPdfService;
 
     @MockitoBean
     private ProfesionService profesionService;

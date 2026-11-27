@@ -8,8 +8,12 @@ import org.mgroko.backend.admin.dto.BuscarContratosAdminFiltro;
 import org.mgroko.backend.admin.servicio.AdminContratoService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
+import org.mgroko.backend.contratos.servicio.ExportarContratoPdfService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -31,9 +35,13 @@ import jakarta.validation.constraints.Min;
 public class AdminContratoController {
 
     private final AdminContratoService adminContratoService;
+    private final ExportarContratoPdfService exportarContratoPdfService;
 
-    public AdminContratoController(AdminContratoService adminContratoService) {
+    public AdminContratoController(
+            AdminContratoService adminContratoService,
+            ExportarContratoPdfService exportarContratoPdfService) {
         this.adminContratoService = adminContratoService;
+        this.exportarContratoPdfService = exportarContratoPdfService;
     }
 
     @GetMapping
@@ -58,5 +66,34 @@ public class AdminContratoController {
             @PathVariable Long idContrato) {
 
         return ResponseEntity.ok(adminContratoService.listarEventos(idContrato));
+    }
+
+    @GetMapping(
+            value = "/{idContrato}/pdf",
+            produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportarPdf(
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        byte[] contenido = exportarContratoPdfService.exportarAdministrativo(
+                idUsuario(authentication), idContrato);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"contrato-"
+                                + idContrato + ".pdf\"")
+                .body(contenido);
+    }
+
+    private Long idUsuario(Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof String valor && valor.matches("^[0-9]+$")) {
+            return Long.valueOf(valor);
+        }
+        return null;
     }
 }

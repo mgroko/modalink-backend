@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.mgroko.backend.actividades.dto.MiembroExclusivoResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.actividades.exception.ActividadNoEncontradaException;
 import org.mgroko.backend.modelo.Actividad;
 import org.mgroko.backend.modelo.AsignacionActividad;
@@ -156,9 +157,7 @@ public class MiembrosActividadService {
                 perfil != null && perfil.getProfesion() != null
                         ? perfil.getProfesion().getIdProfesion()
                         : null,
-                perfil != null && perfil.getProfesion() != null
-                        ? perfil.getProfesion().getNombre()
-                        : null,
+                perfil != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 motivoNoEliminable == null,
                 motivoNoEliminable);
     }

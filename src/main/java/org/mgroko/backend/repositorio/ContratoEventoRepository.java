@@ -3,6 +3,7 @@ package org.mgroko.backend.repositorio;
 import java.util.List;
 
 import org.mgroko.backend.modelo.ContratoEvento;
+import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.modelo.enums.TipoEventoContrato;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -52,12 +53,15 @@ public interface ContratoEventoRepository
             LEFT JOIN FETCH e.usuario
             LEFT JOIN FETCH e.contratoVersion
             WHERE p.idProyecto = :idProyecto
-              AND (:soloVisiblesParaPerfil = false OR EXISTS (
-                    SELECT 1 FROM FirmaContrato f
-                    JOIN f.miembro fm
-                    JOIN fm.perfil fp
-                    WHERE f.idContrato = c.idContrato
-                      AND fp.idPerfil = :idPerfilActivo
+              AND (:soloVisiblesParaPerfil = false OR (
+                    c.estado <> :estadoBorrador
+                    AND EXISTS (
+                        SELECT 1 FROM FirmaContrato f
+                        JOIN f.miembro fm
+                        JOIN fm.perfil fp
+                        WHERE f.idContrato = c.idContrato
+                          AND fp.idPerfil = :idPerfilActivo
+                    )
               ))
               AND (:tipo IS NULL OR e.tipoEvento = :tipo)
               AND (:nombre IS NULL OR LOWER(c.nombre) LIKE :nombre ESCAPE '\\')
@@ -69,5 +73,6 @@ public interface ContratoEventoRepository
             @Param("soloVisiblesParaPerfil") boolean soloVisiblesParaPerfil,
             @Param("tipo") TipoEventoContrato tipo,
             @Param("nombre") String nombre,
+            @Param("estadoBorrador") EstadoContrato estadoBorrador,
             Pageable pageable);
 }

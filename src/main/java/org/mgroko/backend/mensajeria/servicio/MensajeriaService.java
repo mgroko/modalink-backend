@@ -463,9 +463,10 @@ public class MensajeriaService {
     }
 
     private void validarConexionActiva(Conversacion conversacion) {
-        if (!conexionRepository.existsActivaEntre(
-                conversacion.getPerfil1().getIdPerfil(),
-                conversacion.getPerfil2().getIdPerfil())) {
+        if (!perfilesActivos(conversacion)
+                || !conexionRepository.existsActivaEntre(
+                        conversacion.getPerfil1().getIdPerfil(),
+                        conversacion.getPerfil2().getIdPerfil())) {
             throw new MensajeNoPermitidoException(
                     "La conexión entre los perfiles ya no está activa.");
         }

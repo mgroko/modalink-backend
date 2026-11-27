@@ -66,6 +66,8 @@ class ContextoFinalizacionProyectoServiceTest {
     @Mock
     private CalificacionPerfilRepository calificacionPerfilRepository;
     @Mock
+    private ProyectoMinimosService proyectoMinimosService;
+    @Mock
     private ProyectoSecurityService proyectoSecurityService;
 
     private ContextoFinalizacionProyectoService service;
@@ -91,6 +93,7 @@ class ContextoFinalizacionProyectoServiceTest {
                 actividadRepository,
                 miembroProyectoRepository,
                 calificacionPerfilRepository,
+                proyectoMinimosService,
                 proyectoSecurityService,
                 reloj);
 
@@ -139,6 +142,10 @@ class ContextoFinalizacionProyectoServiceTest {
                 .findByProyectoIdProyectoAndPerfilEmisorIdPerfil(
                         ID_PROYECTO, ID_PERFIL_ACTOR))
                 .thenReturn(List.of());
+        when(proyectoMinimosService.tieneAlMenosDosMiembrosActivos(ID_PROYECTO))
+                .thenReturn(true);
+        when(proyectoMinimosService.tieneRequerimientoHistorico(ID_PROYECTO))
+                .thenReturn(true);
     }
 
     @Test
@@ -230,15 +237,38 @@ class ContextoFinalizacionProyectoServiceTest {
     }
 
     @Test
-    void cargar_sinActividades_agregaBloqueo() {
+    void cargar_sinActividades_noAgregaBloqueo() {
         when(actividadRepository.findByPlanificacionProyectoIdProyecto(ID_PROYECTO))
                 .thenReturn(List.of());
 
         ContextoFinalizacionProyectoService.Contexto contexto = cargarSinLock();
 
+        assertThat(contexto.actividades()).isEmpty();
+        assertThat(contexto.bloqueos()).isEmpty();
+    }
+
+    @Test
+    void cargar_sinMiembroAdicional_agregaBloqueo() {
+        when(proyectoMinimosService.tieneAlMenosDosMiembrosActivos(ID_PROYECTO))
+                .thenReturn(false);
+
+        ContextoFinalizacionProyectoService.Contexto contexto = cargarSinLock();
+
         assertThat(contexto.bloqueos())
                 .extracting(bloqueo -> bloqueo.codigo())
-                .contains("SIN_ACTIVIDADES");
+                .contains("SIN_MIEMBRO_ADICIONAL");
+    }
+
+    @Test
+    void cargar_sinRequerimientoHistorico_agregaBloqueo() {
+        when(proyectoMinimosService.tieneRequerimientoHistorico(ID_PROYECTO))
+                .thenReturn(false);
+
+        ContextoFinalizacionProyectoService.Contexto contexto = cargarSinLock();
+
+        assertThat(contexto.bloqueos())
+                .extracting(bloqueo -> bloqueo.codigo())
+                .contains("SIN_REQUERIMIENTOS");
     }
 
     @Test

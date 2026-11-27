@@ -10,6 +10,7 @@ import org.mgroko.backend.admin.dto.AdminReportePerfilResumenResponse;
 import org.mgroko.backend.admin.dto.BuscarReportesPerfilFiltro;
 import org.mgroko.backend.admin.exception.UsuarioAdminNoEncontradoException;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Reporte;
 import org.mgroko.backend.modelo.Usuario;
@@ -166,7 +167,7 @@ public class AdminReportePerfilService {
                                 reportado.getIdPerfil(),
                                 reportado.getNombreArtistico(),
                                 reportado.getProfesion() != null
-                                        ? reportado.getProfesion().getNombre()
+                                        ? ProfesionNombreResolver.mostrar(reportado)
                                         : null,
                                 reportado.getEstado() != null
                                         ? reportado.getEstado().name()

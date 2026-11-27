@@ -45,6 +45,12 @@ public final class PostulacionSpecifications {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(proyecto.get("idProyecto"), idProyecto));
 
+            if (filtro != null && filtro.idRequerimiento() != null) {
+                predicates.add(cb.equal(
+                        requerimiento.get("idRequerimientoGral"),
+                        filtro.idRequerimiento()));
+            }
+
             aplicarFiltrosComunes(predicates, cb, root, perfil, filtro);
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -71,6 +77,12 @@ public final class PostulacionSpecifications {
 
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(proyecto.get("idProyecto"), idProyecto));
+
+            if (filtro != null && filtro.idRequerimiento() != null) {
+                predicates.add(cb.equal(
+                        requerimiento.get("idRequerimiento"),
+                        filtro.idRequerimiento()));
+            }
 
             aplicarFiltrosComunes(predicates, cb, root, perfil, filtro);
             return cb.and(predicates.toArray(new Predicate[0]));

@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminProyectoDetalleResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Objetivo;
 import org.mgroko.backend.modelo.Perfil;
@@ -134,9 +135,7 @@ public final class AdminProyectoDetalleMapper {
                 perfil != null ? perfil.getIdPerfil() : null,
                 perfil != null ? perfil.getNombreArtistico() : null,
                 nombreCompleto(perfil),
-                perfil != null && perfil.getProfesion() != null
-                        ? perfil.getProfesion().getNombre()
-                        : null,
+                perfil != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 miembro.getRolProyecto() != null
                         ? miembro.getRolProyecto().getNombre()
                         : null,

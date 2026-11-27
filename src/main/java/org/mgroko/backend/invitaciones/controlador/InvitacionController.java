@@ -17,6 +17,7 @@ import org.mgroko.backend.invitaciones.servicio.CrearInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.EliminarInvitacionService;
 import org.mgroko.backend.invitaciones.servicio.RechazarInvitacionService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
+import org.mgroko.backend.proyectos.exception.RequerimientoInvalidoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -89,6 +90,30 @@ public class InvitacionController {
                 idInvitacion));
     }
 
+    // UC-28: aceptar una invitación al proyecto sin requerimiento.
+    @PostMapping("/invitaciones/proyecto/{idInvitacion}/aceptar")
+    public ResponseEntity<InvitacionGestionadaResponse> aceptarProyecto(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(aceptarInvitacionService.aceptarProyecto(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
+    }
+
+    // UC-28: aceptar una invitación a un requerimiento general.
+    @PostMapping("/invitaciones/requerimiento-general/{idInvitacion}/aceptar")
+    public ResponseEntity<InvitacionGestionadaResponse> aceptarRequerimientoGeneral(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(aceptarInvitacionService.aceptarRequerimientoGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
+    }
+
     // UC-28: aceptar una invitación por actividad.
     @PostMapping("/invitaciones/actividad/{idInvitacion}/aceptar")
     public ResponseEntity<InvitacionGestionadaResponse> aceptarActividad(
@@ -108,6 +133,30 @@ public class InvitacionController {
             Authentication authentication) {
 
         return ResponseEntity.ok(rechazarInvitacionService.rechazarGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
+    }
+
+    // UC-28: rechazar una invitación al proyecto sin requerimiento.
+    @PostMapping("/invitaciones/proyecto/{idInvitacion}/rechazar")
+    public ResponseEntity<InvitacionGestionadaResponse> rechazarProyecto(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(rechazarInvitacionService.rechazarProyecto(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idInvitacion));
+    }
+
+    // UC-28: rechazar una invitación a un requerimiento general.
+    @PostMapping("/invitaciones/requerimiento-general/{idInvitacion}/rechazar")
+    public ResponseEntity<InvitacionGestionadaResponse> rechazarRequerimientoGeneral(
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(rechazarInvitacionService.rechazarRequerimientoGeneral(
                 idUsuario(authentication),
                 idPerfilActivo(authentication),
                 idInvitacion));
@@ -141,6 +190,38 @@ public class InvitacionController {
         return ResponseEntity.noContent().build();
     }
 
+    // UC-32: baja de una invitación al proyecto pendiente.
+    @DeleteMapping("/proyectos/{idProyecto}/invitaciones/proyecto/{idInvitacion}")
+    public ResponseEntity<Void> eliminarProyecto(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        eliminarInvitacionService.eliminarInvitacionGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idInvitacion);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // UC-32: baja de una invitación a requerimiento general pendiente.
+    @DeleteMapping("/proyectos/{idProyecto}/invitaciones/requerimiento-general/{idInvitacion}")
+    public ResponseEntity<Void> eliminarRequerimientoGeneral(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idInvitacion,
+            Authentication authentication) {
+
+        eliminarInvitacionService.eliminarInvitacionGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idInvitacion);
+
+        return ResponseEntity.noContent().build();
+    }
+
     // UC-32: baja de una invitación de actividad pendiente.
     @DeleteMapping("/proyectos/{idProyecto}/invitaciones/actividad/{idInvitacion}")
     public ResponseEntity<Void> eliminarActividad(
@@ -155,6 +236,36 @@ public class InvitacionController {
                 idInvitacion);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/invitaciones/proyecto/batch")
+    public ResponseEntity<InvitacionBatchResponse> invitarProyectoBatch(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CrearInvitacionGralBatchRequest request,
+            Authentication authentication) {
+
+        validarInvitacionProyecto(request);
+
+        return ResponseEntity.ok(crearInvitacionBatchService.invitarGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                request));
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/invitaciones/requerimiento-general/batch")
+    public ResponseEntity<InvitacionBatchResponse> invitarRequerimientoGeneralBatch(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CrearInvitacionGralBatchRequest request,
+            Authentication authentication) {
+
+        validarInvitacionRequerimientoGeneral(request);
+
+        return ResponseEntity.ok(crearInvitacionBatchService.invitarGeneral(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                request));
     }
 
     @PostMapping("/proyectos/{idProyecto}/invitaciones/general/batch")
@@ -183,6 +294,38 @@ public class InvitacionController {
                 request));
     }
 
+    @PostMapping("/proyectos/{idProyecto}/invitaciones/proyecto")
+    public ResponseEntity<InvitacionResponse> invitarProyecto(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CrearInvitacionGralRequest request,
+            Authentication authentication) {
+
+        validarInvitacionProyecto(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                crearInvitacionService.invitarAProyecto(
+                        idUsuario(authentication),
+                        idPerfilActivo(authentication),
+                        idProyecto,
+                        request));
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/invitaciones/requerimiento-general")
+    public ResponseEntity<InvitacionResponse> invitarRequerimientoGeneral(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody CrearInvitacionGralRequest request,
+            Authentication authentication) {
+
+        validarInvitacionRequerimientoGeneral(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                crearInvitacionService.invitarAProyecto(
+                        idUsuario(authentication),
+                        idPerfilActivo(authentication),
+                        idProyecto,
+                        request));
+    }
+
     @PostMapping("/proyectos/{idProyecto}/invitaciones/general")
     public ResponseEntity<InvitacionResponse> invitarGeneral(
             @PathVariable Long idProyecto,
@@ -209,6 +352,35 @@ public class InvitacionController {
                         idPerfilActivo(authentication),
                         idProyecto,
                         request));
+    }
+
+    private void validarInvitacionProyecto(CrearInvitacionGralRequest request) {
+        if (request.idRequerimientoGral() != null) {
+            throw new RequerimientoInvalidoException(
+                    "La invitación al proyecto no debe incluir un requerimiento general.");
+        }
+    }
+
+    private void validarInvitacionProyecto(CrearInvitacionGralBatchRequest request) {
+        if (request.idRequerimientoGral() != null) {
+            throw new RequerimientoInvalidoException(
+                    "La invitación al proyecto no debe incluir un requerimiento general.");
+        }
+    }
+
+    private void validarInvitacionRequerimientoGeneral(CrearInvitacionGralRequest request) {
+        if (request.idRequerimientoGral() == null) {
+            throw new RequerimientoInvalidoException(
+                    "El requerimiento general es obligatorio.");
+        }
+    }
+
+    private void validarInvitacionRequerimientoGeneral(
+            CrearInvitacionGralBatchRequest request) {
+        if (request.idRequerimientoGral() == null) {
+            throw new RequerimientoInvalidoException(
+                    "El requerimiento general es obligatorio.");
+        }
     }
 
     private Long idUsuario(Authentication authentication) {

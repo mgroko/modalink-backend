@@ -16,6 +16,7 @@ import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoUsuario;
+import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
@@ -67,10 +68,10 @@ class ReactivarPerfilServiceTest {
         when(perfilRepository.save(org.mockito.ArgumentMatchers.any(Perfil.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Perfil perfil = reactivarPerfilService.reactivar(1L, 10L);
+        PerfilResponse perfil = reactivarPerfilService.reactivar(1L, 10L);
 
-        assertEquals(EstadoPerfil.Activo, perfil.getEstado());
-        assertNull(perfil.getFechaSolicitudBaja());
+        assertEquals("Activo", perfil.estado());
+        assertNull(perfil.fechaSolicitudBaja());
     }
 
     @Test
@@ -123,9 +124,9 @@ class ReactivarPerfilServiceTest {
         when(perfilRepository.save(org.mockito.ArgumentMatchers.any(Perfil.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Perfil perfil = reactivarPerfilService.reactivar(1L, 10L);
+        PerfilResponse perfil = reactivarPerfilService.reactivar(1L, 10L);
 
-        assertEquals(EstadoPerfil.Activo, perfil.getEstado());
-        assertNull(perfil.getFechaSolicitudBaja());
+        assertEquals("Activo", perfil.estado());
+        assertNull(perfil.fechaSolicitudBaja());
     }
 }

@@ -8,16 +8,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
@@ -26,11 +23,11 @@ import org.mgroko.backend.auditoria.dto.AuditoriaDetalleResponse;
 import org.mgroko.backend.auditoria.dto.AuditoriaEventoResponse;
 import org.mgroko.backend.auditoria.dto.AuditoriaFiltroResuelto;
 import org.mgroko.backend.auditoria.dto.AuditoriaResumenResponse;
-import org.mgroko.backend.auditoria.dto.AuditoriaResumenTipoResponse;
 import org.mgroko.backend.auditoria.especificacion.AuditoriaSpecifications;
-import org.mgroko.backend.auditoria.exception.ErrorGenerandoPdfException;
 import org.mgroko.backend.auditoria.exception.ExportacionAuditoriaExcedidaException;
 import org.mgroko.backend.auditoria.mapper.AuditoriaMapper;
+import org.mgroko.backend.auditoria.pdf.AuditoriaPdfRenderer;
+import org.mgroko.backend.auditoria.pdf.AuditoriaPdfRenderer.DatosInforme;
 import org.mgroko.backend.modelo.Auditoria;
 import org.mgroko.backend.modelo.DetalleAuditoria;
 import org.mgroko.backend.modelo.Usuario;
@@ -42,21 +39,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import org.openpdf.text.Document;
-import org.openpdf.text.DocumentException;
-import org.openpdf.text.Element;
-import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
-import org.openpdf.text.Paragraph;
-import org.openpdf.text.Phrase;
-import org.openpdf.text.pdf.BaseFont;
-import org.openpdf.text.pdf.ColumnText;
-import org.openpdf.text.pdf.PdfContentByte;
-import org.openpdf.text.pdf.PdfPCell;
-import org.openpdf.text.pdf.PdfPTable;
-import org.openpdf.text.pdf.PdfPageEventHelper;
-import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * UC-67: exportación del resultado filtrado a CSV y PDF.
@@ -71,7 +53,6 @@ public class AuditoriaExportService {
     private static final Logger log = LoggerFactory.getLogger(AuditoriaExportService.class);
 
     private static final int LOTE_IDS = 1_000;
-    private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final String[] CSV_HEADER = {
             "id_auditoria",
             "fecha_hora",
@@ -97,6 +78,7 @@ public class AuditoriaExportService {
     private final ConfiguracionSistemaService configuracionSistemaService;
     private final AuditoriaEventoService auditoriaEventoService;
     private final Clock reloj;
+    private final AuditoriaPdfRenderer pdfRenderer = new AuditoriaPdfRenderer();
 
     public AuditoriaExportService(
             AuditoriaRepository auditoriaRepository,
@@ -197,56 +179,19 @@ public class AuditoriaExportService {
                 filtro.operador(),
                 filtro.texto());
 
-        Document document = new Document(PageSize.A4.rotate(), 24, 24, 32, 32);
-        try {
-            PdfWriter writer = PdfWriter.getInstance(document, outputStream);
-            writer.setPageEvent(new PieDePaginaEvent());
+        LocalDateTime generadoEn = LocalDateTime.now(reloj);
+        DatosInforme informe = new DatosInforme(
+                filtro.fechaDesde().toLocalDate(),
+                filtro.fechaHasta().toLocalDate(),
+                descripcionTipos(filtro),
+                nombreAdministrador(idAdministrador),
+                generadoEn,
+                LocalDateTime.now(reloj),
+                resumen,
+                datos.eventos(),
+                configuracionSistemaService.obtenerMaxCambiosPdfAuditoria());
 
-            document.open();
-
-            BaseFont base = crearBaseFont();
-            Font titulo = new Font(base, 16, Font.BOLD);
-            Font subtitulo = new Font(base, 10, Font.BOLD);
-            Font normal = new Font(base, 9, Font.NORMAL);
-            Font celda = new Font(base, 8, Font.NORMAL);
-            Font celdaBold = new Font(base, 8, Font.BOLD);
-
-            document.add(new Paragraph("Informe de auditoría", titulo));
-            document.add(new Paragraph("Sistema: ModaLink", normal));
-            document.add(new Paragraph("Rango: " + filtro.fechaDesde().toLocalDate()
-                    + " a " + filtro.fechaHasta().toLocalDate(), normal));
-            document.add(new Paragraph("Tipos de evento: " + descripcionTipos(filtro), normal));
-            document.add(new Paragraph("Generado: "
-                    + LocalDateTime.now(reloj).format(FECHA), normal));
-            document.add(new Paragraph("Generado por: "
-                    + nombreAdministrador(idAdministrador), normal));
-            document.add(new Paragraph("Total de registros: " + resumen.totalRegistros(), normal));
-            document.add(new Paragraph(" "));
-
-            document.add(new Paragraph("Resumen por tipo de evento", subtitulo));
-            document.add(tablaResumenTipos(resumen.porTipoEvento(), celda, celdaBold));
-            document.add(new Paragraph(" "));
-
-            document.add(new Paragraph("Resumen por entidad afectada", subtitulo));
-            document.add(tablaResumenEntidades(resumen, celda, celdaBold));
-            document.add(new Paragraph(" "));
-
-            document.add(new Paragraph("Eventos", subtitulo));
-            document.add(tablaEventos(datos.eventos(), celda, celdaBold));
-        } catch (DocumentException ex) {
-            log.error("No se pudo generar el PDF de auditoría para el rango {} - {}",
-                    filtro.fechaDesde(), filtro.fechaHasta(), ex);
-            throw new ErrorGenerandoPdfException(
-                    "No se pudo generar el PDF de auditoría.", ex);
-        } finally {
-            if (document.isOpen()) {
-                try {
-                    document.close();
-                } catch (RuntimeException closeEx) {
-                    log.error("Error cerrando el documento PDF de auditoría.", closeEx);
-                }
-            }
-        }
+        pdfRenderer.render(informe, outputStream);
 
         registrarExportacion("PDF", filtro, datos.eventos().size());
     }
@@ -343,142 +288,6 @@ public class AuditoriaExportService {
         return resultado;
     }
 
-    private PdfPTable tablaResumenTipos(
-            List<AuditoriaResumenTipoResponse> tipos,
-            Font fuente,
-            Font fuenteNegrita) {
-        PdfPTable tabla = new PdfPTable(new float[]{2.2f, 4.5f, 1.0f});
-        tabla.setWidthPercentage(100);
-        encabezado(tabla, fuenteNegrita, "Código", "Nombre", "Total");
-
-        if (tipos.isEmpty()) {
-            tabla.addCell(celda("Sin datos", fuente, 3));
-            return tabla;
-        }
-
-        for (AuditoriaResumenTipoResponse tipo : tipos) {
-            tabla.addCell(celda(tipo.codigo(), fuente, 1));
-            tabla.addCell(celda(tipo.nombre(), fuente, 1));
-            tabla.addCell(celda(String.valueOf(tipo.total()), fuente, 1));
-        }
-        return tabla;
-    }
-
-    private PdfPTable tablaResumenEntidades(
-            AuditoriaResumenResponse resumen,
-            Font fuente,
-            Font fuenteNegrita) {
-        PdfPTable tabla = new PdfPTable(new float[]{4.0f, 1.0f});
-        tabla.setWidthPercentage(60);
-        encabezado(tabla, fuenteNegrita, "Entidad", "Total");
-
-        if (resumen.porEntidad().isEmpty()) {
-            tabla.addCell(celda("Sin datos", fuente, 2));
-            return tabla;
-        }
-
-        resumen.porEntidad().forEach(entidad -> {
-            tabla.addCell(celda(entidad.entidad(), fuente, 1));
-            tabla.addCell(celda(String.valueOf(entidad.total()), fuente, 1));
-        });
-        return tabla;
-    }
-
-    private PdfPTable tablaEventos(
-            List<AuditoriaEventoResponse> eventos,
-            Font fuente,
-            Font fuenteNegrita) {
-        PdfPTable tabla = new PdfPTable(new float[]{
-                1.35f, 1.85f, 1.85f, 1.75f, 1.00f, 1.35f, 1.95f, 1.95f});
-        tabla.setWidthPercentage(100);
-        tabla.setHeaderRows(1);
-        encabezado(tabla, fuenteNegrita,
-                "Fecha", "Evento", "Entidad / ID", "Operador", "IP",
-                "Campo", "Valor anterior", "Valor actual");
-
-        if (eventos.isEmpty()) {
-            tabla.addCell(celda("Sin registros para los filtros seleccionados.", fuente, 8));
-            return tabla;
-        }
-
-        int maxCambios = configuracionSistemaService.obtenerMaxCambiosPdfAuditoria();
-        for (AuditoriaEventoResponse evento : eventos) {
-            List<AuditoriaDetalleResponse> detalles = evento.detalle();
-
-            if (detalles.isEmpty()) {
-                agregarFilaEvento(tabla, evento, "", "", "", fuente);
-                continue;
-            }
-
-            int mostrados = Math.min(detalles.size(), maxCambios);
-            for (int i = 0; i < mostrados; i++) {
-                AuditoriaDetalleResponse detalle = detalles.get(i);
-                agregarFilaEvento(tabla, evento,
-                        valorVisible(detalle.campo()),
-                        valorVisible(detalle.valorAnterior()),
-                        valorVisible(detalle.valorNuevo()),
-                        fuente);
-            }
-
-            if (detalles.size() > mostrados) {
-                agregarFilaEvento(tabla, evento,
-                        "+" + (detalles.size() - mostrados) + " más", "", "", fuente);
-            }
-        }
-        return tabla;
-    }
-
-    private void agregarFilaEvento(
-            PdfPTable tabla,
-            AuditoriaEventoResponse evento,
-            String campo,
-            String valorAnterior,
-            String valorNuevo,
-            Font fuente) {
-
-        tabla.addCell(celda(evento.fechaHora().format(FECHA), fuente, 1));
-        tabla.addCell(celda(nombreEvento(evento), fuente, 1));
-        tabla.addCell(celda(entidad(evento), fuente, 1));
-        tabla.addCell(celda(evento.operador(), fuente, 1));
-        tabla.addCell(celda(evento.ipUsuario(), fuente, 1));
-        tabla.addCell(celda(campo, fuente, 1));
-        tabla.addCell(celda(valorAnterior, fuente, 1));
-        tabla.addCell(celda(valorNuevo, fuente, 1));
-    }
-
-    private String valorVisible(String valor) {
-        return valor == null || valor.isBlank() ? "—" : valor;
-    }
-
-    private void encabezado(PdfPTable tabla, Font fuenteNegrita, String... titulos) {
-        for (String titulo : titulos) {
-            PdfPCell celda = new PdfPCell(new Phrase(titulo, fuenteNegrita));
-            celda.setGrayFill(0.90f);
-            celda.setPadding(4);
-            tabla.addCell(celda);
-        }
-    }
-
-    private PdfPCell celda(String valor, Font fuente, int colspan) {
-        PdfPCell celda = new PdfPCell(new Phrase(valor == null ? "" : valor, fuente));
-        celda.setColspan(colspan);
-        celda.setPadding(4);
-        return celda;
-    }
-
-    private String nombreEvento(AuditoriaEventoResponse evento) {
-        return evento.tipoEventoNombre() != null
-                ? evento.tipoEventoNombre()
-                : evento.tipoEvento() != null ? evento.tipoEvento() : "Sin tipo (histórico)";
-    }
-
-    private String entidad(AuditoriaEventoResponse evento) {
-        if (evento.entidadClave() != null && !evento.entidadClave().isBlank()) {
-            return evento.entidadAfectada() + " / " + evento.entidadClave();
-        }
-        return evento.entidadAfectada() + " / " + evento.idAfectado();
-    }
-
     private String descripcionTipos(AuditoriaFiltroResuelto filtro) {
         if (!filtro.tieneFiltroDeTipos()) {
             return "Todos";
@@ -533,35 +342,7 @@ public class AuditoriaExportService {
         return texto;
     }
 
-    private static BaseFont crearBaseFont() {
-        try {
-            return BaseFont.createFont(
-                    BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.EMBEDDED);
-        } catch (DocumentException | IOException ex) {
-            throw new ErrorGenerandoPdfException("No se pudo cargar la fuente del PDF.", ex);
-        }
-    }
-
     private record DatosExportacion(List<AuditoriaEventoResponse> eventos) {
     }
 
-    private static class PieDePaginaEvent extends PdfPageEventHelper {
-        @Override
-        public void onEndPage(PdfWriter writer, Document document) {
-            try {
-                Phrase pie = new Phrase("Página " + writer.getPageNumber(),
-                        new Font(crearBaseFont(), 8, Font.NORMAL));
-                PdfContentByte canvas = writer.getDirectContent();
-                ColumnText.showTextAligned(
-                        canvas,
-                        Element.ALIGN_CENTER,
-                        pie,
-                        (document.left() + document.right()) / 2,
-                        document.bottom() - 12,
-                        0);
-            } catch (RuntimeException ignored) {
-                // El pie es informativo: no debe interrumpir la exportación.
-            }
-        }
-    }
 }

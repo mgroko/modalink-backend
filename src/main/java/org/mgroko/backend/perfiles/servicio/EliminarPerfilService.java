@@ -52,7 +52,8 @@ public class EliminarPerfilService {
         perfil.setFechaSolicitudBaja(ahora);
         perfilRepository.save(perfil);
 
-        // TODO: Ocultar publicaciones independientes del perfil (tabla publicacion aún no implementada).
+        // Las publicaciones quedan ocultas por el estado PENDIENTE_BAJA del
+        // perfil. La eliminacion definitiva se ejecuta al vencer el plazo.
 
         int diasBaja = configuracionSistemaService.obtenerDiasBaja();
         LocalDateTime fechaLimite = ahora.plusDays(diasBaja);

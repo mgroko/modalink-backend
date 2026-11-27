@@ -440,14 +440,7 @@ class PerfilControllerTest {
 
         PerfilResponse perfil = new PerfilResponse(
                 10L, "Luna", "Modelo profesional.", "Activo", "modelo", null, List.of());
-        when(reactivarPerfilService.reactivar(1L, 10L))
-                .thenReturn(org.mgroko.backend.modelo.Perfil.builder()
-                        .idPerfil(10L)
-                        .nombreArtistico("Luna")
-                        .biografia("Modelo profesional.")
-                        .estado(org.mgroko.backend.modelo.enums.EstadoPerfil.Activo)
-                        .profesion(org.mgroko.backend.modelo.Profesion.builder().idProfesion(2L).codigo("MODELO").nombre("modelo").build())
-                        .build());
+        when(reactivarPerfilService.reactivar(1L, 10L)).thenReturn(perfil);
 
         mockMvc.perform(post("/perfiles/10/reactivar")
                         .principal(authentication))

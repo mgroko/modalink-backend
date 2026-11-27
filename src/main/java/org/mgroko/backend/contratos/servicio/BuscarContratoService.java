@@ -45,6 +45,7 @@ public class BuscarContratoService {
     private static final int TAMANO_MAXIMO = 50;
 
     private static final List<EstadoContrato> ESTADOS_POR_DEFECTO = List.of(
+            EstadoContrato.BORRADOR,
             EstadoContrato.PENDIENTE_FIRMA,
             EstadoContrato.ACTIVO,
             EstadoContrato.RECHAZADO_POR_PARTES,
@@ -178,6 +179,8 @@ public class BuscarContratoService {
 
                     boolean estadoPendiente =
                             resumen.getEstado() == EstadoContrato.PENDIENTE_FIRMA;
+                    boolean estadoBorrador =
+                            resumen.getEstado() == EstadoContrato.BORRADOR;
 
                     boolean puedeFirmar = estadoPendiente
                             && proyectoApto
@@ -186,9 +189,21 @@ public class BuscarContratoService {
                     boolean puedeRechazar = puedeFirmar;
 
                     boolean puedeModificar = proyectosDirector.contains(resumen.getIdProyecto())
-                            && estadoPendiente
+                            && (estadoPendiente || estadoBorrador)
                             && proyectoApto
                             && !firmasRegistradas;
+
+                    boolean tieneDestinatarios = firmas.stream()
+                            .anyMatch(f -> f.getRolParte()
+                                    == org.mgroko.backend.modelo.enums.RolParteContrato.DESTINATARIO
+                                    || f.getRolParte()
+                                    == org.mgroko.backend.modelo.enums.RolParteContrato.DIRECTOR_DESTINATARIO);
+
+                    boolean puedeEmitir = proyectosDirector.contains(resumen.getIdProyecto())
+                            && estadoBorrador
+                            && proyectoApto
+                            && tieneDestinatarios
+                            && Boolean.TRUE.equals(resumen.getTieneTexto());
 
                     boolean proyectoEliminable =
                             resumen.getEstadoProyecto() != EstadoProyecto.FINALIZADO
@@ -204,6 +219,7 @@ public class BuscarContratoService {
                             idPerfilActivo,
                             idMiembroActivo,
                             puedeModificar,
+                            puedeEmitir,
                             puedeFirmar,
                             puedeRechazar,
                             puedeEliminar);

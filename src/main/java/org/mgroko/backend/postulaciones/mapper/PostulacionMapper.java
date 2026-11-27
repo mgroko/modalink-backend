@@ -1,5 +1,6 @@
 package org.mgroko.backend.postulaciones.mapper;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.PostulacionActividad;
 import org.mgroko.backend.modelo.PostulacionGral;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
@@ -28,9 +29,7 @@ public final class PostulacionMapper {
                 postulacion.getPerfil().getProfesion() != null
                         ? postulacion.getPerfil().getProfesion().getIdProfesion()
                         : null,
-                postulacion.getPerfil().getProfesion() != null
-                        ? postulacion.getPerfil().getProfesion().getNombre()
-                        : null,
+                ProfesionNombreResolver.mostrar(postulacion.getPerfil()),
                 postulacion.getRequerimientoGral().getIdRequerimientoGral(),
                 postulacion.getRequerimientoGral().getDescripcion(),
                 null,
@@ -61,9 +60,7 @@ public final class PostulacionMapper {
                 postulacion.getPerfil().getProfesion() != null
                         ? postulacion.getPerfil().getProfesion().getIdProfesion()
                         : null,
-                postulacion.getPerfil().getProfesion() != null
-                        ? postulacion.getPerfil().getProfesion().getNombre()
-                        : null,
+                ProfesionNombreResolver.mostrar(postulacion.getPerfil()),
                 postulacion.getRequerimiento().getIdRequerimiento(),
                 postulacion.getRequerimiento().getDescripcion(),
                 postulacion.getRequerimiento().getActividad().getIdActividad(),

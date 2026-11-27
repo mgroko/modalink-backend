@@ -2,6 +2,7 @@ package org.mgroko.backend.polaroids.servicio;
 
 import java.util.Objects;
 
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.TipoPolaroid;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
@@ -13,7 +14,6 @@ import org.mgroko.backend.polaroids.exception.LimitePolaroidsExcedidoException;
 import org.mgroko.backend.polaroids.exception.PolaroidInvalidaException;
 import org.mgroko.backend.polaroids.exception.PolaroidsSoloParaModelosException;
 import org.mgroko.backend.repositorio.PerfilRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,24 +26,24 @@ public class PolaroidDatosService {
 
     static final String PROFESION_MODELO = "MODELO";
 
+    private final ConfiguracionSistemaService configuracionSistemaService;
     private final PerfilRepository perfilRepository;
     private final VerPerfilService verPerfilService;
     private final PolaroidCatalogoService polaroidCatalogoService;
-    private final int maximoPorPerfil;
 
     public PolaroidDatosService(
+            ConfiguracionSistemaService configuracionSistemaService,
             PerfilRepository perfilRepository,
             VerPerfilService verPerfilService,
-            PolaroidCatalogoService polaroidCatalogoService,
-            @Value("${app.polaroids.max-por-perfil:8}") int maximoPorPerfil) {
+            PolaroidCatalogoService polaroidCatalogoService) {
+        this.configuracionSistemaService = configuracionSistemaService;
         this.perfilRepository = perfilRepository;
         this.verPerfilService = verPerfilService;
         this.polaroidCatalogoService = polaroidCatalogoService;
-        this.maximoPorPerfil = Math.max(1, maximoPorPerfil);
     }
 
     public int maximoPorPerfil() {
-        return maximoPorPerfil;
+        return configuracionSistemaService.obtenerMaxPolaroidsPorPerfil();
     }
 
     /**
@@ -84,8 +84,9 @@ public class PolaroidDatosService {
     }
 
     public void validarLimite(long cantidadActual) {
-        if (cantidadActual >= maximoPorPerfil) {
-            throw new LimitePolaroidsExcedidoException(maximoPorPerfil);
+        int maximo = maximoPorPerfil();
+        if (cantidadActual >= maximo) {
+            throw new LimitePolaroidsExcedidoException(maximo);
         }
     }
 

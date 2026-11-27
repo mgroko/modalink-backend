@@ -30,4 +30,5 @@ public class ContratoResumenProyeccion {
     private final String codigoTipoAcuerdo;
     private final String nombreTipoAcuerdo;
     private final Long idMiembroEmisor;
+    private final Boolean tieneTexto;
 }

@@ -7,18 +7,18 @@ import org.mgroko.backend.contratos.dto.BuscarContratosFiltro;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
-import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
-import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
-import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
 import org.mgroko.backend.contratos.dto.ProyectoFiltroContratoResponse;
 import org.mgroko.backend.contratos.dto.RechazarContratoRequest;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.CrearContratoBorradorService;
 import org.mgroko.backend.contratos.servicio.EliminarContratoService;
+import org.mgroko.backend.contratos.servicio.EmitirContratoService;
+import org.mgroko.backend.contratos.servicio.ExportarContratoPdfService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
-import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
@@ -29,7 +29,9 @@ import org.mgroko.backend.contratos.servicio.PrevisualizarModificacionContratoSe
 import org.mgroko.backend.contratos.servicio.RechazarContratoService;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.security.ContextoAutenticacion;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -46,7 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 /**
- * UC-39: generar contrato.
+ * UC-39 / UC-53 / UC-55 / UC-68: gestion de contratos.
  *
  * <p>Los endpoints cuelgan de /proyectos/{idProyecto}/contratos, por lo que
  * quedan cubiertos por la regla existente de SecurityConfig para
@@ -58,7 +60,8 @@ public class ContratoController {
 
     private final ObtenerOpcionesContratoService opcionesService;
     private final PrevisualizarContratoService previsualizarService;
-    private final GenerarContratoService generarService;
+    private final CrearContratoBorradorService crearBorradorService;
+    private final EmitirContratoService emitirContratoService;
     private final BuscarContratoService buscarContratoService;
     private final ListarEventosContratoService listarEventosContratoService;
     private final ListarProyectosContratoService listarProyectosService;
@@ -68,11 +71,13 @@ public class ContratoController {
     private final FirmarContratoService firmarContratoService;
     private final RechazarContratoService rechazarContratoService;
     private final EliminarContratoService eliminarContratoService;
+    private final ExportarContratoPdfService exportarContratoPdfService;
 
     public ContratoController(
             ObtenerOpcionesContratoService opcionesService,
             PrevisualizarContratoService previsualizarService,
-            GenerarContratoService generarService,
+            CrearContratoBorradorService crearBorradorService,
+            EmitirContratoService emitirContratoService,
             BuscarContratoService buscarContratoService,
             ListarEventosContratoService listarEventosContratoService,
             ListarProyectosContratoService listarProyectosService,
@@ -81,10 +86,12 @@ public class ContratoController {
             ModificarContratoService modificarContratoService,
             FirmarContratoService firmarContratoService,
             RechazarContratoService rechazarContratoService,
-            EliminarContratoService eliminarContratoService) {
+            EliminarContratoService eliminarContratoService,
+            ExportarContratoPdfService exportarContratoPdfService) {
         this.opcionesService = opcionesService;
         this.previsualizarService = previsualizarService;
-        this.generarService = generarService;
+        this.crearBorradorService = crearBorradorService;
+        this.emitirContratoService = emitirContratoService;
         this.buscarContratoService = buscarContratoService;
         this.listarEventosContratoService = listarEventosContratoService;
         this.listarProyectosService = listarProyectosService;
@@ -94,6 +101,7 @@ public class ContratoController {
         this.firmarContratoService = firmarContratoService;
         this.rechazarContratoService = rechazarContratoService;
         this.eliminarContratoService = eliminarContratoService;
+        this.exportarContratoPdfService = exportarContratoPdfService;
     }
 
     @GetMapping("/proyectos/{idProyecto}/contratos/opciones")
@@ -110,7 +118,7 @@ public class ContratoController {
     @PostMapping("/proyectos/{idProyecto}/contratos/previsualizar")
     public ResponseEntity<PrevisualizacionContratoResponse> previsualizar(
             @PathVariable Long idProyecto,
-            @Valid @RequestBody GenerarContratoRequest request,
+            @Valid @RequestBody GuardarContratoRequest request,
             Authentication authentication) {
 
         return ResponseEntity.ok(previsualizarService.previsualizar(
@@ -121,18 +129,31 @@ public class ContratoController {
     }
 
     @PostMapping("/proyectos/{idProyecto}/contratos")
-    public ResponseEntity<ContratoGeneradoResponse> generar(
+    public ResponseEntity<ContratoDetalleResponse> crearBorrador(
             @PathVariable Long idProyecto,
-            @Valid @RequestBody GenerarContratoRequest request,
+            @Valid @RequestBody GuardarContratoRequest request,
             Authentication authentication) {
 
-        ContratoGeneradoResponse response = generarService.generar(
+        ContratoDetalleResponse response = crearBorradorService.crear(
                 idUsuario(authentication),
                 idPerfilActivo(authentication),
                 idProyecto,
                 request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/proyectos/{idProyecto}/contratos/{idContrato}/emitir")
+    public ResponseEntity<ContratoDetalleResponse> emitir(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(emitirContratoService.emitir(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato));
     }
 
     @GetMapping("/contratos/buscar")
@@ -195,7 +216,7 @@ public class ContratoController {
     public ResponseEntity<PrevisualizacionModificacionResponse> previsualizarModificacion(
             @PathVariable Long idProyecto,
             @PathVariable Long idContrato,
-            @Valid @RequestBody ModificarContratoRequest request,
+            @Valid @RequestBody GuardarContratoRequest request,
             Authentication authentication) {
 
         return ResponseEntity.ok(previsualizarModificacionService.previsualizar(
@@ -210,7 +231,7 @@ public class ContratoController {
     public ResponseEntity<ContratoDetalleResponse> modificar(
             @PathVariable Long idProyecto,
             @PathVariable Long idContrato,
-            @Valid @RequestBody ModificarContratoRequest request,
+            @Valid @RequestBody GuardarContratoRequest request,
             Authentication authentication) {
 
         return ResponseEntity.ok(modificarContratoService.modificar(
@@ -262,6 +283,28 @@ public class ContratoController {
                 idProyecto,
                 idContrato,
                 request));
+    }
+
+    @GetMapping(
+            value = "/proyectos/{idProyecto}/contratos/{idContrato}/pdf",
+            produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportarPdf(
+            @PathVariable Long idProyecto,
+            @PathVariable Long idContrato,
+            Authentication authentication) {
+
+        byte[] contenido = exportarContratoPdfService.exportar(
+                idUsuario(authentication),
+                idPerfilActivo(authentication),
+                idProyecto,
+                idContrato);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"contrato-"
+                                + idContrato + ".pdf\"")
+                .body(contenido);
     }
 
     private Long idUsuario(Authentication authentication) {

@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.Habilidad;
 import org.mgroko.backend.modelo.Perfil;
@@ -117,9 +118,7 @@ public final class ReemplazoMapper {
                 perfil != null ? perfil.getNombreArtistico() : null,
                 usuario != null ? usuario.getNombre() : null,
                 usuario != null ? usuario.getApellido() : null,
-                perfil != null && perfil.getProfesion() != null
-                        ? perfil.getProfesion().getNombre()
-                        : null,
+                perfil != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 perfil != null && perfil.getImagen() != null
                         ? perfil.getImagen().getUrl()
                         : null,

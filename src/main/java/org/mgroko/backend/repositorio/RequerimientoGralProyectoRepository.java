@@ -34,6 +34,10 @@ public interface RequerimientoGralProyectoRepository
     List<RequerimientoGralProyecto> findByProyectoIdProyecto(
             @Param("idProyecto") Long idProyecto);
 
+    boolean existsByProyectoIdProyectoAndFechaArchivadoIsNull(Long idProyecto);
+
+    boolean existsByProyectoIdProyecto(Long idProyecto);
+
     /**
      * Recupera un requerimiento general junto con su profesión y su proyecto.
      * Se usa al dar de alta una postulación (UC-26) para validar la profesión
@@ -61,6 +65,25 @@ public interface RequerimientoGralProyectoRepository
           AND r.fechaArchivado IS NULL
     """)
     Optional<RequerimientoGralProyecto> findByIdParaGestion(
+            @Param("idRequerimientoGral") Long idRequerimientoGral);
+
+    /**
+     * Requerimiento general con profesión, proyecto, características, unidad
+     * de medida y habilidades inicializadas. Se usa para armar la cabecera del
+     * tablero de casting.
+     */
+    @Query("""
+        SELECT DISTINCT r FROM RequerimientoGralProyecto r
+        JOIN FETCH r.profesion pr
+        JOIN FETCH r.proyecto proy
+        LEFT JOIN FETCH r.caracteristicas c
+        LEFT JOIN FETCH c.caracteristica ct
+        LEFT JOIN FETCH ct.unidadMedida
+        LEFT JOIN FETCH r.habilidades
+        WHERE r.idRequerimientoGral = :idRequerimientoGral
+          AND r.fechaArchivado IS NULL
+    """)
+    Optional<RequerimientoGralProyecto> findByIdConDetalleCasting(
             @Param("idRequerimientoGral") Long idRequerimientoGral);
 
     /**

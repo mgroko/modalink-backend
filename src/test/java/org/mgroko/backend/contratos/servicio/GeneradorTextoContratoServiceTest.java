@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Profesion;
@@ -35,6 +36,22 @@ class GeneradorTextoContratoServiceTest {
                 .contains("Beto Gómez (DNI 33111222) — @Beto (Modelo)")
                 .contains("1. Primera clausula")
                 .contains("2. Segunda clausula");
+    }
+
+    @Test
+    void generar_conPerfilFemenino_usaProfesionFemenina() {
+        ContratoContextoService.ContextoContrato contexto = contexto("{{partes}}");
+        Perfil parte = contexto.destinatarios().get(0).getPerfil();
+        parte.getUsuario().setGenero(Genero.builder().codigo("MUJER").build());
+        parte.setProfesion(Profesion.builder()
+                .codigo("FOTOGRAFO")
+                .nombre("Fotógrafo")
+                .nombreFemenino("Fotógrafa")
+                .build());
+
+        String texto = service.generar(contexto, List.of());
+
+        assertThat(texto).contains("Beto Gómez (DNI 33111222) — @Beto (Fotógrafa)");
     }
 
     @Test

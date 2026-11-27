@@ -9,6 +9,8 @@ import org.mgroko.backend.modelo.enums.EstadoParticipacion;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.repositorio.proyeccion.CubiertosPorRequerimiento;
 import org.mgroko.backend.repositorio.proyeccion.MiembroProyectoRolProyeccion;
+import org.mgroko.backend.repositorio.proyeccion.MiembroPublicoTycProyeccion;
+import org.mgroko.backend.repositorio.proyeccion.MiembroTycProyeccion;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -48,6 +50,9 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     List<MiembroProyecto> findTop20ByPerfilIdPerfilOrderByFechaAltaDesc(Long idPerfil);
 
     long countByPerfilIdPerfil(Long idPerfil);
+
+    long countByProyectoIdProyectoAndEstadoParticipacion(
+            Long idProyecto, EstadoParticipacion estadoParticipacion);
 
     boolean existsByProyectoIdProyectoAndPerfilIdPerfil(Long idProyecto, Long idPerfil);
 
@@ -98,11 +103,69 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
         JOIN FETCH p.usuario u
         JOIN FETCH p.profesion pr
         JOIN FETCH mp.rolProyecto r
+        LEFT JOIN FETCH mp.requerimientoGral rg
+        LEFT JOIN FETCH rg.profesion prg
         WHERE mp.proyecto.idProyecto = :idProyecto
           AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
         ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC
     """)
     List<MiembroProyecto> buscarActivosDeProyectoConPerfilProfesionYRol(
+            @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Términos y condiciones aceptados por cada miembro activo del proyecto.
+     *
+     * <p>La unión se hace contra la versión histórica registrada en
+     * {@code miembros_proyecto.id_tyc_aceptado}, no contra la versión vigente
+     * del perfil. Se usa en la pestaña "TyC de miembros".</p>
+     */
+    @Query("""
+        SELECT
+            mp.idMiembro AS idMiembro,
+            p.idPerfil AS idPerfil,
+            p.nombreArtistico AS nombreArtistico,
+            pr.nombre AS nombreProfesion,
+            mp.idTycAceptado AS idTycAceptado,
+            pt.numeroVersion AS numeroVersion,
+            pt.descripcion AS descripcion,
+            pt.fechaInicio AS fechaInicio,
+            pt.fechaFin AS fechaFin
+        FROM MiembroProyecto mp
+        JOIN mp.perfil p
+        LEFT JOIN p.profesion pr
+        LEFT JOIN mp.tycAceptado pt
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC
+    """)
+    List<MiembroTycProyeccion> listarTycAceptadosDeMiembros(
+            @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Miembros activos visibles en la vista pública del proyecto, con su rol y
+     * la versión histórica de T&C aceptada al incorporarse.
+     */
+    @Query("""
+        SELECT
+            p.idPerfil AS idPerfil,
+            p.nombreArtistico AS nombreArtistico,
+            pr.nombre AS nombreProfesion,
+            rp.codigo AS codigoRol,
+            mp.idTycAceptado AS idTycAceptado,
+            pt.numeroVersion AS numeroVersion,
+            pt.descripcion AS descripcion,
+            pt.fechaInicio AS fechaInicio,
+            pt.fechaFin AS fechaFin
+        FROM MiembroProyecto mp
+        JOIN mp.perfil p
+        LEFT JOIN p.profesion pr
+        JOIN mp.rolProyecto rp
+        LEFT JOIN mp.tycAceptado pt
+        WHERE mp.proyecto.idProyecto = :idProyecto
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+        ORDER BY LOWER(p.nombreArtistico) ASC, mp.idMiembro ASC
+    """)
+    List<MiembroPublicoTycProyeccion> listarMiembrosPublicosConTyc(
             @Param("idProyecto") Long idProyecto);
 
     /**
@@ -191,6 +254,21 @@ public interface MiembroProyectoRepository extends JpaRepository<MiembroProyecto
     """)
     Optional<MiembroProyecto> findMiembroActivoDeProyectoParaActualizar(
             @Param("idProyecto") Long idProyecto,
+            @Param("idPerfil") Long idPerfil);
+
+    /**
+     * Membresias activas de un perfil con proyecto y rol inicializados. Se usa
+     * en la baja definitiva para decidir cancelaciones y bajas voluntarias.
+     */
+    @Query("""
+        SELECT mp FROM MiembroProyecto mp
+        JOIN FETCH mp.proyecto p
+        JOIN FETCH mp.perfil perfil
+        JOIN FETCH mp.rolProyecto r
+        WHERE perfil.idPerfil = :idPerfil
+          AND mp.estadoParticipacion = org.mgroko.backend.modelo.enums.EstadoParticipacion.ACTIVO
+    """)
+    List<MiembroProyecto> findActivosDePerfilConProyectoYRol(
             @Param("idPerfil") Long idPerfil);
 
     /**

@@ -8,13 +8,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
-import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
-import org.mgroko.backend.contratos.dto.GenerarContratoRequest;
-import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
 import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.contratos.exception.ContratoNoModificableException;
-import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
 import org.mgroko.backend.contratos.servicio.PrevisualizarModificacionContratoService;
 import org.mgroko.backend.modelo.Contrato;
@@ -54,9 +51,6 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
     private EntityManager em;
 
     @Autowired
-    private GenerarContratoService generarContratoService;
-
-    @Autowired
     private ModificarContratoService modificarContratoService;
 
     @Autowired
@@ -89,7 +83,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroProyecto().getIdMiembro()),
                         "TEXTO FINAL MODIFICADO",
@@ -132,7 +126,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroNoParteProyecto().getIdMiembro()),
                         textoOriginal,
@@ -166,7 +160,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.emisor().getIdMiembro(),
                                 datos.miembroProyecto().getIdMiembro()),
@@ -185,7 +179,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroProyecto().getIdMiembro()),
                         textoOriginal,
@@ -209,7 +203,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroProyecto().getIdMiembro()),
                         "TEXTO BLOQUEADO",
@@ -232,7 +226,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                         datos.perfilDirector().getIdPerfil(),
                         datos.proyecto().getIdProyecto(),
                         datos.idContrato(),
-                        new ModificarContratoRequest(
+                        guardarContrato(
                                 datos.tipo().getIdTipoAcuerdo(),
                                 List.of(datos.miembroNoParteProyecto().getIdMiembro()),
                                 "TEXTO PREVISUALIZADO",
@@ -262,7 +256,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroNoParteProyecto().getIdMiembro()),
                         null,
@@ -284,7 +278,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroProyecto().getIdMiembro()),
                         "TEXTO",
@@ -293,7 +287,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                         null)))
                 .isInstanceOf(ContratoNoModificableException.class)
                 .extracting("codigo")
-                .isEqualTo("CONTRATO_NO_PENDIENTE_FIRMA");
+                .isEqualTo("CONTRATO_NO_EDITABLE");
     }
 
     @Test
@@ -316,7 +310,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroProyecto().getIdMiembro()),
                         "TEXTO",
@@ -337,7 +331,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroProyecto().getIdMiembro()),
                         null,
@@ -360,7 +354,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                         datos.perfilDirector().getIdPerfil(),
                         datos.proyecto().getIdProyecto(),
                         datos.idContrato(),
-                        new ModificarContratoRequest(
+                        guardarContrato(
                                 datos.tipo().getIdTipoAcuerdo(),
                                 List.of(datos.miembroNoParteProyecto().getIdMiembro()),
                                 null,
@@ -382,7 +376,7 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
                 datos.perfilMiembro().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
                 datos.idContrato(),
-                new ModificarContratoRequest(
+                guardarContrato(
                         datos.tipo().getIdTipoAcuerdo(),
                         List.of(datos.miembroProyecto().getIdMiembro()),
                         "TEXTO",
@@ -420,15 +414,31 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
         em.clear();
     }
 
+    private GuardarContratoRequest guardarContrato(
+            Long idTipoAcuerdo,
+            List<Long> idsMiembro,
+            String texto,
+            List<String> clausulasAdicionales,
+            String nombre,
+            String descripcion) {
+        return new GuardarContratoRequest(
+                idTipoAcuerdo,
+                idsMiembro,
+                clausulasAdicionales,
+                texto,
+                nombre,
+                descripcion,
+                null);
+    }
+
     private void crearYActivarSegundoContrato(Datos datos) {
-        ContratoGeneradoResponse segundo = generarContratoService.generar(
+        ContratoDetalleResponse segundo = crearContratoPendiente(
                 datos.director().getIdUsuario(),
                 datos.perfilDirector().getIdPerfil(),
                 datos.proyecto().getIdProyecto(),
-                new GenerarContratoRequest(
-                        datos.tipo().getIdTipoAcuerdo(),
-                        List.of(datos.miembroNoParteProyecto().getIdMiembro()),
-                        List.of("Clausula del segundo contrato")));
+                datos.tipo().getIdTipoAcuerdo(),
+                List.of(datos.miembroNoParteProyecto().getIdMiembro()),
+                List.of("Clausula del segundo contrato"));
 
         em.flush();
         em.clear();
@@ -553,14 +563,13 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
 
         em.flush();
 
-        ContratoGeneradoResponse response = generarContratoService.generar(
+        ContratoDetalleResponse response = crearContratoPendiente(
                 director.getIdUsuario(),
                 perfilDirector.getIdPerfil(),
                 proyecto.getIdProyecto(),
-                new GenerarContratoRequest(
-                        tipo.getIdTipoAcuerdo(),
-                        List.of(miembroProyecto.getIdMiembro()),
-                        List.of("Clausula inicial")));
+                tipo.getIdTipoAcuerdo(),
+                List.of(miembroProyecto.getIdMiembro()),
+                List.of("Clausula inicial"));
 
         em.flush();
         em.clear();
@@ -624,6 +633,6 @@ class ModificarContratoIntegrationTest extends AbstractPostgresIntegrationTest {
             MiembroProyecto miembroProyecto,
             MiembroProyecto miembroNoParteProyecto,
             Long idContrato,
-            ContratoGeneradoResponse contratoInicial) {
+            ContratoDetalleResponse contratoInicial) {
     }
 }

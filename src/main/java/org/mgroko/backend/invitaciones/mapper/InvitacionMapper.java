@@ -1,5 +1,6 @@
 package org.mgroko.backend.invitaciones.mapper;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.invitaciones.dto.DireccionInvitacion;
 import org.mgroko.backend.invitaciones.dto.InvitacionBusquedaResponse;
 import org.mgroko.backend.invitaciones.dto.InvitacionResponse;
@@ -19,7 +20,7 @@ public final class InvitacionMapper {
     public static InvitacionResponse toResponse(InvitacionGral invitacion) {
         return new InvitacionResponse(
                 invitacion.getIdInvitacionGral(),
-                TipoInvitacion.GENERAL,
+                tipoGeneral(invitacion),
                 invitacion.getEstado(),
                 invitacion.getFechaEnvio(),
                 invitacion.getProyecto().getIdProyecto(),
@@ -63,7 +64,7 @@ public final class InvitacionMapper {
 
         return new InvitacionBusquedaResponse(
                 invitacion.getIdInvitacionGral(),
-                TipoInvitacion.GENERAL,
+                tipoGeneral(invitacion),
                 direccion(enviada),
                 invitacion.getEstado(),
                 invitacion.getFechaEnvio(),
@@ -112,6 +113,12 @@ public final class InvitacionMapper {
                 invitacion.getIdTycAceptado());
     }
 
+    private static TipoInvitacion tipoGeneral(InvitacionGral invitacion) {
+        return invitacion.getRequerimientoGral() != null
+                ? TipoInvitacion.REQUERIMIENTO_GENERAL
+                : TipoInvitacion.GENERAL;
+    }
+
     private static boolean esRemitente(Perfil perfil, Long idPerfilActivo) {
         return perfil != null
                 && perfil.getIdPerfil() != null
@@ -137,7 +144,7 @@ public final class InvitacionMapper {
                 perfil.getUsuario() != null ? perfil.getUsuario().getNombre() : null,
                 perfil.getUsuario() != null ? perfil.getUsuario().getApellido() : null,
                 perfil.getProfesion() != null ? perfil.getProfesion().getIdProfesion() : null,
-                perfil.getProfesion() != null ? perfil.getProfesion().getNombre() : null,
+                perfil.getProfesion() != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 perfil.getImagen() != null ? perfil.getImagen().getUrl() : null);
     }
 }

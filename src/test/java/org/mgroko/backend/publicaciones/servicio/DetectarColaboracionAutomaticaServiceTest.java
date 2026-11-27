@@ -60,6 +60,9 @@ class DetectarColaboracionAutomaticaServiceTest {
     @Mock
     private org.mgroko.backend.storage.servicio.StorageService storageService;
 
+    @Mock
+    private org.mgroko.backend.admin.servicio.ConfiguracionSistemaService configuracionSistemaService;
+
     private DetectarColaboracionAutomaticaService servicio;
     private Publicacion actual;
     private Publicacion otra;
@@ -73,10 +76,13 @@ class DetectarColaboracionAutomaticaServiceTest {
                 verificacionService,
                 storageService,
                 RELOJ,
+                configuracionSistemaService,
                 true,
                 24,
-                8,
-                10);
+                8);
+
+        when(configuracionSistemaService.obtenerMaxPropuestasColaboracionPorImagen())
+                .thenReturn(10);
 
         actual = publicacion(10L, 7L, 1L, "Editorial Otoño");
         otra = publicacion(20L, 8L, 2L, "Campaña Verano");

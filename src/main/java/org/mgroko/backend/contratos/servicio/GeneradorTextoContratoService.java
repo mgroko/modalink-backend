@@ -6,6 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.contratos.mapper.ContratoMapper;
 import org.mgroko.backend.modelo.MiembroProyecto;
@@ -188,9 +189,9 @@ public class GeneradorTextoContratoService {
             sb.append(" — @").append(perfil.getNombreArtistico());
         }
 
-        if (perfil != null && perfil.getProfesion() != null
-                && perfil.getProfesion().getNombre() != null) {
-            sb.append(" (").append(perfil.getProfesion().getNombre()).append(')');
+        String profesion = ProfesionNombreResolver.mostrar(perfil);
+        if (profesion != null) {
+            sb.append(" (").append(profesion).append(')');
         }
 
         return sb.toString();

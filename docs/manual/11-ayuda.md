@@ -36,7 +36,7 @@ Abrí el perfil y usá **Reportar perfil**. No podés reportar tu propio perfil 
 Falta información básica: ubicación, fecha de entrega, moodboard y al menos un requerimiento general o de actividad.
 
 **¿Por qué no puedo confirmar mi proyecto?**
-El proyecto debe tener al menos una actividad, cada actividad debe tener integrantes activos asignados y los requerimientos deben estar cubiertos. La fecha de entrega debe ser posterior al inicio.
+El proyecto debe tener al menos un integrante activo además del director y al menos un requerimiento general o de actividad. Los requerimientos deben estar cubiertos y, si hay actividades, cada una debe tener integrantes activos asignados. La fecha de entrega debe ser posterior al inicio.
 
 **¿Qué pasa al confirmar un proyecto?**
 Se fija la fecha de inicio, se agendan las actividades y el proyecto pasa a **Confirmado**. No puede volver a **Publicado**.
@@ -123,6 +123,29 @@ No.
 **¿Puedo editar una reseña?**
 No. Las calificaciones y reseñas no se editan ni se borran desde la interfaz.
 
+### Normas de convivencia
+
+**¿Qué acepto al postularme o aceptar una invitación?**
+Se entiende que aceptás las **normas de convivencia** de la plataforma y los términos y condiciones vigentes de todos los participantes del proyecto. La aceptación es implícita y se otorga por tu decisión de trabajar en el proyecto.
+
+**¿Dónde leo los términos y condiciones de los participantes?**
+Una vez que sos miembro, abrí el proyecto, entrá a la pestaña **Miembros** y consultá los **Términos y condiciones** de cada participante. El paso a paso está en el capítulo 7.
+
+**¿El Director acepta mis términos y condiciones?**
+Sí. Antes de invitarte o incorporarte, el Director acepta explícitamente tus términos y condiciones vigentes.
+
+**¿Qué pasa si un participante cambia sus términos y condiciones?**
+Los ingresos posteriores ven la versión nueva. Tu ingreso conserva la versión que se registró en ese momento.
+
+**¿Las normas reemplazan el contrato del proyecto?**
+No. Las normas son una condición de convivencia de la plataforma. El contrato del proyecto y los términos y condiciones de cada participante se mantienen.
+
+**¿Puedo negarme?**
+Sí. Si no estás de acuerdo, no te postules ni aceptes la invitación. Si ya sos miembro, podés darte de baja del proyecto.
+
+**¿Dónde consulto la versión vigente de las normas?**
+En la página pública `/normas-de-convivencia`, disponible sin iniciar sesión. También se explica en el capítulo 16.
+
 ## 11.2. Mensajes de error frecuentes
 
 ### Registro y acceso
@@ -161,7 +184,8 @@ No. Las calificaciones y reseñas no se editan ni se borran desde la interfaz.
 | “La información básica del proyecto está incompleta.” | Falta ubicación, fecha, moodboard o requerimiento. | Completala desde **Editar**. |
 | “El proyecto tiene información básica incompleta. Faltan: …” | El sistema indica los faltantes. | Completalos. |
 | “Solo se puede publicar un proyecto en estado Borrador.” | El proyecto ya no está en borrador. | No hace falta publicar. |
-| “El proyecto no tiene actividades en la planificación.” | No hay actividades para confirmar. | Agregá al menos una. |
+| “El proyecto debe tener al menos un integrante activo además del director.” | El proyecto solo tiene al director. | Incorporá otro integrante. |
+| “El proyecto debe tener al menos un requerimiento general o de actividad.” | No hay requerimientos de personal. | Agregá al menos uno. |
 | “La actividad 'X' no tiene integrantes activos asignados.” | Falta asignar personal. | Asigná un integrante. |
 | “La actividad 'X' está en estado Pendiente y debe estar Finalizada o Cancelada.” | Quedan actividades abiertas. | Finalizalas o cancelalas. |
 | “No se puede modificar un proyecto en estado Finalizado.” | El proyecto ya cerró. | No se puede editar. |

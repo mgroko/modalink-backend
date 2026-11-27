@@ -1,48 +1,33 @@
 package org.mgroko.backend.perfiles.servicio;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import org.mgroko.backend.modelo.Perfil;
-import org.mgroko.backend.modelo.enums.EstadoPerfil;
-import org.mgroko.backend.repositorio.PerfilRepository;
+import org.mgroko.backend.usuario.servicio.BajaDefinitivaService;
+import org.mgroko.backend.usuario.servicio.ResumenBajaDefinitiva;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Expira los perfiles cuyo plazo de baja (UC-12) ha vencido:
- * pasa su estado a {@code Baja}, lo que los vuelve inaccesibles para la comunidad.
- * <p>
- * El plazo en días lo resuelve el llamador (scheduler o ejecución manual
- * desde el panel de administración).
+ * Expira los perfiles cuyo plazo de baja (UC-12) ha vencido.
+ *
+ * <p>La logica de baja definitiva vive en {@link BajaDefinitivaService}; este
+ * servicio conserva el punto de entrada usado por el scheduler y el panel de
+ * administracion.</p>
  */
 @Service
 public class ExpirarPerfilService {
 
-    private final PerfilRepository perfilRepository;
-    private final EliminarImagenesPerfilService eliminarImagenesPerfilService;
+    private final BajaDefinitivaService bajaDefinitivaService;
 
-    public ExpirarPerfilService(PerfilRepository perfilRepository,
-            EliminarImagenesPerfilService eliminarImagenesPerfilService) {
-        this.perfilRepository = perfilRepository;
-        this.eliminarImagenesPerfilService = eliminarImagenesPerfilService;
+    public ExpirarPerfilService(BajaDefinitivaService bajaDefinitivaService) {
+        this.bajaDefinitivaService = bajaDefinitivaService;
     }
 
     @Transactional
     public int expirarVencidos(int diasBaja) {
-        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(diasBaja);
-        List<Perfil> vencidos = perfilRepository
-                .findByEstadoAndFechaSolicitudBajaBefore(EstadoPerfil.PendienteBaja, fechaLimite);
+        return expirarVencidosConResumen(diasBaja).perfiles();
+    }
 
-        for (Perfil perfil : vencidos) {
-            perfil.setEstado(EstadoPerfil.Baja);
-            // Las imágenes del perfil (y, cuando existan, las publicaciones
-            // independientes) se eliminan en el método dedicado.
-            eliminarImagenesPerfilService.eliminarImagenesDePerfil(perfil);
-        }
-        if (!vencidos.isEmpty()) {
-            perfilRepository.saveAll(vencidos);
-        }
-        return vencidos.size();
+    @Transactional
+    public ResumenBajaDefinitiva expirarVencidosConResumen(int diasBaja) {
+        return bajaDefinitivaService.expirarPerfilesVencidos(diasBaja);
     }
 }

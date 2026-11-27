@@ -68,6 +68,17 @@ public class AdminPublicacionService {
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * UC-69: detalle completo de una publicación para el panel administrativo.
+     * Es de solo lectura y no valida visibilidad ni perfil activo.
+     */
+    @Transactional(readOnly = true)
+    public AdminPublicacionResponse obtener(Long idPublicacion) {
+        Publicacion publicacion = publicacionRepository.findById(idPublicacion)
+                .orElseThrow(() -> new PublicacionNoEncontradaException(idPublicacion));
+        return toResponse(publicacion);
+    }
+
     @Transactional
     @AuditarOperacion
     public AdminPublicacionResponse moderar(

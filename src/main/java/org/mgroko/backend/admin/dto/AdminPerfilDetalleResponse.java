@@ -11,6 +11,10 @@ import org.mgroko.backend.ubicacion.dto.UbicacionResponse;
 /**
  * Detalle administrativo de un perfil. Incluye datos del usuario duenio y
  * listas relacionadas de proyectos, contratos y publicaciones.
+ *
+ * <p>{@code terminosCondiciones} solo incluye una versión configurada por el
+ * perfil; es {@code null} cuando todavía no configuró sus términos, para que la
+ * vista administrativa muestre el estado vacío en lugar de la plantilla base.</p>
  */
 public record AdminPerfilDetalleResponse(
         Long idPerfil,

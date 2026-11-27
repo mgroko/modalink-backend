@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
@@ -203,16 +204,21 @@ public class ListarMiembrosProyectoService {
                 perfil.getProfesion() != null
                         ? perfil.getProfesion().getIdProfesion()
                         : null,
-                perfil.getProfesion() != null
-                        ? perfil.getProfesion().getNombre()
-                        : null,
+                ProfesionNombreResolver.mostrar(perfil),
                 rol != null ? rol.name() : null,
                 miembro.getEstadoParticipacion() != null
                         ? miembro.getEstadoParticipacion().name()
                         : null,
                 motivoNoEliminable == null,
                 motivoNoEliminable,
-                miembro.getIdTycAceptado());
+                miembro.getIdTycAceptado(),
+                miembro.getRequerimientoGral() != null
+                        ? miembro.getRequerimientoGral().getIdRequerimientoGral()
+                        : null,
+                miembro.getRequerimientoGral() != null
+                        && miembro.getRequerimientoGral().getProfesion() != null
+                                ? miembro.getRequerimientoGral().getProfesion().getNombre()
+                                : null);
     }
 
     private String motivoNoEliminable(

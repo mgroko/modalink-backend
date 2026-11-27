@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -43,6 +44,18 @@ public interface ColaboracionAutomaticaRepository
     @Query("SELECT c FROM ColaboracionAutomatica c WHERE c.idColaboracionAutomatica = :id")
     Optional<ColaboracionAutomatica> findByIdConDetalle(
             @Param("id") Long id);
+
+    /**
+     * Devuelve solo la URL de la imagen que disparó la colaboración. Se usa en
+     * los mails para no cargar el grafo completo de la colaboración.
+     */
+    @Query("""
+            SELECT i.url
+            FROM ColaboracionAutomatica c
+            JOIN c.imagen i
+            WHERE c.idColaboracionAutomatica = :id
+            """)
+    Optional<String> findImagenUrlById(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
@@ -136,4 +149,16 @@ public interface ColaboracionAutomaticaRepository
             "perfilB.imagen"
     })
     Page<ColaboracionAutomatica> findAll(Specification<ColaboracionAutomatica> spec, Pageable pageable);
+
+    /**
+     * Elimina las propuestas automaticas que involucran a un perfil que se da
+     * de baja definitivamente. No afecta propuestas entre otros perfiles.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM ColaboracionAutomatica c
+             WHERE c.perfilA.idPerfil = :idPerfil
+                OR c.perfilB.idPerfil = :idPerfil
+            """)
+    int eliminarPorPerfil(@Param("idPerfil") Long idPerfil);
 }

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,6 +22,8 @@ public interface ComentarioRepository extends JpaRepository<Comentario, Long> {
      */
     @EntityGraph(attributePaths = {
             "perfil",
+            "perfil.usuario",
+            "perfil.usuario.genero",
             "perfil.profesion",
             "perfil.imagen"
     })
@@ -43,4 +46,20 @@ public interface ComentarioRepository extends JpaRepository<Comentario, Long> {
             WHERE c.publicacion.idPublicacion = :idPublicacion
             """)
     long contarPorPublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    /**
+     * Fija el nombre artistico historico de todos los comentarios de un perfil.
+     * Se ejecuta al eliminar el perfil para que el comentario conserve la
+     * atribucion aunque el perfil quede anonimizado.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE Comentario c
+               SET c.nombreArtisticoAutor = :nombreArtistico
+             WHERE c.perfil.idPerfil = :idPerfil
+               AND c.nombreArtisticoAutor IS NULL
+            """)
+    int fijarNombreArtisticoAutor(
+            @Param("idPerfil") Long idPerfil,
+            @Param("nombreArtistico") String nombreArtistico);
 }

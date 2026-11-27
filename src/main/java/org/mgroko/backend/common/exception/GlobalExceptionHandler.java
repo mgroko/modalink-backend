@@ -767,6 +767,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.RequerimientoGralNoAsignableException.class)
+    public ResponseEntity<Map<String, Object>> handleRequerimientoGralNoAsignable(
+            org.mgroko.backend.proyectos.exception.RequerimientoGralNoAsignableException ex) {
+        Map<String, Object> response = buildErrorResponse(
+                ex.getMessage(), HttpStatus.CONFLICT).getBody();
+        if (response != null && ex.getCodigo() != null) {
+            response.put("codigo", ex.getCodigo());
+        }
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex) {
@@ -1652,6 +1663,20 @@ public class GlobalExceptionHandler {
             org.mgroko.backend.auditoria.exception.ErrorGenerandoPdfException ex) {
         return buildErrorResponseConCodigo(
                 ex.getMessage(), "ERROR_GENERANDO_PDF", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.contratos.exception.ErrorGenerandoPdfContratoException.class)
+    public ResponseEntity<Map<String, Object>> handleErrorGenerandoPdfContrato(
+            org.mgroko.backend.contratos.exception.ErrorGenerandoPdfContratoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "ERROR_GENERANDO_PDF", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(org.mgroko.backend.proyectos.exception.ErrorGenerandoInformeProyectoException.class)
+    public ResponseEntity<Map<String, Object>> handleErrorGenerandoInformeProyecto(
+            org.mgroko.backend.proyectos.exception.ErrorGenerandoInformeProyectoException ex) {
+        return buildErrorResponseConCodigo(
+                ex.getMessage(), "ERROR_GENERANDO_INFORME", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(org.mgroko.backend.contratos.exception.ContratoNoGenerableException.class)

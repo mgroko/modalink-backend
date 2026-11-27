@@ -34,6 +34,5 @@ public class CrearPublicacionRequest {
     private String provinciaId;
 
     @NotEmpty(message = "Debés adjuntar al menos una imagen.")
-    @Size(max = 10, message = "Una publicación puede tener como máximo 10 imágenes.")
     private List<MultipartFile> archivos;
 }

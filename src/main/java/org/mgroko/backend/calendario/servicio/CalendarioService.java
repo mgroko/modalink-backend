@@ -628,6 +628,7 @@ public class CalendarioService {
     public BloqueoResponse marcarNoDisponible(Long idUsuario, MarcarNoDisponibleRequest request) {
         usuarioActivo(idUsuario);
         validarRango(request.fechaHoraInicio(), request.fechaHoraFin());
+        validarNoPasado(request.fechaHoraFin());
         Agenda agenda = agendaDe(idUsuario);
 
         if (solapaActividad(idUsuario, request.fechaHoraInicio(), request.fechaHoraFin(), margenDe(agenda))) {
@@ -916,6 +917,18 @@ public class CalendarioService {
     private void validarRango(LocalDateTime inicio, LocalDateTime fin) {
         if (fin == null || inicio == null || !fin.isAfter(inicio)) {
             throw new RangoInvalidoException("La fecha y hora de fin debe ser posterior a la de inicio.");
+        }
+    }
+
+    /**
+     * Impide registrar bloqueos que ya terminaron. Un bloqueo que comenzó en el
+     * pasado pero sigue vigente se acepta: solo se rechaza cuando el fin no es
+     * posterior al momento actual.
+     */
+    private void validarNoPasado(LocalDateTime fin) {
+        if (!fin.isAfter(LocalDateTime.now())) {
+            throw new RangoInvalidoException(
+                    "No se puede crear un bloqueo en una fecha pasada.");
         }
     }
 

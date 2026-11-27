@@ -15,4 +15,6 @@ public interface JornadaAgendaRepository extends JpaRepository<JornadaAgenda, Lo
      * @return días laborables de la agenda
      */
     List<JornadaAgenda> findByAgenda_IdAgendaOrderByDiaSemana(Long idAgenda);
+
+    void deleteByAgenda_IdAgenda(Long idAgenda);
 }

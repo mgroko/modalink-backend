@@ -20,6 +20,8 @@ import org.mgroko.backend.admin.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.admin.servicio.AdminPerfilService;
 import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResumenResponse;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
@@ -91,6 +93,45 @@ class AdminPerfilControllerTest {
                         .principal(autenticacion()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Perfil no encontrado."));
+    }
+
+    @Test
+    void historialTerminos_devuelveVersiones() throws Exception {
+        when(adminPerfilService.obtenerHistorialTerminos(7L))
+                .thenReturn(List.of(
+                        new TerminosCondicionesVersionResumenResponse(
+                                12L,
+                                1,
+                                LocalDateTime.of(2026, 11, 1, 10, 0),
+                                null,
+                                true)));
+
+        mockMvc.perform(get("/admin/perfiles/7/terminos-condiciones/historial")
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idTyc").value(12L))
+                .andExpect(jsonPath("$[0].numeroVersion").value(1))
+                .andExpect(jsonPath("$[0].vigente").value(true));
+    }
+
+    @Test
+    void versionTerminos_devuelveTexto() throws Exception {
+        when(adminPerfilService.obtenerVersionTerminos(7L, 12L))
+                .thenReturn(new TerminosCondicionesVersionResponse(
+                        7L,
+                        12L,
+                        1,
+                        "Texto administrativo",
+                        LocalDateTime.of(2026, 11, 1, 10, 0),
+                        null,
+                        true));
+
+        mockMvc.perform(get("/admin/perfiles/7/terminos-condiciones/historial/12")
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idTyc").value(12L))
+                .andExpect(jsonPath("$.numeroVersion").value(1))
+                .andExpect(jsonPath("$.descripcion").value("Texto administrativo"));
     }
 
     private UsernamePasswordAuthenticationToken autenticacion() {

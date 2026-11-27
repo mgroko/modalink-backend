@@ -1,0 +1,89 @@
+{
+  "titulo": "Normas de convivencia",
+  "versiones": [
+    {
+      "version": "1.0",
+      "vigenteDesde": "2026-11-26",
+      "vigenteHasta": null,
+      "cambios": "Versión inicial.",
+      "regla": "ModaLink establece como regla de convivencia que, al incorporarte a un proyecto o a una de sus actividades, aceptás que se aplican los términos y condiciones vigentes de todos sus participantes. Esta regla es una condición del sistema y se entiende aceptada por tu decisión de trabajar en el proyecto.",
+      "secciones": [
+        {
+          "id": "que-son",
+          "titulo": "Qué son las normas de convivencia",
+          "parrafos": [
+            "Las normas de convivencia son una condición de ModaLink que se aplica a todos los proyectos. Definen cómo se relacionan los participantes y qué términos y condiciones se aplican al incorporarte.",
+            "No son un contrato ni reemplazan los términos y condiciones de cada participante. Tampoco reemplazan el contrato del proyecto."
+          ],
+          "items": []
+        },
+        {
+          "id": "a-quien-aplican",
+          "titulo": "A quién aplican",
+          "parrafos": [
+            "Aplican a todos los proyectos y actividades de la plataforma, sin excepciones ni reglas particulares por proyecto. Alcanzan a directores, miembros y candidatos."
+          ],
+          "items": []
+        },
+        {
+          "id": "como-se-aceptan",
+          "titulo": "Cómo se aceptan",
+          "parrafos": [
+            "La aceptación del candidato es implícita y se otorga por su decisión de trabajar en el proyecto. No hay un botón de aceptación aparte."
+          ],
+          "items": [
+            "Al postularte y, si el Director te incorpora, se entiende que aceptás estas normas y los términos y condiciones vigentes de todos los participantes.",
+            "Al aceptar una invitación y unirte al proyecto, se entiende la misma aceptación.",
+            "Al aceptar una invitación de reemplazo y, si el Director aprueba tu incorporación, también.",
+            "El Director acepta explícitamente los términos y condiciones de cada participante antes de invitarlo o incorporarlo."
+          ]
+        },
+        {
+          "id": "comunidad",
+          "titulo": "La comunidad del proyecto",
+          "parrafos": [
+            "Los miembros trabajan en el proyecto como una comunidad. Las normas aplican a todos por igual, incluidos los directores.",
+            "Cada participante puede consultar los términos y condiciones de los demás desde el panel de miembros del proyecto."
+          ],
+          "items": []
+        },
+        {
+          "id": "terminos-de-participantes",
+          "titulo": "Los términos y condiciones de los participantes",
+          "parrafos": [
+            "Cada perfil tiene sus propios términos y condiciones, que se versionan. La versión vigente se muestra a quien visita el perfil y se registra al momento de incorporarte a un proyecto.",
+            "Al ingresar, el sistema registra las versiones vigentes de todos los participantes. Esa información queda visible para los miembros del proyecto."
+          ],
+          "items": []
+        },
+        {
+          "id": "version-al-ingresar",
+          "titulo": "Qué versión queda registrada",
+          "parrafos": [
+            "La versión que se registra es la vigente en el momento de tu ingreso. Si un participante cambia sus términos y condiciones después, los nuevos ingresos ven la versión nueva; tu ingreso conserva la versión registrada.",
+            "Las normas de convivencia también tienen versión y fecha de vigencia. Cuando se publica una nueva versión, se conserva el historial y se informa en esta página."
+          ],
+          "items": []
+        },
+        {
+          "id": "si-no-estas-de-acuerdo",
+          "titulo": "Si no estás de acuerdo",
+          "parrafos": [
+            "Si no aceptás estas normas o los términos y condiciones de los participantes, no te postules ni aceptes la invitación.",
+            "Si ya sos miembro, podés darte de baja del proyecto desde el panel del proyecto. La baja no borra tu historial."
+          ],
+          "items": []
+        },
+        {
+          "id": "donde-consultar",
+          "titulo": "Dónde consultar",
+          "parrafos": [
+            "Podés leer los términos y condiciones de cada participante desde el panel del proyecto, en la pestaña Miembros.",
+            "Esta página está disponible sin iniciar sesión. El manual de usuario explica el paso a paso de cada flujo."
+          ],
+          "items": []
+        }
+      ]
+    }
+  ]
+}

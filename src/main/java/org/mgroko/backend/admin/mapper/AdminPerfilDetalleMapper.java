@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminPerfilDetalleResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.CaracteristicaPerfil;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
@@ -61,7 +62,7 @@ public final class AdminPerfilDetalleMapper {
                 perfil.getFechaSolicitudBaja(),
                 fechaLimiteBaja(perfil, diasBaja),
                 perfil.getProfesion() != null ? perfil.getProfesion().getIdProfesion() : null,
-                perfil.getProfesion() != null ? perfil.getProfesion().getNombre() : null,
+                perfil.getProfesion() != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 idImagen,
                 fotoUrl,
                 toUsuarioAdmin(usuario),

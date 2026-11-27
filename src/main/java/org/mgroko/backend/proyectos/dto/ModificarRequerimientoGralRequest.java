@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record ModificarRequerimientoGralRequest(
+        @NotNull(message = "El requerimiento debe incluir su identificador. Para crear uno nuevo usá el alta de requerimientos.")
         Long idRequerimientoGral,
 
         @NotNull(message = "La cantidad de profesionales es obligatoria.")

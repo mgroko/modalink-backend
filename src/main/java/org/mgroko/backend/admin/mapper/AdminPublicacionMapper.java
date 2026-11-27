@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.mgroko.backend.admin.dto.AdminPublicacionResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
@@ -86,7 +87,7 @@ public final class AdminPublicacionMapper {
         return new AutorPublicacionResponse(
                 perfil.getIdPerfil(),
                 perfil.getNombreArtistico(),
-                perfil.getProfesion() != null ? perfil.getProfesion().getNombre() : null,
+                perfil.getProfesion() != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 perfil.getImagen() != null ? perfil.getImagen().getUrl() : null);
     }
 

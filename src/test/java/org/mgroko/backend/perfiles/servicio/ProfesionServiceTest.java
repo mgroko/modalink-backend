@@ -30,6 +30,7 @@ class ProfesionServiceTest {
                 .idProfesion(2L)
                 .codigo("MODELO")
                 .nombre("modelo")
+                .nombreFemenino("modelo")
                 .descripcion("Profesional que posa para producciones.")
                 .build();
     }
@@ -43,6 +44,7 @@ class ProfesionServiceTest {
         assertEquals(1, response.size());
         assertEquals("MODELO", response.get(0).codigo());
         assertEquals("modelo", response.get(0).nombre());
+        assertEquals("modelo", response.get(0).nombreFemenino());
         assertEquals(2L, response.get(0).idProfesion());
         verify(profesionRepository).buscar("%mo%", "mo");
     }

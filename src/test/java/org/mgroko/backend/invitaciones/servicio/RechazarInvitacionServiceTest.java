@@ -22,6 +22,7 @@ import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Notificacion;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
@@ -102,6 +103,34 @@ class RechazarInvitacionServiceTest {
     }
 
     @Test
+    void requerimientoGeneral_pendiente_devuelveTipoRequerimientoGeneral() {
+        prepararPerfilActivo();
+        RequerimientoGralProyecto requerimiento = RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(30L)
+                .proyecto(Proyecto.builder().idProyecto(ID_PROYECTO).build())
+                .cantidad(1)
+                .build();
+        InvitacionGral invitacion = invitacion(EstadoSolicitud.PENDIENTE, ID_PERFIL);
+        invitacion.setRequerimientoGral(requerimiento);
+        when(invitacionGralRepository.findById(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+        when(invitacionGralRepository.findByIdForUpdate(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+        when(requerimientoGralProyectoRepository.findByIdParaGestion(30L))
+                .thenReturn(Optional.of(requerimiento));
+        prepararNotificacion();
+
+        InvitacionGestionadaResponse respuesta =
+                servicio.rechazarRequerimientoGeneral(
+                        ID_USUARIO, ID_PERFIL, ID_INVITACION);
+
+        assertThat(respuesta.tipo())
+                .isEqualTo(org.mgroko.backend.invitaciones.dto.TipoInvitacion
+                        .REQUERIMIENTO_GENERAL);
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.RECHAZADA);
+    }
+
+    @Test
     void general_noPendiente_lanzaConflicto() {
         prepararPerfilActivo();
         InvitacionGral invitacion = invitacion(EstadoSolicitud.ACEPTADA, ID_PERFIL);
@@ -129,6 +158,24 @@ class RechazarInvitacionServiceTest {
                 ID_USUARIO, ID_PERFIL, ID_INVITACION))
                 .isInstanceOf(org.mgroko.backend.proyectos.exception
                         .AccesoDenegadoProyectoException.class);
+    }
+
+    @Test
+    void general_proyectoFinalizado_permiteRechazarParaSaneamiento() {
+        prepararPerfilActivo();
+        InvitacionGral invitacion = invitacion(EstadoSolicitud.PENDIENTE, ID_PERFIL);
+        invitacion.getProyecto().setEstado(EstadoProyecto.FINALIZADO);
+        when(invitacionGralRepository.findById(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+        when(invitacionGralRepository.findByIdForUpdate(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+        prepararNotificacion();
+
+        var respuesta = servicio.rechazarGeneral(
+                ID_USUARIO, ID_PERFIL, ID_INVITACION);
+
+        assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.RECHAZADA);
+        assertThat(invitacion.getFechaRechazo()).isEqualTo(FECHA_RECHAZO);
     }
 
     private void prepararPerfilActivo() {

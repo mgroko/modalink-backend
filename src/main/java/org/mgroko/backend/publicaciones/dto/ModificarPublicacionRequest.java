@@ -36,9 +36,7 @@ public class ModificarPublicacionRequest {
     private String provinciaId;
 
     @NotNull(message = "Debés indicar las imágenes que se conservan.")
-    @Size(max = 10, message = "Una publicación puede tener como máximo 10 imágenes.")
     private List<@Positive(message = "La imagen debe ser válida.") Long> imagenesConservadas;
 
-    @Size(max = 10, message = "Una publicación puede tener como máximo 10 imágenes.")
     private List<MultipartFile> archivos;
 }

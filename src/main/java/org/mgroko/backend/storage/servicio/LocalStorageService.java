@@ -72,6 +72,7 @@ public class LocalStorageService implements StorageService {
     private final String polaroidsSubdir;
     private final ProcesadorImagen procesadorImagen;
     private final HuellaImagenService huellaImagenService;
+    private final boolean colaboracionAutomaticaHabilitada;
 
     public LocalStorageService(
             @Value("${app.storage.upload-dir:uploads}") String uploadDir,
@@ -79,6 +80,7 @@ public class LocalStorageService implements StorageService {
             @Value("${app.storage.moodboard-dir:moodboard}") String moodboardSubdir,
             @Value("${app.storage.publicaciones-dir:publicaciones}") String publicacionesSubdir,
             @Value("${app.storage.polaroids-dir:polaroids}") String polaroidsSubdir,
+            @Value("${app.colaboracion-automatica.habilitada:true}") boolean colaboracionAutomaticaHabilitada,
             ProcesadorImagen procesadorImagen,
             HuellaImagenService huellaImagenService) {
         this.uploadDir = uploadDir;
@@ -88,6 +90,7 @@ public class LocalStorageService implements StorageService {
         this.polaroidsSubdir = polaroidsSubdir;
         this.procesadorImagen = procesadorImagen;
         this.huellaImagenService = huellaImagenService;
+        this.colaboracionAutomaticaHabilitada = colaboracionAutomaticaHabilitada;
 
         this.perfilesPath = prepararDirectorio(uploadDir, perfilesSubdir);
         this.moodboardPath = prepararDirectorio(uploadDir, moodboardSubdir);
@@ -156,6 +159,12 @@ public class LocalStorageService implements StorageService {
 
         String urlRelativa = "/" + uploadDir + "/" + subdirectorio + "/" + nombreArchivoGenerado;
 
+        // El pHash solo se usa para detectar colaboraciones entre publicaciones.
+        // En fotos de perfil, moodboard y polaroids no aporta nada.
+        Long phash = paraPublicacion && colaboracionAutomaticaHabilitada
+                ? huellaImagenService.phash(bytesConvertidos)
+                : null;
+
         return new ArchivoAlmacenado(
                 nombreArchivoGenerado,
                 urlRelativa,
@@ -163,7 +172,7 @@ public class LocalStorageService implements StorageService {
                 bytesConvertidos.length,
                 huellaImagenService.sha256(bytes),
                 huellaImagenService.sha256(bytesConvertidos),
-                huellaImagenService.phash(bytesConvertidos)
+                phash
         );
     }
 

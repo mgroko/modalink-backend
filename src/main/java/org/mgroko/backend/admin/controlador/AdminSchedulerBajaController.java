@@ -2,7 +2,7 @@ package org.mgroko.backend.admin.controlador;
 
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerBajaRequest;
-import org.mgroko.backend.admin.dto.EjecutarSchedulerResponse;
+import org.mgroko.backend.admin.dto.EjecutarSchedulerBajaResponse;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,7 +39,7 @@ public class AdminSchedulerBajaController {
 
     @PostMapping("/ejecutar-ahora")
     @PreAuthorize("hasAuthority('ADMINISTRAR_CONFIGURACION')")
-    public ResponseEntity<EjecutarSchedulerResponse> ejecutarAhora() {
+    public ResponseEntity<EjecutarSchedulerBajaResponse> ejecutarAhora() {
         return ResponseEntity.ok(configuracionSistemaService.ejecutarBajaManual());
     }
 }

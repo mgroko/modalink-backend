@@ -67,12 +67,16 @@ En los capítulos de proyectos se indica qué rol puede hacer cada cosa. El deta
 | **Ruta crítica** | Secuencia de actividades que determina la duración mínima del proyecto. |
 | **Colaboración automática** | Propuesta de vinculación entre perfiles o publicaciones que el sistema detecta a partir de coincidencias. Requiere confirmación de las partes. |
 | **Reemplazo** | Proceso que se activa cuando un integrante se da de baja o es eliminado de un proyecto confirmado, para cubrir la vacante con nuevos candidatos. |
+| **Normas de convivencia** | Condición de la plataforma que se aplica al incorporarte a un proyecto o actividad. Incluye la aceptación implícita de los términos y condiciones vigentes de todos los participantes. Se explican en el capítulo 16. |
+| **Términos y condiciones de los participantes** | Condiciones versionadas de cada perfil. Se registran al momento de tu ingreso y se pueden consultar desde el panel de miembros. |
+| **Comunidad del proyecto** | Forma de trabajo del equipo: las normas aplican a todos por igual, incluidos los directores. |
 
 ## 2.5. Cómo se relacionan
 
 - Un **usuario** tiene uno o más **perfiles** y un **perfil activo**.
 - Los **perfiles** se conectan entre sí mediante **conexiones**.
 - Los **proyectos** tienen **integrantes** con rol **Director** o **Miembro**.
+- Los **proyectos** se rigen por las **normas de convivencia**; al incorporarte, se registran las versiones vigentes de los términos y condiciones de los participantes.
 - Los **requerimientos** se cubren con **postulaciones** aceptadas o **invitaciones** aceptadas.
 - Las **actividades** se asignan a **miembros** y se agendan según la **disponibilidad** de cada perfil.
 - Al finalizar, los integrantes se **califican** y las calificaciones quedan en los perfiles.

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.PermisoProyecto;
@@ -91,6 +92,23 @@ class ListarMiembrosProyectoServiceTest {
 
         assertThat(filaMiembro.eliminable()).isTrue();
         assertThat(filaMiembro.motivoNoEliminable()).isNull();
+    }
+
+    @Test
+    void listar_mujer_devuelveProfesionFemenina() {
+        Perfil perfilMiembro = miembro.getPerfil();
+        perfilMiembro.getUsuario().setGenero(Genero.builder().codigo("MUJER").build());
+        perfilMiembro.setProfesion(Profesion.builder()
+                .idProfesion(1L)
+                .codigo("FOTOGRAFO")
+                .nombre("Fotógrafo")
+                .nombreFemenino("Fotógrafa")
+                .build());
+
+        PaginaResponse<MiembroProyectoResponse> pagina = service.listar(
+                1L, 10L, 100L, null, null, null, 0, 20, true);
+
+        assertThat(pagina.contenido().get(1).nombreProfesion()).isEqualTo("Fotógrafa");
     }
 
     @Test

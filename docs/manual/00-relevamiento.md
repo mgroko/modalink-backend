@@ -31,6 +31,8 @@
 | Conectando con Google (retorno) | `/auth/google/callback` | Público (retorno de Google) | UC-09 | Completa [5] |
 | Completá tu registro (onboarding Google) | `/auth/google/completar` | Usuario pendiente de completar datos de Google | UC-09 | Completa |
 | Ingresando a ModaLink (enlace mágico por correo) | `/auth/email` | Público (enlace recibido por correo) | Extensión de UC-01 (no catalogada) | Completa [6] |
+| Normas de convivencia | `/normas-de-convivencia` | Público | Condición de la plataforma | Completa |
+| Ayuda / manual de usuario | `/ayuda` y `/ayuda/:id` | Usuario autenticado | Manual in-app | Completa |
 | Cerrar sesión (acción global) | Menú de perfil / barra lateral | Usuario y Administrador | UC-02 | Completa |
 
 ---
@@ -97,6 +99,7 @@
 |---|---|---|---|---|
 | Panel de administración (dashboard) | `/admin/dashboard` | Administrador con permiso de ver usuarios | Dashboard administrativo (sin UC numerado) | Completa [44] |
 | Notificaciones (administración) | `/admin/notificaciones` | Administrador | Módulo de notificaciones (sin UC numerado) | Completa |
+| Ayuda / manual de administración | `/admin/ayuda` y `/admin/ayuda/:id` | Administrador | Manual in-app | Completa |
 | Gestión de usuarios | `/admin/gestion-usuarios` | Administrador | UC-04, UC-05, UC-06 | Completa [45][46] |
 | Búsqueda de usuarios | `/admin/busqueda-usuarios` | Administrador con permiso de ver usuarios | UC-06 | Completa [47] |
 | Características técnicas | `/admin/gestionar-caracteristicas` | Administrador con permiso de ver características | UC-57, UC-58, UC-59 | Completa |
@@ -149,6 +152,7 @@ Estos flujos son accesibles desde las pantallas anteriores y se documentarán de
 | Postularse a un requerimiento general o de actividad | Buscar, Home, panel del proyecto | Usuario con perfil activo | UC-26 | Completa |
 | Aceptar / rechazar postulación | Pestaña Postulaciones | Director activo | UC-34 | Completa |
 | Aceptar / rechazar invitación | Solicitudes | Perfil destinatario | UC-28 | Completa |
+| Aviso de normas de convivencia | Postulación, invitación y reemplazo | Usuario | Condición de la plataforma | Completa |
 | Eliminar invitación enviada | Solicitudes | Director emisor | UC-32 | Completa |
 | Aprobar / rechazar candidato de reemplazo | Pestaña Reemplazos | Director activo | Extensión de UC-38/UC-40 | Completa |
 | Confirmar, regenerar o cancelar proceso de reemplazo | Pestaña Reemplazos | Director activo | Extensión de UC-38/UC-40 | Completa |
@@ -198,6 +202,7 @@ Estos flujos son accesibles desde las pantallas anteriores y se documentarán de
 | `13-mensajeria.md` (complementario) | Chat privado y chat grupal | 3 y 4 |
 | `14-calificaciones.md` (complementario) | Calificación del equipo y reseñas de perfil | 2 y 4 |
 | `15-colaboraciones-automaticas.md` (complementario) | Bandeja y detalle de colaboraciones automáticas | 4 |
+| `16-normas-de-convivencia.md` | Normas de convivencia, aceptación implícita y T&C de los participantes | 1 (aviso en postulación e invitaciones) |
 | `Anexo A` | Permisos por rol | — |
 | `Anexo B` | Estados y su significado | — |
 

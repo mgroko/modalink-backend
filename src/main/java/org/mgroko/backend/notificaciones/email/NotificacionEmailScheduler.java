@@ -41,6 +41,7 @@ public class NotificacionEmailScheduler implements SchedulingConfigurer {
     private final NotificacionEmailSender emailSender;
     private final TokenAccesoEmailService tokenService;
     private final NotificacionDestinoResolver destinoResolver;
+    private final NotificacionImagenResolver imagenResolver;
     private final ConfiguracionSistemaService configuracionSistemaService;
     private final String frontendUrl;
 
@@ -51,6 +52,7 @@ public class NotificacionEmailScheduler implements SchedulingConfigurer {
             NotificacionEmailSender emailSender,
             TokenAccesoEmailService tokenService,
             NotificacionDestinoResolver destinoResolver,
+            NotificacionImagenResolver imagenResolver,
             ConfiguracionSistemaService configuracionSistemaService,
             @org.springframework.beans.factory.annotation.Value("${app.frontend.url:http://localhost:5173}") String frontendUrl) {
         this.entregaService = entregaService;
@@ -59,6 +61,7 @@ public class NotificacionEmailScheduler implements SchedulingConfigurer {
         this.emailSender = emailSender;
         this.tokenService = tokenService;
         this.destinoResolver = destinoResolver;
+        this.imagenResolver = imagenResolver;
         this.configuracionSistemaService = configuracionSistemaService;
         this.frontendUrl = frontendUrl;
     }
@@ -119,6 +122,7 @@ public class NotificacionEmailScheduler implements SchedulingConfigurer {
             Long idPerfilContexto = notificacion.getPerfilContexto() != null
                     ? notificacion.getPerfilContexto().getIdPerfil()
                     : null;
+            String imagenUrl = imagenResolver.resolver(notificacion).orElse(null);
 
             String token = tokenService.generarToken(
                     idEntrega,
@@ -128,6 +132,7 @@ public class NotificacionEmailScheduler implements SchedulingConfigurer {
             NotificacionEmailBuilder.EmailContent contenido = emailBuilder.construir(
                     notificacion,
                     idProyecto,
+                    imagenUrl,
                     token,
                     frontendUrl,
                     usuario.getCorreo());

@@ -123,6 +123,47 @@ class BuscarInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void buscar_invitacionDeRequerimientoGeneral_devuelveTipoYRequerimiento() {
+        PerfilCreado director = crearPerfil(
+                "uc30.dir.req@example.com", "88830021", "Directora Req UC30", "modelo");
+        PerfilCreado destinatario = crearPerfil(
+                "uc30.dest.req@example.com", "88830022", "Destinataria Req UC30", "modelo");
+
+        ProyectoResponse publicado = publicarProyectoConRequerimientoGral(
+                director, "Desfile UC30 Requerimiento");
+        Long idRequerimiento = publicado.requerimientosGral().get(0).idRequerimientoGral();
+
+        crearInvitacionService.invitarAProyecto(
+                director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
+                new CrearInvitacionGralRequest(
+                        destinatario.idPerfil(), idRequerimiento, "Mensaje"));
+
+        PaginaResponse<InvitacionBusquedaResponse> requerimientoGeneral =
+                buscarInvitacionService.buscar(
+                        director.idPerfil(),
+                        new BuscarInvitacionesFiltro(
+                                null, null, null, null, null, null, null,
+                                TipoInvitacion.REQUERIMIENTO_GENERAL),
+                        0, 20, false);
+
+        assertThat(requerimientoGeneral.contenido()).hasSize(1);
+        InvitacionBusquedaResponse invitacion =
+                requerimientoGeneral.contenido().getFirst();
+        assertThat(invitacion.tipo()).isEqualTo(TipoInvitacion.REQUERIMIENTO_GENERAL);
+        assertThat(invitacion.idRequerimientoGral()).isEqualTo(idRequerimiento);
+
+        PaginaResponse<InvitacionBusquedaResponse> proyecto =
+                buscarInvitacionService.buscar(
+                        director.idPerfil(),
+                        new BuscarInvitacionesFiltro(
+                                null, null, null, null, null, null, null,
+                                TipoInvitacion.GENERAL),
+                        0, 20, false);
+
+        assertThat(proyecto.contenido()).isEmpty();
+    }
+
+    @Test
     void buscar_invitacionDeActividad_devuelveActividadYRequerimiento() {
         PerfilCreado director = crearPerfil(
                 "uc30.dir2@example.com", "88830003", "Directora Act UC30", "modelo");

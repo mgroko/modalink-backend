@@ -24,6 +24,7 @@ import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.reemplazos.dto.AprobarCandidatoRequest;
 import org.mgroko.backend.reemplazos.dto.CandidatoReemplazoResponse;
@@ -72,6 +73,7 @@ public class AprobacionIncorporacionService {
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final RolProyectoRepository rolProyectoRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
+    private final RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     private final CandidatoDisponibilidadService disponibilidadService;
     private final ReprogramarProyectoService reprogramarProyectoService;
     private final ReemplazoNotificacionService notificacionService;
@@ -90,6 +92,7 @@ public class AprobacionIncorporacionService {
             AsignacionActividadRepository asignacionActividadRepository,
             RolProyectoRepository rolProyectoRepository,
             CupoRequerimientoService cupoRequerimientoService,
+            RequerimientoGralAsignacionService requerimientoGralAsignacionService,
             CandidatoDisponibilidadService disponibilidadService,
             ReprogramarProyectoService reprogramarProyectoService,
             ReemplazoNotificacionService notificacionService,
@@ -106,6 +109,7 @@ public class AprobacionIncorporacionService {
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.rolProyectoRepository = rolProyectoRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
+        this.requerimientoGralAsignacionService = requerimientoGralAsignacionService;
         this.disponibilidadService = disponibilidadService;
         this.reprogramarProyectoService = reprogramarProyectoService;
         this.notificacionService = notificacionService;
@@ -184,6 +188,7 @@ public class AprobacionIncorporacionService {
 
             MiembroProyecto miembro = obtenerOCrearMiembro(
                     reemplazo, candidato, null, idTycAceptado);
+            requerimientoGralAsignacionService.vincularSiCorresponde(miembro);
             idMiembro = miembro.getIdMiembro();
             idTycRegistrado = miembro.getIdTycAceptado();
 

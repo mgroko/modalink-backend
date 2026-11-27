@@ -13,4 +13,6 @@ public interface UsuarioIdentidadRepository extends JpaRepository<UsuarioIdentid
     Optional<UsuarioIdentidad> findByUsuario_IdUsuarioAndProveedor(Long idUsuario, ProveedorAuth proveedor);
 
     boolean existsByProveedorAndIdExterno(ProveedorAuth proveedor, String idExterno);
+
+    void deleteByUsuario_IdUsuario(Long idUsuario);
 }

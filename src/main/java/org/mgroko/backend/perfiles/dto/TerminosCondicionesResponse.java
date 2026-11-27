@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public record TerminosCondicionesResponse(
         Long idPerfil,
         Long idTyc,
+        Integer numeroVersion,
         String descripcion,
         LocalDateTime fechaInicio,
         LocalDateTime fechaFin,

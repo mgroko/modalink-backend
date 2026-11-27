@@ -14,6 +14,12 @@ public final class NotificacionMapper {
     private static final String ENTIDAD_PUBLICACION = "PUBLICACION";
     private static final String ENTIDAD_COLABORACION_AUTOMATICA =
             "COLABORACION_AUTOMATICA";
+    private static final String ENTIDAD_CARACTERISTICA_TECNICA =
+            "CARACTERISTICA_TECNICA";
+    private static final String TIPO_CARACTERISTICA_TECNICA_CREADA =
+            "CARACTERISTICA_TECNICA_CREADA";
+    private static final String TIPO_CARACTERISTICA_TECNICA_MODIFICADA =
+            "CARACTERISTICA_TECNICA_MODIFICADA";
     private static final String TIPO_CALIFICACION_SOLICITADA =
             "CALIFICACION_SOLICITADA";
     private static final String TIPO_SOLICITUD_CONEXION_RECIBIDA =
@@ -134,6 +140,16 @@ public final class NotificacionMapper {
                     ENTIDAD_COLABORACION_AUTOMATICA.equals(notificacion.getEntidadTipo())
                             && notificacion.getEntidadId() != null
                             ? "/colaboraciones-automaticas/" + notificacion.getEntidadId()
+                            : null;
+            case TIPO_CARACTERISTICA_TECNICA_CREADA,
+                 TIPO_CARACTERISTICA_TECNICA_MODIFICADA ->
+                    ENTIDAD_CARACTERISTICA_TECNICA.equals(notificacion.getEntidadTipo())
+                            && notificacion.getEntidadId() != null
+                            && notificacion.getPerfilContexto() != null
+                            ? "/dashboard-usuario/editar-perfil/"
+                                    + notificacion.getPerfilContexto().getIdPerfil()
+                                    + "?resaltarCaracteristicas="
+                                    + notificacion.getEntidadId()
                             : null;
             default -> null;
         };

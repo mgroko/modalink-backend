@@ -3,6 +3,7 @@ package org.mgroko.backend.proyectos.servicio;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -63,6 +64,8 @@ class ContextoConfirmacionProyectoServiceTest {
     @Mock
     private RequerimientoCompletitudService requerimientoCompletitudService;
     @Mock
+    private ProyectoMinimosService proyectoMinimosService;
+    @Mock
     private ProyectoSecurityService proyectoSecurityService;
 
     private ContextoConfirmacionProyectoService service;
@@ -86,6 +89,7 @@ class ContextoConfirmacionProyectoServiceTest {
                 asignacionActividadRepository,
                 requerimientoActividadRepository,
                 requerimientoCompletitudService,
+                proyectoMinimosService,
                 proyectoSecurityService,
                 reloj);
 
@@ -140,6 +144,10 @@ class ContextoConfirmacionProyectoServiceTest {
         when(requerimientoCompletitudService.validar(eq(ID_PROYECTO), any()))
                 .thenReturn(new RequerimientoCompletitudService.Resultado(
                         List.of(), List.of(), List.of()));
+        when(proyectoMinimosService.tieneAlMenosDosMiembrosActivos(ID_PROYECTO))
+                .thenReturn(true);
+        when(proyectoMinimosService.tieneRequerimientoComputable(ID_PROYECTO))
+                .thenReturn(true);
     }
 
     @Test
@@ -189,6 +197,84 @@ class ContextoConfirmacionProyectoServiceTest {
         assertThat(contexto.bloqueos())
                 .extracting(BloqueoConfirmacionResponse::codigo)
                 .contains("DATOS_INCONSISTENTES");
+    }
+
+    @Test
+    void sinActividades_requerimientosCompletos_noAgregaBloqueo() {
+        when(actividadRepository.findConPredecesorasByPlanificacion(ID_PLANIFICACION))
+                .thenReturn(List.of());
+
+        ContextoConfirmacionProyectoService.Contexto contexto =
+                service.cargar(ID_USUARIO, ID_PERFIL, ID_PROYECTO, false);
+
+        assertThat(contexto.actividadesNoCanceladas()).isEmpty();
+        assertThat(contexto.bloqueos()).isEmpty();
+        verify(requerimientoCompletitudService).validar(ID_PROYECTO, List.of());
+    }
+
+    @Test
+    void sinActividades_requerimientosIncompletos_mantieneBloqueoDeCupo() {
+        when(actividadRepository.findConPredecesorasByPlanificacion(ID_PLANIFICACION))
+                .thenReturn(List.of());
+        when(requerimientoCompletitudService.validar(ID_PROYECTO, List.of()))
+                .thenReturn(new RequerimientoCompletitudService.Resultado(
+                        List.of(),
+                        List.of(),
+                        List.of(new BloqueoConfirmacionResponse(
+                                "REQUERIMIENTOS_INCOMPLETOS",
+                                "Falta un integrante.",
+                                "REQUERIMIENTO_GRAL",
+                                1L))));
+
+        ContextoConfirmacionProyectoService.Contexto contexto =
+                service.cargar(ID_USUARIO, ID_PERFIL, ID_PROYECTO, false);
+
+        assertThat(contexto.bloqueos())
+                .extracting(BloqueoConfirmacionResponse::codigo)
+                .containsExactly("REQUERIMIENTOS_INCOMPLETOS");
+    }
+
+    @Test
+    void sinMiembroAdicional_agregaBloqueo() {
+        when(proyectoMinimosService.tieneAlMenosDosMiembrosActivos(ID_PROYECTO))
+                .thenReturn(false);
+
+        ContextoConfirmacionProyectoService.Contexto contexto =
+                service.cargar(ID_USUARIO, ID_PERFIL, ID_PROYECTO, false);
+
+        assertThat(contexto.bloqueos())
+                .extracting(BloqueoConfirmacionResponse::codigo)
+                .contains("SIN_MIEMBRO_ADICIONAL");
+    }
+
+    @Test
+    void sinRequerimientoComputable_agregaBloqueo() {
+        when(proyectoMinimosService.tieneRequerimientoComputable(ID_PROYECTO))
+                .thenReturn(false);
+
+        ContextoConfirmacionProyectoService.Contexto contexto =
+                service.cargar(ID_USUARIO, ID_PERFIL, ID_PROYECTO, false);
+
+        assertThat(contexto.bloqueos())
+                .extracting(BloqueoConfirmacionResponse::codigo)
+                .contains("SIN_REQUERIMIENTOS");
+    }
+
+    @Test
+    void sinActividadesNiMinimos_agregaAmbosBloqueos() {
+        when(actividadRepository.findConPredecesorasByPlanificacion(ID_PLANIFICACION))
+                .thenReturn(List.of());
+        when(proyectoMinimosService.tieneAlMenosDosMiembrosActivos(ID_PROYECTO))
+                .thenReturn(false);
+        when(proyectoMinimosService.tieneRequerimientoComputable(ID_PROYECTO))
+                .thenReturn(false);
+
+        ContextoConfirmacionProyectoService.Contexto contexto =
+                service.cargar(ID_USUARIO, ID_PERFIL, ID_PROYECTO, false);
+
+        assertThat(contexto.bloqueos())
+                .extracting(BloqueoConfirmacionResponse::codigo)
+                .contains("SIN_MIEMBRO_ADICIONAL", "SIN_REQUERIMIENTOS");
     }
 
     private AsignacionActividad asignacion(RequerimientoActividad requerimientoActividad) {

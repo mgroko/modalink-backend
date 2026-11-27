@@ -9,7 +9,9 @@ import org.mgroko.backend.auth.exception.UsuarioNoEncontradoException;
 import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
+import org.mgroko.backend.perfiles.dto.PerfilResponse;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
+import org.mgroko.backend.perfiles.mapper.PerfilMapper;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.UsuarioRepository;
 import org.mgroko.backend.security.PerfilAccessPolicy;
@@ -32,7 +34,7 @@ public class ReactivarPerfilService {
 
     @Transactional
     @AuditarOperacion
-    public Perfil reactivar(Long idUsuario, Long idPerfil) {
+    public PerfilResponse reactivar(Long idUsuario, Long idPerfil) {
         buscarUsuarioActivo(idUsuario);
 
         Perfil perfil = perfilRepository.findByIdPerfilAndUsuarioIdUsuario(idPerfil, idUsuario)
@@ -51,7 +53,10 @@ public class ReactivarPerfilService {
 
         perfil.setEstado(EstadoPerfil.Activo);
         perfil.setFechaSolicitudBaja(null);
-        return perfilRepository.save(perfil);
+        Perfil perfilGuardado = perfilRepository.save(perfil);
+        // Se mapea dentro de la transacción para poder resolver el género y las
+        // colecciones perezosas sin depender del contexto de persistencia.
+        return PerfilMapper.toResponse(perfilGuardado, diasBaja);
     }
 
     private Usuario buscarUsuarioActivo(Long idUsuario) {

@@ -178,9 +178,9 @@ public class ModificarPublicacionService {
             throw new PublicacionInvalidaException(
                     "Debés conservar o adjuntar al menos una imagen.");
         }
-        if (total > PublicacionDatosService.LIMITE_IMAGENES) {
-            throw new LimiteImagenesPublicacionExcedidoException(
-                    PublicacionDatosService.LIMITE_IMAGENES);
+        int limite = publicacionDatosService.maximoImagenesPublicacion();
+        if (total > limite) {
+            throw new LimiteImagenesPublicacionExcedidoException(limite);
         }
     }
 

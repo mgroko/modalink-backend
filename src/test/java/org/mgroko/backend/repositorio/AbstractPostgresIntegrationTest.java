@@ -7,6 +7,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import java.util.List;
+
+import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
+import org.mgroko.backend.contratos.dto.ModoTextoContrato;
+import org.mgroko.backend.contratos.servicio.CrearContratoBorradorService;
+import org.mgroko.backend.contratos.servicio.EmitirContratoService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -30,6 +38,44 @@ import org.testcontainers.utility.MountableFile;
  * Requiere Docker: si no está disponible, los tests fallan.
  */
 public abstract class AbstractPostgresIntegrationTest {
+
+    @Autowired
+    protected CrearContratoBorradorService crearContratoBorradorService;
+
+    @Autowired
+    protected EmitirContratoService emitirContratoService;
+
+    /**
+     * Fixture comun del flujo de contratos: crea un borrador y lo emite.
+     * Reemplaza al antiguo GenerarContratoService de los tests.
+     */
+    protected ContratoDetalleResponse crearContratoPendiente(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idProyecto,
+            Long idTipoAcuerdo,
+            List<Long> idsMiembro,
+            List<String> clausulasAdicionales) {
+
+        ContratoDetalleResponse borrador = crearContratoBorradorService.crear(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto,
+                new GuardarContratoRequest(
+                        idTipoAcuerdo,
+                        idsMiembro,
+                        clausulasAdicionales,
+                        null,
+                        null,
+                        null,
+                        ModoTextoContrato.AUTO));
+
+        return emitirContratoService.emitir(
+                idUsuario,
+                idPerfilActivo,
+                idProyecto,
+                borrador.idContrato());
+    }
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
             .withCopyFileToContainer(

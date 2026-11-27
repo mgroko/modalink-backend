@@ -18,10 +18,12 @@ public interface ConversacionRepository extends JpaRepository<Conversacion, Long
     @EntityGraph(attributePaths = {
             "perfil1",
             "perfil1.usuario",
+            "perfil1.usuario.genero",
             "perfil1.profesion",
             "perfil1.imagen",
             "perfil2",
             "perfil2.usuario",
+            "perfil2.usuario.genero",
             "perfil2.profesion",
             "perfil2.imagen"
     })
@@ -46,10 +48,12 @@ public interface ConversacionRepository extends JpaRepository<Conversacion, Long
     @EntityGraph(attributePaths = {
             "perfil1",
             "perfil1.usuario",
+            "perfil1.usuario.genero",
             "perfil1.profesion",
             "perfil1.imagen",
             "perfil2",
             "perfil2.usuario",
+            "perfil2.usuario.genero",
             "perfil2.profesion",
             "perfil2.imagen"
     })
@@ -66,10 +70,12 @@ public interface ConversacionRepository extends JpaRepository<Conversacion, Long
     @EntityGraph(attributePaths = {
             "perfil1",
             "perfil1.usuario",
+            "perfil1.usuario.genero",
             "perfil1.profesion",
             "perfil1.imagen",
             "perfil2",
             "perfil2.usuario",
+            "perfil2.usuario.genero",
             "perfil2.profesion",
             "perfil2.imagen"
     })

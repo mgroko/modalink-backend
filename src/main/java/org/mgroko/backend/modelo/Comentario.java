@@ -47,4 +47,11 @@ public class Comentario {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_perfil", nullable = false)
     private Perfil perfil;
+
+    /**
+     * Nombre artistico del autor al momento de eliminar su perfil. Se usa como
+     * respaldo historico cuando el perfil pasa a BAJA.
+     */
+    @Column(name = "nombre_artistico_autor", length = 50)
+    private String nombreArtisticoAutor;
 }

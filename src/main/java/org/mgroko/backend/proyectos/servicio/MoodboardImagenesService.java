@@ -2,6 +2,7 @@ package org.mgroko.backend.proyectos.servicio;
 
 import java.util.List;
 
+import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Imagen;
 import org.mgroko.backend.modelo.Moodboard;
 import org.mgroko.backend.modelo.Perfil;
@@ -35,10 +36,10 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class MoodboardImagenesService {
 
-    public static final int LIMITE_IMAGENES = 10;
     public static final String PERMISO_MODIFICAR_PROYECTO = "MODIFICAR_PROYECTO";
     public static final String ESTADO_IMAGEN_ACTIVA = "Activa";
 
+    private final ConfiguracionSistemaService configuracionSistemaService;
     private final PerfilRepository perfilRepository;
     private final ProyectoRepository proyectoRepository;
     private final MoodboardRepository moodboardRepository;
@@ -48,6 +49,7 @@ public class MoodboardImagenesService {
     private final ProyectoSecurityService proyectoSecurityService;
 
     public MoodboardImagenesService(
+            ConfiguracionSistemaService configuracionSistemaService,
             PerfilRepository perfilRepository,
             ProyectoRepository proyectoRepository,
             MoodboardRepository moodboardRepository,
@@ -55,6 +57,7 @@ public class MoodboardImagenesService {
             StorageService storageService,
             BorradoArchivosDiferido borradoArchivosDiferido,
             ProyectoSecurityService proyectoSecurityService) {
+        this.configuracionSistemaService = configuracionSistemaService;
         this.perfilRepository = perfilRepository;
         this.proyectoRepository = proyectoRepository;
         this.moodboardRepository = moodboardRepository;
@@ -65,7 +68,7 @@ public class MoodboardImagenesService {
     }
 
     /**
-     * Sube de 1 a {@value #LIMITE_IMAGENES} imágenes al moodboard del proyecto.
+     * Sube imágenes al moodboard del proyecto respetando el máximo configurado.
      * Crea el moodboard si aún no existe (el proyecto puede haberse creado sin él).
      */
     @Transactional
@@ -95,8 +98,9 @@ public class MoodboardImagenesService {
                         Moodboard.builder().proyecto(proyecto).build()));
 
         int imagenesExistentes = moodboard.getImagenes() != null ? moodboard.getImagenes().size() : 0;
-        if (imagenesExistentes + archivos.size() > LIMITE_IMAGENES) {
-            throw new LimiteImagenesMoodboardExcedidoException(LIMITE_IMAGENES);
+        int limiteImagenes = configuracionSistemaService.obtenerMaxImagenesMoodboard();
+        if (imagenesExistentes + archivos.size() > limiteImagenes) {
+            throw new LimiteImagenesMoodboardExcedidoException(limiteImagenes);
         }
 
         for (MultipartFile archivo : archivos) {

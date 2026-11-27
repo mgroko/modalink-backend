@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,6 +39,18 @@ class AdminPublicacionControllerTest {
 
     @MockitoBean
     private AdminPublicacionService adminPublicacionService;
+
+    @Test
+    void obtener_devuelveDetallePublicacion() throws Exception {
+        when(adminPublicacionService.obtener(30L)).thenReturn(publicacion());
+
+        mockMvc.perform(get("/admin/publicaciones/30")
+                        .principal(autenticacion(99L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idPublicacion").value(30))
+                .andExpect(jsonPath("$.titulo").value("Publicación de prueba"))
+                .andExpect(jsonPath("$.estado").value("OCULTA"));
+    }
 
     @Test
     void moderar_devuelvePublicacionActualizada() throws Exception {

@@ -40,9 +40,9 @@ import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.AccesoDenegadoProyectoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.evento.CupoRequerimientoActividadModificadoEvent;
-import org.mgroko.backend.proyectos.evento.CupoRequerimientoGralModificadoEvent;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
@@ -50,7 +50,6 @@ import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
-import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -69,12 +68,12 @@ public class AceptarInvitacionService {
     private final PerfilRepository perfilRepository;
     private final InvitacionGralRepository invitacionGralRepository;
     private final InvitacionActividadRepository invitacionActividadRepository;
-    private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final RolProyectoRepository rolProyectoRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
+    private final RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     private final EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
     private final ReprogramarProyectoService reprogramarProyectoService;
     private final NotificacionService notificacionService;
@@ -85,12 +84,12 @@ public class AceptarInvitacionService {
             PerfilRepository perfilRepository,
             InvitacionGralRepository invitacionGralRepository,
             InvitacionActividadRepository invitacionActividadRepository,
-            RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
             MiembroProyectoRepository miembroProyectoRepository,
             AsignacionActividadRepository asignacionActividadRepository,
             RolProyectoRepository rolProyectoRepository,
             CupoRequerimientoService cupoRequerimientoService,
+            RequerimientoGralAsignacionService requerimientoGralAsignacionService,
             EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService,
             ReprogramarProyectoService reprogramarProyectoService,
             NotificacionService notificacionService,
@@ -99,12 +98,12 @@ public class AceptarInvitacionService {
         this.perfilRepository = perfilRepository;
         this.invitacionGralRepository = invitacionGralRepository;
         this.invitacionActividadRepository = invitacionActividadRepository;
-        this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.rolProyectoRepository = rolProyectoRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
+        this.requerimientoGralAsignacionService = requerimientoGralAsignacionService;
         this.evaluarDisponibilidadActividadService = evaluarDisponibilidadActividadService;
         this.reprogramarProyectoService = reprogramarProyectoService;
         this.notificacionService = notificacionService;
@@ -112,6 +111,10 @@ public class AceptarInvitacionService {
         this.reloj = reloj;
     }
 
+    /**
+     * Alias histórico: acepta una invitación general del proyecto o de un
+     * requerimiento general según la FK de la invitación.
+     */
     @Transactional
     @AuditarOperacion
     public InvitacionGestionadaResponse aceptarGeneral(
@@ -119,32 +122,70 @@ public class AceptarInvitacionService {
             Long idPerfilActivo,
             Long idInvitacion) {
 
+        return aceptarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion, null);
+    }
+
+    /**
+     * Acepta una invitación al proyecto sin requerimiento general asociado.
+     */
+    @Transactional
+    @AuditarOperacion
+    public InvitacionGestionadaResponse aceptarProyecto(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion) {
+
+        return aceptarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion, TipoInvitacion.GENERAL);
+    }
+
+    /**
+     * Acepta una invitación asociada a un requerimiento general.
+     */
+    @Transactional
+    @AuditarOperacion
+    public InvitacionGestionadaResponse aceptarRequerimientoGeneral(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion) {
+
+        return aceptarInvitacionGral(
+                idUsuario, idPerfilActivo, idInvitacion,
+                TipoInvitacion.REQUERIMIENTO_GENERAL);
+    }
+
+    private InvitacionGestionadaResponse aceptarInvitacionGral(
+            Long idUsuario,
+            Long idPerfilActivo,
+            Long idInvitacion,
+            TipoInvitacion tipoEsperado) {
+
         Perfil perfil = perfilActivo(idUsuario, idPerfilActivo);
-
-        InvitacionGral inicial = invitacionGralRepository.findById(idInvitacion)
-                .orElseThrow(InvitacionNoEncontradaException::new);
-
-        Long idRequerimientoGral = inicial.getRequerimientoGral() != null
-                ? inicial.getRequerimientoGral().getIdRequerimientoGral()
-                : null;
-
-        RequerimientoGralProyecto requerimiento = null;
-        if (idRequerimientoGral != null) {
-            requerimiento = requerimientoGralProyectoRepository
-                    .findByIdParaGestion(idRequerimientoGral)
-                    .orElseThrow(() -> new RequerimientoNoEncontradoException(
-                            "El requerimiento general " + idRequerimientoGral + " no existe."));
-        }
 
         InvitacionGral invitacion = invitacionGralRepository.findByIdForUpdate(idInvitacion)
                 .orElseThrow(InvitacionNoEncontradaException::new);
 
+        TipoInvitacion tipoActual = invitacion.getRequerimientoGral() != null
+                ? TipoInvitacion.REQUERIMIENTO_GENERAL
+                : TipoInvitacion.GENERAL;
+
+        if (tipoEsperado != null && tipoEsperado != tipoActual) {
+            throw new InvitacionNoPermitidaException(
+                    "La invitación no corresponde al tipo indicado.",
+                    "TIPO_INVITACION_INCORRECTO");
+        }
+
         Proyecto proyecto = invitacion.getProyecto();
         validarInvitacionGeneral(invitacion, perfil, proyecto);
 
-        if (requerimiento != null) {
-            validarRequerimientoGeneral(requerimiento, proyecto, perfil);
-        }
+        Long idRequerimientoGral = invitacion.getRequerimientoGral() != null
+                ? invitacion.getRequerimientoGral().getIdRequerimientoGral()
+                : null;
+
+        RequerimientoGralProyecto requerimiento =
+                requerimientoGralAsignacionService.resolverParaIncorporacion(
+                        proyecto, perfil, idRequerimientoGral);
 
         if (miembroProyectoRepository
                 .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
@@ -163,8 +204,8 @@ public class AceptarInvitacionService {
         // La invitación ya está ACEPTADA: el listener rechaza las restantes
         // postulaciones e invitaciones pendientes si el cupo quedó cubierto.
         if (requerimiento != null) {
-            eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
-                    requerimiento.getIdRequerimientoGral()));
+            requerimientoGralAsignacionService.publicarCupoModificado(
+                    requerimiento.getIdRequerimientoGral());
         }
 
         notificarDirectores(
@@ -178,7 +219,7 @@ public class AceptarInvitacionService {
 
         return new InvitacionGestionadaResponse(
                 invitacion.getIdInvitacionGral(),
-                TipoInvitacion.GENERAL,
+                tipoActual,
                 invitacion.getEstado(),
                 proyecto.getIdProyecto(),
                 perfil.getIdPerfil(),
@@ -280,6 +321,8 @@ public class AceptarInvitacionService {
             miembro = miembroProyectoRepository.saveAndFlush(miembro);
         }
 
+        requerimientoGralAsignacionService.vincularSiCorresponde(miembro);
+
         if (proyecto.getEstado() != null
                 && proyecto.getEstado().permiteReprogramacion()
                 && actividad.getEstado() == EstadoActividad.PENDIENTE) {
@@ -366,30 +409,6 @@ public class AceptarInvitacionService {
         if (!requerimiento.getActividad().getPlanificacion().getProyecto()
                 .getIdProyecto().equals(proyecto.getIdProyecto())) {
             throw new InvitacionNoEncontradaException();
-        }
-    }
-
-    private void validarRequerimientoGeneral(
-            RequerimientoGralProyecto requerimiento,
-            Proyecto proyecto,
-            Perfil perfil) {
-
-        if (!requerimiento.getProyecto().getIdProyecto().equals(proyecto.getIdProyecto())) {
-            throw new RequerimientoNoEncontradoException(
-                    "El requerimiento no pertenece al proyecto indicado.");
-        }
-
-        if (perfil.getProfesion() == null
-                || requerimiento.getProfesion() == null
-                || !perfil.getProfesion().getIdProfesion()
-                        .equals(requerimiento.getProfesion().getIdProfesion())) {
-            throw new InvitacionNoPermitidaException(
-                    "El perfil no tiene la profesión requerida por el requerimiento general.");
-        }
-
-        if (cupoRequerimientoService.calcularGeneral(requerimiento).satisfecho()) {
-            throw new InvitacionNoPermitidaException(
-                    "El requerimiento general ya está satisfecho.");
         }
     }
 

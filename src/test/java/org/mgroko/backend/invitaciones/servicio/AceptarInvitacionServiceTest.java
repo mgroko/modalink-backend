@@ -29,6 +29,7 @@ import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoActividad;
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.RolProyecto;
 import org.mgroko.backend.modelo.Usuario;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -39,6 +40,7 @@ import org.mgroko.backend.modelo.enums.EstadoUsuario;
 import org.mgroko.backend.notificaciones.servicio.NotificacionService;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
@@ -46,7 +48,6 @@ import org.mgroko.backend.repositorio.InvitacionGralRepository;
 import org.mgroko.backend.repositorio.MiembroProyectoRepository;
 import org.mgroko.backend.repositorio.PerfilRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
-import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -75,8 +76,6 @@ class AceptarInvitacionServiceTest {
     @Mock
     private InvitacionActividadRepository invitacionActividadRepository;
     @Mock
-    private RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
-    @Mock
     private RequerimientoActividadRepository requerimientoActividadRepository;
     @Mock
     private MiembroProyectoRepository miembroProyectoRepository;
@@ -86,6 +85,8 @@ class AceptarInvitacionServiceTest {
     private RolProyectoRepository rolProyectoRepository;
     @Mock
     private CupoRequerimientoService cupoRequerimientoService;
+    @Mock
+    private RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     @Mock
     private EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
     @Mock
@@ -103,12 +104,12 @@ class AceptarInvitacionServiceTest {
                 perfilRepository,
                 invitacionGralRepository,
                 invitacionActividadRepository,
-                requerimientoGralProyectoRepository,
                 requerimientoActividadRepository,
                 miembroProyectoRepository,
                 asignacionActividadRepository,
                 rolProyectoRepository,
                 cupoRequerimientoService,
+                requerimientoGralAsignacionService,
                 evaluarDisponibilidadActividadService,
                 reprogramarProyectoService,
                 notificacionService,
@@ -151,6 +152,23 @@ class AceptarInvitacionServiceTest {
         assertThat(respuesta.estado()).isEqualTo(EstadoSolicitud.ACEPTADA);
         assertThat(respuesta.idMiembro()).isEqualTo(88L);
         assertThat(invitacion.getEstado()).isEqualTo(EstadoSolicitud.ACEPTADA);
+    }
+
+    @Test
+    void aceptarProyecto_conInvitacionDeRequerimiento_lanzaTipoIncorrecto() {
+        InvitacionGral invitacion = generalSinRequerimiento();
+        invitacion.setRequerimientoGral(RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(ID_REQUERIMIENTO)
+                .cantidad(1)
+                .build());
+        when(invitacionGralRepository.findByIdForUpdate(ID_INVITACION))
+                .thenReturn(Optional.of(invitacion));
+
+        assertThatThrownBy(() -> servicio.aceptarProyecto(
+                ID_USUARIO, ID_PERFIL, ID_INVITACION))
+                .isInstanceOf(InvitacionNoPermitidaException.class)
+                .extracting("codigo")
+                .isEqualTo("TIPO_INVITACION_INCORRECTO");
     }
 
     @Test

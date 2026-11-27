@@ -100,6 +100,29 @@ class AdminPublicacionServiceTest {
     }
 
     @Test
+    void obtener_devuelveDetalleCompleto() {
+        when(publicacionRepository.findById(ID_PUBLICACION))
+                .thenReturn(Optional.of(publicacion));
+
+        AdminPublicacionResponse response = service.obtener(ID_PUBLICACION);
+
+        assertThat(response.idPublicacion()).isEqualTo(ID_PUBLICACION);
+        assertThat(response.titulo()).isEqualTo("Editorial Otoño");
+        assertThat(response.descripcion())
+                .isEqualTo("Producción realizada en Buenos Aires.");
+        assertThat(response.nombreArtistico()).isEqualTo("Luna Diseños");
+    }
+
+    @Test
+    void obtener_publicacionInexistente_lanzaNoEncontrada() {
+        when(publicacionRepository.findById(ID_PUBLICACION))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.obtener(ID_PUBLICACION))
+                .isInstanceOf(PublicacionNoEncontradaException.class);
+    }
+
+    @Test
     void ocultar_cambiaEstadoAuditaYPublicaEvento() {
         prepararAdminYPublicacion();
 

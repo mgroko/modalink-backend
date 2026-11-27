@@ -87,6 +87,88 @@ class InvitacionControllerTest {
     }
 
     @Test
+    void aceptarProyecto_conPerfilActivo_devuelve200() throws Exception {
+        when(aceptarInvitacionService.aceptarProyecto(1L, 10L, 77L))
+                .thenReturn(respuestaGestionada(
+                        TipoInvitacion.GENERAL, EstadoSolicitud.ACEPTADA));
+
+        mockMvc.perform(post("/invitaciones/proyecto/77/aceptar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("GENERAL"))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"));
+    }
+
+    @Test
+    void aceptarRequerimientoGeneral_conPerfilActivo_devuelve200() throws Exception {
+        when(aceptarInvitacionService.aceptarRequerimientoGeneral(1L, 10L, 77L))
+                .thenReturn(respuestaGestionada(
+                        TipoInvitacion.REQUERIMIENTO_GENERAL,
+                        EstadoSolicitud.ACEPTADA));
+
+        mockMvc.perform(post("/invitaciones/requerimiento-general/77/aceptar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("REQUERIMIENTO_GENERAL"))
+                .andExpect(jsonPath("$.estado").value("ACEPTADA"));
+    }
+
+    @Test
+    void rechazarProyecto_conPerfilActivo_devuelve200() throws Exception {
+        when(rechazarInvitacionService.rechazarProyecto(1L, 10L, 77L))
+                .thenReturn(respuestaGestionada(
+                        TipoInvitacion.GENERAL, EstadoSolicitud.RECHAZADA));
+
+        mockMvc.perform(post("/invitaciones/proyecto/77/rechazar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("GENERAL"))
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"));
+    }
+
+    @Test
+    void rechazarRequerimientoGeneral_conPerfilActivo_devuelve200() throws Exception {
+        when(rechazarInvitacionService.rechazarRequerimientoGeneral(1L, 10L, 77L))
+                .thenReturn(respuestaGestionada(
+                        TipoInvitacion.REQUERIMIENTO_GENERAL,
+                        EstadoSolicitud.RECHAZADA));
+
+        mockMvc.perform(post("/invitaciones/requerimiento-general/77/rechazar")
+                        .principal(autenticacion(1L, 10L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("REQUERIMIENTO_GENERAL"))
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"));
+    }
+
+    @Test
+    void invitarProyecto_conRequerimiento_devuelve400() throws Exception {
+        mockMvc.perform(post("/proyectos/5/invitaciones/proyecto")
+                        .principal(autenticacion(1L, 10L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idPerfilDestinatario":20,"idRequerimientoGral":30}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(crearInvitacionService, never())
+                .invitarAProyecto(any(), any(), any(), any());
+    }
+
+    @Test
+    void invitarRequerimientoGeneral_sinRequerimiento_devuelve400() throws Exception {
+        mockMvc.perform(post("/proyectos/5/invitaciones/requerimiento-general")
+                        .principal(autenticacion(1L, 10L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idPerfilDestinatario":20}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(crearInvitacionService, never())
+                .invitarAProyecto(any(), any(), any(), any());
+    }
+
+    @Test
     void aceptarActividad_conPerfilActivo_devuelve200() throws Exception {
         when(aceptarInvitacionService.aceptarActividad(1L, 10L, 88L))
                 .thenReturn(respuestaGestionada(TipoInvitacion.ACTIVIDAD,

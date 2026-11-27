@@ -35,7 +35,8 @@ public interface ContratoRepository
             "tipoAcuerdo",
             "miembroEmisor",
             "miembroEmisor.perfil",
-            "miembroEmisor.perfil.usuario"
+            "miembroEmisor.perfil.usuario",
+            "miembroEmisor.perfil.usuario.genero"
     })
     Page<Contrato> findAll(Specification<Contrato> spec, Pageable pageable);
 
@@ -150,6 +151,29 @@ public interface ContratoRepository
     """, nativeQuery = true)
     List<ContratoActivoProyeccion> findActivosPorMiembroDeProyecto(
             @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Contratos de un proyecto en los estados indicados donde el miembro es
+     * emisor o parte firmante. Se usa para cancelar contratos al dar de baja
+     * una membresia por eliminacion de perfil.
+     */
+    @Query("""
+        SELECT DISTINCT c FROM Contrato c
+        WHERE c.proyecto.idProyecto = :idProyecto
+          AND c.estado IN :estados
+          AND (
+            c.miembroEmisor.idMiembro = :idMiembro
+            OR EXISTS (
+                SELECT 1 FROM FirmaContrato f
+                WHERE f.idContrato = c.idContrato
+                  AND f.idMiembro = :idMiembro
+            )
+          )
+    """)
+    List<Contrato> findDeMiembroPorProyectoYEstados(
+            @Param("idMiembro") Long idMiembro,
+            @Param("idProyecto") Long idProyecto,
+            @Param("estados") Collection<EstadoContrato> estados);
 
     /**
      * Resuelve el proyecto de cada contrato indicado para las notificaciones.

@@ -61,6 +61,7 @@ public interface SolicitudConexionRepository
     @EntityGraph(attributePaths = {
             "perfilRemitente",
             "perfilRemitente.usuario",
+            "perfilRemitente.usuario.genero",
             "perfilRemitente.profesion",
             "perfilDestinatario",
             "perfilDestinatario.usuario",
@@ -75,10 +76,12 @@ public interface SolicitudConexionRepository
     @EntityGraph(attributePaths = {
             "perfilRemitente",
             "perfilRemitente.usuario",
+            "perfilRemitente.usuario.genero",
             "perfilRemitente.profesion",
             "perfilRemitente.imagen",
             "perfilDestinatario",
             "perfilDestinatario.usuario",
+            "perfilDestinatario.usuario.genero",
             "perfilDestinatario.profesion",
             "perfilDestinatario.imagen"
     })
@@ -101,4 +104,14 @@ public interface SolicitudConexionRepository
     """)
     Optional<SolicitudConexion> findByIdForUpdate(
             @Param("idSolicitudConexion") Long idSolicitudConexion);
+
+    @Query("""
+        SELECT s
+        FROM SolicitudConexion s
+        WHERE s.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+          AND (s.perfilRemitente.idPerfil = :idPerfil
+               OR s.perfilDestinatario.idPerfil = :idPerfil)
+    """)
+    List<SolicitudConexion> findPendientesDePerfil(
+            @Param("idPerfil") Long idPerfil);
 }

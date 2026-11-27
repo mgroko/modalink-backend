@@ -15,6 +15,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mgroko.backend.perfiles.dto.TerminosCondicionesResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResumenResponse;
 import org.mgroko.backend.perfiles.exception.PerfilEnBajaException;
 import org.mgroko.backend.perfiles.exception.PerfilNoEncontradoException;
 import org.mgroko.backend.perfiles.servicio.GestionTerminosCondicionesService;
@@ -47,6 +49,7 @@ class PerfilTerminosCondicionesControllerTest {
         return new TerminosCondicionesResponse(
                 5L,
                 7L,
+                2,
                 "Texto vigente",
                 LocalDateTime.of(2026, 11, 1, 10, 0),
                 null,
@@ -55,7 +58,7 @@ class PerfilTerminosCondicionesControllerTest {
 
     private TerminosCondicionesResponse plantilla() {
         return new TerminosCondicionesResponse(
-                5L, null, "Plantilla", null, null, true);
+                5L, null, null, "Plantilla", null, null, true);
     }
 
     @Test
@@ -66,6 +69,7 @@ class PerfilTerminosCondicionesControllerTest {
                         .principal(autenticacion()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idTyc").value(7))
+                .andExpect(jsonPath("$.numeroVersion").value(2))
                 .andExpect(jsonPath("$.descripcion").value("Texto vigente"))
                 .andExpect(jsonPath("$.esPlantilla").value(false));
     }
@@ -78,6 +82,7 @@ class PerfilTerminosCondicionesControllerTest {
                         .principal(autenticacion()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idTyc").doesNotExist())
+                .andExpect(jsonPath("$.numeroVersion").doesNotExist())
                 .andExpect(jsonPath("$.esPlantilla").value(true));
     }
 
@@ -89,6 +94,55 @@ class PerfilTerminosCondicionesControllerTest {
         mockMvc.perform(get("/perfiles/99/terminos-condiciones")
                         .principal(autenticacion()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void historial_retornaVersiones() throws Exception {
+        when(gestionTerminosCondicionesService.obtenerHistorial(1L, 5L))
+                .thenReturn(List.of(
+                        new TerminosCondicionesVersionResumenResponse(
+                                7L,
+                                2,
+                                LocalDateTime.of(2026, 11, 1, 10, 0),
+                                null,
+                                true),
+                        new TerminosCondicionesVersionResumenResponse(
+                                6L,
+                                1,
+                                LocalDateTime.of(2026, 6, 1, 10, 0),
+                                LocalDateTime.of(2026, 11, 1, 10, 0),
+                                false)));
+
+        mockMvc.perform(get("/perfiles/5/terminos-condiciones/historial")
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idTyc").value(7L))
+                .andExpect(jsonPath("$[0].numeroVersion").value(2))
+                .andExpect(jsonPath("$[0].vigente").value(true))
+                .andExpect(jsonPath("$[1].idTyc").value(6L))
+                .andExpect(jsonPath("$[1].numeroVersion").value(1))
+                .andExpect(jsonPath("$[1].vigente").value(false));
+    }
+
+    @Test
+    void version_retornaTextoCompleto() throws Exception {
+        when(gestionTerminosCondicionesService.obtenerVersion(1L, 5L, 6L))
+                .thenReturn(new TerminosCondicionesVersionResponse(
+                        5L,
+                        6L,
+                        1,
+                        "Texto histórico",
+                        LocalDateTime.of(2026, 6, 1, 10, 0),
+                        LocalDateTime.of(2026, 11, 1, 10, 0),
+                        false));
+
+        mockMvc.perform(get("/perfiles/5/terminos-condiciones/historial/6")
+                        .principal(autenticacion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idTyc").value(6L))
+                .andExpect(jsonPath("$.numeroVersion").value(1))
+                .andExpect(jsonPath("$.descripcion").value("Texto histórico"))
+                .andExpect(jsonPath("$.vigente").value(false));
     }
 
     @Test

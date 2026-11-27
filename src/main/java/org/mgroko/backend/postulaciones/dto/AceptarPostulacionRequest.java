@@ -9,6 +9,10 @@ import jakarta.validation.Valid;
  * y condiciones vigentes del perfil postulante, si tiene configurados.
  */
 public record AceptarPostulacionRequest(
-        @Valid AceptacionTerminosRequest aceptacionTerminos
+        @Valid AceptacionTerminosRequest aceptacionTerminos,
+        Boolean requerimientoExacto
 ) {
+    public AceptarPostulacionRequest(AceptacionTerminosRequest aceptacionTerminos) {
+        this(aceptacionTerminos, null);
+    }
 }

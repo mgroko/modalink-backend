@@ -7,9 +7,10 @@ ModaLink es una plataforma de networking profesional para la industria creativa 
 Con ModaLink podés:
 
 - Crear uno o más **perfiles profesionales**, cada uno con una profesión distinta.
-- Mostrar tu trabajo con foto de perfil, características técnicas, habilidades y polaroids.
+- Mostrar tu trabajo desde tu perfil profesional, con publicaciones, características técnicas y habilidades.
 - Encontrar otros profesionales y construir una red de contactos.
 - Buscar proyectos y oportunidades abiertas, o crear tus propios proyectos.
+- Participar en proyectos bajo las **normas de convivencia** de la plataforma, que se aplican a todos los equipos.
 - Armar el equipo, planificar actividades, coordinar agendas y hacer seguimiento del cronograma.
 - Gestionar postulaciones e invitaciones.
 - Acordar condiciones mediante contratos y firmarlos desde la plataforma.
@@ -40,6 +41,7 @@ El manual está organizado por módulos y sigue el recorrido habitual de uso:
 8. **Panel de Administración:** tareas de administración.
 9. **Ayuda:** preguntas frecuentes y solución de errores.
 10. **Capítulos complementarios:** contratos, mensajería, calificaciones y colaboraciones automáticas.
+11. **Normas de convivencia:** qué aceptás al sumarte a un proyecto y dónde consultar los términos de los participantes.
 
 Cada funcionalidad se presenta con esta estructura:
 
@@ -66,5 +68,7 @@ Cuando una pantalla necesita una imagen de referencia, vas a encontrar un marcad
 ## 1.5. Alcance de esta versión
 
 Este manual documenta las funciones disponibles en la interfaz web de ModaLink a la fecha de esta edición. Algunas funciones del sistema no tienen pantalla propia (por ejemplo, el envío automático de correos o la eliminación programada de cuentas vencidas); cuando impactan en lo que ves, se explican en el capítulo correspondiente.
+
+Las **normas de convivencia** que enmarcan la participación en proyectos se explican en el capítulo 16.
 
 Las tareas reservadas a administradores se agrupan en el capítulo 10.

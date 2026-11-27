@@ -28,7 +28,13 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * resumen, sin aplicar reglas de visibilidad.
      */
     @Override
-    @EntityGraph(attributePaths = {"usuario", "usuario.rolGlobal", "profesion", "imagen"})
+    @EntityGraph(attributePaths = {
+            "usuario",
+            "usuario.rolGlobal",
+            "usuario.genero",
+            "profesion",
+            "imagen"
+    })
     Page<Perfil> findAll(Specification<Perfil> spec, Pageable pageable);
 
     /**
@@ -71,6 +77,12 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * @param idUsuario el ID del usuario
      * @return lista de perfiles del usuario
      */
+    @EntityGraph(attributePaths = {
+            "usuario",
+            "usuario.genero",
+            "profesion",
+            "imagen"
+    })
     List<Perfil> findByUsuarioIdUsuario(Long idUsuario);
 
     /**
@@ -92,7 +104,11 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
      * @param idUsuario el ID del usuario dueño del perfil
      * @return el perfil si existe y pertenece al usuario
      */
-    @EntityGraph(attributePaths = "profesion")
+    @EntityGraph(attributePaths = {
+            "usuario",
+            "usuario.genero",
+            "profesion"
+    })
     Optional<Perfil> findByIdPerfilAndUsuarioIdUsuario(Long idPerfil, Long idUsuario);
 
     /**
@@ -193,6 +209,24 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
     List<Long> findIdsPerfilByHabilidad(@Param("idHabilidad") Long idHabilidad);
 
     /**
+     * Perfiles activos de una profesión, con su usuario inicializado, para
+     * notificar cambios en el catálogo de características técnicas.
+     *
+     * @param idProfesion identificador de la profesión
+     * @return perfiles activos cuyo usuario también está activo
+     */
+    @Query("""
+        SELECT DISTINCT p FROM Perfil p
+        JOIN FETCH p.usuario u
+        WHERE p.profesion.idProfesion = :idProfesion
+          AND p.estado = org.mgroko.backend.modelo.enums.EstadoPerfil.ACTIVO
+          AND u.estado = org.mgroko.backend.modelo.enums.EstadoUsuario.ACTIVO
+        ORDER BY p.idPerfil
+    """)
+    List<Perfil> findActivosPorProfesionConUsuario(
+            @Param("idProfesion") Long idProfesion);
+
+    /**
      * Candidatos activos para cubrir una vacante de actividad.
      *
      * <p>La consulta aplica los filtros duros del módulo de reemplazos:
@@ -265,6 +299,26 @@ public interface PerfilRepository extends JpaRepository<Perfil, Long>, JpaSpecif
     List<Perfil> buscarCandidatosReemplazoGeneral(
             @Param("idProfesion") Long idProfesion,
             @Param("idProyecto") Long idProyecto);
+
+    /**
+     * Perfiles de un conjunto de identificadores con los datos necesarios para
+     * el tablero de casting: usuario, ubicación, profesión, foto y habilidades.
+     * Las características técnicas se cargan aparte para evitar productos
+     * cartesianos entre colecciones.
+     */
+    @Query("""
+        SELECT DISTINCT p FROM Perfil p
+        JOIN FETCH p.usuario u
+        JOIN FETCH p.profesion pr
+        LEFT JOIN FETCH u.ubicacion ub
+        LEFT JOIN FETCH ub.ciudad c
+        LEFT JOIN FETCH c.provincia prov
+        LEFT JOIN FETCH p.imagen
+        LEFT JOIN FETCH p.habilidades
+        WHERE p.idPerfil IN :ids
+    """)
+    List<Perfil> findByIdPerfilInConDatosCasting(
+            @Param("ids") Collection<Long> ids);
 
     /**
      * Actualiza la última actividad solo si el perfil pertenece al usuario,

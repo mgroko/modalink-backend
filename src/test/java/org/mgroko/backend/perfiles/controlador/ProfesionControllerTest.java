@@ -31,13 +31,15 @@ class ProfesionControllerTest {
     @Test
     void buscar_conNombre_devuelve200() throws Exception {
         when(profesionService.buscar("mo"))
-                .thenReturn(List.of(new ProfesionResponse(2L, "MODELO", "modelo", "Profesional que posa.")));
+                .thenReturn(List.of(new ProfesionResponse(
+                        2L, "MODELO", "modelo", "modelo", "Profesional que posa.")));
 
         mockMvc.perform(get("/profesiones").param("nombre", "mo"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].codigo").value("MODELO"))
                 .andExpect(jsonPath("$[0].nombre").value("modelo"))
+                .andExpect(jsonPath("$[0].nombreFemenino").value("modelo"))
                 .andExpect(jsonPath("$[0].idProfesion").value(2));
     }
 

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.common.util.ProfesionNombreResolver;
 import org.mgroko.backend.modelo.AsignacionActividad;
 import org.mgroko.backend.modelo.MiembroProyecto;
 import org.mgroko.backend.modelo.Perfil;
@@ -209,9 +210,7 @@ public class ListarAuditoriaBajasProyectoService {
                 perfil != null && perfil.getUsuario() != null
                         ? perfil.getUsuario().getApellido()
                         : null,
-                perfil != null && perfil.getProfesion() != null
-                        ? perfil.getProfesion().getNombre()
-                        : null,
+                perfil != null ? ProfesionNombreResolver.mostrar(perfil) : null,
                 miembro.getRolProyecto() != null
                         ? RolProyectoUsuario.desde(miembro.getRolProyecto()).name()
                         : null,

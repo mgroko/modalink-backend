@@ -46,13 +46,13 @@ import org.mgroko.backend.postulaciones.exception.PostulacionYaGestionadaExcepti
 import org.mgroko.backend.postulaciones.exception.RequerimientoNoEncontradoException;
 import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.evento.CupoRequerimientoActividadModificadoEvent;
-import org.mgroko.backend.proyectos.evento.CupoRequerimientoGralModificadoEvent;
 import org.mgroko.backend.proyectos.evento.DisponibilidadModificadaEvent;
 import org.mgroko.backend.proyectos.exception.ProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.exception.RolProyectoNoEncontradoException;
 import org.mgroko.backend.proyectos.servicio.CupoRequerimientoService;
 import org.mgroko.backend.proyectos.servicio.MotivoReprogramacion;
 import org.mgroko.backend.proyectos.servicio.ProyectoSecurityService;
+import org.mgroko.backend.proyectos.servicio.RequerimientoGralAsignacionService;
 import org.mgroko.backend.proyectos.servicio.ReprogramarProyectoService;
 import org.mgroko.backend.repositorio.ActividadRepository;
 import org.mgroko.backend.repositorio.AsignacionActividadRepository;
@@ -62,7 +62,6 @@ import org.mgroko.backend.repositorio.PostulacionActividadRepository;
 import org.mgroko.backend.repositorio.PostulacionGralRepository;
 import org.mgroko.backend.repositorio.ProyectoRepository;
 import org.mgroko.backend.repositorio.RequerimientoActividadRepository;
-import org.mgroko.backend.repositorio.RequerimientoGralProyectoRepository;
 import org.mgroko.backend.repositorio.RolProyectoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -82,12 +81,12 @@ public class AceptarPostulacionService {
     private final ProyectoRepository proyectoRepository;
     private final PostulacionGralRepository postulacionGralRepository;
     private final PostulacionActividadRepository postulacionActividadRepository;
-    private final RequerimientoGralProyectoRepository requerimientoGralProyectoRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final RolProyectoRepository rolProyectoRepository;
     private final CupoRequerimientoService cupoRequerimientoService;
+    private final RequerimientoGralAsignacionService requerimientoGralAsignacionService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final NotificacionService notificacionService;
     private final EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService;
@@ -103,12 +102,12 @@ public class AceptarPostulacionService {
             ProyectoRepository proyectoRepository,
             PostulacionGralRepository postulacionGralRepository,
             PostulacionActividadRepository postulacionActividadRepository,
-            RequerimientoGralProyectoRepository requerimientoGralProyectoRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
             MiembroProyectoRepository miembroProyectoRepository,
             AsignacionActividadRepository asignacionActividadRepository,
             RolProyectoRepository rolProyectoRepository,
             CupoRequerimientoService cupoRequerimientoService,
+            RequerimientoGralAsignacionService requerimientoGralAsignacionService,
             ProyectoSecurityService proyectoSecurityService,
             NotificacionService notificacionService,
             EvaluarDisponibilidadActividadService evaluarDisponibilidadActividadService,
@@ -122,12 +121,12 @@ public class AceptarPostulacionService {
         this.proyectoRepository = proyectoRepository;
         this.postulacionGralRepository = postulacionGralRepository;
         this.postulacionActividadRepository = postulacionActividadRepository;
-        this.requerimientoGralProyectoRepository = requerimientoGralProyectoRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.rolProyectoRepository = rolProyectoRepository;
         this.cupoRequerimientoService = cupoRequerimientoService;
+        this.requerimientoGralAsignacionService = requerimientoGralAsignacionService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.notificacionService = notificacionService;
         this.evaluarDisponibilidadActividadService = evaluarDisponibilidadActividadService;
@@ -174,27 +173,19 @@ public class AceptarPostulacionService {
             throw new PostulacionYaGestionadaException();
         }
 
-        Long idRequerimiento = postulacion.getRequerimientoGral().getIdRequerimientoGral();
-        RequerimientoGralProyecto requerimiento = requerimientoGralProyectoRepository
-                .findByIdParaGestion(idRequerimiento)
-                .orElseThrow(() -> new RequerimientoNoEncontradoException(
-                        "El requerimiento general " + idRequerimiento + " no existe."));
-
-        if (!requerimiento.getProyecto().getIdProyecto().equals(idProyecto)) {
-            throw new PostulacionNoEncontradaException();
-        }
-
-        CupoRequerimiento cupo = cupoRequerimientoService.calcularGeneral(requerimiento);
-        if (cupo.satisfecho()) {
-            throw new PostulacionNoPermitidaException(
-                    "El requerimiento de personal ya está satisfecho.");
-        }
-
         Perfil postulante = postulacion.getPerfil();
         if (postulante.getEstado() != EstadoPerfil.ACTIVO) {
             throw new PerfilEnBajaException(
                     "El perfil postulante no se encuentra activo.");
         }
+
+        Long idRequerimiento = postulacion.getRequerimientoGral().getIdRequerimientoGral();
+        RequerimientoGralProyecto requerimiento = Boolean.TRUE.equals(
+                request != null ? request.requerimientoExacto() : null)
+                        ? requerimientoGralAsignacionService.resolverExactoParaIncorporacion(
+                                proyecto, postulante, idRequerimiento)
+                        : requerimientoGralAsignacionService.resolverParaIncorporacion(
+                                proyecto, postulante, idRequerimiento);
 
         if (miembroProyectoRepository
                 .existsByProyectoIdProyectoAndPerfilIdPerfilAndEstadoParticipacion(
@@ -218,25 +209,32 @@ public class AceptarPostulacionService {
         // La postulación ya está ACEPTADA: el listener no la incluye entre las
         // pendientes que debe rechazar si el cupo quedó cubierto.
         if (requerimiento != null) {
-            eventPublisher.publishEvent(new CupoRequerimientoGralModificadoEvent(
-                    requerimiento.getIdRequerimientoGral()));
+            requerimientoGralAsignacionService.publicarCupoModificado(
+                    requerimiento.getIdRequerimientoGral());
         }
 
         notificarAceptacion(postulante, proyecto, postulacion);
+
+        CupoRequerimiento cupo = requerimiento != null
+                ? cupoRequerimientoService.calcularGeneral(requerimiento)
+                : null;
 
         return new PostulacionGestionadaResponse(
                 postulacion.getIdPostulacionGral(),
                 TipoPostulacion.GENERAL,
                 postulacion.getEstado(),
                 proyecto.getIdProyecto(),
-                requerimiento.getIdRequerimientoGral(),
+                requerimiento != null
+                        ? requerimiento.getIdRequerimientoGral()
+                        : null,
                 postulante.getIdPerfil(),
                 miembro.getIdMiembro(),
                 null,
                 null,
                 null,
                 List.of(),
-                idTycAceptado);
+                idTycAceptado,
+                cupo);
     }
 
     @Transactional
@@ -371,6 +369,9 @@ public class AceptarPostulacionService {
             miembro.setIdTycAceptado(idTycAceptado);
             miembro = miembroProyectoRepository.saveAndFlush(miembro);
         }
+
+        requerimientoGralAsignacionService.vincularSiCorresponde(miembro);
+
         // La respuesta refleja la versión efectivamente registrada en la
         // membresía, que puede ser anterior si el integrante ya existía.
         idTycAceptado = miembro.getIdTycAceptado();
@@ -415,6 +416,9 @@ public class AceptarPostulacionService {
         notificarAjusteHorario(proyecto, requerimiento.getActividad(), disponibilidad);
         notificarSobrecompromiso(proyecto, postulante, requerimiento.getActividad(), advertencias);
 
+        CupoRequerimiento cupoFinal = cupoRequerimientoService
+                .calcularActividad(requerimiento);
+
         return new PostulacionGestionadaResponse(
                 postulacion.getIdPostulacion(),
                 TipoPostulacion.ACTIVIDAD,
@@ -427,7 +431,8 @@ public class AceptarPostulacionService {
                 disponibilidad.resultadoPreferencia(),
                 disponibilidad.desvioMinutos(),
                 advertencias,
-                idTycAceptado);
+                idTycAceptado,
+                cupoFinal);
     }
 
     /**

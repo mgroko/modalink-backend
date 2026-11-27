@@ -7,7 +7,9 @@ import java.util.List;
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.ConfiguracionSchedulerResponse;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerBajaRequest;
+import org.mgroko.backend.usuario.servicio.ResumenBajaDefinitiva;
 import org.mgroko.backend.admin.dto.ConfigurarSchedulerRequest;
+import org.mgroko.backend.admin.dto.EjecutarSchedulerBajaResponse;
 import org.mgroko.backend.admin.dto.EjecutarSchedulerResponse;
 import org.mgroko.backend.auditoria.dto.AuditoriaDetalleRequest;
 import org.mgroko.backend.auditoria.servicio.AuditoriaEventoService;
@@ -43,8 +45,20 @@ public class ConfiguracionSistemaService {
     public static final String CLAVE_IMAGEN_LADO_SALIDA_PX = "IMAGEN_LADO_SALIDA_PX";
     public static final String CLAVE_IMAGEN_PUBLICACION_LADO_SALIDA_PX = "IMAGEN_PUBLICACION_LADO_SALIDA_PX";
     public static final String CLAVE_IMAGEN_MAX_TAMANO_BYTES = "IMAGEN_MAX_TAMANO_BYTES";
+    public static final String CLAVE_IMAGEN_SUBSAMPLING_HABILITADO = "IMAGEN_SUBSAMPLING_HABILITADO";
+    public static final String CLAVE_IMAGEN_SUBSAMPLING_UMBRAL = "IMAGEN_SUBSAMPLING_UMBRAL";
+    public static final String CLAVE_IMAGEN_EXIF_HABILITADO = "IMAGEN_EXIF_HABILITADO";
+    public static final String CLAVE_IMAGEN_EXIF_SCAN_MAX_BYTES = "IMAGEN_EXIF_SCAN_MAX_BYTES";
+    public static final String CLAVE_IMAGEN_WEBP_METHOD = "IMAGEN_WEBP_METHOD";
     public static final String CLAVE_IMAGEN_LIMPIEZA_INTERVALO_HORAS = "IMAGEN_LIMPIEZA_INTERVALO_HORAS";
     public static final String CLAVE_IMAGEN_LIMPIEZA_GRACIA_MINUTOS = "IMAGEN_LIMPIEZA_GRACIA_MINUTOS";
+    public static final String CLAVE_IMAGEN_MAX_POR_MOODBOARD = "IMAGEN_MAX_POR_MOODBOARD";
+    public static final String CLAVE_IMAGEN_MAX_POR_PUBLICACION = "IMAGEN_MAX_POR_PUBLICACION";
+    public static final String CLAVE_POLAROID_MAX_POR_PERFIL = "POLAROID_MAX_POR_PERFIL";
+    public static final String CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN =
+            "COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN";
+    public static final String CLAVE_CASTING_CANDIDATOS_POR_PAGINA =
+            "CASTING_CANDIDATOS_POR_PAGINA";
     public static final String CLAVE_PERFIL_TYC_PLANTILLA = "PERFIL_TYC_PLANTILLA";
     public static final String CLAVE_NOTIFICACION_EMAIL_REINTENTOS_MAX =
             "NOTIFICACION_EMAIL_REINTENTOS_MAX";
@@ -315,6 +329,73 @@ Mis condiciones de trabajo
     }
 
     /**
+     * Cantidad máxima de imágenes que puede tener el moodboard de un proyecto.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_IMAGEN_MAX_POR_MOODBOARD}) en cada operación.
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxImagenesMoodboard() {
+        return obtenerValorEnteroPositivoObligatorio(CLAVE_IMAGEN_MAX_POR_MOODBOARD);
+    }
+
+    /**
+     * Cantidad máxima de imágenes que puede tener una publicación.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_IMAGEN_MAX_POR_PUBLICACION}) en cada operación.
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxImagenesPublicacion() {
+        return obtenerValorEnteroPositivoObligatorio(CLAVE_IMAGEN_MAX_POR_PUBLICACION);
+    }
+
+    /**
+     * Cantidad máxima de polaroids que puede tener un perfil de modelo.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_POLAROID_MAX_POR_PERFIL}) en cada operación.
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxPolaroidsPorPerfil() {
+        return obtenerValorEnteroPositivoObligatorio(CLAVE_POLAROID_MAX_POR_PERFIL);
+    }
+
+    /**
+     * Cantidad máxima de propuestas de colaboración automática evaluadas por
+     * imagen. Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN}).
+     *
+     * @return cantidad máxima, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerMaxPropuestasColaboracionPorImagen() {
+        return obtenerValorEnteroPositivoObligatorio(
+                CLAVE_COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN);
+    }
+
+    /**
+     * Cantidad de candidatos por página del tablero de casting virtual.
+     * Se lee de {@code configuracion_sistema} (clave
+     * {@link #CLAVE_CASTING_CANDIDATOS_POR_PAGINA}) en cada operación.
+     *
+     * @return cantidad de candidatos por página, siempre &gt;= 1
+     * @throws IllegalStateException si la clave falta o su valor no es un entero &gt;= 1
+     */
+    @Transactional(readOnly = true)
+    public int obtenerCandidatosPorPaginaCasting() {
+        return obtenerValorEnteroPositivoObligatorio(
+                CLAVE_CASTING_CANDIDATOS_POR_PAGINA);
+    }
+
+    /**
      * Modifica cada cuántas horas se ejecuta la limpieza de imágenes.
      * El scheduler lee el valor en cada ciclo, por lo que el cambio se aplica
      * sin reiniciar el servidor.
@@ -407,11 +488,14 @@ Mis condiciones de trabajo
      */
     @Transactional
     @AuditarOperacion
-    public EjecutarSchedulerResponse ejecutarBajaManual() {
+    public EjecutarSchedulerBajaResponse ejecutarBajaManual() {
         int diasBaja = obtenerDiasBaja();
-        int cuentasExpiradas = expirarCuentaService.expirarVencidos(diasBaja);
-        int perfilesExpirados = expirarPerfilService.expirarVencidos(diasBaja);
-        int total = cuentasExpiradas + perfilesExpirados;
+
+        ResumenBajaDefinitiva resumen = expirarCuentaService
+                .expirarVencidosConResumen(diasBaja)
+                .sumar(expirarPerfilService.expirarVencidosConResumen(diasBaja));
+
+        int total = resumen.totalCuentasPerfiles();
 
         auditoriaEventoService.registrar(
                 "scheduler",
@@ -420,17 +504,38 @@ Mis condiciones de trabajo
                 "UPDATE",
                 List.of(
                         new AuditoriaDetalleRequest("scheduler", null, "BAJA"),
-                        new AuditoriaDetalleRequest("cuentasExpiradas", null, String.valueOf(cuentasExpiradas)),
-                        new AuditoriaDetalleRequest("perfilesExpirados", null, String.valueOf(perfilesExpirados))));
+                        new AuditoriaDetalleRequest("cuentasExpiradas", null, String.valueOf(resumen.cuentas())),
+                        new AuditoriaDetalleRequest("perfilesExpirados", null, String.valueOf(resumen.perfiles()))));
 
-        return new EjecutarSchedulerResponse(
+        return new EjecutarSchedulerBajaResponse(
                 total,
                 LocalDateTime.now(),
-                total == 0
-                        ? "No se encontraron cuentas ni perfiles con el plazo de baja vencido."
-                        : String.format("Se dieron de baja %d cuenta(s) y %d perfil(es).",
-                                cuentasExpiradas, perfilesExpirados)
+                construirMensajeBaja(resumen),
+                new EjecutarSchedulerBajaResponse.DetalleBajaScheduler(
+                        resumen.cuentas(),
+                        resumen.perfiles(),
+                        resumen.proyectosCancelados(),
+                        resumen.membresiasBaja(),
+                        resumen.publicacionesEliminadas(),
+                        resumen.conexionesEliminadas())
         );
+    }
+
+    private String construirMensajeBaja(ResumenBajaDefinitiva resumen) {
+        if (resumen.totalCuentasPerfiles() == 0) {
+            return "No se encontraron cuentas ni perfiles con el plazo de baja vencido.";
+        }
+
+        return String.format(
+                "Se dieron de baja %d cuenta(s) y %d perfil(es). "
+                        + "Proyectos cancelados: %d. "
+                        + "Publicaciones eliminadas: %d. "
+                        + "Conexiones dadas de baja: %d.",
+                resumen.cuentas(),
+                resumen.perfiles(),
+                resumen.proyectosCancelados(),
+                resumen.publicacionesEliminadas(),
+                resumen.conexionesEliminadas());
     }
 
     @Transactional(readOnly = true)
@@ -512,6 +617,15 @@ Mis condiciones de trabajo
             throw new IllegalStateException("El valor de '" + clave
                     + "' en configuracion_sistema no es un número entero: " + valor);
         }
+    }
+
+    private int obtenerValorEnteroPositivoObligatorio(String clave) {
+        int valor = obtenerValorEnteroObligatorio(clave);
+        if (valor < 1) {
+            throw new IllegalStateException("El valor de '" + clave
+                    + "' en configuracion_sistema debe ser mayor o igual a 1: " + valor);
+        }
+        return valor;
     }
 
     private void guardarOActualizar(String clave, String valor, String descripcion) {

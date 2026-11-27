@@ -7,9 +7,10 @@ import java.util.List;
 import org.mgroko.backend.auditoria.servicio.AuditarOperacion;
 import org.mgroko.backend.contratos.dto.ConflictoContratoResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
-import org.mgroko.backend.contratos.dto.ModificarContratoRequest;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.modelo.Contrato;
+import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.repositorio.ContratoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +18,18 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 
 /**
- * UC-53: modifica un contrato PENDIENTE_FIRMA, reconcilia sus firmas y deja que
- * los triggers registren la version, el evento MODIFICADO y la notificacion
- * CONTRATO_MODIFICADO.
+ * Guarda cambios de un contrato en BORRADOR o PENDIENTE_FIRMA.
+ *
+ * <p>En BORRADOR no se notifica. En PENDIENTE_FIRMA se conserva el
+ * comportamiento de UC-53: se reconcilian las firmas y el trigger registra el
+ * evento MODIFICADO y la notificacion CONTRATO_MODIFICADO.</p>
  */
 @Service
 public class ModificarContratoService {
 
     private final ContratoModificacionContextoService contextoService;
     private final ContratoFirmaReconciliacionService firmaReconciliacionService;
+    private final ContratoPartesBorradorService partesBorradorService;
     private final ContratoRepository contratoRepository;
     private final ObtenerContratoService obtenerContratoService;
     private final EntityManager entityManager;
@@ -34,12 +38,14 @@ public class ModificarContratoService {
     public ModificarContratoService(
             ContratoModificacionContextoService contextoService,
             ContratoFirmaReconciliacionService firmaReconciliacionService,
+            ContratoPartesBorradorService partesBorradorService,
             ContratoRepository contratoRepository,
             ObtenerContratoService obtenerContratoService,
             EntityManager entityManager,
             Clock reloj) {
         this.contextoService = contextoService;
         this.firmaReconciliacionService = firmaReconciliacionService;
+        this.partesBorradorService = partesBorradorService;
         this.contratoRepository = contratoRepository;
         this.obtenerContratoService = obtenerContratoService;
         this.entityManager = entityManager;
@@ -53,7 +59,7 @@ public class ModificarContratoService {
             Long idPerfilActivo,
             Long idProyecto,
             Long idContrato,
-            ModificarContratoRequest request) {
+            GuardarContratoRequest request) {
 
         ContratoModificacionContextoService.ContextoModificacion contexto =
                 contextoService.cargarParaModificar(
@@ -63,16 +69,25 @@ public class ModificarContratoService {
                         idContrato,
                         request);
 
-        if (!contexto.conflictos().isEmpty()) {
+        Contrato contrato = contexto.contrato();
+        boolean esBorrador = contrato.getEstado() == EstadoContrato.BORRADOR;
+
+        if (!esBorrador && !contexto.conflictos().isEmpty()) {
             throw conflictoException(contexto.conflictos());
         }
 
-        firmaReconciliacionService.reconciliar(
-                contexto.contrato(),
-                contexto.firmas(),
-                contexto.destinatarios());
+        if (esBorrador) {
+            partesBorradorService.sincronizar(
+                    idContrato,
+                    contrato.getMiembroEmisor().getIdMiembro(),
+                    contexto.destinatarios());
+        } else {
+            firmaReconciliacionService.reconciliar(
+                    contrato,
+                    contexto.firmas(),
+                    contexto.destinatarios());
+        }
 
-        Contrato contrato = contexto.contrato();
         contrato.setTipoAcuerdo(contexto.tipoAcuerdo());
         contrato.setNombre(contexto.nombre());
         contrato.setDescripcion(contexto.descripcion());

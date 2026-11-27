@@ -111,8 +111,11 @@ Variables de entorno principales:
 | `ADMIN_DNI` | DNI del administrador inicial | `00000000` |
 | `NOTIFICACIONES_EMAIL_HABILITADO` | Activa el scheduler de emails | `false` |
 | `NOTIFICACIONES_EMAIL_REMITENTE` | Remitente de los emails | `no-responder@modalink.local` |
+| `EMAIL_BASE_URL` | URL base pública del backend para las imágenes de los emails | `http://localhost:8080` |
 | `MAIL_HOST` | Host SMTP (Mailpit en desarrollo) | `localhost` |
 | `MAIL_PORT` | Puerto SMTP (Mailpit en desarrollo) | `1025` |
+| `MAX_FILE_SIZE` | Tamaño máximo por archivo multipart | `10MB` |
+| `MAX_REQUEST_SIZE` | Tamaño máximo del request multipart completo | `110MB` |
 | `DB_API_USER` | Usuario restringido para auditoría en producción | Comentado |
 | `DB_API_PASSWORD` | Password del usuario restringido | Comentado |
 
@@ -131,7 +134,11 @@ Propiedades funcionales relevantes:
 | `reemplazos.max-candidatos` | Máximo de candidatos por vacante |
 | `app.colaboracion-automatica.habilitada` | Activa la detección automática de colaboraciones por imágenes |
 | `app.colaboracion-automatica.*` | Umbrales de pHash/ORB, multicrop y pools async/histórico |
-| `app.polaroids.max-por-perfil` | Máximo de polaroids por perfil |
+| `IMAGEN_MAX_POR_MOODBOARD` | Máximo de imágenes por moodboard (`configuracion_sistema`) |
+| `IMAGEN_MAX_POR_PUBLICACION` | Máximo de imágenes por publicación (`configuracion_sistema`) |
+| `POLAROID_MAX_POR_PERFIL` | Máximo de polaroids por perfil (`configuracion_sistema`) |
+| `COLABORACION_AUTOMATICA_MAX_PROPUESTAS_POR_IMAGEN` | Máximo de propuestas de colaboración automática por imagen (`configuracion_sistema`) |
+| `CASTING_CANDIDATOS_POR_PAGINA` | Candidatos por página del tablero de casting virtual (`configuracion_sistema`) |
 
 ## Puesta en marcha
 
@@ -319,6 +326,8 @@ Calendario y jornada:
 | `GET` | `/proyectos/buscar` | Buscar proyectos visibles |
 | `GET` | `/proyectos/propios` | Proyectos del perfil activo |
 | `GET` | `/proyectos/{idProyecto}` | Detalle del proyecto |
+| `GET` | `/proyectos/{idProyecto}/informe` | Informe ejecutivo de estado y salud del proyecto (solo director) |
+| `GET` | `/proyectos/{idProyecto}/informe/pdf` | Informe ejecutivo en PDF (solo director) |
 | `PUT` | `/proyectos/{idProyecto}` | Modificar proyecto |
 | `POST` | `/proyectos/{idProyecto}/publicar` | Publicar proyecto |
 | `POST` | `/proyectos/{idProyecto}/confirmar` | Confirmar proyecto y planificar |
@@ -348,6 +357,7 @@ Calendario y jornada:
 | `GET` | `/postulaciones/mias` | Postulaciones del perfil activo |
 | `DELETE` | `/proyectos/{idProyecto}/postulaciones/...` | Dar de baja postulación pendiente |
 | `GET` | `/proyectos/{idProyecto}/postulaciones/buscar` | Buscar postulaciones |
+| `GET` | `/proyectos/{idProyecto}/postulaciones/casting` | Tablero de casting virtual para modelos (paginado) |
 | `POST` | `/proyectos/{idProyecto}/postulaciones/.../aceptar` | Aceptar postulación |
 | `POST` | `/proyectos/{idProyecto}/postulaciones/.../rechazar` | Rechazar postulación |
 | `POST` | `/proyectos/{idProyecto}/invitaciones/general` | Invitar al proyecto |
@@ -400,9 +410,11 @@ Reglas generales de publicaciones:
 | Método | Endpoint | Descripción |
 |---|---|---|
 | `GET` | `/proyectos/{idProyecto}/contratos/opciones` | Tipos de acuerdo y destinatarios |
-| `POST` | `/proyectos/{idProyecto}/contratos/previsualizar` | Previsualizar contrato |
-| `POST` | `/proyectos/{idProyecto}/contratos` | Generar contrato |
+| `POST` | `/proyectos/{idProyecto}/contratos/previsualizar` | Previsualizar contrato (opcional) |
+| `POST` | `/proyectos/{idProyecto}/contratos` | Crear contrato en borrador |
+| `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/emitir` | Emitir borrador y notificar a las partes |
 | `GET/PUT/DELETE` | `/proyectos/{idProyecto}/contratos/{idContrato}` | Consultar, modificar o eliminar |
+| `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/previsualizar` | Previsualizar cambios (opcional) |
 | `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/firmar` | Firmar contrato |
 | `POST` | `/proyectos/{idProyecto}/contratos/{idContrato}/rechazar` | Rechazar contrato |
 | `GET` | `/contratos/buscar` | Búsqueda global de contratos |

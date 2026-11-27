@@ -1,10 +1,14 @@
 package org.mgroko.backend.admin.controlador;
 
+import java.util.List;
+
 import org.mgroko.backend.admin.dto.AdminPerfilDetalleResponse;
 import org.mgroko.backend.admin.dto.AdminPerfilResumenResponse;
 import org.mgroko.backend.admin.dto.BuscarPerfilesAdminFiltro;
 import org.mgroko.backend.admin.servicio.AdminPerfilService;
 import org.mgroko.backend.common.dto.PaginaResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResponse;
+import org.mgroko.backend.perfiles.dto.TerminosCondicionesVersionResumenResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -48,5 +52,22 @@ public class AdminPerfilController {
             @PathVariable Long idPerfil) {
 
         return ResponseEntity.ok(adminPerfilService.obtenerDetalle(idPerfil));
+    }
+
+    @GetMapping("/{idPerfil}/terminos-condiciones/historial")
+    public ResponseEntity<List<TerminosCondicionesVersionResumenResponse>>
+            historialTerminos(@PathVariable Long idPerfil) {
+
+        return ResponseEntity.ok(
+                adminPerfilService.obtenerHistorialTerminos(idPerfil));
+    }
+
+    @GetMapping("/{idPerfil}/terminos-condiciones/historial/{idTyc}")
+    public ResponseEntity<TerminosCondicionesVersionResponse> versionTerminos(
+            @PathVariable Long idPerfil,
+            @PathVariable Long idTyc) {
+
+        return ResponseEntity.ok(
+                adminPerfilService.obtenerVersionTerminos(idPerfil, idTyc));
     }
 }

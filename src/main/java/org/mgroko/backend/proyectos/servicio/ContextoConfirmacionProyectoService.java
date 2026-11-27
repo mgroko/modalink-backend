@@ -54,6 +54,7 @@ public class ContextoConfirmacionProyectoService {
     private final AsignacionActividadRepository asignacionActividadRepository;
     private final RequerimientoActividadRepository requerimientoActividadRepository;
     private final RequerimientoCompletitudService requerimientoCompletitudService;
+    private final ProyectoMinimosService proyectoMinimosService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final Clock reloj;
 
@@ -65,6 +66,7 @@ public class ContextoConfirmacionProyectoService {
             AsignacionActividadRepository asignacionActividadRepository,
             RequerimientoActividadRepository requerimientoActividadRepository,
             RequerimientoCompletitudService requerimientoCompletitudService,
+            ProyectoMinimosService proyectoMinimosService,
             ProyectoSecurityService proyectoSecurityService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
@@ -74,6 +76,7 @@ public class ContextoConfirmacionProyectoService {
         this.asignacionActividadRepository = asignacionActividadRepository;
         this.requerimientoActividadRepository = requerimientoActividadRepository;
         this.requerimientoCompletitudService = requerimientoCompletitudService;
+        this.proyectoMinimosService = proyectoMinimosService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.reloj = reloj;
     }
@@ -145,19 +148,30 @@ public class ContextoConfirmacionProyectoService {
                     idProyecto));
         }
 
-        List<Actividad> actividades = actividadRepository
-                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
-        List<Actividad> actividadesNoCanceladas = actividades.stream()
-                .filter(actividad -> actividad.getEstado() != EstadoActividad.CANCELADA)
-                .toList();
-
-        if (actividadesNoCanceladas.isEmpty()) {
+        if (!proyectoMinimosService.tieneAlMenosDosMiembrosActivos(idProyecto)) {
             bloqueos.add(new BloqueoConfirmacionResponse(
-                    "SIN_ACTIVIDADES",
-                    "El proyecto no tiene actividades en la planificación.",
+                    "SIN_MIEMBRO_ADICIONAL",
+                    "El proyecto debe tener al menos un integrante activo además del director.",
                     "PROYECTO",
                     idProyecto));
         }
+
+        if (!proyectoMinimosService.tieneRequerimientoComputable(idProyecto)) {
+            bloqueos.add(new BloqueoConfirmacionResponse(
+                    "SIN_REQUERIMIENTOS",
+                    "El proyecto debe tener al menos un requerimiento general o de actividad.",
+                    "PROYECTO",
+                    idProyecto));
+        }
+
+        List<Actividad> actividades = actividadRepository
+                .findConPredecesorasByPlanificacion(planificacion.getIdPlanificacion());
+        // UC-60 no exige actividades para confirmar: solo exige un miembro
+        // adicional y al menos un requerimiento computable. Las actividades
+        // que se agreguen después se agendan sobre el proyecto ya confirmado.
+        List<Actividad> actividadesNoCanceladas = actividades.stream()
+                .filter(actividad -> actividad.getEstado() != EstadoActividad.CANCELADA)
+                .toList();
 
         List<Long> idsActividades = actividadesNoCanceladas.stream()
                 .map(Actividad::getIdActividad)

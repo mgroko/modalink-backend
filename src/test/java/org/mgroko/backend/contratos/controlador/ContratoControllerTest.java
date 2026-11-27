@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -20,9 +22,8 @@ import org.mgroko.backend.common.dto.PaginaResponse;
 import org.mgroko.backend.contratos.dto.ContratoBusquedaResponse;
 import org.mgroko.backend.contratos.dto.ContratoDetalleResponse;
 import org.mgroko.backend.contratos.dto.ContratoEventoResponse;
-import org.mgroko.backend.contratos.dto.ContratoGeneradoResponse;
+import org.mgroko.backend.contratos.dto.GuardarContratoRequest;
 import org.mgroko.backend.contratos.dto.OpcionesGeneracionContratoResponse;
-import org.mgroko.backend.contratos.dto.ParteContratoResponse;
 import org.mgroko.backend.contratos.dto.ParteContratoResumenResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionContratoResponse;
 import org.mgroko.backend.contratos.dto.PrevisualizacionModificacionResponse;
@@ -32,9 +33,11 @@ import org.mgroko.backend.contratos.dto.TipoAcuerdoContratoResponse;
 import org.mgroko.backend.contratos.exception.ContratoNoGenerableException;
 import org.mgroko.backend.contratos.exception.ContratoNoModificableException;
 import org.mgroko.backend.contratos.servicio.BuscarContratoService;
+import org.mgroko.backend.contratos.servicio.CrearContratoBorradorService;
 import org.mgroko.backend.contratos.servicio.EliminarContratoService;
+import org.mgroko.backend.contratos.servicio.EmitirContratoService;
+import org.mgroko.backend.contratos.servicio.ExportarContratoPdfService;
 import org.mgroko.backend.contratos.servicio.FirmarContratoService;
-import org.mgroko.backend.contratos.servicio.GenerarContratoService;
 import org.mgroko.backend.contratos.servicio.ListarEventosContratoService;
 import org.mgroko.backend.contratos.servicio.ListarProyectosContratoService;
 import org.mgroko.backend.contratos.servicio.ModificarContratoService;
@@ -48,6 +51,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -69,7 +73,10 @@ class ContratoControllerTest {
     private PrevisualizarContratoService previsualizarService;
 
     @MockitoBean
-    private GenerarContratoService generarService;
+    private CrearContratoBorradorService crearBorradorService;
+
+    @MockitoBean
+    private EmitirContratoService emitirContratoService;
 
     @MockitoBean
     private BuscarContratoService buscarContratoService;
@@ -98,6 +105,9 @@ class ContratoControllerTest {
     @MockitoBean
     private EliminarContratoService eliminarContratoService;
 
+    @MockitoBean
+    private ExportarContratoPdfService exportarContratoPdfService;
+
     @Test
     void opciones_devuelve200ConDatosDelProyecto() throws Exception {
         var auth = autenticacion(10L);
@@ -123,27 +133,11 @@ class ContratoControllerTest {
     }
 
     @Test
-    void generar_conDatosValidos_devuelve201() throws Exception {
+    void crearBorrador_conDatosValidos_devuelve201() throws Exception {
         var auth = autenticacion(10L);
 
-        ContratoGeneradoResponse response = new ContratoGeneradoResponse(
-                55L,
-                100L,
-                "Cesión - Editorial Primavera",
-                "Contrato generado",
-                "PENDIENTE_FIRMA",
-                1,
-                LocalDateTime.of(2026, 11, 7, 12, 0),
-                LocalDateTime.of(2026, 11, 7, 12, 0),
-                new TipoAcuerdoContratoResponse(
-                        1L, "CESION_DERECHOS_IMAGEN",
-                        "Cesión de derechos de imagen", null),
-                "TEXTO",
-                List.of(new ParteContratoResponse(
-                        11L, 3L, "Ana Pérez", "DIRECTOR", "PENDIENTE")));
-
-        when(generarService.generar(eq(1L), eq(10L), eq(100L), any()))
-                .thenReturn(response);
+        when(crearBorradorService.crear(eq(1L), eq(10L), eq(100L), any()))
+                .thenReturn(detalle("BORRADOR"));
 
         mockMvc.perform(post("/proyectos/100/contratos")
                         .principal(auth)
@@ -152,13 +146,30 @@ class ContratoControllerTest {
                                 {
                                   "idTipoAcuerdo": 1,
                                   "idsMiembro": [8],
+                                  "nombre": "Contrato campaña",
+                                  "descripcion": "Cesión de imagen",
+                                  "modoTexto": "AUTO",
                                   "clausulasAdicionales": ["Cláusula adicional"]
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.idContrato").value(55L))
-                .andExpect(jsonPath("$.estado").value("PENDIENTE_FIRMA"))
-                .andExpect(jsonPath("$.partes[0].rolParte").value("DIRECTOR"));
+                .andExpect(jsonPath("$.estado").value("BORRADOR"))
+                .andExpect(jsonPath("$.puedeEmitir").value(true));
+    }
+
+    @Test
+    void emitir_devuelve200() throws Exception {
+        var auth = autenticacion(10L);
+
+        when(emitirContratoService.emitir(1L, 10L, 100L, 55L))
+                .thenReturn(detalle("PENDIENTE_FIRMA"));
+
+        mockMvc.perform(post("/proyectos/100/contratos/55/emitir")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idContrato").value(55L))
+                .andExpect(jsonPath("$.estado").value("PENDIENTE_FIRMA"));
     }
 
     @Test
@@ -185,7 +196,7 @@ class ContratoControllerTest {
     }
 
     @Test
-    void generar_sinDestinatarios_devuelve400() throws Exception {
+    void crear_sinTipoAcuerdo_devuelve400() throws Exception {
         var auth = autenticacion(10L);
 
         mockMvc.perform(post("/proyectos/100/contratos")
@@ -193,38 +204,30 @@ class ContratoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "idTipoAcuerdo": 1,
-                                  "idsMiembro": []
+                                  "idsMiembro": [8]
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void generar_conDuplicadoActivo_devuelve409ConCodigo() throws Exception {
+    void emitir_conDuplicadoActivo_devuelve409ConCodigo() throws Exception {
         var auth = autenticacion(10L);
 
-        when(generarService.generar(eq(1L), eq(10L), eq(100L), any()))
+        when(emitirContratoService.emitir(1L, 10L, 100L, 55L))
                 .thenThrow(new ContratoNoGenerableException(
                         "CONTRATO_DUPLICADO_ACTIVO",
                         "Uno o mas destinatarios ya tienen un contrato activo.",
                         List.of()));
 
-        mockMvc.perform(post("/proyectos/100/contratos")
-                        .principal(auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "idTipoAcuerdo": 1,
-                                  "idsMiembro": [8]
-                                }
-                                """))
+        mockMvc.perform(post("/proyectos/100/contratos/55/emitir")
+                        .principal(auth))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("CONTRATO_DUPLICADO_ACTIVO"));
     }
 
     @Test
-    void generar_sinPerfilActivo_devuelve404() throws Exception {
+    void crear_sinPerfilActivo_devuelve404() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("1", null, List.of());
 
         mockMvc.perform(post("/proyectos/100/contratos")
@@ -247,7 +250,7 @@ class ContratoControllerTest {
                 55L, "Contrato", 100L, "Proyecto", "PUBLICADO", 1L, "CESION",
                 "Cesion", "PENDIENTE_FIRMA", null, null, null, null, 1,
                 null, List.of(), "PENDIENTE", null, true,
-                true, true, 0, 1, true);
+                true, true, true, 0, 1, true);
 
         when(buscarContratoService.buscar(
                 eq(1L), eq(10L), any(), eq(0), eq(20), eq(false)))
@@ -383,7 +386,8 @@ class ContratoControllerTest {
         var auth = autenticacion(10L);
 
         when(previsualizarModificacionService.previsualizar(
-                eq(1L), eq(10L), eq(100L), eq(55L), any()))
+                eq(1L), eq(10L), eq(100L), eq(55L),
+                any(GuardarContratoRequest.class)))
                 .thenReturn(new PrevisualizacionModificacionResponse(
                         "TEXTO", true, List.of()));
 
@@ -405,7 +409,8 @@ class ContratoControllerTest {
         var auth = autenticacion(10L);
 
         when(modificarContratoService.modificar(
-                eq(1L), eq(10L), eq(100L), eq(55L), any()))
+                eq(1L), eq(10L), eq(100L), eq(55L),
+                any(GuardarContratoRequest.class)))
                 .thenReturn(detalle());
 
         mockMvc.perform(put("/proyectos/100/contratos/55")
@@ -449,16 +454,37 @@ class ContratoControllerTest {
     }
 
     private ContratoDetalleResponse detalle() {
+        return detalle("PENDIENTE_FIRMA");
+    }
+
+    private ContratoDetalleResponse detalle(String estado) {
         return new ContratoDetalleResponse(
                 55L, 100L, "Proyecto", "PUBLICADO", 1L, "CESION", "Cesion",
-                "Contrato", "Descripcion", "PENDIENTE_FIRMA", 1,
+                "Contrato", "Descripcion", estado, 1,
                 LocalDateTime.of(2026, 11, 7, 12, 0),
                 LocalDateTime.of(2026, 11, 7, 12, 0),
                 null, null, "TEXTO", null,
                 List.of(new ParteContratoResumenResponse(
                         11L, 3L, "Ana Pérez", "DIRECTOR", "PENDIENTE", null)),
                 "PENDIENTE", null, true, null,
+                "BORRADOR".equals(estado), null,
                 true, true, 0, 1, true, null);
+    }
+
+    @Test
+    void exportarPdf_devuelveArchivoAdjunto() throws Exception {
+        byte[] pdf = "%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(exportarContratoPdfService.exportar(1L, 10L, 100L, 5L))
+                .thenReturn(pdf);
+
+        mockMvc.perform(get("/proyectos/100/contratos/5/pdf")
+                        .principal(autenticacion(10L)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"contrato-5.pdf\""))
+                .andExpect(content().bytes(pdf));
     }
 
     private UsernamePasswordAuthenticationToken autenticacion(Long idPerfilActivo) {

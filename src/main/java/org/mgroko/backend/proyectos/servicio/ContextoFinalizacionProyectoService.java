@@ -53,6 +53,7 @@ public class ContextoFinalizacionProyectoService {
     private final ActividadRepository actividadRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
     private final CalificacionPerfilRepository calificacionPerfilRepository;
+    private final ProyectoMinimosService proyectoMinimosService;
     private final ProyectoSecurityService proyectoSecurityService;
     private final Clock reloj;
 
@@ -63,6 +64,7 @@ public class ContextoFinalizacionProyectoService {
             ActividadRepository actividadRepository,
             MiembroProyectoRepository miembroProyectoRepository,
             CalificacionPerfilRepository calificacionPerfilRepository,
+            ProyectoMinimosService proyectoMinimosService,
             ProyectoSecurityService proyectoSecurityService,
             Clock reloj) {
         this.perfilRepository = perfilRepository;
@@ -71,6 +73,7 @@ public class ContextoFinalizacionProyectoService {
         this.actividadRepository = actividadRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
         this.calificacionPerfilRepository = calificacionPerfilRepository;
+        this.proyectoMinimosService = proyectoMinimosService;
         this.proyectoSecurityService = proyectoSecurityService;
         this.reloj = reloj;
     }
@@ -155,17 +158,28 @@ public class ContextoFinalizacionProyectoService {
                     planificacion.getIdPlanificacion()));
         }
 
-        List<Actividad> actividades = planificacion == null
-                ? List.of()
-                : actividadRepository.findByPlanificacionProyectoIdProyecto(idProyecto);
-
-        if (actividades.isEmpty()) {
+        if (!proyectoMinimosService.tieneAlMenosDosMiembrosActivos(idProyecto)) {
             bloqueos.add(new BloqueoFinalizacionResponse(
-                    "SIN_ACTIVIDADES",
-                    "El proyecto no tiene actividades en la planificación.",
+                    "SIN_MIEMBRO_ADICIONAL",
+                    "El proyecto debe tener al menos un integrante activo además del director.",
                     "PROYECTO",
                     idProyecto));
         }
+
+        if (!proyectoMinimosService.tieneRequerimientoHistorico(idProyecto)) {
+            bloqueos.add(new BloqueoFinalizacionResponse(
+                    "SIN_REQUERIMIENTOS",
+                    "El proyecto debe tener al menos un requerimiento general o de actividad.",
+                    "PROYECTO",
+                    idProyecto));
+        }
+
+        // UC-37 solo exige que las actividades existentes estén finalizadas o
+        // canceladas. Un proyecto puede cerrarse sin actividades; en ese caso
+        // la validación de calificaciones sigue aplicando a los miembros activos.
+        List<Actividad> actividades = planificacion == null
+                ? List.of()
+                : actividadRepository.findByPlanificacionProyectoIdProyecto(idProyecto);
 
         for (Actividad actividad : actividades) {
             if (actividad.getEstado() == EstadoActividad.PENDIENTE

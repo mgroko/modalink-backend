@@ -86,6 +86,13 @@ public class NotificacionLinkResolver {
                  NotificacionService.TIPO_SOLICITUD_COLABORACION_RECHAZADA ->
                     rutaEntidad("/publicaciones/", entidadId);
 
+            case NotificacionService.TIPO_COLABORACION_AUTOMATICA_DETECTADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_CONFIRMADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_RECHAZADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_CANCELADA,
+                 NotificacionService.TIPO_COLABORACION_AUTOMATICA_DISUELTA ->
+                    rutaEntidad("/colaboraciones-automaticas/", entidadId);
+
             case NotificacionService.TIPO_SOLICITUD_CONEXION_RECIBIDA ->
                     "/mi-red?tab=recibidas";
 
@@ -95,9 +102,12 @@ public class NotificacionLinkResolver {
             case NotificacionService.TIPO_PUBLICACION_REPORTADA ->
                     rutaEntidad("/admin/reportes-publicacion/", entidadId);
 
-            case NotificacionService.TIPO_INTEGRANTE_ELIMINADO,
+            case NotificacionService.TIPO_REQUERIMIENTO_ASIGNADO,
+                 NotificacionService.TIPO_REQUERIMIENTO_DESASIGNADO,
+                 NotificacionService.TIPO_REQUERIMIENTO_REASIGNADO,
+                 NotificacionService.TIPO_INTEGRANTE_ELIMINADO,
                  NotificacionService.TIPO_INTEGRANTE_BAJA_VOLUNTARIA ->
-                    FALLBACK;
+                    rutaProyecto(idProyecto, "");
 
             default -> FALLBACK;
         };

@@ -127,4 +127,22 @@ public interface SolicitudColaboracionRepository
             WHERE s.publicacion.idPublicacion = :idPublicacion
             """)
     int eliminarPorPublicacion(@Param("idPublicacion") Long idPublicacion);
+
+    /**
+     * Rechaza las solicitudes pendientes enviadas o recibidas por un perfil
+     * que se da de baja definitivamente. Las solicitudes ya resueltas se
+     * conservan como historial.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE SolicitudColaboracion s
+               SET s.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.RECHAZADA,
+                   s.fechaRespuesta = :fecha
+             WHERE s.estado = org.mgroko.backend.modelo.enums.EstadoSolicitud.PENDIENTE
+               AND (s.perfilRemitente.idPerfil = :idPerfil
+                    OR s.perfilDestinatario.idPerfil = :idPerfil)
+            """)
+    int rechazarPendientesDePerfil(
+            @Param("idPerfil") Long idPerfil,
+            @Param("fecha") java.time.LocalDateTime fecha);
 }

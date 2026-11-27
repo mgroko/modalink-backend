@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mgroko.backend.admin.servicio.AdminPerfilService;
 import org.mgroko.backend.admin.servicio.ConfiguracionSistemaService;
 import org.mgroko.backend.modelo.Genero;
 import org.mgroko.backend.modelo.Perfil;
@@ -67,6 +68,9 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
     @Autowired
     private VerPerfilService verPerfilService;
 
+    @Autowired
+    private AdminPerfilService adminPerfilService;
+
     private Perfil perfil;
 
     @BeforeEach
@@ -107,6 +111,7 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
                 new ActualizarTerminosCondicionesRequest("Texto inicial"));
 
         assertNotNull(response.idTyc());
+        assertEquals(1, response.numeroVersion());
         assertFalse(response.esPlantilla());
         assertEquals("Texto inicial", response.descripcion());
 
@@ -115,6 +120,7 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
                         perfil.getIdPerfil())
                 .orElseThrow();
         assertEquals(response.idTyc(), vigente.getIdTyc());
+        assertEquals(1, vigente.getNumeroVersion());
         assertNull(vigente.getFechaFin());
     }
 
@@ -131,7 +137,8 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
                 new ActualizarTerminosCondicionesRequest("Texto actualizado"));
 
         assertNotNull(segunda.idTyc());
-        assertNotNull(segunda.idTyc());
+        assertEquals(1, primera.numeroVersion());
+        assertEquals(2, segunda.numeroVersion());
         assertFalse(primera.idTyc().equals(segunda.idTyc()));
 
         List<PerfilTyc> versiones = perfilTycRepository
@@ -143,6 +150,7 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
                 .findFirst()
                 .orElseThrow();
         assertEquals(segunda.idTyc(), vigente.getIdTyc());
+        assertEquals(2, vigente.getNumeroVersion());
         assertEquals("Texto actualizado", vigente.getDescripcion());
 
         PerfilTyc anterior = versiones.stream()
@@ -150,6 +158,7 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
                 .findFirst()
                 .orElseThrow();
         assertEquals(primera.idTyc(), anterior.getIdTyc());
+        assertEquals(1, anterior.getNumeroVersion());
         assertTrue(anterior.getFechaFin().isAfter(anterior.getFechaInicio()));
     }
 
@@ -181,9 +190,58 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
                 perfil.getIdPerfil(), perfil.getUsuario().getIdUsuario());
 
         assertNotNull(detalle.terminosCondiciones());
+        assertEquals(1, detalle.terminosCondiciones().numeroVersion());
         assertEquals("Texto visible en el perfil",
                 detalle.terminosCondiciones().descripcion());
         assertFalse(detalle.terminosCondiciones().esPlantilla());
+    }
+
+    @Test
+    void detalleAdminSinVersionNoIncluyePlantilla() {
+        var detalle = adminPerfilService.obtenerDetalle(perfil.getIdPerfil());
+
+        assertNull(detalle.terminosCondiciones());
+        assertTrue(adminPerfilService.obtenerHistorialTerminos(perfil.getIdPerfil()).isEmpty());
+    }
+
+    @Test
+    void detalleAdminConVersionIncluyeVigente() {
+        service.actualizar(
+                perfil.getUsuario().getIdUsuario(),
+                perfil.getIdPerfil(),
+                new ActualizarTerminosCondicionesRequest("Texto visible en el admin"));
+
+        var detalle = adminPerfilService.obtenerDetalle(perfil.getIdPerfil());
+
+        assertNotNull(detalle.terminosCondiciones());
+        assertEquals(1, detalle.terminosCondiciones().numeroVersion());
+        assertEquals("Texto visible en el admin",
+                detalle.terminosCondiciones().descripcion());
+        assertFalse(detalle.terminosCondiciones().esPlantilla());
+    }
+
+    @Test
+    void tresVersionesSeNumeranEnOrdenYElHistorialLasExpone() {
+        service.actualizar(
+                perfil.getUsuario().getIdUsuario(),
+                perfil.getIdPerfil(),
+                new ActualizarTerminosCondicionesRequest("Versión uno"));
+        service.actualizar(
+                perfil.getUsuario().getIdUsuario(),
+                perfil.getIdPerfil(),
+                new ActualizarTerminosCondicionesRequest("Versión dos"));
+        service.actualizar(
+                perfil.getUsuario().getIdUsuario(),
+                perfil.getIdPerfil(),
+                new ActualizarTerminosCondicionesRequest("Versión tres"));
+
+        var historial = service.obtenerHistorial(
+                perfil.getUsuario().getIdUsuario(), perfil.getIdPerfil());
+
+        assertEquals(3, historial.size());
+        assertEquals(3, historial.get(0).numeroVersion());
+        assertEquals(2, historial.get(1).numeroVersion());
+        assertEquals(1, historial.get(2).numeroVersion());
     }
 
     @Test
@@ -193,6 +251,7 @@ class GestionTerminosCondicionesIntegrationTest extends AbstractPostgresIntegrat
 
         assertTrue(response.esPlantilla());
         assertNull(response.idTyc());
+        assertNull(response.numeroVersion());
         assertTrue(response.descripcion().startsWith("Mis condiciones de trabajo"));
     }
 

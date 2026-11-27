@@ -1,0 +1,133 @@
+{
+  "version": "1.0",
+  "capitulos": [
+    {
+      "id": "01-introduccion",
+      "numero": 1,
+      "titulo": "Introducción",
+      "archivo": "01-introduccion.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "02-conceptos",
+      "numero": 2,
+      "titulo": "Conceptos básicos",
+      "archivo": "02-conceptos.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "03-primeros-pasos",
+      "numero": 3,
+      "titulo": "Primeros pasos",
+      "archivo": "03-primeros-pasos.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "04-mi-cuenta",
+      "numero": 4,
+      "titulo": "Mi cuenta",
+      "archivo": "04-mi-cuenta.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "05-perfiles",
+      "numero": 5,
+      "titulo": "Perfiles profesionales",
+      "archivo": "05-perfiles.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "06-proyectos-directores",
+      "numero": 6,
+      "titulo": "Proyectos para Directores",
+      "archivo": "06-proyectos-directores.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "07-participar",
+      "numero": 7,
+      "titulo": "Participar en proyectos",
+      "archivo": "07-participar.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "08-conexiones-publicaciones",
+      "numero": 8,
+      "titulo": "Conexiones y publicaciones",
+      "archivo": "08-conexiones-publicaciones.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "09-notificaciones",
+      "numero": 9,
+      "titulo": "Notificaciones",
+      "archivo": "09-notificaciones.md",
+      "roles": ["USUARIO", "ADMINISTRADOR"]
+    },
+    {
+      "id": "10-administracion",
+      "numero": 10,
+      "titulo": "Panel de Administración",
+      "archivo": "10-administracion.md",
+      "roles": ["ADMINISTRADOR"]
+    },
+    {
+      "id": "11-ayuda",
+      "numero": 11,
+      "titulo": "Ayuda",
+      "archivo": "11-ayuda.md",
+      "roles": ["USUARIO", "ADMINISTRADOR"]
+    },
+    {
+      "id": "12-contratos",
+      "numero": 12,
+      "titulo": "Contratos",
+      "archivo": "12-contratos.md",
+      "roles": ["USUARIO", "ADMINISTRADOR"]
+    },
+    {
+      "id": "13-mensajeria",
+      "numero": 13,
+      "titulo": "Mensajería",
+      "archivo": "13-mensajeria.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "14-calificaciones",
+      "numero": 14,
+      "titulo": "Calificaciones y reseñas",
+      "archivo": "14-calificaciones.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "15-colaboraciones-automaticas",
+      "numero": 15,
+      "titulo": "Colaboraciones automáticas",
+      "archivo": "15-colaboraciones-automaticas.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "16-normas-de-convivencia",
+      "numero": 16,
+      "titulo": "Normas de convivencia",
+      "archivo": "16-normas-de-convivencia.md",
+      "roles": ["USUARIO"]
+    },
+    {
+      "id": "anexo-a-permisos",
+      "numero": 17,
+      "etiqueta": "Anexo A",
+      "titulo": "Permisos por rol",
+      "archivo": "anexo-a-permisos.md",
+      "roles": ["USUARIO", "ADMINISTRADOR"]
+    },
+    {
+      "id": "anexo-b-estados",
+      "numero": 18,
+      "etiqueta": "Anexo B",
+      "titulo": "Estados y su significado",
+      "archivo": "anexo-b-estados.md",
+      "roles": ["USUARIO"]
+    }
+  ]
+}

@@ -326,10 +326,9 @@ public class CrearInvitacionService {
                     "El perfil destinatario no tiene la profesión requerida por el requerimiento general.");
         }
 
-        if (cupoRequerimientoService.calcularGeneral(requerimiento).satisfecho()) {
-            throw new InvitacionNoPermitidaException(
-                    "El requerimiento general ya está satisfecho.");
-        }
+        // El cupo se revalida al aceptar. Si el requerimiento ya está
+        // satisfecho, la aceptación puede resolver otro compatible o dejar la
+        // membresía sin requerimiento.
     }
 
     private void validarSinInvitacionPendiente(Long idProyecto, Perfil destinatario) {

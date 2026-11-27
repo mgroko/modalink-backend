@@ -39,6 +39,15 @@ class ProfesionRepositoryIntegrationTest extends AbstractPostgresIntegrationTest
     }
 
     @Test
+    void buscar_porNombreFemenino_devuelveCoincidencia() {
+        List<Profesion> resultado = profesionRepository.buscar("%fotógrafa%", "");
+
+        assertEquals(1, resultado.size());
+        assertEquals("FOTOGRAFO", resultado.get(0).getCodigo());
+        assertEquals("Fotógrafa", resultado.get(0).getNombreFemenino());
+    }
+
+    @Test
     void buscar_porCodigoExacto_devuelveCoincidencia() {
         List<Profesion> resultado = profesionRepository.buscar("%diseniador_moda%", "DISENIADOR_MODA");
 

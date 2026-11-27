@@ -1,5 +1,6 @@
 package org.mgroko.backend.repositorio;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,10 @@ public interface PolaroidPerfilRepository extends JpaRepository<PolaroidPerfil, 
 
     @EntityGraph(attributePaths = {"imagen", "tipoPolaroid", "tipoPolaroid.grupo"})
     Optional<PolaroidPerfil> findByIdPolaroidAndPerfilIdPerfil(Long idPolaroid, Long idPerfil);
+
+    @EntityGraph(attributePaths = {"imagen", "tipoPolaroid", "tipoPolaroid.grupo"})
+    List<PolaroidPerfil> findByPerfil_IdPerfilInOrderByPerfil_IdPerfilAscOrdenAsc(
+            Collection<Long> idsPerfil);
 
     long countByPerfilIdPerfil(Long idPerfil);
 

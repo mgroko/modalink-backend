@@ -12,6 +12,7 @@ import org.mgroko.backend.modelo.Perfil;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.TipoAcuerdoContrato;
 import org.mgroko.backend.modelo.Usuario;
+import org.mgroko.backend.modelo.enums.EstadoContrato;
 import org.mgroko.backend.modelo.enums.EstadoPerfil;
 import org.mgroko.backend.modelo.enums.TipoEventoContrato;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
@@ -113,6 +114,7 @@ public class ListarHistorialContratosProyectoService {
                         !esDirector,
                         tipoEvento,
                         patronNombre,
+                        EstadoContrato.BORRADOR,
                         pageable);
 
         return PaginaResponse.fromPage(pagina.map(this::toResponse));

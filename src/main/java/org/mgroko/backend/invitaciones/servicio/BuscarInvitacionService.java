@@ -15,6 +15,7 @@ import org.mgroko.backend.invitaciones.dto.PerfilInvitacionResponse;
 import org.mgroko.backend.invitaciones.dto.TipoInvitacion;
 import org.mgroko.backend.invitaciones.exception.RangoFechasInvitacionInvalidoException;
 import org.mgroko.backend.invitaciones.mapper.InvitacionMapper;
+import org.mgroko.backend.modelo.InvitacionGral;
 import org.mgroko.backend.modelo.enums.EstadoSolicitud;
 import org.mgroko.backend.perfiles.exception.PerfilActivoNoSeleccionadoException;
 import org.mgroko.backend.repositorio.InvitacionActividadRepository;
@@ -60,8 +61,13 @@ public class BuscarInvitacionService {
 
         List<InvitacionBusquedaResponse> invitaciones = new ArrayList<>();
 
-        if (incluyeTipo(filtro, TipoInvitacion.GENERAL)) {
+        boolean incluyeGenerales = filtro == null || filtro.tipo() == null
+                || filtro.tipo() == TipoInvitacion.GENERAL
+                || filtro.tipo() == TipoInvitacion.REQUERIMIENTO_GENERAL;
+
+        if (incluyeGenerales) {
             invitacionGralRepository.buscarPorPerfil(idPerfilActivo).stream()
+                    .filter(invitacion -> coincideTipoGeneral(invitacion, filtro))
                     .map(invitacion -> InvitacionMapper.toBusquedaResponse(
                             invitacion, idPerfilActivo))
                     .forEach(invitaciones::add);
@@ -97,6 +103,22 @@ public class BuscarInvitacionService {
 
     private boolean incluyeTipo(BuscarInvitacionesFiltro filtro, TipoInvitacion tipo) {
         return filtro == null || filtro.tipo() == null || filtro.tipo() == tipo;
+    }
+
+    private boolean coincideTipoGeneral(
+            InvitacionGral invitacion,
+            BuscarInvitacionesFiltro filtro) {
+
+        if (filtro == null || filtro.tipo() == null) {
+            return true;
+        }
+        if (filtro.tipo() == TipoInvitacion.GENERAL) {
+            return invitacion.getRequerimientoGral() == null;
+        }
+        if (filtro.tipo() == TipoInvitacion.REQUERIMIENTO_GENERAL) {
+            return invitacion.getRequerimientoGral() != null;
+        }
+        return false;
     }
 
     private boolean coincideDireccion(

@@ -163,7 +163,7 @@ class BuscarPostulacionesProyectoServiceTest {
                 .thenReturn(new CupoRequerimiento(1, 0, 1, false));
 
         BuscarPostulacionesFiltro soloPendientes = new BuscarPostulacionesFiltro(
-                List.of(EstadoSolicitud.PENDIENTE), null, null, null, null, null);
+                List.of(EstadoSolicitud.PENDIENTE), null, null, null, null, null, null);
 
         PostulacionesPaginaResponse pagina = service.buscar(
                 10L, ID_PROYECTO, soloPendientes, 0, 1, false);
@@ -193,7 +193,7 @@ class BuscarPostulacionesProyectoServiceTest {
 
         PostulacionesPaginaResponse pagina = service.buscar(
                 10L, ID_PROYECTO,
-                new BuscarPostulacionesFiltro(null, TipoPostulacion.GENERAL, null, null, null, null),
+                new BuscarPostulacionesFiltro(null, TipoPostulacion.GENERAL, null, null, null, null, null),
                 0, 20, false);
 
         assertThat(pagina.contenido()).hasSize(1);
@@ -245,7 +245,7 @@ class BuscarPostulacionesProyectoServiceTest {
     void buscar_rangoDeFechasInvalido_lanzaExcepcion() {
         BuscarPostulacionesFiltro filtro = new BuscarPostulacionesFiltro(
                 null, null, null, null,
-                LocalDate.of(2026, 10, 30), LocalDate.of(2026, 10, 1));
+                LocalDate.of(2026, 10, 30), LocalDate.of(2026, 10, 1), null);
 
         assertThatThrownBy(() -> service.buscar(10L, ID_PROYECTO, filtro, 0, 20, false))
                 .isInstanceOf(RangoFechasPostulacionInvalidoException.class);
@@ -258,7 +258,7 @@ class BuscarPostulacionesProyectoServiceTest {
     }
 
     private BuscarPostulacionesFiltro filtro(TipoPostulacion tipo) {
-        return new BuscarPostulacionesFiltro(null, tipo, null, null, null, null);
+        return new BuscarPostulacionesFiltro(null, tipo, null, null, null, null, null);
     }
 
     private Proyecto proyecto() {
