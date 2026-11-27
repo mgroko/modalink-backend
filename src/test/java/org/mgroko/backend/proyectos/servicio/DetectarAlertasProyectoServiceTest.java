@@ -13,6 +13,7 @@ import org.mgroko.backend.modelo.Contrato;
 import org.mgroko.backend.modelo.InvitacionGral;
 import org.mgroko.backend.modelo.Planificacion;
 import org.mgroko.backend.modelo.PostulacionGral;
+import org.mgroko.backend.modelo.Profesion;
 import org.mgroko.backend.modelo.Proyecto;
 import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoActividad;
@@ -197,6 +198,73 @@ class DetectarAlertasProyectoServiceTest {
                 .contains("INVITACIONES_PENDIENTES");
     }
 
+    @Test
+    void faltanteUnicoNombraLaProfesion() {
+        Proyecto proyecto = proyecto(EstadoProyecto.CONFIRMADO);
+        RequerimientoGralProyecto requerimiento = requerimiento(1L, 1, "Maquillador");
+        var contexto = contexto(
+                proyecto,
+                planificacion(LocalDate.of(2026, 12, 15)),
+                List.of(requerimiento),
+                Map.of(1L, new CupoRequerimiento(1, 0, 1, false)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+
+        AlertaInforme alerta = alertaCupos(service.detectar(contexto));
+
+        assertThat(alerta.mensaje()).isEqualTo("Falta 1 maquillador.");
+    }
+
+    @Test
+    void faltantesDeLaMismaProfesionSeAgrupan() {
+        Proyecto proyecto = proyecto(EstadoProyecto.PUBLICADO);
+        RequerimientoGralProyecto primero = requerimiento(1L, 1, "Modelo");
+        RequerimientoGralProyecto segundo = requerimiento(2L, 1, "Modelo");
+        var contexto = contexto(
+                proyecto,
+                planificacion(LocalDate.of(2026, 12, 15)),
+                List.of(primero, segundo),
+                Map.of(
+                        1L, new CupoRequerimiento(1, 0, 1, false),
+                        2L, new CupoRequerimiento(1, 0, 1, false)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+
+        AlertaInforme alerta = alertaCupos(service.detectar(contexto));
+
+        assertThat(alerta.mensaje()).isEqualTo("Faltan 2 modelos.");
+    }
+
+    @Test
+    void profesionCompuestaUsaFallbackSeguro() {
+        Proyecto proyecto = proyecto(EstadoProyecto.CONFIRMADO);
+        RequerimientoGralProyecto requerimiento = requerimiento(1L, 2, "Diseñador de Moda");
+        var contexto = contexto(
+                proyecto,
+                planificacion(LocalDate.of(2026, 12, 15)),
+                List.of(requerimiento),
+                Map.of(1L, new CupoRequerimiento(2, 0, 2, false)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+
+        AlertaInforme alerta = alertaCupos(service.detectar(contexto));
+
+        assertThat(alerta.mensaje()).isEqualTo("Faltan 2 personas · Diseñador de Moda.");
+    }
+
+    private AlertaInforme alertaCupos(List<AlertaInforme> alertas) {
+        return alertas.stream()
+                .filter(a -> "CUPOS_SIN_CUBRIR".equals(a.codigo()))
+                .findFirst()
+                .orElseThrow();
+    }
+
     private ContextoInformeProyecto contexto(
             Proyecto proyecto,
             Planificacion planificacion,
@@ -248,6 +316,14 @@ class DetectarAlertasProyectoServiceTest {
         return RequerimientoGralProyecto.builder()
                 .idRequerimientoGral(id)
                 .cantidad(cantidad)
+                .build();
+    }
+
+    private RequerimientoGralProyecto requerimiento(Long id, int cantidad, String profesion) {
+        return RequerimientoGralProyecto.builder()
+                .idRequerimientoGral(id)
+                .cantidad(cantidad)
+                .profesion(Profesion.builder().nombre(profesion).build())
                 .build();
     }
 }

@@ -352,7 +352,7 @@ Ejemplo abreviado:
       "codigo": "CUPOS_SIN_CUBRIR",
       "area": "EQUIPO",
       "severidad": "ALTA",
-      "mensaje": "Falta 1 fotógrafo",
+      "mensaje": "Falta 1 fotógrafo.",
       "antiguedadDias": 9,
       "accionSugerida": "Reclutar o reasignar"
     }
@@ -601,7 +601,7 @@ No hay puntaje numérico. El estado de cada área se deriva de sus alertas.
 | Área | Códigos de alerta |
 |---|---|
 | `CRONOGRAMA` | `SIN_FECHA_ENTREGA`, `SIN_ACTIVIDADES`, `CRONOGRAMA_INVIABLE`, `MARGEN_NEGATIVO`, `MARGEN_AJUSTADO`, `CONFLICTOS_CRONOGRAMA`, `ACTIVIDADES_VENCIDAS`, `ACTIVIDADES_CRITICAS_SIN_INICIAR` |
-| `EQUIPO` | `SIN_REQUERIMIENTOS`, `CUPOS_SIN_CUBRIR`, `MIEMBROS_SIN_TYC`, `POSTULACIONES_PENDIENTES`, `INVITACIONES_PENDIENTES` |
+| `EQUIPO` | `SIN_REQUERIMIENTOS`, `CUPOS_SIN_CUBRIR`, `POSTULACIONES_PENDIENTES`, `INVITACIONES_PENDIENTES` |
 | `CONTRATOS` | `CONTRATOS_PENDIENTES_FIRMA` |
 | `BRIEF` | `SIN_MOODBOARD`, `MOODBOARD_INCOMPLETO`, `BRIEF_INCOMPLETO` |
 
@@ -651,7 +651,6 @@ Si no hay fecha de entrega o no hay actividades, el bloque se muestra como “Si
 | `POSTULACIONES_PENDIENTES`, `INVITACIONES_PENDIENTES` | La pendiente más antigua |
 | `CONTRATOS_PENDIENTES_FIRMA` | Fecha del contrato en `PENDIENTE_FIRMA` |
 | `ACTIVIDADES_VENCIDAS` | El fin calculado más antiguo |
-| `MIEMBROS_SIN_TYC` | Fecha de alta del miembro |
 | Resto | `null` |
 
 ```text
@@ -688,8 +687,8 @@ No se devuelve `peso`, `puntaje` ni `indiceSalud`.
 | `MOODBOARD_INCOMPLETO` | BRIEF | BAJA | Menos imágenes que el mínimo esperado o sin descripción | `null` | Completar el concepto |
 | `BRIEF_INCOMPLETO` | BRIEF | MEDIA | El brief no tiene los 6 ítems completos y no hay otra alerta de brief | `null` | Completar la información del proyecto |
 | `SIN_REQUERIMIENTOS` | EQUIPO | ALTA | Proyecto publicado/confirmado sin requerimientos | `null` | Definir el equipo necesario |
-| `CUPOS_SIN_CUBRIR` | EQUIPO | ALTA | Faltantes > 0 en proyecto confirmado | `null` | Reclutar o reasignar |
-| `CUPOS_SIN_CUBRIR` | EQUIPO | MEDIA | Faltantes > 0 en proyecto publicado | `null` | Revisar postulaciones |
+| `CUPOS_SIN_CUBRIR` | EQUIPO | ALTA | Faltantes > 0 en proyecto confirmado; mensaje por profesión ("Falta 1 maquillador") | `null` | Reclutar o reasignar |
+| `CUPOS_SIN_CUBRIR` | EQUIPO | MEDIA | Faltantes > 0 en proyecto publicado; mensaje por profesión ("Faltan 2 modelos") | `null` | Revisar postulaciones |
 | `CRONOGRAMA_INVIABLE` | CRONOGRAMA | ALTA | `viable == false` | `null` | Reprogramar |
 | `MARGEN_NEGATIVO` | CRONOGRAMA | ALTA | `margenDias < 0` | `null` | Acortar alcance o reprogramar |
 | `MARGEN_AJUSTADO` | CRONOGRAMA | MEDIA | `0 <= margenDias < 7` | `null` | Revisar plan |
@@ -697,7 +696,6 @@ No se devuelve `peso`, `puntaje` ni `indiceSalud`.
 | `ACTIVIDADES_VENCIDAS` | CRONOGRAMA | ALTA | Alguna actividad no finalizada con fin calculado vencido | Fin calculado más antiguo | Reprogramar |
 | `ACTIVIDADES_CRITICAS_SIN_INICIAR` | CRONOGRAMA | ALTA | Actividad en ruta crítica y estado `PENDIENTE` | `null` | Priorizar inicio |
 | `CONTRATOS_PENDIENTES_FIRMA` | CONTRATOS | MEDIA/ALTA | Contrato `PENDIENTE_FIRMA` con más de N días | Fecha de emisión del contrato | Escalar firma |
-| `MIEMBROS_SIN_TYC` | EQUIPO | MEDIA | Miembro activo sin `idTycAceptado` | Fecha de alta del miembro | Solicitar aceptación |
 | `POSTULACIONES_PENDIENTES` | EQUIPO | MEDIA | Pendientes > 0; ALTA si la más antigua supera N días | Postulación más antigua | Responder postulaciones |
 | `INVITACIONES_PENDIENTES` | EQUIPO | MEDIA | Pendientes > 0; ALTA si la más antigua supera N días | Invitación más antigua | Hacer seguimiento |
 | `SIN_ACTIVIDADES` | CRONOGRAMA | MEDIA | Proyecto confirmado sin actividades | `null` | Planificar |

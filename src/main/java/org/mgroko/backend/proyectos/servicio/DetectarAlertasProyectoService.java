@@ -3,10 +3,14 @@ package org.mgroko.backend.proyectos.servicio;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.mgroko.backend.modelo.RequerimientoGralProyecto;
 import org.mgroko.backend.modelo.enums.EstadoProyecto;
 import org.mgroko.backend.proyectos.dto.AlertaInforme;
+import org.mgroko.backend.proyectos.dto.CupoRequerimiento;
 import org.mgroko.backend.proyectos.dto.SeveridadInforme;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -58,8 +62,6 @@ public class DetectarAlertasProyectoService {
             agregarAlertasCronograma(contexto, alertas);
             agregarAlertasEquipo(contexto, alertas);
             agregarAlertasContratos(contexto, alertas);
-        } else {
-            agregarAlertasBorrador(contexto, alertas);
         }
 
         agregarAlertaBrief(contexto, alertas);
@@ -169,32 +171,17 @@ public class DetectarAlertasProyectoService {
                         "Definir los perfiles y cupos necesarios"));
             }
         } else {
-            int faltantes = contexto.requerimientosActivos().stream()
-                    .map(requerimiento -> contexto.cupos().get(requerimiento.getIdRequerimientoGral()))
-                    .filter(cupo -> cupo != null)
-                    .mapToInt(cupo -> Math.max(0, cupo.faltantes()))
-                    .sum();
-            if (faltantes > 0) {
-                boolean confirmado = contexto.proyecto().getEstado() == EstadoProyecto.CONFIRMADO;
+            boolean confirmado = contexto.proyecto().getEstado() == EstadoProyecto.CONFIRMADO;
+            Map<String, Integer> faltantesPorProfesion = faltantesPorProfesion(contexto);
+            if (!faltantesPorProfesion.isEmpty()) {
                 alertas.add(alerta(
                         "CUPOS_SIN_CUBRIR",
                         AreasInforme.EQUIPO,
                         confirmado ? SeveridadInforme.ALTA : SeveridadInforme.MEDIA,
-                        "Faltan " + faltantes + " cupo(s) por cubrir en el equipo.",
+                        mensajeCuposFaltantes(faltantesPorProfesion),
                         null,
                         confirmado ? "Reclutar o reasignar miembros" : "Revisar postulaciones"));
             }
-        }
-
-        if (contexto.miembrosSinTyc() > 0) {
-            alertas.add(alerta(
-                    "MIEMBROS_SIN_TYC",
-                    AreasInforme.EQUIPO,
-                    SeveridadInforme.MEDIA,
-                    "Hay " + contexto.miembrosSinTyc()
-                            + " miembro(s) activo(s) sin aceptar los T&C.",
-                    antiguedad(contexto.fechaMiembroSinTycMasAntigua(), contexto.ahora()),
-                    "Solicitar la aceptación de los T&C"));
         }
 
         if (contexto.postulacionesPendientes() > 0) {
@@ -226,6 +213,85 @@ public class DetectarAlertasProyectoService {
         }
     }
 
+    /**
+     * Agrupa los cupos faltantes por profesión para poder nombrar qué falta
+     * cubrir en el equipo. Los requerimientos sin profesión se agrupan juntos
+     * bajo una clave vacía.
+     */
+    private Map<String, Integer> faltantesPorProfesion(ContextoInformeProyecto contexto) {
+        Map<String, Integer> faltantes = new LinkedHashMap<>();
+        for (RequerimientoGralProyecto requerimiento : contexto.requerimientosActivos()) {
+            CupoRequerimiento cupo = contexto.cupos().get(requerimiento.getIdRequerimientoGral());
+            if (cupo == null) {
+                continue;
+            }
+            int pendientes = Math.max(0, cupo.faltantes());
+            if (pendientes == 0) {
+                continue;
+            }
+            faltantes.merge(nombreProfesion(requerimiento), pendientes, Integer::sum);
+        }
+        return faltantes;
+    }
+
+    private String mensajeCuposFaltantes(Map<String, Integer> faltantesPorProfesion) {
+        List<String> frases = new ArrayList<>();
+        for (Map.Entry<String, Integer> entrada : faltantesPorProfesion.entrySet()) {
+            frases.add(fraseFaltante(entrada.getValue(), entrada.getKey()));
+        }
+        return String.join(" ", frases);
+    }
+
+    /**
+     * "Falta 1 maquillador.", "Faltan 2 modelos." Las profesiones compuestas
+     * ("Diseñador de Moda") usan el fallback "N personas · Profesión" para no
+     * arriesgar una pluralización incorrecta.
+     */
+    private String fraseFaltante(int faltantes, String profesion) {
+        boolean singular = faltantes == 1;
+        String verbo = singular ? "Falta" : "Faltan";
+        String nombre = profesion == null ? "" : profesion.trim();
+        if (nombre.isEmpty()) {
+            return verbo + " " + faltantes + (singular ? " cupo" : " cupos") + " en el equipo.";
+        }
+        if (!esProfesionSimple(nombre)) {
+            return verbo + " " + faltantes
+                    + (singular ? " persona · " : " personas · ") + nombre + ".";
+        }
+        String etiqueta = singular ? nombre.toLowerCase() : pluralizar(nombre);
+        return verbo + " " + faltantes + " " + etiqueta + ".";
+    }
+
+    private boolean esProfesionSimple(String nombre) {
+        return nombre.codePoints().allMatch(Character::isLetter);
+    }
+
+    private String pluralizar(String nombre) {
+        String palabra = nombre.toLowerCase();
+        if (palabra.isEmpty()) {
+            return palabra;
+        }
+        char ultimo = palabra.charAt(palabra.length() - 1);
+        if ("aeiouáéíóúü".indexOf(ultimo) >= 0) {
+            return palabra + "s";
+        }
+        if (ultimo == 'z') {
+            return palabra.substring(0, palabra.length() - 1) + "ces";
+        }
+        if ("lrnj".indexOf(ultimo) >= 0) {
+            return palabra + "es";
+        }
+        return palabra + "s";
+    }
+
+    private String nombreProfesion(RequerimientoGralProyecto requerimiento) {
+        if (requerimiento.getProfesion() == null
+                || requerimiento.getProfesion().getNombre() == null) {
+            return "";
+        }
+        return requerimiento.getProfesion().getNombre().trim();
+    }
+
     private void agregarAlertasContratos(
             ContextoInformeProyecto contexto,
             List<AlertaInforme> alertas) {
@@ -247,22 +313,6 @@ public class DetectarAlertasProyectoService {
                         + " contrato(s) pendiente(s) de firma.",
                 antiguedad,
                 "Escalar la firma de los contratos"));
-    }
-
-    private void agregarAlertasBorrador(
-            ContextoInformeProyecto contexto,
-            List<AlertaInforme> alertas) {
-
-        if (contexto.miembrosSinTyc() > 0) {
-            alertas.add(alerta(
-                    "MIEMBROS_SIN_TYC",
-                    AreasInforme.EQUIPO,
-                    SeveridadInforme.MEDIA,
-                    "Hay " + contexto.miembrosSinTyc()
-                            + " miembro(s) activo(s) sin aceptar los T&C.",
-                    antiguedad(contexto.fechaMiembroSinTycMasAntigua(), contexto.ahora()),
-                    "Solicitar la aceptación de los T&C"));
-        }
     }
 
     private void agregarAlertaBrief(

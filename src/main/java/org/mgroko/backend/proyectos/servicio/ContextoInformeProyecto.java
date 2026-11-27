@@ -362,21 +362,6 @@ record ContextoInformeProyecto(
         return firmasFirmadas() + firmasPendientes();
     }
 
-    int miembrosSinTyc() {
-        return (int) miembrosActivos().stream()
-                .filter(miembro -> miembro.getIdTycAceptado() == null)
-                .count();
-    }
-
-    LocalDateTime fechaMiembroSinTycMasAntigua() {
-        return miembrosActivos().stream()
-                .filter(miembro -> miembro.getIdTycAceptado() == null)
-                .map(MiembroProyecto::getFechaAlta)
-                .filter(Objects::nonNull)
-                .min(LocalDateTime::compareTo)
-                .orElse(null);
-    }
-
     int totalActivos() {
         return miembrosActivos().size();
     }
