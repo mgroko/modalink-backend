@@ -373,25 +373,139 @@ docker compose logs -f web
 docker compose logs -f db
 ```
 
-### Reiniciar
+### Reiniciar vs recrear
+
+`docker compose restart backend` reinicia el proceso, pero **no recarga el
+`.env`**. Si cambiaste variables de entorno, usá:
 
 ```bash
-docker compose restart backend
+docker compose up -d --force-recreate backend
 ```
 
-### Actualizar
+### Actualizar el backend
+
+El backend se publica como imagen en GHCR. El flujo es:
+
+1. Pusheás a la rama `deploy/azure` de
+   `https://github.com/mgroko/modalink-backend`.
+2. GitHub Actions construye
+   `ghcr.io/mgroko/modalink-backend:latest`.
+3. En la VM:
+
+```bash
+cd /opt/modalink/backend
+git pull
+cd deploy/azure
+docker compose pull backend
+docker compose up -d --force-recreate backend
+docker compose logs -f backend
+```
+
+`git pull` actualiza el compose, los scripts y este README; la imagen del
+backend viene de GHCR. Si solo cambiaste código Java, alcanza con el pull y el
+recreate.
+
+### Actualizar el frontend
+
+El frontend se construye desde `https://github.com/mgroko/modalink-frontend`,
+rama `deploy/azure`. En la VM **no** hace falta clonar el frontend:
+
+1. Pusheás a la rama `deploy/azure` del repo frontend.
+2. GitHub Actions construye
+   `ghcr.io/mgroko/modalink-frontend:latest`.
+3. En la VM:
+
+```bash
+cd /opt/modalink/backend/deploy/azure
+docker compose pull web
+docker compose up -d --force-recreate web
+docker compose logs -f web
+```
+
+Si cambiaste el `Caddyfile`, también se reconstruye la imagen `web`; no toca el
+backend.
+
+### Actualizar ambos
 
 ```bash
 cd /opt/modalink/backend
 git pull
 cd deploy/azure
 docker compose pull
-docker compose up -d
+docker compose up -d --force-recreate backend web
 ```
 
-> Si hay migraciones nuevas en `docs/3_diseño/migraciones/`, aplicalas con
-> `psql` **antes** de arrancar el backend nuevo. `ddl-auto=validate` no las
-> ejecuta solo.
+No hace falta recrear `db` para una actualización normal. Si lo hacés, el
+volumen de PostgreSQL se mantiene, pero el servicio se reinicia y la app queda
+unos segundos sin base.
+
+### Cambios en `.env`
+
+Después de editar `.env`:
+
+```bash
+docker compose up -d --force-recreate backend
+```
+
+Si cambiaste `SITE_ADDRESS` o `SITE_URL`, además recreá `web`:
+
+```bash
+docker compose up -d --force-recreate backend web
+```
+
+Y actualizá DuckDNS y Google Cloud si corresponde.
+
+Si cambiaste `POSTGRES_PASSWORD` **después** de inicializar la base, la password
+vieja sigue dentro de PostgreSQL. Opciones: volver a la anterior, cambiarla con
+`ALTER USER`, o recrear el volumen con `docker compose down -v` (destructivo:
+borra base y uploads).
+
+### Cambios en el compose o en Caddy
+
+- `docker-compose.yml` del backend: `git pull` en la VM y
+  `docker compose up -d`.
+- `Caddyfile` del frontend: push al repo frontend, esperá la imagen y después
+  `docker compose pull web && docker compose up -d --force-recreate web`.
+
+### Migraciones de base
+
+`ddl-auto=validate` no aplica migraciones. Si agregás tablas o columnas, aplicá
+el SQL **antes** de arrancar el backend nuevo:
+
+```bash
+# revisar docs/3_diseño/migraciones/
+docker compose exec -T db psql -U modalink -d modalink < migracion.sql
+```
+
+Si el esquema no coincide, el backend falla al iniciar.
+
+### Comandos útiles
+
+```bash
+# Estado de los servicios
+docker compose ps
+
+# Health desde la VM
+curl -fsS https://modalink.duckdns.org/api/actuator/health
+
+# Shell de PostgreSQL
+docker compose exec db psql -U modalink -d modalink
+
+# Uso de recursos
+docker stats
+
+# Reiniciar solo el backend (no recarga .env)
+docker compose restart backend
+
+# Recrear backend y web con la config actual
+docker compose up -d --force-recreate backend web
+
+# Detener el stack (la VM sigue prendida)
+docker compose stop
+
+# Volver a levantar el stack
+docker compose start
+```
 
 ### Backup
 
@@ -411,24 +525,57 @@ Guardá esos archivos fuera de la VM.
 
 ---
 
-## 13. Controlar el costo
+## 13. Detener la VM y controlar el costo
 
-- Configurá alertas de presupuesto en **Cost Management + Billing → Budgets**
-  (por ejemplo, a USD 50 y USD 80).
-- Cuando no estés probando, **apagá y deallocá** la VM:
+Sí, podés detenerla; lo importante es que quede **Stopped (Deallocated)**.
+
+### Desde el portal
+
+VM → **Stop**. Verificá que el estado final sea **Stopped (Deallocated)**. Si
+el portal te deja la VM en "Stopped" a secas, usá **Stop (Deallocate)** o el
+comando de CLI.
+
+### Desde CLI
 
 ```bash
+# Detener y desasignar (deja de cobrar compute)
 az vm deallocate --resource-group modalink-rg --name modalink-vm
+
+# Volver a prender
 az vm start --resource-group modalink-rg --name modalink-vm
 ```
 
-O en el portal: **VM → Stop**. Elegí **Deallocate**, no solo "Stop"; si no,
-Azure sigue cobrando la compute.
+`az vm stop` **no** desasigna: la VM queda detenida pero el compute se sigue
+facturando. Usá `az vm deallocate`.
 
-- El disco y la IP estática siguen existiendo mientras la VM está deallocated
-  (costo mínimo). El crédito se consume mucho más lento.
+### Qué pasa cuando está detenida
+
+- El sitio deja de responder: DuckDNS sigue apuntando a la IP, pero no hay
+  servicio escuchando.
+- El **disco** y la **IP estática** siguen existiendo y se facturan
+  (≈ USD 8,45/mes). El crédito se consume mucho más lento.
+- La base, los uploads y el certificado de Caddy **persisten** en los volúmenes
+  `pgdata`, `uploads` y `caddy_data`.
+- Al iniciar de nuevo, Docker arranca solo y los contenedores se reinician
+  (`restart: unless-stopped`). Esperá 1–2 minutos y verificá:
+
+```bash
+cd /opt/modalink/backend/deploy/azure
+docker compose ps
+curl -fsS https://modalink.duckdns.org/api/actuator/health
+```
+
+- Si la IP fuera **dinámica**, podría cambiar al detener/iniciar; actualizá
+  DuckDNS. Con IP estática no cambia.
+- No borres el resource group si querés conservar datos. Si lo vas a borrar,
+  primero hacé backup de PostgreSQL y uploads.
+
+### Presupuesto
+
+- Configurá alertas en **Cost Management + Billing → Budgets** (por ejemplo,
+  USD 50, USD 80 y USD 95).
 - Si el crédito se agota, el stack Docker es portable a otra VM o a Hugging Face
-  Spaces (con las limitaciones de storage efímero).
+  Spaces (con storage efímero).
 
 ---
 
