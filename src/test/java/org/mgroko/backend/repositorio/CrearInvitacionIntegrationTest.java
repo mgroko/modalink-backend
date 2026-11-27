@@ -428,8 +428,16 @@ class CrearInvitacionIntegrationTest extends AbstractPostgresIntegrationTest {
 
         ProyectoResponse publicado = publicarProyectoConDosRequerimientosGral(
                 director, "Desfile UC28 Dos");
-        Long primero = publicado.requerimientosGral().get(0).idRequerimientoGral();
-        Long segundo = publicado.requerimientosGral().get(1).idRequerimientoGral();
+
+        // La respuesta de publicación no garantiza el orden de la lista. El
+        // servicio vincula el requerimiento de menor ID, así que el test debe
+        // ordenar por ID antes de identificar cuál es el "primero".
+        var requerimientos = publicado.requerimientosGral().stream()
+                .sorted((a, b) -> a.idRequerimientoGral()
+                        .compareTo(b.idRequerimientoGral()))
+                .toList();
+        Long primero = requerimientos.get(0).idRequerimientoGral();
+        Long segundo = requerimientos.get(1).idRequerimientoGral();
 
         InvitacionResponse invitacion = crearInvitacionService.invitarAProyecto(
                 director.idUsuario(), director.idPerfil(), publicado.idProyecto(),
