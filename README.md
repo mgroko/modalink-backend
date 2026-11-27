@@ -12,7 +12,7 @@ Proyecto final de la carrera **Analista en Sistemas de Computación**, desarroll
 >
 > Seguimiento detallado: [`docs/5_estado_sistema/estado_uc.md`](docs/5_estado_sistema/estado_uc.md).
 > 
-> Prueba demo online: https://modalink.duckdns.org/ (rama deploy/azure)
+Prueba demo online: https://modalink.duckdns.org/ (rama deploy/azure)
 
 ## Stack tecnológico
 
